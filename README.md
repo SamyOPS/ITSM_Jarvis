@@ -43,3 +43,23 @@ npm run dev
 
 Backend runs on `http://localhost:3000`.
 Frontend runs on `http://localhost:5173` by default.
+
+## Quality Checks
+
+Backend:
+
+```bash
+cd backend
+npm run lint
+npm run build
+npm run test
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm run lint
+npm run build
+npm run test
+```
