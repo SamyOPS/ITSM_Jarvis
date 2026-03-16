@@ -180,6 +180,35 @@ a {
   text-transform: uppercase;
 }
 
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.status-grid div {
+  padding: 14px 16px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.status-grid dt {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.status-grid dd {
+  margin: 0;
+  color: #24406c;
+  word-break: break-word;
+}
+
 @media (max-width: 760px) {
   .app-shell {
     width: min(100vw - 20px, 1100px);
@@ -193,5 +222,9 @@ a {
 
   .app-nav {
     justify-content: flex-start;
+  }
+
+  .status-grid {
+    grid-template-columns: 1fr;
   }
 }
