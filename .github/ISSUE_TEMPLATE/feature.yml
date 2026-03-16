@@ -1,0 +1,62 @@
+name: Feature
+description: Track a small delivery unit for product or technical work.
+title: "[P?] "
+labels: []
+body:
+  - type: input
+    id: package
+    attributes:
+      label: Package
+      description: Package or task id from the plan, for example P0.2 or P3.4.
+      placeholder: P0.2
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: Expected result of the task.
+      placeholder: Add a backend health endpoint used by the frontend smoke test.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What is included and excluded.
+      placeholder: Included: API endpoint and frontend call. Excluded: auth and deployment.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: Tasks
+      description: Concrete implementation steps.
+      placeholder: |
+        - Create endpoint
+        - Add frontend call
+        - Add test
+    validations:
+      required: true
+
+  - type: textarea
+    id: definition_of_done
+    attributes:
+      label: Definition of Done
+      description: Conditions required to close the issue.
+      placeholder: |
+        - Lint passes
+        - Build passes
+        - Target flow works locally
+    validations:
+      required: true
+
+  - type: input
+    id: branch_name
+    attributes:
+      label: Suggested branch name
+      description: Follow the repository branch convention.
+      placeholder: feature/P0.2-init-back-structure

@@ -1,0 +1,58 @@
+name: Bug
+description: Report a defect that requires a focused fix.
+title: "[BUG] "
+labels: []
+body:
+  - type: input
+    id: area
+    attributes:
+      label: Area
+      description: Affected area, for example frontend, backend, CI, auth.
+      placeholder: backend
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Clear description of the bug.
+      placeholder: The API returns 500 when creating a ticket without category.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start backend
+        2. Call POST /tickets
+        3. Observe error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: The API should return a validation error.
+    validations:
+      required: true
+
+  - type: textarea
+    id: definition_of_done
+    attributes:
+      label: Definition of Done
+      placeholder: |
+        - Root cause identified
+        - Fix implemented
+        - Regression covered by test or justified
+    validations:
+      required: true
+
+  - type: input
+    id: branch_name
+    attributes:
+      label: Suggested branch name
+      placeholder: fix/P3.5-ticket-validation

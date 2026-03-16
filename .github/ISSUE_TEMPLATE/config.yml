@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Contribution Rules
+    url: ../docs/CONTRIBUTING.md
+    about: Read the repository workflow, branch naming, PR rules, and Definition of Done.

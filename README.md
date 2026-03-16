@@ -63,3 +63,15 @@ npm run lint
 npm run build
 npm run test
 ```
+
+## Collaboration Rules
+
+Repository workflow and contribution conventions are documented in
+[`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md).
+
+Current baseline:
+- `1 issue = 1 branch = 1 pull request`
+- branches start from `dev`
+- pull requests target `dev`
+- `main` should stay protected and stable
+- branch names follow `feature/<issue>-<slug>`, `fix/<issue>-<slug>`, `chore/<issue>-<slug>`, or `docs/<issue>-<slug>`
