@@ -121,21 +121,28 @@ Cette separation evite une structure monorepo inutilement lourde pour ce stade d
 
 Le fichier [backend/.env.example](c:/Users/Utilisateur/Desktop/Codes/Jarvis_Connect/TikAI/jarvis/backend/.env.example) prepare la configuration minimale pour :
 
-- le port de l'API
-- l'URL Supabase
-- la cle publique ou serveur selon les besoins futurs
+- `PORT`
+- `FRONTEND_URL`
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
 ### Frontend
 
 Le fichier [frontend/.env.example](c:/Users/Utilisateur/Desktop/Codes/Jarvis_Connect/TikAI/jarvis/frontend/.env.example) prepare la configuration minimale pour :
 
-- l'URL de l'API backend
-- l'URL Supabase publique
-- la cle publique Supabase
+- `VITE_API_URL`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
-## Demarrage
+## Lancement local
 
-Installer et lancer chaque projet separement :
+1. Creer `backend/.env` a partir de `backend/.env.example`.
+2. Creer `frontend/.env` a partir de `frontend/.env.example`.
+3. Installer les dependances dans chaque projet.
+4. Demarrer le backend puis le frontend.
+
+Backend :
 
 ```bash
 cd backend
@@ -143,14 +150,30 @@ npm install
 npm run start:dev
 ```
 
+Frontend :
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
+Le backend expose un endpoint technique `GET /health` et le frontend affiche le resultat de cet appel dans l'ecran principal.
+
+## CI
+
+Une pipeline GitHub Actions minimale est disponible dans [ci.yml](c:/Users/Utilisateur/Desktop/Codes/Jarvis_Connect/TikAI/jarvis/.github/workflows/ci.yml).
+
+Elle s'execute sur `push` et `pull_request` et lance pour le frontend puis le backend :
+
+- installation des dependances
+- `lint`
+- `test`
+- `build`
+
 ## Notes
 
 - aucune fonctionnalite metier n'est presente
 - aucune route metier n'est creee
 - aucune integration Supabase reelle n'est encore implementee
+- la verification front-back actuelle sert uniquement de Hello API technique
