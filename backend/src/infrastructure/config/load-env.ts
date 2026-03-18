@@ -25,6 +25,10 @@ function parseLine(line: string): [string, string] | null {
 }
 
 export function loadEnvFile(): void {
+  if (process.env.NODE_ENV === 'production' || process.env.PORT) {
+    return;
+  }
+
   const envFilePath = join(process.cwd(), '.env');
 
   if (!existsSync(envFilePath)) {

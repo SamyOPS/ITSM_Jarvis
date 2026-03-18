@@ -11,7 +11,14 @@ async function bootstrap() {
   app.enableCors({
     origin: config.corsOrigin,
   });
-  await app.listen(config.port, config.host);
+
+  const requestedPort = process.env.PORT ? Number(process.env.PORT) : 3000;
+  const port =
+    Number.isInteger(requestedPort) && requestedPort > 0 ? requestedPort : 3000;
+
+  await app.listen(port, '0.0.0.0');
+
+  console.log(`Server running on port ${port}`);
 }
 
 void bootstrap();
