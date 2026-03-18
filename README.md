@@ -64,6 +64,25 @@ npm run build
 npm run test
 ```
 
+## Environment Variables
+
+Backend:
+
+- `PORT`
+- `HOST`
+- `CORS_ORIGIN`
+- `NODE_ENV`
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+Frontend:
+
+- `VITE_API_URL`
+- `VITE_APP_ENV`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
 ## Collaboration Rules
 
 Repository workflow and contribution conventions are documented in
