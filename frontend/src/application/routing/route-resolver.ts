@@ -5,7 +5,12 @@ const routeMap = new Map<RouteDefinition['path'], RouteDefinition>(
 );
 
 export function resolveRoute(pathname: string): RouteDefinition | null {
-  if (pathname === '/' || pathname === '/auth' || pathname === '/status') {
+  if (
+    pathname === '/' ||
+    pathname === '/auth' ||
+    pathname === '/login' ||
+    pathname === '/status'
+  ) {
     return routeMap.get(pathname) ?? null;
   }
 

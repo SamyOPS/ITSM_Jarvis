@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { AuthSetupSnapshot } from '../../domain/auth/auth-setup';
 import { DEFAULT_USER_ROLES } from '../../domain/auth/user-role';
 import { fetchAuthSetup } from '../../infrastructure/api/auth-api';
@@ -6,8 +7,15 @@ import { getFrontendRuntimeConfig } from '../../infrastructure/config/env';
 import { getFrontendSupabaseConfig } from '../../infrastructure/config/supabase-env';
 
 type AuthLoadState = 'idle' | 'loading' | 'success' | 'error';
+type SessionState = 'anonymous' | 'authenticated' | 'restoring';
 
-export function AuthPage() {
+type AuthPageProps = {
+  onLogout: () => void;
+  session: AuthSessionSnapshot | null;
+  sessionState: SessionState;
+};
+
+export function AuthPage({ onLogout, session, sessionState }: AuthPageProps) {
   const [authState, setAuthState] = useState<AuthLoadState>('idle');
   const [authSetup, setAuthSetup] = useState<AuthSetupSnapshot | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -56,11 +64,24 @@ export function AuthPage() {
       <h2>Supabase auth setup</h2>
       <p>
         This screen confirms that Supabase auth configuration and the baseline
-        application roles are ready for the next security slices.
+        application roles are ready, while exposing the current frontend session
+        state.
       </p>
       <div className="status-card">
         <strong>Setup state</strong>
         <span>{authState}</span>
+      </div>
+      <div className="status-card auth-session-card">
+        <strong>Session state</strong>
+        <span>{sessionState}</span>
+        <button
+          className="secondary-button"
+          disabled={!session}
+          onClick={onLogout}
+          type="button"
+        >
+          Sign out
+        </button>
       </div>
       <dl className="status-grid">
         <div>
@@ -90,6 +111,18 @@ export function AuthPage() {
         <div>
           <dt>Roles</dt>
           <dd>{(authSetup?.roles ?? DEFAULT_USER_ROLES).join(', ')}</dd>
+        </div>
+        <div>
+          <dt>Session email</dt>
+          <dd>{session?.user.email ?? 'anonymous'}</dd>
+        </div>
+        <div>
+          <dt>Session role</dt>
+          <dd>{session?.user.role ?? 'none'}</dd>
+        </div>
+        <div>
+          <dt>Session user id</dt>
+          <dd>{session?.user.id ?? 'not-loaded'}</dd>
         </div>
         <div>
           <dt>Backend Supabase URL</dt>

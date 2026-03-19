@@ -1,11 +1,14 @@
 :root {
-  font-family:
-    "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color: #112033;
-  background:
-    radial-gradient(circle at top, #f4f8ff 0%, #e8effc 38%, #dde6f6 100%);
+  background: radial-gradient(
+    circle at top,
+    #f4f8ff 0%,
+    #e8effc 38%,
+    #dde6f6 100%
+  );
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -39,6 +42,15 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #15315f;
 }
 
 button {
@@ -98,7 +110,8 @@ a {
 }
 
 .nav-link,
-.primary-button {
+.primary-button,
+.secondary-button {
   border: 1px solid transparent;
   border-radius: 999px;
   padding: 10px 16px;
@@ -111,10 +124,16 @@ a {
 }
 
 .nav-link:hover,
-.primary-button:hover {
+.primary-button:hover,
+.secondary-button:hover {
   transform: translateY(-1px);
   border-color: rgba(25, 86, 179, 0.24);
   background: var(--primary-soft);
+}
+
+.secondary-button {
+  border-color: rgba(207, 216, 234, 0.9);
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .app-main {
@@ -180,6 +199,29 @@ a {
   text-transform: uppercase;
 }
 
+.auth-session-card {
+  margin-left: 12px;
+}
+
+.auth-form {
+  display: grid;
+  gap: 16px;
+  max-width: 440px;
+  margin-top: 20px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  color: #24406c;
+}
+
+.field span {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
 .status-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -222,6 +264,11 @@ a {
 
   .app-nav {
     justify-content: flex-start;
+  }
+
+  .auth-session-card {
+    margin-left: 0;
+    margin-top: 12px;
   }
 
   .status-grid {
