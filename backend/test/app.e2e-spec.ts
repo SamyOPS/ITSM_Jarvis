@@ -22,4 +22,8 @@ describe('AppController (e2e)', () => {
       status: 'ok',
     });
   });
+
+  it('/auth/me (GET) returns 401 without a bearer token', () => {
+    return request(app.getHttpServer()).get('/auth/me').expect(401);
+  });
 });
