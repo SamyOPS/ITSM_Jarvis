@@ -3,9 +3,15 @@ import { navigateTo } from '../../infrastructure/routing/browser-router';
 
 interface AppShellProps {
   children: React.ReactNode;
+  isAuthenticated: boolean;
+  onLogout: () => void;
 }
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({
+  children,
+  isAuthenticated,
+  onLogout,
+}: AppShellProps) {
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -29,6 +35,9 @@ export function AppShell({ children }: AppShellProps) {
               {route.title}
             </button>
           ))}
+          <button className="secondary-button" onClick={onLogout} type="button">
+            {isAuthenticated ? 'Logout' : 'Clear session'}
+          </button>
         </nav>
       </header>
 

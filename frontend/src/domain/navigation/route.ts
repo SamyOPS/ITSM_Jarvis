@@ -1,4 +1,4 @@
-export type RoutePath = '/' | '/auth' | '/status';
+export type RoutePath = '/' | '/auth' | '/login' | '/status';
 
 export interface RouteDefinition {
   description: string;
@@ -16,6 +16,11 @@ export const ROUTES: RouteDefinition[] = [
     description: 'Supabase auth and roles readiness screen.',
     path: '/auth',
     title: 'Auth',
+  },
+  {
+    description: 'Login and session management screen.',
+    path: '/login',
+    title: 'Login',
   },
   {
     description: 'Technical route reserved for integration checks.',
