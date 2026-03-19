@@ -1,0 +1,4 @@
+export enum AuthPolicy {
+  ACCESS_AGENT_AREA = 'ACCESS_AGENT_AREA',
+  ACCESS_ADMIN_AREA = 'ACCESS_ADMIN_AREA',
+}

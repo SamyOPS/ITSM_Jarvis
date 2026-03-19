@@ -46,4 +46,32 @@ describe('AuthController', () => {
       role: UserRole.AGENT,
     });
   });
+
+  it('returns the agent area payload', () => {
+    expect(
+      controller.getAgentArea({
+        accessToken: 'token',
+        email: 'agent@example.com',
+        id: 'user-1',
+        role: UserRole.AGENT,
+      }),
+    ).toEqual({
+      area: 'agent',
+      role: UserRole.AGENT,
+    });
+  });
+
+  it('returns the admin area payload', () => {
+    expect(
+      controller.getAdminArea({
+        accessToken: 'token',
+        email: 'admin@example.com',
+        id: 'user-1',
+        role: UserRole.ADMIN,
+      }),
+    ).toEqual({
+      area: 'admin',
+      role: UserRole.ADMIN,
+    });
+  });
 });
