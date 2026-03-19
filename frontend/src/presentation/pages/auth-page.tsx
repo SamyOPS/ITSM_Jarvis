@@ -121,6 +121,18 @@ export function AuthPage({ onLogout, session, sessionState }: AuthPageProps) {
           <dd>{session?.user.role ?? 'none'}</dd>
         </div>
         <div>
+          <dt>Protected UI</dt>
+          <dd>
+            {session?.user.role === 'ADMIN'
+              ? 'Admin and Agent routes visible'
+              : session?.user.role === 'AGENT'
+                ? 'Agent route visible'
+                : session
+                  ? 'Authenticated user routes only'
+                  : 'Anonymous'}
+          </dd>
+        </div>
+        <div>
           <dt>Session user id</dt>
           <dd>{session?.user.id ?? 'not-loaded'}</dd>
         </div>

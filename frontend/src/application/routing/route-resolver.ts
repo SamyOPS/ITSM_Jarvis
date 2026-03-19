@@ -7,6 +7,8 @@ const routeMap = new Map<RouteDefinition['path'], RouteDefinition>(
 export function resolveRoute(pathname: string): RouteDefinition | null {
   if (
     pathname === '/' ||
+    pathname === '/admin' ||
+    pathname === '/agent' ||
     pathname === '/auth' ||
     pathname === '/login' ||
     pathname === '/status'
