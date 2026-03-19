@@ -1,6 +1,6 @@
 import {
   Injectable,
-  InternalServerErrorException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { type AuthenticatedUser } from '../../domain/auth/authenticated-user';
@@ -12,19 +12,29 @@ import { getBackendRuntimeConfig } from '../config/app-config';
 export class SupabaseTokenValidatorService {
   async validate(accessToken: string): Promise<AuthenticatedUser> {
     const config = getBackendRuntimeConfig();
+    const supabaseApiKey =
+      config.supabaseAnonKey || config.supabaseServiceRoleKey;
 
-    if (!config.supabaseUrl || !config.supabaseAnonKey) {
-      throw new InternalServerErrorException(
-        'Supabase auth configuration is incomplete.',
+    if (!config.supabaseUrl || !supabaseApiKey) {
+      throw new ServiceUnavailableException(
+        'Supabase auth configuration is incomplete on the backend.',
       );
     }
 
-    const response = await fetch(`${config.supabaseUrl}/auth/v1/user`, {
-      headers: {
-        apikey: config.supabaseAnonKey,
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    let response: Response;
+
+    try {
+      response = await fetch(`${config.supabaseUrl}/auth/v1/user`, {
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+    } catch {
+      throw new ServiceUnavailableException(
+        'Supabase auth service is unreachable from the backend.',
+      );
+    }
 
     if (!response.ok) {
       throw new UnauthorizedException('Invalid or expired access token.');

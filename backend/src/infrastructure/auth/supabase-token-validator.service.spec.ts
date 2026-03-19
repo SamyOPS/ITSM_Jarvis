@@ -1,5 +1,5 @@
 import {
-  InternalServerErrorException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { SupabaseTokenValidatorService } from './supabase-token-validator.service';
@@ -45,7 +45,43 @@ describe('SupabaseTokenValidatorService', () => {
     const service = new SupabaseTokenValidatorService();
 
     await expect(service.validate('token')).rejects.toBeInstanceOf(
-      InternalServerErrorException,
+      ServiceUnavailableException,
+    );
+  });
+
+  it('falls back to the service role key when the anon key is missing', async () => {
+    process.env.SUPABASE_URL = 'https://example.supabase.co';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        app_metadata: { role: 'AGENT' },
+        email: 'agent@example.com',
+        id: 'user-2',
+      }),
+    }) as typeof fetch;
+
+    const service = new SupabaseTokenValidatorService();
+
+    await expect(service.validate('token')).resolves.toEqual({
+      accessToken: 'token',
+      email: 'agent@example.com',
+      id: 'user-2',
+      role: UserRole.AGENT,
+    });
+  });
+
+  it('throws when the backend cannot reach Supabase auth', async () => {
+    process.env.SUPABASE_URL = 'https://example.supabase.co';
+    process.env.SUPABASE_ANON_KEY = 'anon-key';
+
+    global.fetch = jest.fn().mockRejectedValue(new Error('network')) as typeof fetch;
+
+    const service = new SupabaseTokenValidatorService();
+
+    await expect(service.validate('token')).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
     );
   });
 

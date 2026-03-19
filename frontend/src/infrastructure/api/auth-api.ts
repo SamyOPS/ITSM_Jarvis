@@ -66,8 +66,10 @@ export async function fetchCurrentUser(
   });
 
   if (!response.ok) {
+    const message = await response.text();
+
     throw new Error(
-      `Current user lookup failed with status ${response.status}`,
+      message || `Current user lookup failed with status ${response.status}`,
     );
   }
 
