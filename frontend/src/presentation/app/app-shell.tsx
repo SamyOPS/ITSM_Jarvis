@@ -1,3 +1,5 @@
+import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
+import { getVisibleRoutes } from '../../application/auth/access-control';
 import { ROUTES } from '../../domain/navigation/route';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 
@@ -5,13 +7,20 @@ interface AppShellProps {
   children: React.ReactNode;
   isAuthenticated: boolean;
   onLogout: () => void;
+  session: AuthSessionSnapshot | null;
 }
 
 export function AppShell({
   children,
   isAuthenticated,
   onLogout,
+  session,
 }: AppShellProps) {
+  const visibleRoutePaths = getVisibleRoutes(session);
+  const visibleRoutes = ROUTES.filter((route) =>
+    visibleRoutePaths.includes(route.path),
+  );
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -25,7 +34,7 @@ export function AppShell({
         </div>
 
         <nav aria-label="Primary" className="app-nav">
-          {ROUTES.map((route) => (
+          {visibleRoutes.map((route) => (
             <button
               className="nav-link"
               key={route.path}

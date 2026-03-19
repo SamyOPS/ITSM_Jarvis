@@ -9,8 +9,13 @@ import {
   readStoredAuthSession,
   storeAuthSession,
 } from '../../infrastructure/auth/session-storage';
+import { canAccessRoute } from '../../application/auth/access-control';
 import { resolveRoute } from '../../application/routing/route-resolver';
+import { type RoutePath } from '../../domain/navigation/route';
 import { useBrowserPath } from '../../infrastructure/routing/browser-router';
+import { AccessDeniedPage } from '../pages/access-denied-page';
+import { AdminPage } from '../pages/admin-page';
+import { AgentPage } from '../pages/agent-page';
 import { AppShell } from './app-shell';
 import { AuthPage } from '../pages/auth-page';
 import { HomePage } from '../pages/home-page';
@@ -45,9 +50,29 @@ function renderPage({
     return <NotFoundPage />;
   }
 
+  const routePath = route.path as RoutePath;
+
+  if (!canAccessRoute(routePath, session)) {
+    if (!session) {
+      return (
+        <LoginPage
+          errorMessage={authErrorMessage}
+          isBusy={isLoggingIn || sessionState === 'loading'}
+          onSubmit={onLogin}
+        />
+      );
+    }
+
+    return <AccessDeniedPage role={session.user.role} />;
+  }
+
   switch (route.path) {
     case '/':
       return <HomePage />;
+    case '/admin':
+      return session ? <AdminPage session={session} /> : <NotFoundPage />;
+    case '/agent':
+      return session ? <AgentPage session={session} /> : <NotFoundPage />;
     case '/auth':
       return (
         <AuthPage
@@ -163,6 +188,7 @@ export function App() {
     <AppShell
       isAuthenticated={sessionState === 'authenticated'}
       onLogout={handleLogout}
+      session={session}
     >
       {renderPage({
         authErrorMessage,
