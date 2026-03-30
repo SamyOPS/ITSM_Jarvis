@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { getBackendRuntimeConfig } from '../config/app-config';
 import { PriorityName } from '../../domain/ticketing/priority-name';
 import { SupportLevel } from '../../domain/ticketing/support-level';
@@ -16,16 +13,6 @@ type SupabaseCategoryRow = {
   id: string;
   name: string;
   parent_id: string | null;
-};
-
-type SupabaseChannelRow = {
-  id: string;
-  name: string;
-};
-
-type SupabaseCiTypeRow = {
-  id: string;
-  name: string;
 };
 
 type SupabaseGroupRow = {
@@ -66,11 +53,19 @@ export class SupabaseReferentialReaderService {
   }
 
   async listChannels(): Promise<ReferentialChannel[]> {
-    return this.fetchTable<ReferentialChannel>('channels', 'id,name', 'name.asc');
+    return this.fetchTable<ReferentialChannel>(
+      'channels',
+      'id,name',
+      'name.asc',
+    );
   }
 
   async listCiTypes(): Promise<ReferentialCiType[]> {
-    return this.fetchTable<ReferentialCiType>('ci_types', 'id,name', 'name.asc');
+    return this.fetchTable<ReferentialCiType>(
+      'ci_types',
+      'id,name',
+      'name.asc',
+    );
   }
 
   async listGroups(): Promise<ReferentialGroup[]> {
@@ -111,7 +106,8 @@ export class SupabaseReferentialReaderService {
     order: string,
   ): Promise<Row[]> {
     const config = getBackendRuntimeConfig();
-    const supabaseApiKey = config.supabaseServiceRoleKey || config.supabaseAnonKey;
+    const supabaseApiKey =
+      config.supabaseServiceRoleKey || config.supabaseAnonKey;
 
     if (!config.supabaseUrl || !supabaseApiKey) {
       throw new ServiceUnavailableException(

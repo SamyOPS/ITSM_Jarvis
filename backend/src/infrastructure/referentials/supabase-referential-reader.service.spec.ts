@@ -26,10 +26,11 @@ describe('SupabaseReferentialReaderService', () => {
   it('maps category rows from Supabase', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => [
-        { id: 'cat-1', name: 'Hardware', parent_id: null },
-        { id: 'cat-2', name: 'Laptop', parent_id: 'cat-1' },
-      ],
+      json: () =>
+        Promise.resolve([
+          { id: 'cat-1', name: 'Hardware', parent_id: null },
+          { id: 'cat-2', name: 'Laptop', parent_id: 'cat-1' },
+        ]),
     });
 
     const service = new SupabaseReferentialReaderService();

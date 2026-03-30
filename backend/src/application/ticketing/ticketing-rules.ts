@@ -7,7 +7,10 @@ export const TICKET_NUMBER_PREFIX = 'TICK-';
 export const TICKET_NUMBER_DIGITS = 6;
 export const TICKET_NUMBER_PATTERN = /^TICK-\d{6}$/;
 
-const ALLOWED_STATUS_TRANSITIONS: Record<TicketStatus, readonly TicketStatus[]> = {
+const ALLOWED_STATUS_TRANSITIONS: Record<
+  TicketStatus,
+  readonly TicketStatus[]
+> = {
   [TicketStatus.OPEN]: [
     TicketStatus.IN_PROGRESS,
     TicketStatus.RESOLVED,
@@ -79,9 +82,7 @@ export function assertValidAssignmentPolicy({
   }
 
   if (!user.groupId) {
-    throw new TicketRuleError(
-      'Assigned user must belong to a support group.',
-    );
+    throw new TicketRuleError('Assigned user must belong to a support group.');
   }
 
   if (user.groupId != assignmentGroupId) {

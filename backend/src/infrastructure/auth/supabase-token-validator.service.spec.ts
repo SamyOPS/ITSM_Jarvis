@@ -76,7 +76,9 @@ describe('SupabaseTokenValidatorService', () => {
     process.env.SUPABASE_URL = 'https://example.supabase.co';
     process.env.SUPABASE_ANON_KEY = 'anon-key';
 
-    global.fetch = jest.fn().mockRejectedValue(new Error('network')) as typeof fetch;
+    global.fetch = jest
+      .fn()
+      .mockRejectedValue(new Error('network')) as typeof fetch;
 
     const service = new SupabaseTokenValidatorService();
 
