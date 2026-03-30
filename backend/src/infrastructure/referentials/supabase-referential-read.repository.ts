@@ -1,13 +1,19 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { getBackendRuntimeConfig } from '../config/app-config';
+import { ReferentialCategoryReadRepository } from '../../application/referentials/repositories/referential-category-read.repository';
+import { ReferentialChannelReadRepository } from '../../application/referentials/repositories/referential-channel-read.repository';
+import { ReferentialCiTypeReadRepository } from '../../application/referentials/repositories/referential-ci-type-read.repository';
+import { ReferentialGroupReadRepository } from '../../application/referentials/repositories/referential-group-read.repository';
+import { ReferentialPriorityReadRepository } from '../../application/referentials/repositories/referential-priority-read.repository';
+import { ReferentialServiceReadRepository } from '../../application/referentials/repositories/referential-service-read.repository';
+import { ReferentialCategory } from '../../domain/referentials/referential-category';
+import { ReferentialChannel } from '../../domain/referentials/referential-channel';
+import { ReferentialCiType } from '../../domain/referentials/referential-ci-type';
+import { ReferentialGroup } from '../../domain/referentials/referential-group';
+import { ReferentialPriority } from '../../domain/referentials/referential-priority';
+import { ReferentialService } from '../../domain/referentials/referential-service';
 import { PriorityName } from '../../domain/ticketing/priority-name';
 import { SupportLevel } from '../../domain/ticketing/support-level';
-import { type ReferentialCategory } from '../../domain/referentials/referential-category';
-import { type ReferentialChannel } from '../../domain/referentials/referential-channel';
-import { type ReferentialCiType } from '../../domain/referentials/referential-ci-type';
-import { type ReferentialGroup } from '../../domain/referentials/referential-group';
-import { type ReferentialPriority } from '../../domain/referentials/referential-priority';
-import { type ReferentialService } from '../../domain/referentials/referential-service';
+import { getBackendRuntimeConfig } from '../config/app-config';
 
 type SupabaseCategoryRow = {
   id: string;
@@ -37,7 +43,15 @@ type SupabaseServiceRow = {
 };
 
 @Injectable()
-export class SupabaseReferentialReaderService {
+export class SupabaseReferentialReadRepository
+  implements
+    ReferentialCategoryReadRepository,
+    ReferentialChannelReadRepository,
+    ReferentialCiTypeReadRepository,
+    ReferentialGroupReadRepository,
+    ReferentialPriorityReadRepository,
+    ReferentialServiceReadRepository
+{
   async listCategories(): Promise<ReferentialCategory[]> {
     const rows = await this.fetchTable<SupabaseCategoryRow>(
       'categories',
@@ -45,34 +59,41 @@ export class SupabaseReferentialReaderService {
       'parent_id.asc.nullslast,name.asc',
     );
 
-    return rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      parentId: row.parent_id,
-    }));
+    return rows.map(
+      (row) => new ReferentialCategory(row.id, row.name, row.parent_id),
+    );
   }
 
   async listChannels(): Promise<ReferentialChannel[]> {
-    return this.fetchTable<ReferentialChannel>(
+    const rows = await this.fetchTable<{ id: string; name: string }>(
       'channels',
       'id,name',
       'name.asc',
     );
+
+    return rows.map((row) => new ReferentialChannel(row.id, row.name));
   }
 
   async listCiTypes(): Promise<ReferentialCiType[]> {
-    return this.fetchTable<ReferentialCiType>(
+    const rows = await this.fetchTable<{ id: string; name: string }>(
       'ci_types',
       'id,name',
       'name.asc',
     );
+
+    return rows.map((row) => new ReferentialCiType(row.id, row.name));
   }
 
   async listGroups(): Promise<ReferentialGroup[]> {
-    return this.fetchTable<SupabaseGroupRow>(
+    const rows = await this.fetchTable<SupabaseGroupRow>(
       'groups',
       'id,name,description,level',
       'level.asc.nullslast,name.asc',
+    );
+
+    return rows.map(
+      (row) =>
+        new ReferentialGroup(row.id, row.name, row.description, row.level),
     );
   }
 
@@ -83,20 +104,27 @@ export class SupabaseReferentialReaderService {
       'level.asc',
     );
 
-    return rows.map((row) => ({
-      id: row.id,
-      level: row.level,
-      name: row.name,
-      resolutionHours: row.resolution_hours,
-      responseHours: row.response_hours,
-    }));
+    return rows.map(
+      (row) =>
+        new ReferentialPriority(
+          row.id,
+          row.name,
+          row.level,
+          row.response_hours,
+          row.resolution_hours,
+        ),
+    );
   }
 
   async listServices(): Promise<ReferentialService[]> {
-    return this.fetchTable<SupabaseServiceRow>(
+    const rows = await this.fetchTable<SupabaseServiceRow>(
       'services',
       'id,name,description',
       'name.asc',
+    );
+
+    return rows.map(
+      (row) => new ReferentialService(row.id, row.name, row.description),
     );
   }
 

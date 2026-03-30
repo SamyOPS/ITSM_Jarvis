@@ -1,5 +1,11 @@
-export interface ReferentialService {
-  description: string | null;
-  id: string;
-  name: string;
+export class ReferentialService {
+  constructor(
+    public readonly id: string,
+    public readonly name: string,
+    public readonly description: string | null,
+  ) {}
+
+  hasDescription(): boolean {
+    return Boolean(this.description);
+  }
 }

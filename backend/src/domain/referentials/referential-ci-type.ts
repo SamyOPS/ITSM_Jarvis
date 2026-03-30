@@ -1,4 +1,6 @@
-export interface ReferentialCiType {
-  id: string;
-  name: string;
+export class ReferentialCiType {
+  constructor(
+    public readonly id: string,
+    public readonly name: string,
+  ) {}
 }

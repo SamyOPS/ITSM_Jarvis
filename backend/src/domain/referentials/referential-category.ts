@@ -1,5 +1,11 @@
-export interface ReferentialCategory {
-  id: string;
-  name: string;
-  parentId: string | null;
+export class ReferentialCategory {
+  constructor(
+    public readonly id: string,
+    public readonly name: string,
+    public readonly parentId: string | null,
+  ) {}
+
+  isRootCategory(): boolean {
+    return this.parentId === null;
+  }
 }

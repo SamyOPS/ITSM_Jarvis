@@ -1,7 +1,8 @@
 import { ServiceUnavailableException } from '@nestjs/common';
-import { SupabaseReferentialReaderService } from './supabase-referential-reader.service';
+import { ReferentialCategory } from '../../domain/referentials/referential-category';
+import { SupabaseReferentialReadRepository } from './supabase-referential-read.repository';
 
-describe('SupabaseReferentialReaderService', () => {
+describe('SupabaseReferentialReadRepository', () => {
   const originalEnv = { ...process.env };
   const fetchMock = jest.fn();
 
@@ -23,7 +24,7 @@ describe('SupabaseReferentialReaderService', () => {
     process.env = originalEnv;
   });
 
-  it('maps category rows from Supabase', async () => {
+  it('maps category rows to domain entities', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: () =>
@@ -33,20 +34,20 @@ describe('SupabaseReferentialReaderService', () => {
         ]),
     });
 
-    const service = new SupabaseReferentialReaderService();
+    const repository = new SupabaseReferentialReadRepository();
 
-    await expect(service.listCategories()).resolves.toEqual([
-      { id: 'cat-1', name: 'Hardware', parentId: null },
-      { id: 'cat-2', name: 'Laptop', parentId: 'cat-1' },
+    await expect(repository.listCategories()).resolves.toEqual([
+      new ReferentialCategory('cat-1', 'Hardware', null),
+      new ReferentialCategory('cat-2', 'Laptop', 'cat-1'),
     ]);
   });
 
   it('fails when Supabase config is missing', async () => {
     process.env.SUPABASE_URL = '';
 
-    const service = new SupabaseReferentialReaderService();
+    const repository = new SupabaseReferentialReadRepository();
 
-    await expect(service.listServices()).rejects.toThrow(
+    await expect(repository.listServices()).rejects.toThrow(
       ServiceUnavailableException,
     );
   });
@@ -57,9 +58,9 @@ describe('SupabaseReferentialReaderService', () => {
       status: 500,
     });
 
-    const service = new SupabaseReferentialReaderService();
+    const repository = new SupabaseReferentialReadRepository();
 
-    await expect(service.listChannels()).rejects.toThrow(
+    await expect(repository.listChannels()).rejects.toThrow(
       ServiceUnavailableException,
     );
   });
