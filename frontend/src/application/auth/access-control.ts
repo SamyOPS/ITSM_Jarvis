@@ -5,7 +5,7 @@ import type { RoutePath } from '../../domain/navigation/route';
 const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
   '/admin': ['ADMIN'],
   '/agent': ['AGENT', 'ADMIN'],
-  '/auth': ['USER', 'AGENT', 'ADMIN'],
+  '/auth': ['DEMANDEUR', 'AGENT', 'ADMIN'],
 };
 
 export function canAccessRoute(
