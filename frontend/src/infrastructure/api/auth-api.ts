@@ -1,4 +1,5 @@
 import type { AuthenticatedUser } from '../../domain/auth/authenticated-user';
+import type { ProtectedApiResult } from '../../domain/auth/protected-api-result';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { AuthSetupSnapshot } from '../../domain/auth/auth-setup';
 import { getFrontendRuntimeConfig } from '../config/env';
@@ -74,4 +75,39 @@ export async function fetchCurrentUser(
   }
 
   return (await response.json()) as AuthenticatedUser;
+}
+
+export async function fetchProtectedAgentArea(
+  accessToken: string,
+): Promise<ProtectedApiResult> {
+  return fetchProtectedArea('/auth/agent-area', accessToken);
+}
+
+export async function fetchProtectedAdminArea(
+  accessToken: string,
+): Promise<ProtectedApiResult> {
+  return fetchProtectedArea('/auth/admin-area', accessToken);
+}
+
+async function fetchProtectedArea(
+  path: '/auth/agent-area' | '/auth/admin-area',
+  accessToken: string,
+): Promise<ProtectedApiResult> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}${path}`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message || `Protected API call failed with ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as ProtectedApiResult;
 }
