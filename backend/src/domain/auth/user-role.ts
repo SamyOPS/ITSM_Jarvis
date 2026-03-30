@@ -1,11 +1,11 @@
 export enum UserRole {
-  USER = 'USER',
+  DEMANDEUR = 'DEMANDEUR',
   AGENT = 'AGENT',
   ADMIN = 'ADMIN',
 }
 
 export const DEFAULT_USER_ROLES = [
-  UserRole.USER,
+  UserRole.DEMANDEUR,
   UserRole.AGENT,
   UserRole.ADMIN,
 ] as const;

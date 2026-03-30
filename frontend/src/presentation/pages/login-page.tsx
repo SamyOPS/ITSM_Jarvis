@@ -59,6 +59,10 @@ export function LoginPage({ errorMessage, isBusy, onSubmit }: LoginPageProps) {
           <dd>test@jarvis.local</dd>
         </div>
         <div>
+          <dt>Default app role</dt>
+          <dd>DEMANDEUR</dd>
+        </div>
+        <div>
           <dt>Last error</dt>
           <dd>{errorMessage ?? 'none'}</dd>
         </div>

@@ -45,7 +45,7 @@ describe('RolesGuard', () => {
 
     const guard = new RolesGuard(reflector as Reflector);
 
-    expect(() => guard.canActivate(createContext(UserRole.USER))).toThrow(
+    expect(() => guard.canActivate(createContext(UserRole.DEMANDEUR))).toThrow(
       ForbiddenException,
     );
   });

@@ -63,6 +63,6 @@ export class SupabaseTokenValidatorService {
       return UserRole.AGENT;
     }
 
-    return UserRole.USER;
+    return UserRole.DEMANDEUR;
   }
 }
