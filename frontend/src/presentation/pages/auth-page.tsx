@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react';
+import type { ProtectedApiResult } from '../../domain/auth/protected-api-result';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { AuthSetupSnapshot } from '../../domain/auth/auth-setup';
 import { DEFAULT_USER_ROLES } from '../../domain/auth/user-role';
-import { fetchAuthSetup } from '../../infrastructure/api/auth-api';
+import {
+  fetchAuthSetup,
+  fetchProtectedAdminArea,
+  fetchProtectedAgentArea,
+} from '../../infrastructure/api/auth-api';
 import { getFrontendRuntimeConfig } from '../../infrastructure/config/env';
 import { getFrontendSupabaseConfig } from '../../infrastructure/config/supabase-env';
 
@@ -19,6 +24,13 @@ export function AuthPage({ onLogout, session, sessionState }: AuthPageProps) {
   const [authState, setAuthState] = useState<AuthLoadState>('idle');
   const [authSetup, setAuthSetup] = useState<AuthSetupSnapshot | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [protectedApiState, setProtectedApiState] =
+    useState<AuthLoadState>('idle');
+  const [protectedApiResult, setProtectedApiResult] =
+    useState<ProtectedApiResult | null>(null);
+  const [protectedApiError, setProtectedApiError] = useState<string | null>(
+    null,
+  );
   const runtimeConfig = getFrontendRuntimeConfig();
   const supabaseConfig = getFrontendSupabaseConfig();
 
@@ -58,14 +70,62 @@ export function AuthPage({ onLogout, session, sessionState }: AuthPageProps) {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProtectedApi(): Promise<void> {
+      if (!session) {
+        setProtectedApiState('idle');
+        setProtectedApiError(null);
+        setProtectedApiResult(null);
+        return;
+      }
+
+      setProtectedApiState('loading');
+      setProtectedApiError(null);
+
+      try {
+        const result =
+          session.user.role === 'ADMIN'
+            ? await fetchProtectedAdminArea(session.accessToken)
+            : await fetchProtectedAgentArea(session.accessToken);
+
+        if (cancelled) {
+          return;
+        }
+
+        setProtectedApiResult(result);
+        setProtectedApiState('success');
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setProtectedApiResult(null);
+        setProtectedApiState('error');
+        setProtectedApiError(
+          error instanceof Error
+            ? error.message
+            : 'Unknown protected API error',
+        );
+      }
+    }
+
+    void loadProtectedApi();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
   return (
     <section className="panel">
-      <span className="panel-tag">P1.1</span>
+      <span className="panel-tag">P1.6</span>
       <h2>Supabase auth setup</h2>
       <p>
         This screen confirms that Supabase auth configuration and the baseline
         application roles are ready, while exposing the current frontend session
-        state.
+        state and a protected backend API call performed with the current token.
       </p>
       <div className="status-card">
         <strong>Setup state</strong>
@@ -82,6 +142,10 @@ export function AuthPage({ onLogout, session, sessionState }: AuthPageProps) {
         >
           Sign out
         </button>
+      </div>
+      <div className="status-card auth-session-card">
+        <strong>Protected API</strong>
+        <span>{protectedApiState}</span>
       </div>
       <dl className="status-grid">
         <div>
@@ -123,6 +187,28 @@ export function AuthPage({ onLogout, session, sessionState }: AuthPageProps) {
         <div>
           <dt>Session user id</dt>
           <dd>{session?.user.id ?? 'not-loaded'}</dd>
+        </div>
+        <div>
+          <dt>Protected API target</dt>
+          <dd>
+            {session?.user.role === 'ADMIN'
+              ? '/auth/admin-area'
+              : session
+                ? '/auth/agent-area'
+                : 'none'}
+          </dd>
+        </div>
+        <div>
+          <dt>Protected API result</dt>
+          <dd>
+            {protectedApiResult
+              ? `${protectedApiResult.area} / ${protectedApiResult.role}`
+              : 'not-loaded'}
+          </dd>
+        </div>
+        <div>
+          <dt>Protected API error</dt>
+          <dd>{protectedApiError ?? 'none'}</dd>
         </div>
         <div>
           <dt>Backend Supabase URL</dt>
