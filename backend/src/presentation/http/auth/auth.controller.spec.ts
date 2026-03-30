@@ -28,7 +28,7 @@ describe('AuthController', () => {
     const setup = controller.getSetup();
 
     expect(setup.provider).toBe('supabase');
-    expect(setup.roles).toEqual(['USER', 'AGENT', 'ADMIN']);
+    expect(setup.roles).toEqual(['DEMANDEUR', 'AGENT', 'ADMIN']);
   });
 
   it('returns the authenticated user from the request context', () => {

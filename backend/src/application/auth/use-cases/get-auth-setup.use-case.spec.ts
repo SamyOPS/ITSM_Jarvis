@@ -17,7 +17,7 @@ describe('GetAuthSetupUseCase', () => {
     expect(useCase.execute()).toEqual({
       provider: 'supabase',
       ready: true,
-      roles: ['USER', 'AGENT', 'ADMIN'],
+      roles: ['DEMANDEUR', 'AGENT', 'ADMIN'],
       supabase: {
         hasAnonKey: true,
         hasServiceRoleKey: true,

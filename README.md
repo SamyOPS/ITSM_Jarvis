@@ -94,3 +94,8 @@ Current baseline:
 - pull requests target `dev`
 - `main` should stay protected and stable
 - branch names follow `feature/<issue>-<slug>`, `fix/<issue>-<slug>`, `chore/<issue>-<slug>`, or `docs/<issue>-<slug>`
+
+## V1 Business Rules
+
+The current ticketing target model and backend responsibilities are documented in
+[`docs/architecture.md`](docs/architecture.md).

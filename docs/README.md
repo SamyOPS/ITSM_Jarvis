@@ -1,4 +1,6 @@
 # Documentation
 
 Ce dossier contient la documentation du projet.
-oeoeoe test main poto on est la
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): branch and PR rules
+- [`architecture.md`](architecture.md): current V1 business rules and backend responsibilities
