@@ -4,6 +4,7 @@ import { ApplicationModule } from '../application/application.module';
 import { AuthController } from './http/auth/auth.controller';
 import { BearerAuthGuard } from './http/auth/bearer-auth.guard';
 import { HealthController } from './http/health/health.controller';
+import { ReferentialsController } from './http/referentials/referentials.controller';
 import { RolesGuard } from './http/auth/roles.guard';
 import { ReferencesController } from './http/references/references.controller';
 import { TicketsController } from './http/tickets/tickets.controller';
