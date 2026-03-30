@@ -1,55 +1,72 @@
+import { ReferentialCategory } from '../../../domain/referentials/referential-category';
+import { ReferentialChannel } from '../../../domain/referentials/referential-channel';
+import { ReferentialCiType } from '../../../domain/referentials/referential-ci-type';
+import { ReferentialGroup } from '../../../domain/referentials/referential-group';
+import { ReferentialPriority } from '../../../domain/referentials/referential-priority';
+import { ReferentialService } from '../../../domain/referentials/referential-service';
+import { PriorityName } from '../../../domain/ticketing/priority-name';
+import { SupportLevel } from '../../../domain/ticketing/support-level';
 import { GetReferentialCatalogUseCase } from './get-referential-catalog.use-case';
 
 describe('GetReferentialCatalogUseCase', () => {
-  it('returns the full referential catalog', async () => {
-    const useCase = new GetReferentialCatalogUseCase({
-      listCategories: jest
-        .fn()
-        .mockResolvedValue([{ id: 'cat-1', name: 'Hardware', parentId: null }]),
-      listChannels: jest
-        .fn()
-        .mockResolvedValue([{ id: 'channel-1', name: 'PORTAL' }]),
-      listCiTypes: jest
-        .fn()
-        .mockResolvedValue([{ id: 'ci-type-1', name: 'LAPTOP' }]),
-      listGroups: jest
-        .fn()
-        .mockResolvedValue([
-          { id: 'group-1', name: 'Support N1', description: null, level: 'N1' },
-        ]),
-      listPriorities: jest.fn().mockResolvedValue([
-        {
-          id: 'priority-1',
-          name: 'LOW',
-          level: 1,
-          responseHours: 24,
-          resolutionHours: 72,
-        },
-      ]),
-      listServices: jest
-        .fn()
-        .mockResolvedValue([
-          { id: 'service-1', name: 'Workstation', description: null },
-        ]),
-    } as never);
+  it('returns the full referential catalog by composing list use cases', async () => {
+    const useCase = new GetReferentialCatalogUseCase(
+      {
+        execute: jest
+          .fn()
+          .mockResolvedValue([
+            new ReferentialCategory('cat-1', 'Hardware', null),
+          ]),
+      } as never,
+      {
+        execute: jest
+          .fn()
+          .mockResolvedValue([new ReferentialChannel('channel-1', 'PORTAL')]),
+      } as never,
+      {
+        execute: jest
+          .fn()
+          .mockResolvedValue([new ReferentialCiType('ci-type-1', 'LAPTOP')]),
+      } as never,
+      {
+        execute: jest
+          .fn()
+          .mockResolvedValue([
+            new ReferentialGroup(
+              'group-1',
+              'Support N1',
+              null,
+              SupportLevel.N1,
+            ),
+          ]),
+      } as never,
+      {
+        execute: jest
+          .fn()
+          .mockResolvedValue([
+            new ReferentialPriority('priority-1', PriorityName.LOW, 1, 24, 72),
+          ]),
+      } as never,
+      {
+        execute: jest
+          .fn()
+          .mockResolvedValue([
+            new ReferentialService('service-1', 'Workstation', null),
+          ]),
+      } as never,
+    );
 
     await expect(useCase.execute()).resolves.toEqual({
-      categories: [{ id: 'cat-1', name: 'Hardware', parentId: null }],
-      channels: [{ id: 'channel-1', name: 'PORTAL' }],
-      ciTypes: [{ id: 'ci-type-1', name: 'LAPTOP' }],
+      categories: [new ReferentialCategory('cat-1', 'Hardware', null)],
+      channels: [new ReferentialChannel('channel-1', 'PORTAL')],
+      ciTypes: [new ReferentialCiType('ci-type-1', 'LAPTOP')],
       groups: [
-        { id: 'group-1', name: 'Support N1', description: null, level: 'N1' },
+        new ReferentialGroup('group-1', 'Support N1', null, SupportLevel.N1),
       ],
       priorities: [
-        {
-          id: 'priority-1',
-          name: 'LOW',
-          level: 1,
-          responseHours: 24,
-          resolutionHours: 72,
-        },
+        new ReferentialPriority('priority-1', PriorityName.LOW, 1, 24, 72),
       ],
-      services: [{ id: 'service-1', name: 'Workstation', description: null }],
+      services: [new ReferentialService('service-1', 'Workstation', null)],
     });
   });
 });

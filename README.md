@@ -105,3 +105,9 @@ The current ticketing target model and backend responsibilities are documented i
 The backend now exposes `GET /referentials` to read the V1 ticketing referentials
 from Supabase: `categories`, `channels`, `ciTypes`, `groups`, `priorities`, and
 `services`.
+
+The implementation now follows the target architecture more closely:
+- domain referential entities are explicit classes
+- read repositories are explicit backend ports
+- each referential has its own `LIST` use case
+- the catalog endpoint is a composition facade over those use cases
