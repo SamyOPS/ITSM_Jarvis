@@ -1,0 +1,1 @@
+export const TICKET_REPOSITORY = Symbol('TICKET_REPOSITORY');

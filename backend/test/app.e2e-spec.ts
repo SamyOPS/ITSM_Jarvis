@@ -23,6 +23,37 @@ describe('AppController (e2e)', () => {
     });
   });
 
+  it('/references/groups (GET)', () => {
+    return request(app.getHttpServer())
+      .get('/references/groups')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: 'group-n1',
+              name: 'Support N1',
+            }),
+          ]),
+        );
+      });
+  });
+
+  it('/tickets (GET)', () => {
+    return request(app.getHttpServer())
+      .get('/tickets')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              number: 'TICK-000001',
+            }),
+          ]),
+        );
+      });
+  });
+
   it('/auth/me (GET) returns 401 without a bearer token', () => {
     return request(app.getHttpServer()).get('/auth/me').expect(401);
   });
