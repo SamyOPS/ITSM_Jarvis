@@ -13,8 +13,10 @@ import { ReferentialPriorityReadRepository } from '../application/referentials/r
 import { ReferentialPriorityWriteRepository } from '../application/referentials/repositories/referential-priority-write.repository';
 import { ReferentialServiceReadRepository } from '../application/referentials/repositories/referential-service-read.repository';
 import { ReferentialServiceWriteRepository } from '../application/referentials/repositories/referential-service-write.repository';
+import { TicketWriteRepository } from '../application/ticketing/repositories/ticket-write.repository';
 import { SupabaseTokenValidatorService } from './auth/supabase-token-validator.service';
 import { SupabaseReferentialReadRepository } from './referentials/supabase-referential-read.repository';
+import { SupabaseTicketWriteRepository } from './ticketing/supabase-ticket-write.repository';
 
 const referentialRepositoryBindings = [
   ReferentialCategoryReadRepository,
@@ -40,11 +42,17 @@ const referentialRepositoryBindings = [
   providers: [
     SupabaseTokenValidatorService,
     SupabaseReferentialReadRepository,
+    SupabaseTicketWriteRepository,
     ...referentialRepositoryBindings,
+    {
+      provide: TicketWriteRepository,
+      useExisting: SupabaseTicketWriteRepository,
+    },
   ],
   exports: [
     SupabaseTokenValidatorService,
     ...referentialRepositoryBindings.map(({ provide }) => provide),
+    TicketWriteRepository,
   ],
 })
 export class InfrastructureModule {}

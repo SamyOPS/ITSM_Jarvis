@@ -17,6 +17,8 @@ import { ManageCiTypesUseCase } from './referentials/use-cases/manage-ci-types.u
 import { ManageGroupsUseCase } from './referentials/use-cases/manage-groups.use-case';
 import { ManagePrioritiesUseCase } from './referentials/use-cases/manage-priorities.use-case';
 import { ManageServicesUseCase } from './referentials/use-cases/manage-services.use-case';
+import { CreateIncidentUseCase } from './ticketing/use-cases/create-incident.use-case';
+import { CreateRequestUseCase } from './ticketing/use-cases/create-request.use-case';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 
 const referentialUseCases = [
@@ -44,12 +46,16 @@ const referentialUseCases = [
     GetAuthSetupUseCase,
     GetAuthenticatedUserUseCase,
     ...referentialUseCases,
+    CreateIncidentUseCase,
+    CreateRequestUseCase,
   ],
   exports: [
     GetHealthUseCase,
     GetAuthSetupUseCase,
     GetAuthenticatedUserUseCase,
     ...referentialUseCases,
+    CreateIncidentUseCase,
+    CreateRequestUseCase,
   ],
 })
 export class ApplicationModule {}
