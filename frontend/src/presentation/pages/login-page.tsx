@@ -7,8 +7,8 @@ type LoginPageProps = {
 };
 
 export function LoginPage({ errorMessage, isBusy, onSubmit }: LoginPageProps) {
-  const [email, setEmail] = useState('test@jarvis.local');
-  const [password, setPassword] = useState('JarvisTest123!');
+  const [email, setEmail] = useState('demandeur@jarvis.fr');
+  const [password, setPassword] = useState('Demandeur123!');
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,11 +56,19 @@ export function LoginPage({ errorMessage, isBusy, onSubmit }: LoginPageProps) {
       <dl className="status-grid">
         <div>
           <dt>Default test email</dt>
-          <dd>test@jarvis.local</dd>
+          <dd>demandeur@jarvis.fr</dd>
         </div>
         <div>
           <dt>Default app role</dt>
           <dd>DEMANDEUR</dd>
+        </div>
+        <div>
+          <dt>Other test accounts</dt>
+          <dd>agent@jarvis.fr / admin@jarvis.fr</dd>
+        </div>
+        <div>
+          <dt>Known test passwords</dt>
+          <dd>Demandeur123! / Agent123! / Admin123!</dd>
         </div>
         <div>
           <dt>Last error</dt>
