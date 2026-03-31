@@ -8,6 +8,10 @@ import { type SupabaseUserPayload } from '../../domain/auth/supabase-user-payloa
 import { UserRole } from '../../domain/auth/user-role';
 import { getBackendRuntimeConfig } from '../config/app-config';
 
+type SupabaseUserProfileRow = {
+  role: string;
+};
+
 @Injectable()
 export class SupabaseTokenValidatorService {
   async validate(accessToken: string): Promise<AuthenticatedUser> {
@@ -50,11 +54,73 @@ export class SupabaseTokenValidatorService {
       accessToken,
       email: payload.email,
       id: payload.id,
-      role: this.resolveRole(payload.app_metadata?.role),
+      role: await this.resolveRole(accessToken, payload),
     };
   }
 
-  private resolveRole(role: string | undefined): UserRole {
+  private async resolveRole(
+    accessToken: string,
+    payload: SupabaseUserPayload,
+  ): Promise<UserRole> {
+    const profileRole = await this.fetchProfileRole(accessToken, payload.id);
+
+    if (profileRole) {
+      return profileRole;
+    }
+
+    return this.resolveRoleFallback(payload.app_metadata?.role);
+  }
+
+  private async fetchProfileRole(
+    accessToken: string,
+    userId: string | undefined,
+  ): Promise<UserRole | null> {
+    if (!userId) {
+      return null;
+    }
+
+    const config = getBackendRuntimeConfig();
+    const supabaseApiKey =
+      config.supabaseAnonKey || config.supabaseServiceRoleKey;
+
+    if (!config.supabaseUrl || !supabaseApiKey) {
+      return null;
+    }
+
+    const url = new URL(`${config.supabaseUrl}/rest/v1/users`);
+    url.searchParams.set('select', 'role');
+    url.searchParams.set('id', `eq.${userId}`);
+    url.searchParams.set('limit', '1');
+
+    let response: Response;
+
+    try {
+      response = await fetch(url, {
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
+      });
+    } catch {
+      throw new ServiceUnavailableException(
+        'Supabase profile service is unreachable from the backend.',
+      );
+    }
+
+    if (!response.ok) {
+      throw new ServiceUnavailableException(
+        `Supabase profile lookup returned status ${response.status}.`,
+      );
+    }
+
+    const rows = (await response.json()) as SupabaseUserProfileRow[];
+    const role = rows[0]?.role;
+
+    return role ? this.resolveRoleFallback(role) : null;
+  }
+
+  private resolveRoleFallback(role: string | undefined): UserRole {
     if (role === UserRole.ADMIN) {
       return UserRole.ADMIN;
     }

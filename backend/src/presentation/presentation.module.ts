@@ -3,13 +3,19 @@ import { Reflector } from '@nestjs/core';
 import { ApplicationModule } from '../application/application.module';
 import { AuthController } from './http/auth/auth.controller';
 import { BearerAuthGuard } from './http/auth/bearer-auth.guard';
-import { HealthController } from './http/health/health.controller';
-import { ReferentialsController } from './http/referentials/referentials.controller';
 import { RolesGuard } from './http/auth/roles.guard';
+import { HealthController } from './http/health/health.controller';
+import { AdminReferentialsController } from './http/referentials/admin-referentials.controller';
+import { ReferentialsController } from './http/referentials/referentials.controller';
 
 @Module({
   imports: [ApplicationModule],
-  controllers: [HealthController, AuthController, ReferentialsController],
+  controllers: [
+    HealthController,
+    AuthController,
+    ReferentialsController,
+    AdminReferentialsController,
+  ],
   providers: [BearerAuthGuard, RolesGuard, Reflector],
 })
 export class PresentationModule {}

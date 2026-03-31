@@ -68,6 +68,7 @@ export class RolesGuard implements CanActivate {
   private evaluatePolicy(policy: AuthPolicy, user: AuthenticatedUser): boolean {
     switch (policy) {
       case AuthPolicy.ACCESS_ADMIN_AREA:
+      case AuthPolicy.MANAGE_REFERENTIALS:
         return user.role === UserRole.ADMIN;
       case AuthPolicy.ACCESS_AGENT_AREA:
         return user.role === UserRole.AGENT || user.role === UserRole.ADMIN;

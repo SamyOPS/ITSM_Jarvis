@@ -1,0 +1,8 @@
+{
+    "health":  "ok",
+    "adminRole":  "ADMIN",
+    "adminArea":  "admin",
+    "createdServiceId":  "2819d42d-d9e8-4eb7-968f-159f5ba39f8c",
+    "updatedDescription":  "Smoke test service updated",
+    "agentAdminAttempt":  "{\"message\":\"Insufficient role for this resource.\",\"error\":\"Forbidden\",\"statusCode\":403}"
+}

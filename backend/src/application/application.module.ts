@@ -10,7 +10,32 @@ import { ListCiTypesUseCase } from './referentials/use-cases/list-ci-types.use-c
 import { ListGroupsUseCase } from './referentials/use-cases/list-groups.use-case';
 import { ListPrioritiesUseCase } from './referentials/use-cases/list-priorities.use-case';
 import { ListServicesUseCase } from './referentials/use-cases/list-services.use-case';
+import { ManageCategoriesUseCase } from './referentials/use-cases/manage-categories.use-case';
+import { ManageChannelsUseCase } from './referentials/use-cases/manage-channels.use-case';
+import { ManageCisUseCase } from './referentials/use-cases/manage-cis.use-case';
+import { ManageCiTypesUseCase } from './referentials/use-cases/manage-ci-types.use-case';
+import { ManageGroupsUseCase } from './referentials/use-cases/manage-groups.use-case';
+import { ManagePrioritiesUseCase } from './referentials/use-cases/manage-priorities.use-case';
+import { ManageServicesUseCase } from './referentials/use-cases/manage-services.use-case';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
+
+const referentialUseCases = [
+  ListCategoriesUseCase,
+  ListChannelsUseCase,
+  ListCisUseCase,
+  ListCiTypesUseCase,
+  ListGroupsUseCase,
+  ListPrioritiesUseCase,
+  ListServicesUseCase,
+  GetReferentialCatalogUseCase,
+  ManageCategoriesUseCase,
+  ManageChannelsUseCase,
+  ManageCisUseCase,
+  ManageCiTypesUseCase,
+  ManageGroupsUseCase,
+  ManagePrioritiesUseCase,
+  ManageServicesUseCase,
+];
 
 @Module({
   imports: [InfrastructureModule],
@@ -18,27 +43,13 @@ import { InfrastructureModule } from '../infrastructure/infrastructure.module';
     GetHealthUseCase,
     GetAuthSetupUseCase,
     GetAuthenticatedUserUseCase,
-    ListCategoriesUseCase,
-    ListChannelsUseCase,
-    ListCisUseCase,
-    ListCiTypesUseCase,
-    ListGroupsUseCase,
-    ListPrioritiesUseCase,
-    ListServicesUseCase,
-    GetReferentialCatalogUseCase,
+    ...referentialUseCases,
   ],
   exports: [
     GetHealthUseCase,
     GetAuthSetupUseCase,
     GetAuthenticatedUserUseCase,
-    ListCategoriesUseCase,
-    ListChannelsUseCase,
-    ListCisUseCase,
-    ListCiTypesUseCase,
-    ListGroupsUseCase,
-    ListPrioritiesUseCase,
-    ListServicesUseCase,
-    GetReferentialCatalogUseCase,
+    ...referentialUseCases,
   ],
 })
 export class ApplicationModule {}
