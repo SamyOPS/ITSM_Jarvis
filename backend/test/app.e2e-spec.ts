@@ -47,4 +47,17 @@ describe('AppController (e2e)', () => {
       })
       .expect(401);
   });
+
+  it('/tickets/requests (POST) returns 401 without a bearer token', () => {
+    return request(app.getHttpServer())
+      .post('/tickets/requests')
+      .send({
+        categoryId: 'category-1',
+        description: 'Besoin d un acces VPN',
+        priorityId: 'priority-medium',
+        requestType: 'ACCESS',
+        title: 'Demande accès VPN',
+      })
+      .expect(401);
+  });
 });

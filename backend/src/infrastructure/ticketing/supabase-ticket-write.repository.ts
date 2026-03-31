@@ -5,11 +5,16 @@ import {
 } from '@nestjs/common';
 import {
   CreateIncidentRecord,
+  CreateRequestRecord,
   TicketWriteRepository,
 } from '../../application/ticketing/repositories/ticket-write.repository';
 import { CreatedIncident } from '../../domain/ticketing/created-incident';
+import { CreatedRequest } from '../../domain/ticketing/created-request';
 import { Incident } from '../../domain/ticketing/incident';
+import { RequestTicket } from '../../domain/ticketing/request';
 import { Ticket } from '../../domain/ticketing/ticket';
+import { RequestApprovalStatus } from '../../domain/ticketing/request-approval-status';
+import { RequestType } from '../../domain/ticketing/request-type';
 import { TicketStatus } from '../../domain/ticketing/ticket-status';
 import { TicketType } from '../../domain/ticketing/ticket-type';
 import { getBackendRuntimeConfig } from '../config/app-config';
@@ -41,10 +46,29 @@ type SupabaseIncidentRow = {
   workaround: string | null;
 };
 
+type SupabaseRequestRow = {
+  approval_status: RequestApprovalStatus | null;
+  fulfilled_at: string | null;
+  request_type: RequestType;
+  ticket_id: string;
+};
+
 @Injectable()
 export class SupabaseTicketWriteRepository implements TicketWriteRepository {
   async createIncident(record: CreateIncidentRecord): Promise<CreatedIncident> {
-    const ticket = await this.insertTicket(record);
+    const ticket = await this.insertTicket({
+      categoryId: record.categoryId,
+      channelId: record.channelId,
+      ciId: record.ciId,
+      createdByUserId: record.createdByUserId,
+      description: record.description,
+      priorityId: record.priorityId,
+      requestedForUserId: record.requestedForUserId,
+      serviceId: record.serviceId,
+      status: TicketStatus.OPEN,
+      title: record.title,
+      type: TicketType.INCIDENT,
+    });
 
     try {
       const incident = await this.insertIncident(ticket.id, record);
@@ -83,9 +107,70 @@ export class SupabaseTicketWriteRepository implements TicketWriteRepository {
     }
   }
 
-  private async insertTicket(
-    record: CreateIncidentRecord,
-  ): Promise<SupabaseTicketRow> {
+  async createRequest(record: CreateRequestRecord): Promise<CreatedRequest> {
+    const ticket = await this.insertTicket({
+      categoryId: record.categoryId,
+      channelId: record.channelId,
+      ciId: record.ciId,
+      createdByUserId: record.createdByUserId,
+      description: record.description,
+      priorityId: record.priorityId,
+      requestedForUserId: record.requestedForUserId,
+      serviceId: record.serviceId,
+      status: TicketStatus.OPEN,
+      title: record.title,
+      type: TicketType.REQUEST,
+    });
+
+    try {
+      const request = await this.insertRequest(ticket.id, record);
+
+      return new CreatedRequest(
+        new Ticket(
+          ticket.id,
+          ticket.number,
+          ticket.type,
+          ticket.status,
+          ticket.title,
+          ticket.description,
+          ticket.priority_id,
+          ticket.category_id,
+          ticket.created_by_user_id,
+          ticket.requested_for_user_id,
+          ticket.service_id,
+          ticket.channel_id,
+          ticket.assignment_group_id,
+          ticket.assigned_to_user_id,
+          ticket.ci_id,
+          ticket.created_at,
+        ),
+        new RequestTicket(
+          request.ticket_id,
+          request.request_type,
+          request.approval_status,
+          request.fulfilled_at,
+        ),
+        record.priorityName,
+      );
+    } catch (error) {
+      await this.deleteTicketSilently(ticket.id);
+      throw error;
+    }
+  }
+
+  private async insertTicket(record: {
+    categoryId: string;
+    channelId: string | null;
+    ciId: string | null;
+    createdByUserId: string;
+    description: string;
+    priorityId: string;
+    requestedForUserId: string | null;
+    serviceId: string | null;
+    status: TicketStatus;
+    title: string;
+    type: TicketType;
+  }): Promise<SupabaseTicketRow> {
     const response = await this.send(
       'tickets',
       'POST',
@@ -98,9 +183,9 @@ export class SupabaseTicketWriteRepository implements TicketWriteRepository {
         priority_id: record.priorityId,
         requested_for_user_id: record.requestedForUserId,
         service_id: record.serviceId,
-        status: TicketStatus.OPEN,
+        status: record.status,
         title: record.title,
-        type: TicketType.INCIDENT,
+        type: record.type,
       },
       true,
     );
@@ -144,6 +229,33 @@ export class SupabaseTicketWriteRepository implements TicketWriteRepository {
     }
 
     return incident;
+  }
+
+  private async insertRequest(
+    ticketId: string,
+    record: CreateRequestRecord,
+  ): Promise<SupabaseRequestRow> {
+    const response = await this.send(
+      'requests',
+      'POST',
+      {
+        approval_status: record.approvalStatus,
+        request_type: record.requestType,
+        ticket_id: ticketId,
+      },
+      true,
+    );
+
+    const body = (await response.json()) as SupabaseRequestRow[];
+    const [request] = body;
+
+    if (!request) {
+      throw new ServiceUnavailableException(
+        'Request creation did not return a persisted row.',
+      );
+    }
+
+    return request;
   }
 
   private async deleteTicketSilently(ticketId: string): Promise<void> {
