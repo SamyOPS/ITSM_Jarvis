@@ -34,4 +34,17 @@ describe('AppController (e2e)', () => {
   it('/auth/admin-area (GET) returns 401 without a bearer token', () => {
     return request(app.getHttpServer()).get('/auth/admin-area').expect(401);
   });
+
+  it('/tickets/incidents (POST) returns 401 without a bearer token', () => {
+    return request(app.getHttpServer())
+      .post('/tickets/incidents')
+      .send({
+        categoryId: 'category-1',
+        description: 'VPN inaccessible',
+        impact: 'HIGH',
+        title: 'VPN KO',
+        urgency: 'MEDIUM',
+      })
+      .expect(401);
+  });
 });
