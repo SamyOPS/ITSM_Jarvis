@@ -18,18 +18,24 @@ describe('SupabaseTokenValidatorService', () => {
     global.fetch = originalFetch;
   });
 
-  it('maps a Supabase user payload to an authenticated user', async () => {
+  it('prefers the role stored in public.users', async () => {
     process.env.SUPABASE_URL = 'https://example.supabase.co';
     process.env.SUPABASE_ANON_KEY = 'anon-key';
 
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: jest.fn().mockResolvedValue({
-        app_metadata: { role: 'ADMIN' },
-        email: 'admin@example.com',
-        id: 'user-1',
-      }),
-    }) as typeof fetch;
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          app_metadata: { role: 'DEMANDEUR' },
+          email: 'admin@example.com',
+          id: 'user-1',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue([{ role: 'ADMIN' }]),
+      }) as typeof fetch;
 
     const service = new SupabaseTokenValidatorService();
 
@@ -41,26 +47,24 @@ describe('SupabaseTokenValidatorService', () => {
     });
   });
 
-  it('throws when Supabase auth config is incomplete', async () => {
-    const service = new SupabaseTokenValidatorService();
-
-    await expect(service.validate('token')).rejects.toBeInstanceOf(
-      ServiceUnavailableException,
-    );
-  });
-
-  it('falls back to the service role key when the anon key is missing', async () => {
+  it('falls back to the token metadata when no public.users row is returned', async () => {
     process.env.SUPABASE_URL = 'https://example.supabase.co';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
 
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: jest.fn().mockResolvedValue({
-        app_metadata: { role: 'AGENT' },
-        email: 'agent@example.com',
-        id: 'user-2',
-      }),
-    }) as typeof fetch;
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          app_metadata: { role: 'AGENT' },
+          email: 'agent@example.com',
+          id: 'user-2',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue([]),
+      }) as typeof fetch;
 
     const service = new SupabaseTokenValidatorService();
 
@@ -70,6 +74,14 @@ describe('SupabaseTokenValidatorService', () => {
       id: 'user-2',
       role: UserRole.AGENT,
     });
+  });
+
+  it('throws when Supabase auth config is incomplete', async () => {
+    const service = new SupabaseTokenValidatorService();
+
+    await expect(service.validate('token')).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
   });
 
   it('throws when the backend cannot reach Supabase auth', async () => {
@@ -99,6 +111,29 @@ describe('SupabaseTokenValidatorService', () => {
 
     await expect(service.validate('token')).rejects.toBeInstanceOf(
       UnauthorizedException,
+    );
+  });
+
+  it('throws when the backend cannot reach the profile lookup', async () => {
+    process.env.SUPABASE_URL = 'https://example.supabase.co';
+    process.env.SUPABASE_ANON_KEY = 'anon-key';
+
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          app_metadata: { role: 'ADMIN' },
+          email: 'admin@example.com',
+          id: 'user-1',
+        }),
+      })
+      .mockRejectedValueOnce(new Error('network')) as typeof fetch;
+
+    const service = new SupabaseTokenValidatorService();
+
+    await expect(service.validate('token')).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
     );
   });
 });

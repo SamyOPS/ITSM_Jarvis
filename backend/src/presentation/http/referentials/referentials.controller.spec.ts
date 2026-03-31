@@ -15,6 +15,7 @@ describe('ReferentialsController', () => {
             execute: jest.fn().mockResolvedValue({
               categories: [],
               channels: [],
+              cis: [],
               ciTypes: [],
               groups: [],
               priorities: [],
@@ -32,6 +33,7 @@ describe('ReferentialsController', () => {
     await expect(controller.getCatalog()).resolves.toEqual({
       categories: [],
       channels: [],
+      cis: [],
       ciTypes: [],
       groups: [],
       priorities: [],

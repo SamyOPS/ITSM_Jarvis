@@ -1,11 +1,12 @@
-import { ServiceUnavailableException } from '@nestjs/common';
+import { ConflictException, ServiceUnavailableException } from '@nestjs/common';
 import { ReferentialCategory } from '../../domain/referentials/referential-category';
 import { ReferentialCi } from '../../domain/referentials/referential-ci';
+import { ReferentialChannel } from '../../domain/referentials/referential-channel';
 import { SupabaseReferentialReadRepository } from './supabase-referential-read.repository';
 
 describe('SupabaseReferentialReadRepository', () => {
   const originalEnv = { ...process.env };
-  const fetchMock = jest.fn();
+  const fetchMock = jest.fn<Promise<unknown>, []>();
 
   beforeAll(() => {
     global.fetch = fetchMock as unknown as typeof fetch;
@@ -28,11 +29,10 @@ describe('SupabaseReferentialReadRepository', () => {
   it('maps category rows to domain entities', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: () =>
-        Promise.resolve([
-          { id: 'cat-1', name: 'Hardware', parent_id: null },
-          { id: 'cat-2', name: 'Laptop', parent_id: 'cat-1' },
-        ]),
+      json: jest.fn().mockResolvedValue([
+        { id: 'cat-1', name: 'Hardware', parent_id: null },
+        { id: 'cat-2', name: 'Laptop', parent_id: 'cat-1' },
+      ]),
     });
 
     const repository = new SupabaseReferentialReadRepository();
@@ -46,17 +46,16 @@ describe('SupabaseReferentialReadRepository', () => {
   it('maps CI rows to domain entities', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: () =>
-        Promise.resolve([
-          {
-            id: 'ci-1',
-            name: 'Laptop N1',
-            ci_type_id: 'ci-type-1',
-            status: 'IN_SERVICE',
-            assigned_user_id: null,
-            serial_number: 'ABC-123',
-          },
-        ]),
+      json: jest.fn().mockResolvedValue([
+        {
+          id: 'ci-1',
+          name: 'Laptop N1',
+          ci_type_id: 'ci-type-1',
+          status: 'IN_SERVICE',
+          assigned_user_id: null,
+          serial_number: 'ABC-123',
+        },
+      ]),
     });
 
     const repository = new SupabaseReferentialReadRepository();
@@ -73,6 +72,19 @@ describe('SupabaseReferentialReadRepository', () => {
     ]);
   });
 
+  it('creates a channel through Supabase', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue([{ id: 'channel-1', name: 'PORTAL' }]),
+    });
+
+    const repository = new SupabaseReferentialReadRepository();
+
+    await expect(repository.createChannel({ name: 'PORTAL' })).resolves.toEqual(
+      new ReferentialChannel('channel-1', 'PORTAL'),
+    );
+  });
+
   it('fails when Supabase config is missing', async () => {
     process.env.SUPABASE_URL = '';
 
@@ -83,16 +95,19 @@ describe('SupabaseReferentialReadRepository', () => {
     );
   });
 
-  it('fails when Supabase returns an error response', async () => {
+  it('maps conflict responses on mutations', async () => {
     fetchMock.mockResolvedValue({
       ok: false,
-      status: 500,
+      status: 409,
+      json: jest.fn().mockResolvedValue({
+        message: 'duplicate key value violates unique constraint',
+      }),
     });
 
     const repository = new SupabaseReferentialReadRepository();
 
-    await expect(repository.listChannels()).rejects.toThrow(
-      ServiceUnavailableException,
+    await expect(repository.createChannel({ name: 'PORTAL' })).rejects.toThrow(
+      ConflictException,
     );
   });
 });
