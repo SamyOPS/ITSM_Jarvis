@@ -1,5 +1,6 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import { ReferentialCategory } from '../../domain/referentials/referential-category';
+import { ReferentialCi } from '../../domain/referentials/referential-ci';
 import { SupabaseReferentialReadRepository } from './supabase-referential-read.repository';
 
 describe('SupabaseReferentialReadRepository', () => {
@@ -39,6 +40,36 @@ describe('SupabaseReferentialReadRepository', () => {
     await expect(repository.listCategories()).resolves.toEqual([
       new ReferentialCategory('cat-1', 'Hardware', null),
       new ReferentialCategory('cat-2', 'Laptop', 'cat-1'),
+    ]);
+  });
+
+  it('maps CI rows to domain entities', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve([
+          {
+            id: 'ci-1',
+            name: 'Laptop N1',
+            ci_type_id: 'ci-type-1',
+            status: 'IN_SERVICE',
+            assigned_user_id: null,
+            serial_number: 'ABC-123',
+          },
+        ]),
+    });
+
+    const repository = new SupabaseReferentialReadRepository();
+
+    await expect(repository.listCis()).resolves.toEqual([
+      new ReferentialCi(
+        'ci-1',
+        'Laptop N1',
+        'ci-type-1',
+        'IN_SERVICE',
+        null,
+        'ABC-123',
+      ),
     ]);
   });
 
