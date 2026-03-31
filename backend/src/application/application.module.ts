@@ -11,6 +11,7 @@ import { ListGroupsUseCase } from './referentials/use-cases/list-groups.use-case
 import { ListPrioritiesUseCase } from './referentials/use-cases/list-priorities.use-case';
 import { ListServicesUseCase } from './referentials/use-cases/list-services.use-case';
 import { CreateIncidentUseCase } from './ticketing/use-cases/create-incident.use-case';
+import { CreateRequestUseCase } from './ticketing/use-cases/create-request.use-case';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 
 @Module({
@@ -28,6 +29,7 @@ import { InfrastructureModule } from '../infrastructure/infrastructure.module';
     ListServicesUseCase,
     GetReferentialCatalogUseCase,
     CreateIncidentUseCase,
+    CreateRequestUseCase,
   ],
   exports: [
     GetHealthUseCase,
@@ -42,6 +44,7 @@ import { InfrastructureModule } from '../infrastructure/infrastructure.module';
     ListServicesUseCase,
     GetReferentialCatalogUseCase,
     CreateIncidentUseCase,
+    CreateRequestUseCase,
   ],
 })
 export class ApplicationModule {}

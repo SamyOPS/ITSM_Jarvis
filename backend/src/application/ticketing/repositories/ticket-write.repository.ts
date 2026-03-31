@@ -1,6 +1,9 @@
 import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
 import { CreatedIncident } from '../../../domain/ticketing/created-incident';
+import { CreatedRequest } from '../../../domain/ticketing/created-request';
 import { PriorityName } from '../../../domain/ticketing/priority-name';
+import { RequestApprovalStatus } from '../../../domain/ticketing/request-approval-status';
+import { RequestType } from '../../../domain/ticketing/request-type';
 
 export type CreateIncidentRecord = {
   categoryId: string;
@@ -19,8 +22,25 @@ export type CreateIncidentRecord = {
   workaround: string | null;
 };
 
+export type CreateRequestRecord = {
+  categoryId: string;
+  channelId: string | null;
+  ciId: string | null;
+  createdByUserId: string;
+  description: string;
+  priorityId: string;
+  priorityName: PriorityName;
+  requestedForUserId: string | null;
+  requestType: RequestType;
+  approvalStatus: RequestApprovalStatus | null;
+  serviceId: string | null;
+  title: string;
+};
+
 export abstract class TicketWriteRepository {
   abstract createIncident(
     record: CreateIncidentRecord,
   ): Promise<CreatedIncident>;
+
+  abstract createRequest(record: CreateRequestRecord): Promise<CreatedRequest>;
 }
