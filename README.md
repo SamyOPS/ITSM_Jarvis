@@ -103,7 +103,7 @@ The current ticketing target model and backend responsibilities are documented i
 ## P2.2 Referential Read API
 
 The backend now exposes `GET /referentials` to read the V1 ticketing referentials
-from Supabase: `categories`, `channels`, `ciTypes`, `groups`, `priorities`, and
+from Supabase: `categories`, `channels`, `cis`, `ciTypes`, `groups`, `priorities`, and
 `services`.
 
 The implementation now follows the target architecture more closely:

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ReferentialCategoryReadRepository } from '../application/referentials/repositories/referential-category-read.repository';
 import { ReferentialChannelReadRepository } from '../application/referentials/repositories/referential-channel-read.repository';
+import { ReferentialCiReadRepository } from '../application/referentials/repositories/referential-ci-read.repository';
 import { ReferentialCiTypeReadRepository } from '../application/referentials/repositories/referential-ci-type-read.repository';
 import { ReferentialGroupReadRepository } from '../application/referentials/repositories/referential-group-read.repository';
 import { ReferentialPriorityReadRepository } from '../application/referentials/repositories/referential-priority-read.repository';
@@ -18,6 +19,10 @@ import { SupabaseReferentialReadRepository } from './referentials/supabase-refer
     },
     {
       provide: ReferentialChannelReadRepository,
+      useExisting: SupabaseReferentialReadRepository,
+    },
+    {
+      provide: ReferentialCiReadRepository,
       useExisting: SupabaseReferentialReadRepository,
     },
     {
@@ -41,6 +46,7 @@ import { SupabaseReferentialReadRepository } from './referentials/supabase-refer
     SupabaseTokenValidatorService,
     ReferentialCategoryReadRepository,
     ReferentialChannelReadRepository,
+    ReferentialCiReadRepository,
     ReferentialCiTypeReadRepository,
     ReferentialGroupReadRepository,
     ReferentialPriorityReadRepository,

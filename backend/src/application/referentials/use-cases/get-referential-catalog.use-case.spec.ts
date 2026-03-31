@@ -1,5 +1,6 @@
 import { ReferentialCategory } from '../../../domain/referentials/referential-category';
 import { ReferentialChannel } from '../../../domain/referentials/referential-channel';
+import { ReferentialCi } from '../../../domain/referentials/referential-ci';
 import { ReferentialCiType } from '../../../domain/referentials/referential-ci-type';
 import { ReferentialGroup } from '../../../domain/referentials/referential-group';
 import { ReferentialPriority } from '../../../domain/referentials/referential-priority';
@@ -22,6 +23,20 @@ describe('GetReferentialCatalogUseCase', () => {
         execute: jest
           .fn()
           .mockResolvedValue([new ReferentialChannel('channel-1', 'PORTAL')]),
+      } as never,
+      {
+        execute: jest
+          .fn()
+          .mockResolvedValue([
+            new ReferentialCi(
+              'ci-1',
+              'Laptop N1',
+              'ci-type-1',
+              'IN_SERVICE',
+              null,
+              'ABC-123',
+            ),
+          ]),
       } as never,
       {
         execute: jest
@@ -59,6 +74,16 @@ describe('GetReferentialCatalogUseCase', () => {
     await expect(useCase.execute()).resolves.toEqual({
       categories: [new ReferentialCategory('cat-1', 'Hardware', null)],
       channels: [new ReferentialChannel('channel-1', 'PORTAL')],
+      cis: [
+        new ReferentialCi(
+          'ci-1',
+          'Laptop N1',
+          'ci-type-1',
+          'IN_SERVICE',
+          null,
+          'ABC-123',
+        ),
+      ],
       ciTypes: [new ReferentialCiType('ci-type-1', 'LAPTOP')],
       groups: [
         new ReferentialGroup('group-1', 'Support N1', null, SupportLevel.N1),

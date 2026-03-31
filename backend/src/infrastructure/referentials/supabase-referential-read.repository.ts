@@ -1,12 +1,14 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ReferentialCategoryReadRepository } from '../../application/referentials/repositories/referential-category-read.repository';
 import { ReferentialChannelReadRepository } from '../../application/referentials/repositories/referential-channel-read.repository';
+import { ReferentialCiReadRepository } from '../../application/referentials/repositories/referential-ci-read.repository';
 import { ReferentialCiTypeReadRepository } from '../../application/referentials/repositories/referential-ci-type-read.repository';
 import { ReferentialGroupReadRepository } from '../../application/referentials/repositories/referential-group-read.repository';
 import { ReferentialPriorityReadRepository } from '../../application/referentials/repositories/referential-priority-read.repository';
 import { ReferentialServiceReadRepository } from '../../application/referentials/repositories/referential-service-read.repository';
 import { ReferentialCategory } from '../../domain/referentials/referential-category';
 import { ReferentialChannel } from '../../domain/referentials/referential-channel';
+import { ReferentialCi } from '../../domain/referentials/referential-ci';
 import { ReferentialCiType } from '../../domain/referentials/referential-ci-type';
 import { ReferentialGroup } from '../../domain/referentials/referential-group';
 import { ReferentialPriority } from '../../domain/referentials/referential-priority';
@@ -19,6 +21,15 @@ type SupabaseCategoryRow = {
   id: string;
   name: string;
   parent_id: string | null;
+};
+
+type SupabaseCiRow = {
+  assigned_user_id: string | null;
+  ci_type_id: string;
+  id: string;
+  name: string;
+  serial_number: string | null;
+  status: string;
 };
 
 type SupabaseGroupRow = {
@@ -47,6 +58,7 @@ export class SupabaseReferentialReadRepository
   implements
     ReferentialCategoryReadRepository,
     ReferentialChannelReadRepository,
+    ReferentialCiReadRepository,
     ReferentialCiTypeReadRepository,
     ReferentialGroupReadRepository,
     ReferentialPriorityReadRepository,
@@ -72,6 +84,26 @@ export class SupabaseReferentialReadRepository
     );
 
     return rows.map((row) => new ReferentialChannel(row.id, row.name));
+  }
+
+  async listCis(): Promise<ReferentialCi[]> {
+    const rows = await this.fetchTable<SupabaseCiRow>(
+      'cis',
+      'id,name,ci_type_id,status,assigned_user_id,serial_number',
+      'name.asc',
+    );
+
+    return rows.map(
+      (row) =>
+        new ReferentialCi(
+          row.id,
+          row.name,
+          row.ci_type_id,
+          row.status,
+          row.assigned_user_id,
+          row.serial_number,
+        ),
+    );
   }
 
   async listCiTypes(): Promise<ReferentialCiType[]> {
