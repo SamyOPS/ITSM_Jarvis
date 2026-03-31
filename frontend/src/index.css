@@ -44,13 +44,19 @@ select {
   font: inherit;
 }
 
-input {
+input,
+textarea,
+select {
   width: 100%;
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.92);
   color: #15315f;
+}
+
+textarea {
+  resize: vertical;
 }
 
 button {
@@ -111,7 +117,8 @@ a {
 
 .nav-link,
 .primary-button,
-.secondary-button {
+.secondary-button,
+.danger-button {
   border: 1px solid transparent;
   border-radius: 999px;
   padding: 10px 16px;
@@ -125,7 +132,8 @@ a {
 
 .nav-link:hover,
 .primary-button:hover,
-.secondary-button:hover {
+.secondary-button:hover,
+.danger-button:hover {
   transform: translateY(-1px);
   border-color: rgba(25, 86, 179, 0.24);
   background: var(--primary-soft);
@@ -134,6 +142,12 @@ a {
 .secondary-button {
   border-color: rgba(207, 216, 234, 0.9);
   background: rgba(255, 255, 255, 0.72);
+}
+
+.danger-button {
+  border-color: rgba(178, 52, 69, 0.18);
+  background: #fff3f4;
+  color: #8e2231;
 }
 
 .app-main {
@@ -251,6 +265,136 @@ a {
   word-break: break-word;
 }
 
+.referentials-panel {
+  display: grid;
+  gap: 24px;
+}
+
+.referentials-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.referentials-summary article,
+.referentials-catalog-card,
+.referentials-form-card {
+  padding: 18px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.referentials-summary span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.referentials-summary strong {
+  color: #17335f;
+}
+
+.referentials-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.referentials-sidebar,
+.referentials-content {
+  display: grid;
+  gap: 16px;
+}
+
+.referentials-sidebar-header h3,
+.referentials-card-header h3 {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+}
+
+.referentials-sidebar-header p,
+.referentials-card-header p,
+.referentials-feedback,
+.referentials-empty-state,
+.referentials-error {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.referentials-nav,
+.referentials-list,
+.referentials-form {
+  display: grid;
+  gap: 12px;
+}
+
+.referentials-nav-button,
+.referential-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #17335f;
+  text-align: left;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.referentials-nav-button:hover,
+.referential-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(25, 86, 179, 0.3);
+  box-shadow: 0 14px 28px rgba(29, 48, 87, 0.08);
+}
+
+.referentials-nav-button span,
+.referential-card span {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.referentials-nav-button.is-active,
+.referential-card.is-selected {
+  border-color: rgba(25, 86, 179, 0.48);
+  background: linear-gradient(180deg, #eff5ff 0%, #ffffff 100%);
+}
+
+.referentials-content {
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+}
+
+.referentials-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.referentials-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.referentials-feedback {
+  margin-top: 14px;
+}
+
+.referentials-error {
+  color: #9b2e3d;
+}
+
 @media (max-width: 760px) {
   .app-shell {
     width: min(100vw - 20px, 1100px);
@@ -273,5 +417,15 @@ a {
 
   .status-grid {
     grid-template-columns: 1fr;
+  }
+
+  .referentials-summary,
+  .referentials-layout,
+  .referentials-content {
+    grid-template-columns: 1fr;
+  }
+
+  .referentials-card-header {
+    flex-direction: column;
   }
 }
