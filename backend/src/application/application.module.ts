@@ -19,6 +19,8 @@ import { ManagePrioritiesUseCase } from './referentials/use-cases/manage-priorit
 import { ManageServicesUseCase } from './referentials/use-cases/manage-services.use-case';
 import { CreateIncidentUseCase } from './ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from './ticketing/use-cases/create-request.use-case';
+import { AssignTicketUseCase } from './ticketing/use-cases/assign-ticket.use-case';
+import { ChangeTicketStatusUseCase } from './ticketing/use-cases/change-ticket-status.use-case';
 import { GetTicketByIdUseCase } from './ticketing/use-cases/get-ticket-by-id.use-case';
 import { SearchTicketsUseCase } from './ticketing/use-cases/search-tickets.use-case';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
@@ -50,6 +52,8 @@ const referentialUseCases = [
     ...referentialUseCases,
     CreateIncidentUseCase,
     CreateRequestUseCase,
+    AssignTicketUseCase,
+    ChangeTicketStatusUseCase,
     SearchTicketsUseCase,
     GetTicketByIdUseCase,
   ],
@@ -60,6 +64,8 @@ const referentialUseCases = [
     ...referentialUseCases,
     CreateIncidentUseCase,
     CreateRequestUseCase,
+    AssignTicketUseCase,
+    ChangeTicketStatusUseCase,
     SearchTicketsUseCase,
     GetTicketByIdUseCase,
   ],
