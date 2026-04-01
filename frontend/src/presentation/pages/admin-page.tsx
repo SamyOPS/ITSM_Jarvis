@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+﻿import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type {
   ReferentialCatalogSnapshot,
@@ -17,6 +17,11 @@ import {
   fetchReferentialCatalog,
   updateAdminReferential,
 } from '../../infrastructure/api/referentials-api';
+import {
+  translateCiStatus,
+  translatePriority,
+  translateUserRole,
+} from '../../domain/i18n/ticketing-labels';
 
 type AdminPageProps = {
   session: AuthSessionSnapshot;
@@ -51,38 +56,38 @@ const REFERENTIAL_SECTIONS: Array<{
   title: string;
 }> = [
   {
-    description: 'Categories et sous-categories pour qualifier les tickets.',
+    description: 'Catégories et sous-catégories pour qualifier les tickets.',
     kind: 'categories',
-    title: 'Categories',
+    title: 'Catégories',
   },
   {
     description:
-      'Canaux de creation des tickets : portail, email ou telephone.',
+      'Canaux de création des tickets : portail, email ou téléphone.',
     kind: 'channels',
     title: 'Canaux',
   },
   {
-    description: 'Types de CI utilises pour classer les actifs de la CMDB.',
+    description: 'Types de CI utilisés pour classer les actifs de la CMDB.',
     kind: 'ci-types',
     title: 'Types de CI',
   },
   {
-    description: 'Elements de configuration disponibles pour les tickets.',
+    description: 'Éléments de configuration disponibles pour les tickets.',
     kind: 'cis',
     title: 'CIs',
   },
   {
-    description: 'Equipes de support et niveaux d escalation.',
+    description: 'Équipes de support et niveaux d’escalade.',
     kind: 'groups',
     title: 'Groupes',
   },
   {
-    description: 'Catalogue des priorites avec niveaux et SLA.',
+    description: 'Catalogue des priorités avec niveaux et SLA.',
     kind: 'priorities',
-    title: 'Priorites',
+    title: 'Priorités',
   },
   {
-    description: 'Services metier ou techniques impactes par les tickets.',
+    description: 'Services métier ou techniques impactés par les tickets.',
     kind: 'services',
     title: 'Services',
   },
@@ -140,7 +145,7 @@ export function AdminPage({ session }: AdminPageProps) {
       setLoadErrorMessage(
         error instanceof Error
           ? error.message
-          : 'Erreur inconnue lors du chargement des referentiels',
+          : 'Erreur inconnue lors du chargement des référentiels',
       );
     } finally {
       setIsLoading(false);
@@ -192,14 +197,14 @@ export function AdminPage({ session }: AdminPageProps) {
       setFormState(createEmptyFormState());
       setFeedbackMessage(
         selectedId
-          ? 'Referentiel mis a jour avec succes.'
-          : 'Referentiel cree avec succes.',
+          ? 'Référentiel mis à jour avec succès.'
+          : 'Référentiel créé avec succès.',
       );
     } catch (error) {
       setFeedbackMessage(
         error instanceof Error
           ? error.message
-          : 'Erreur inconnue lors de la sauvegarde du referentiel',
+          : 'Erreur inconnue lors de la sauvegarde du référentiel',
       );
     } finally {
       setIsMutating(false);
@@ -219,7 +224,7 @@ export function AdminPage({ session }: AdminPageProps) {
       await loadCatalog();
       setSelectedId(null);
       setFormState(createEmptyFormState());
-      setFeedbackMessage('Referentiel supprime avec succes.');
+      setFeedbackMessage('Référentiel supprimé avec succès.');
     } catch (error) {
       setFeedbackMessage(
         error instanceof Error
@@ -238,12 +243,12 @@ export function AdminPage({ session }: AdminPageProps) {
   return (
     <section className="panel referentials-panel">
       <span className="panel-tag">P2.4</span>
-      <h2>Ecran admin des referentiels</h2>
+      <h2>Écran admin des référentiels</h2>
       <p>
-        Gere les catalogues de la V1 ticketing depuis un ecran reserve aux
-        admins. Le flux reste simple : choisir un referentiel, consulter les
-        elements existants, puis creer ou modifier une entree avec un formulaire
-        leger.
+        Gère les catalogues de la V1 ticketing depuis un écran réservé aux
+        administrateurs. Le flux reste simple : choisir un référentiel,
+        consulter les éléments existants, puis créer ou modifier une entrée avec
+        un formulaire léger.
       </p>
 
       <div className="referentials-summary">
@@ -252,15 +257,15 @@ export function AdminPage({ session }: AdminPageProps) {
           <strong>{session.user.email}</strong>
         </article>
         <article>
-          <span>Role</span>
-          <strong>{session.user.role}</strong>
+          <span>Rôle</span>
+          <strong>{translateUserRole(session.user.role)}</strong>
         </article>
         <article>
-          <span>Catalogues charges</span>
+          <span>Catalogues chargés</span>
           <strong>{REFERENTIAL_SECTIONS.length}</strong>
         </article>
         <article>
-          <span>Elements affiches</span>
+          <span>Éléments affichés</span>
           <strong>{currentItems.length}</strong>
         </article>
       </div>
@@ -268,8 +273,8 @@ export function AdminPage({ session }: AdminPageProps) {
       <div className="referentials-layout">
         <aside className="referentials-sidebar">
           <div className="referentials-sidebar-header">
-            <h3>Referentiels</h3>
-            <p>Choisis le jeu de donnees que tu veux administrer.</p>
+            <h3>Référentiels</h3>
+            <p>Choisis le jeu de données que tu veux administrer.</p>
           </div>
           <div className="referentials-nav">
             {REFERENTIAL_SECTIONS.map((section) => (
@@ -285,7 +290,7 @@ export function AdminPage({ session }: AdminPageProps) {
               >
                 <strong>{section.title}</strong>
                 <span>
-                  {getItemsForKind(section.kind, catalog).length} elements
+                  {getItemsForKind(section.kind, catalog).length} éléments
                 </span>
               </button>
             ))}
@@ -304,19 +309,19 @@ export function AdminPage({ session }: AdminPageProps) {
                 onClick={handleCreateNew}
                 type="button"
               >
-                Nouvel element
+                Nouvel élément
               </button>
             </header>
 
             {isLoading ? (
               <p className="referentials-empty-state">
-                Chargement des referentiels...
+                Chargement des référentiels...
               </p>
             ) : loadErrorMessage ? (
               <p className="referentials-error">{loadErrorMessage}</p>
             ) : currentItems.length === 0 ? (
               <p className="referentials-empty-state">
-                Aucune donnee chargee pour ce referentiel.
+                Aucune donnée chargée pour ce référentiel.
               </p>
             ) : (
               <div className="referentials-list">
@@ -343,12 +348,12 @@ export function AdminPage({ session }: AdminPageProps) {
             <header className="referentials-card-header">
               <div>
                 <h3>
-                  {selectedId ? 'Modifier une entree' : 'Creer une entree'}
+                  {selectedId ? 'Modifier une entrée' : 'Créer une entrée'}
                 </h3>
                 <p>
                   {selectedId
-                    ? 'Modifie l element de referentiel selectionne.'
-                    : 'Ajoute un nouvel element au referentiel choisi.'}
+                    ? 'Modifie l’élément de référentiel sélectionné.'
+                    : 'Ajoute un Nouvel élément au referentiel choisi.'}
                 </p>
               </div>
             </header>
@@ -374,14 +379,14 @@ export function AdminPage({ session }: AdminPageProps) {
                     ? 'Enregistrement...'
                     : selectedId
                       ? 'Enregistrer les modifications'
-                      : 'Creer l element'}
+                      : 'Créer l’élément'}
                 </button>
                 <button
                   className="secondary-button"
                   onClick={handleCreateNew}
                   type="button"
                 >
-                  Reinitialiser le formulaire
+                  Réinitialiser le formulaire
                 </button>
                 {selectedId ? (
                   <button
@@ -425,14 +430,14 @@ function renderFormFields(
             />
           </label>
           <label className="field">
-            <span>Categorie parente</span>
+            <span>Catégorie parente</span>
             <select
               onChange={(event) =>
                 onFieldChange('categoryParentId', event.target.value)
               }
               value={formState.categoryParentId}
             >
-              <option value="">Categorie racine</option>
+              <option value="">Catégorie racine</option>
               {catalog.categories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
@@ -497,7 +502,7 @@ function renderFormFields(
       return (
         <>
           <label className="field">
-            <span>Nom de priorite</span>
+            <span>Nom de priorité</span>
             <select
               onChange={(event) =>
                 onFieldChange('priorityName', event.target.value)
@@ -506,7 +511,7 @@ function renderFormFields(
             >
               {PRIORITY_NAMES.map((name) => (
                 <option key={name} value={name}>
-                  {name}
+                  {translatePriority(name)}
                 </option>
               ))}
             </select>
@@ -524,7 +529,7 @@ function renderFormFields(
             />
           </label>
           <label className="field">
-            <span>SLA de reponse (heures)</span>
+            <span>SLA de réponse (heures)</span>
             <input
               min="0"
               onChange={(event) =>
@@ -535,7 +540,7 @@ function renderFormFields(
             />
           </label>
           <label className="field">
-            <span>SLA de resolution (heures)</span>
+            <span>SLA de résolution (heures)</span>
             <input
               min="0"
               onChange={(event) =>
@@ -608,13 +613,13 @@ function renderFormFields(
             >
               {CI_STATUSES.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {translateCiStatus(status)}
                 </option>
               ))}
             </select>
           </label>
           <label className="field">
-            <span>Numero de serie</span>
+            <span>Numéro de série</span>
             <input
               onChange={(event) =>
                 onFieldChange('serialNumber', event.target.value)
@@ -804,7 +809,7 @@ function getItemTitle(
 ): string {
   switch (kind) {
     case 'priorities':
-      return (item as ReferentialPriority).name;
+      return translatePriority((item as ReferentialPriority).name);
     default:
       return item.name;
   }
@@ -819,24 +824,24 @@ function getItemMeta(
     case 'categories': {
       const category = item as ReferentialCategory;
       if (!category.parentId) {
-        return 'Categorie racine';
+        return 'Catégorie racine';
       }
 
       const parent = catalog.categories.find(
         (candidate) => candidate.id === category.parentId,
       );
-      return `Parent : ${parent?.name ?? 'Categorie inconnue'}`;
+      return `Parent : ${parent?.name ?? 'Catégorie inconnue'}`;
     }
     case 'channels':
-      return 'Canal de creation de ticket';
+      return 'Canal de création de ticket';
     case 'ci-types':
-      return 'Type d element de configuration';
+      return 'Type d’élément de configuration';
     case 'cis': {
       const ci = item as ReferentialCi;
       const ciType = catalog.ciTypes.find(
         (candidate) => candidate.id === ci.ciTypeId,
       );
-      return `${ci.status} - ${ciType?.name ?? 'Type inconnu'}`;
+      return ` - ${ciType?.name ?? 'Type inconnu'}`;
     }
     case 'groups': {
       const group = item as ReferentialGroup;

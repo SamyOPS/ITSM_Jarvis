@@ -1,4 +1,4 @@
-export type RoutePath =
+﻿export type RoutePath =
   | '/'
   | '/admin'
   | '/agent'
@@ -14,33 +14,35 @@ export interface RouteDefinition {
 
 export const ROUTES: RouteDefinition[] = [
   {
-    description: 'Landing page for the frontend technical base.',
+    description: 'Vue d’ensemble du socle frontend et de la session active.',
     path: '/',
-    title: 'Home',
+    title: 'Accueil',
   },
   {
-    description: 'Supabase auth and roles readiness screen.',
+    description:
+      'Contrôle de l’authentification Supabase et des rôles applicatifs.',
     path: '/auth',
-    title: 'Auth',
+    title: 'Sécurité',
   },
   {
-    description: 'Ticket form route available to authenticated users.',
+    description:
+      'Espace de travail ticketing réservé aux utilisateurs authentifiés.',
     path: '/agent',
     title: 'Tickets',
   },
   {
-    description: 'Protected route reserved to admins.',
+    description: 'Administration des référentiels et des paramètres métier.',
     path: '/admin',
-    title: 'Admin',
+    title: 'Administration',
   },
   {
-    description: 'Login and session management screen.',
+    description: 'Connexion, déconnexion et restauration de session.',
     path: '/login',
-    title: 'Login',
+    title: 'Connexion',
   },
   {
-    description: 'Technical route reserved for integration checks.',
+    description: 'Vérification technique du lien entre frontend et backend.',
     path: '/status',
-    title: 'Status',
+    title: 'Supervision',
   },
 ];

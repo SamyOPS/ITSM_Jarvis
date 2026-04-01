@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import {
   fetchCurrentUser,
@@ -170,7 +170,7 @@ export function App() {
       setSession(null);
       setSessionState('anonymous');
       setAuthErrorMessage(
-        error instanceof Error ? error.message : 'Unknown login error',
+        error instanceof Error ? error.message : 'Erreur de connexion inconnue',
       );
     } finally {
       setIsLoggingIn(false);
