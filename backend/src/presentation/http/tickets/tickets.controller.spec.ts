@@ -1,12 +1,29 @@
 import { CreateIncidentUseCase } from '../../../application/ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from '../../../application/ticketing/use-cases/create-request.use-case';
+import { GetTicketByIdUseCase } from '../../../application/ticketing/use-cases/get-ticket-by-id.use-case';
+import { SearchTicketsUseCase } from '../../../application/ticketing/use-cases/search-tickets.use-case';
 import { UserRole } from '../../../domain/auth/user-role';
 import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
 import { RequestType } from '../../../domain/ticketing/request-type';
+import { TicketStatus } from '../../../domain/ticketing/ticket-status';
+import { TicketType } from '../../../domain/ticketing/ticket-type';
 import { TicketsController } from './tickets.controller';
 
 describe('TicketsController', () => {
   let controller: TicketsController;
+  const searchTickets = jest.fn().mockResolvedValue([
+    {
+      id: 'ticket-1',
+      number: 'TICK-000001',
+      status: TicketStatus.OPEN,
+      title: 'VPN KO',
+      type: TicketType.INCIDENT,
+    },
+  ]);
+  const getTicketById = jest.fn().mockResolvedValue({
+    priorityName: 'HIGH',
+    ticket: { id: 'ticket-1', number: 'TICK-000001' },
+  });
   const createIncident = jest.fn().mockResolvedValue({
     incident: {
       impact: IncidentSeverity.HIGH,
@@ -27,6 +44,8 @@ describe('TicketsController', () => {
   });
 
   beforeEach(() => {
+    searchTickets.mockClear();
+    getTicketById.mockClear();
     createIncident.mockClear();
     createRequest.mockClear();
     controller = new TicketsController(
@@ -36,7 +55,46 @@ describe('TicketsController', () => {
       {
         execute: createRequest,
       } as unknown as CreateRequestUseCase,
+      {
+        execute: searchTickets,
+      } as unknown as SearchTicketsUseCase,
+      {
+        execute: getTicketById,
+      } as unknown as GetTicketByIdUseCase,
     );
+  });
+
+  it('delegates ticket search to the dedicated use case', async () => {
+    await expect(
+      controller.listTickets({
+        q: 'vpn',
+        status: TicketStatus.OPEN,
+        type: TicketType.INCIDENT,
+      }),
+    ).resolves.toEqual([
+      {
+        id: 'ticket-1',
+        number: 'TICK-000001',
+        status: TicketStatus.OPEN,
+        title: 'VPN KO',
+        type: TicketType.INCIDENT,
+      },
+    ]);
+
+    expect(searchTickets).toHaveBeenCalledWith({
+      q: 'vpn',
+      status: TicketStatus.OPEN,
+      type: TicketType.INCIDENT,
+    });
+  });
+
+  it('delegates ticket detail loading to the dedicated use case', async () => {
+    await expect(controller.getTicketById('ticket-1')).resolves.toEqual({
+      priorityName: 'HIGH',
+      ticket: { id: 'ticket-1', number: 'TICK-000001' },
+    });
+
+    expect(getTicketById).toHaveBeenCalledWith('ticket-1');
   });
 
   it('delegates incident creation to the use case with the authenticated user id', async () => {

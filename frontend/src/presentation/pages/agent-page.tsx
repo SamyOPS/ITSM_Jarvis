@@ -307,7 +307,7 @@ export function AgentPage({ session }: AgentPageProps) {
             </label>
 
             <label className="field">
-              <span>CI lié</span>
+              <span>Équipement concerné</span>
               <select
                 onChange={(event) =>
                   handleFieldChange('ciId', event.target.value)
@@ -361,7 +361,7 @@ export function AgentPage({ session }: AgentPageProps) {
                 <dd>{selectedGroup?.name ?? 'Non sélectionné'}</dd>
               </div>
               <div>
-                <dt>CI</dt>
+                <dt>Équipement concerné</dt>
                 <dd>{selectedCi?.name ?? 'Non sélectionné'}</dd>
               </div>
             </dl>

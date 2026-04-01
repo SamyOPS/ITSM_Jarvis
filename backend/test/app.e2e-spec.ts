@@ -35,6 +35,14 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer()).get('/auth/admin-area').expect(401);
   });
 
+  it('/tickets (GET) returns 401 without a bearer token', () => {
+    return request(app.getHttpServer()).get('/tickets').expect(401);
+  });
+
+  it('/tickets/:id (GET) returns 401 without a bearer token', () => {
+    return request(app.getHttpServer()).get('/tickets/ticket-1').expect(401);
+  });
+
   it('/tickets/incidents (POST) returns 401 without a bearer token', () => {
     return request(app.getHttpServer())
       .post('/tickets/incidents')
