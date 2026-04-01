@@ -19,6 +19,8 @@ import { ManagePrioritiesUseCase } from './referentials/use-cases/manage-priorit
 import { ManageServicesUseCase } from './referentials/use-cases/manage-services.use-case';
 import { CreateIncidentUseCase } from './ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from './ticketing/use-cases/create-request.use-case';
+import { GetTicketByIdUseCase } from './ticketing/use-cases/get-ticket-by-id.use-case';
+import { SearchTicketsUseCase } from './ticketing/use-cases/search-tickets.use-case';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 
 const referentialUseCases = [
@@ -48,6 +50,8 @@ const referentialUseCases = [
     ...referentialUseCases,
     CreateIncidentUseCase,
     CreateRequestUseCase,
+    SearchTicketsUseCase,
+    GetTicketByIdUseCase,
   ],
   exports: [
     GetHealthUseCase,
@@ -56,6 +60,8 @@ const referentialUseCases = [
     ...referentialUseCases,
     CreateIncidentUseCase,
     CreateRequestUseCase,
+    SearchTicketsUseCase,
+    GetTicketByIdUseCase,
   ],
 })
 export class ApplicationModule {}
