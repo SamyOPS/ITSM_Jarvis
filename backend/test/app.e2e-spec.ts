@@ -43,6 +43,25 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer()).get('/tickets/ticket-1').expect(401);
   });
 
+  it('/tickets/:id/assign (PATCH) returns 401 without a bearer token', () => {
+    return request(app.getHttpServer())
+      .patch('/tickets/ticket-1/assign')
+      .send({
+        assignedToUserId: 'agent-1',
+        assignmentGroupId: 'group-1',
+      })
+      .expect(401);
+  });
+
+  it('/tickets/:id/status (PATCH) returns 401 without a bearer token', () => {
+    return request(app.getHttpServer())
+      .patch('/tickets/ticket-1/status')
+      .send({
+        status: 'IN_PROGRESS',
+      })
+      .expect(401);
+  });
+
   it('/tickets/incidents (POST) returns 401 without a bearer token', () => {
     return request(app.getHttpServer())
       .post('/tickets/incidents')

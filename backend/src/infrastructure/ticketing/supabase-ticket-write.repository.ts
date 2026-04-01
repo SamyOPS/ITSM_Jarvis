@@ -11,6 +11,7 @@ import {
   CreateIncidentRecord,
   CreateRequestRecord,
   TicketWriteRepository,
+  UpdateTicketAssignmentRecord,
 } from '../../application/ticketing/repositories/ticket-write.repository';
 import { CreatedIncident } from '../../domain/ticketing/created-incident';
 import { CreatedRequest } from '../../domain/ticketing/created-request';
@@ -66,14 +67,40 @@ type SupabasePriorityRow = {
 };
 
 type SupabaseTicketDetailRow = SupabaseTicketRow & {
-  incidents: SupabaseIncidentRow[];
-  requests: SupabaseRequestRow[];
+  incidents: SupabaseIncidentRow | SupabaseIncidentRow[] | null;
+  requests: SupabaseRequestRow | SupabaseRequestRow[] | null;
 };
 
 @Injectable()
 export class SupabaseTicketWriteRepository
   implements TicketWriteRepository, TicketReadRepository
 {
+  async updateAssignment(
+    ticketId: string,
+    record: UpdateTicketAssignmentRecord,
+  ): Promise<void> {
+    await this.send(
+      `tickets?id=eq.${ticketId}`,
+      'PATCH',
+      {
+        assigned_to_user_id: record.assignedToUserId,
+        assignment_group_id: record.assignmentGroupId,
+      },
+      false,
+    );
+  }
+
+  async updateStatus(ticketId: string, status: TicketStatus): Promise<void> {
+    await this.send(
+      `tickets?id=eq.${ticketId}`,
+      'PATCH',
+      {
+        status,
+      },
+      false,
+    );
+  }
+
   async searchTickets(filters: SearchTicketsFilters): Promise<TicketSummary[]> {
     const query = new URLSearchParams({
       order: 'created_at.desc',
@@ -156,8 +183,8 @@ export class SupabaseTicketWriteRepository
     }
 
     const priorityNames = await this.loadPriorityNames();
-    const [incidentRow] = ticket.incidents;
-    const [requestRow] = ticket.requests;
+    const incidentRow = getEmbeddedRow(ticket.incidents);
+    const requestRow = getEmbeddedRow(ticket.requests);
 
     return new TicketDetail(
       new Ticket(
@@ -412,7 +439,7 @@ export class SupabaseTicketWriteRepository
 
   private async send(
     path: string,
-    method: 'GET' | 'POST' | 'DELETE',
+    method: 'GET' | 'PATCH' | 'POST' | 'DELETE',
     body?: unknown,
     returnRepresentation = false,
   ): Promise<Response> {
@@ -485,4 +512,12 @@ function applyOptionalFilter(
   }
 
   query.set(column, `eq.${value}`);
+}
+
+function getEmbeddedRow<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) {
+    return null;
+  }
+
+  return Array.isArray(value) ? (value[0] ?? null) : value;
 }
