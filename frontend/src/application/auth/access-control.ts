@@ -4,7 +4,7 @@ import type { RoutePath } from '../../domain/navigation/route';
 
 const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
   '/admin': ['ADMIN'],
-  '/agent': ['AGENT', 'ADMIN'],
+  '/agent': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/auth': ['DEMANDEUR', 'AGENT', 'ADMIN'],
 };
 
