@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import type { HealthSnapshot } from '../../domain/health/health-snapshot';
 import { fetchBackendHealth } from '../../infrastructure/api/health-api';
 import { getFrontendRuntimeConfig } from '../../infrastructure/config/env';
@@ -38,7 +38,9 @@ export function StatusPage() {
         setHealthSnapshot(null);
         setConnectionState('error');
         setErrorMessage(
-          error instanceof Error ? error.message : 'Unknown connection error',
+          error instanceof Error
+            ? error.message
+            : 'Erreur de connexion inconnue',
         );
       }
     }
@@ -53,31 +55,31 @@ export function StatusPage() {
   return (
     <section className="panel">
       <span className="panel-tag">P0.5</span>
-      <h2>Frontend to backend health check</h2>
+      <h2>Supervision frontend vers backend</h2>
       <p>
-        This route validates that the frontend can reach the backend technical
-        endpoint.
+        Cette vue confirme que le frontend peut joindre correctement le point
+        d’entrée technique exposé par le backend.
       </p>
       <div className="status-card">
-        <strong>Connection state</strong>
+        <strong>État de la connexion</strong>
         <span>{connectionState}</span>
       </div>
       <dl className="status-grid">
         <div>
-          <dt>API URL</dt>
+          <dt>URL API</dt>
           <dd>{config.apiUrl}</dd>
         </div>
         <div>
-          <dt>Backend service</dt>
-          <dd>{healthSnapshot?.service ?? 'not-loaded'}</dd>
+          <dt>Service backend</dt>
+          <dd>{healthSnapshot?.service ?? 'non chargé'}</dd>
         </div>
         <div>
-          <dt>Backend status</dt>
-          <dd>{healthSnapshot?.status ?? 'unknown'}</dd>
+          <dt>État backend</dt>
+          <dd>{healthSnapshot?.status ?? 'inconnu'}</dd>
         </div>
         <div>
-          <dt>Last error</dt>
-          <dd>{errorMessage ?? 'none'}</dd>
+          <dt>Dernière erreur</dt>
+          <dd>{errorMessage ?? 'aucune'}</dd>
         </div>
       </dl>
     </section>

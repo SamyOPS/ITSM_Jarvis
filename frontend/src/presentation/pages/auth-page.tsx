@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import type { ProtectedApiResult } from '../../domain/auth/protected-api-result';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { AuthSetupSnapshot } from '../../domain/auth/auth-setup';
@@ -58,7 +58,9 @@ export function AuthPage({ onLogout, session, sessionState }: AuthPageProps) {
         setAuthSetup(null);
         setAuthState('error');
         setErrorMessage(
-          error instanceof Error ? error.message : 'Unknown auth setup error',
+          error instanceof Error
+            ? error.message
+            : 'Erreur de configuration d’authentification inconnue',
         );
       }
     }
@@ -106,7 +108,7 @@ export function AuthPage({ onLogout, session, sessionState }: AuthPageProps) {
         setProtectedApiError(
           error instanceof Error
             ? error.message
-            : 'Unknown protected API error',
+            : 'Erreur d’appel API protégée inconnue',
         );
       }
     }
@@ -121,18 +123,17 @@ export function AuthPage({ onLogout, session, sessionState }: AuthPageProps) {
   return (
     <section className="panel">
       <span className="panel-tag">P1.6</span>
-      <h2>Supabase auth setup</h2>
+      <h2>Contrôle de la pile d’authentification</h2>
       <p>
-        This screen confirms that Supabase auth configuration and the baseline
-        application roles are ready, while exposing the current frontend session
-        state and a protected backend API call performed with the current token.
+        Cette vue vérifie la configuration Supabase, l’état de la session
+        courante et l’accès à une API backend protégée par rôle.
       </p>
       <div className="status-card">
-        <strong>Setup state</strong>
+        <strong>Configuration</strong>
         <span>{authState}</span>
       </div>
       <div className="status-card auth-session-card">
-        <strong>Session state</strong>
+        <strong>Session</strong>
         <span>{sessionState}</span>
         <button
           className="secondary-button"
@@ -140,105 +141,105 @@ export function AuthPage({ onLogout, session, sessionState }: AuthPageProps) {
           onClick={onLogout}
           type="button"
         >
-          Sign out
+          Se déconnecter
         </button>
       </div>
       <div className="status-card auth-session-card">
-        <strong>Protected API</strong>
+        <strong>API protégée</strong>
         <span>{protectedApiState}</span>
       </div>
       <dl className="status-grid">
         <div>
-          <dt>API URL</dt>
+          <dt>URL API</dt>
           <dd>{runtimeConfig.apiUrl}</dd>
         </div>
         <div>
-          <dt>App environment</dt>
+          <dt>Environnement</dt>
           <dd>{runtimeConfig.appEnv}</dd>
         </div>
         <div>
-          <dt>Supabase URL</dt>
-          <dd>{supabaseConfig.url || 'missing'}</dd>
+          <dt>URL Supabase</dt>
+          <dd>{supabaseConfig.url || 'absente'}</dd>
         </div>
         <div>
-          <dt>Frontend anon key</dt>
-          <dd>{supabaseConfig.anonKey ? 'configured' : 'missing'}</dd>
+          <dt>Clé anon frontend</dt>
+          <dd>{supabaseConfig.anonKey ? 'configurée' : 'absente'}</dd>
         </div>
         <div>
-          <dt>Backend provider</dt>
-          <dd>{authSetup?.provider ?? 'not-loaded'}</dd>
+          <dt>Provider backend</dt>
+          <dd>{authSetup?.provider ?? 'non chargé'}</dd>
         </div>
         <div>
-          <dt>Backend ready</dt>
-          <dd>{authSetup?.ready ? 'yes' : 'no'}</dd>
+          <dt>Backend prêt</dt>
+          <dd>{authSetup?.ready ? 'oui' : 'non'}</dd>
         </div>
         <div>
-          <dt>Roles</dt>
+          <dt>Rôles supportés</dt>
           <dd>{(authSetup?.roles ?? DEFAULT_USER_ROLES).join(', ')}</dd>
         </div>
         <div>
-          <dt>Session email</dt>
-          <dd>{session?.user.email ?? 'anonymous'}</dd>
+          <dt>Email session</dt>
+          <dd>{session?.user.email ?? 'anonyme'}</dd>
         </div>
         <div>
-          <dt>Session role</dt>
-          <dd>{session?.user.role ?? 'none'}</dd>
+          <dt>Rôle session</dt>
+          <dd>{session?.user.role ?? 'aucun'}</dd>
         </div>
         <div>
-          <dt>Protected UI</dt>
+          <dt>UI protégée</dt>
           <dd>
             {session?.user.role === 'ADMIN'
-              ? 'Admin and Agent routes visible'
+              ? 'Zones agent et administration visibles'
               : session?.user.role === 'AGENT'
-                ? 'Agent route visible'
+                ? 'Zone agent visible'
                 : session
-                  ? 'Authenticated user routes only'
-                  : 'Anonymous'}
+                  ? 'Zones utilisateur authentifié visibles'
+                  : 'Session anonyme'}
           </dd>
         </div>
         <div>
-          <dt>Session user id</dt>
-          <dd>{session?.user.id ?? 'not-loaded'}</dd>
+          <dt>Identifiant utilisateur</dt>
+          <dd>{session?.user.id ?? 'non chargé'}</dd>
         </div>
         <div>
-          <dt>Protected API target</dt>
+          <dt>Cible API protégée</dt>
           <dd>
             {session?.user.role === 'ADMIN'
               ? '/auth/admin-area'
               : session
                 ? '/auth/agent-area'
-                : 'none'}
+                : 'aucune'}
           </dd>
         </div>
         <div>
-          <dt>Protected API result</dt>
+          <dt>Résultat API protégée</dt>
           <dd>
             {protectedApiResult
               ? `${protectedApiResult.area} / ${protectedApiResult.role}`
-              : 'not-loaded'}
+              : 'non chargé'}
           </dd>
         </div>
         <div>
-          <dt>Protected API error</dt>
-          <dd>{protectedApiError ?? 'none'}</dd>
+          <dt>Erreur API protégée</dt>
+          <dd>{protectedApiError ?? 'aucune'}</dd>
         </div>
         <div>
-          <dt>Backend Supabase URL</dt>
-          <dd>{authSetup?.supabase.hasUrl ? 'configured' : 'missing'}</dd>
+          <dt>URL Supabase backend</dt>
+          <dd>{authSetup?.supabase.hasUrl ? 'configurée' : 'absente'}</dd>
         </div>
         <div>
-          <dt>Backend anon key</dt>
-          <dd>{authSetup?.supabase.hasAnonKey ? 'configured' : 'missing'}</dd>
+          <dt>Clé anon backend</dt>
+          <dd>{authSetup?.supabase.hasAnonKey ? 'configurée' : 'absente'}</dd>
         </div>
         <div>
-          <dt>Backend service role</dt>
+          <dt>Service role backend</dt>
           <dd>
-            {authSetup?.supabase.hasServiceRoleKey ? 'configured' : 'missing'}
+            {authSetup?.supabase.hasServiceRoleKey ? 'configurée' : 'absente'}
           </dd>
         </div>
         <div>
-          <dt>Last error</dt>
-          <dd>{errorMessage ?? 'none'}</dd>
+          <dt>Dernière erreur</dt>
+          <dd>{errorMessage ?? 'aucune'}</dd>
         </div>
       </dl>
     </section>

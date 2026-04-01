@@ -1,4 +1,4 @@
-type AccessDeniedPageProps = {
+﻿type AccessDeniedPageProps = {
   role: string;
 };
 
@@ -6,19 +6,19 @@ export function AccessDeniedPage({ role }: AccessDeniedPageProps) {
   return (
     <section className="panel">
       <span className="panel-tag">P1.5</span>
-      <h2>Access denied</h2>
+      <h2>Accès refusé</h2>
       <p>
-        Your current session is authenticated, but this route is not available
-        for the role currently attached to your account.
+        Votre session est authentifiée, mais cette route n’est pas disponible
+        pour le rôle actuellement associé à votre compte.
       </p>
       <dl className="status-grid">
         <div>
-          <dt>Current role</dt>
+          <dt>Rôle courant</dt>
           <dd>{role}</dd>
         </div>
         <div>
-          <dt>Expected access</dt>
-          <dd>AGENT or ADMIN depending on the protected route</dd>
+          <dt>Accès attendu</dt>
+          <dd>AGENT ou ADMIN selon la zone protégée</dd>
         </div>
       </dl>
     </section>

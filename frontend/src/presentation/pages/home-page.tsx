@@ -1,16 +1,17 @@
-export function HomePage() {
+﻿export function HomePage() {
   return (
     <section className="panel">
       <span className="panel-tag">P1.4</span>
-      <h2>Frontend auth session in place</h2>
+      <h2>Session frontend opérationnelle</h2>
       <p>
-        The frontend now exposes login, logout, and local session restoration on
-        top of the Supabase and backend auth slices.
+        Le frontend gère déjà la connexion, la fermeture de session et la
+        restauration locale de l’utilisateur connecté au-dessus de Supabase et
+        du backend NestJS.
       </p>
       <ul className="checklist">
-        <li>Login route available with Supabase password sign-in</li>
-        <li>Current session restored from local storage on reload</li>
-        <li>Logout clears the local session and backend user snapshot</li>
+        <li>Connexion disponible via Supabase avec mot de passe</li>
+        <li>Session locale restaurée au rechargement</li>
+        <li>Déconnexion locale et revalidation du profil backend</li>
       </ul>
     </section>
   );

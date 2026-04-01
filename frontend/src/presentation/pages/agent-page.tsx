@@ -1,7 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { ReferentialCatalogSnapshot } from '../../domain/referentials/referential-catalog';
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
+import {
+  translateChannel,
+  translatePriority,
+  translateTicketType,
+  translateUserRole,
+} from '../../domain/i18n/ticketing-labels';
 
 type AgentPageProps = {
   session: AuthSessionSnapshot;
@@ -82,7 +88,7 @@ export function AgentPage({ session }: AgentPageProps) {
         setLoadErrorMessage(
           error instanceof Error
             ? error.message
-            : 'Erreur inconnue lors du chargement des referentiels ticket',
+            : 'Erreur inconnue lors du chargement des référentiels ticket',
         );
       } finally {
         if (!cancelled) {
@@ -138,29 +144,29 @@ export function AgentPage({ session }: AgentPageProps) {
   return (
     <section className="panel ticket-form-panel">
       <span className="panel-tag">P2.5</span>
-      <h2>Formulaire ticket branche sur les referentiels</h2>
+      <h2>Formulaire ticket branché sur les référentiels</h2>
       <p>
-        Cette etape valide l integration front : le formulaire consomme les
-        referentiels admin deja configures et remplace les futurs champs libres
-        par des listes coherentes pour la creation de ticket, y compris pour un
-        compte demandeur.
+        Cette étape valide l’intégration front : le formulaire consomme les
+        référentiels d’administration déjà configurés et remplace les futurs
+        champs libres par des listes cohérentes pour la création de ticket, y
+        compris pour un compte demandeur.
       </p>
 
       <div className="ticket-form-summary">
         <article>
-          <span>Utilisateur connecte</span>
+          <span>Utilisateur connecté</span>
           <strong>{session.user.email}</strong>
         </article>
         <article>
-          <span>Role</span>
-          <strong>{session.user.role}</strong>
+          <span>Rôle</span>
+          <strong>{translateUserRole(session.user.role)}</strong>
         </article>
         <article>
           <span>Type de ticket</span>
-          <strong>{draft.type}</strong>
+          <strong>{translateTicketType(draft.type)}</strong>
         </article>
         <article>
-          <span>Referentiels charges</span>
+          <span>référentiels chargés</span>
           <strong>
             {catalog.categories.length +
               catalog.channels.length +
@@ -173,7 +179,7 @@ export function AgentPage({ session }: AgentPageProps) {
       </div>
 
       {isLoading ? (
-        <p className="ticket-form-message">Chargement des referentiels...</p>
+        <p className="ticket-form-message">Chargement des référentiels...</p>
       ) : loadErrorMessage ? (
         <p className="ticket-form-error">{loadErrorMessage}</p>
       ) : (
@@ -187,8 +193,8 @@ export function AgentPage({ session }: AgentPageProps) {
                 }
                 value={draft.type}
               >
-                <option value="INCIDENT">INCIDENT</option>
-                <option value="REQUEST">REQUEST</option>
+                <option value="INCIDENT">Incident</option>
+                <option value="REQUEST">Demande</option>
               </select>
             </label>
 
@@ -198,7 +204,7 @@ export function AgentPage({ session }: AgentPageProps) {
                 onChange={(event) =>
                   handleFieldChange('title', event.target.value)
                 }
-                placeholder="Ex : VPN inaccessible pour equipe finance"
+                placeholder="Ex. : VPN inaccessible pour équipe finance"
                 value={draft.title}
               />
             </label>
@@ -209,21 +215,21 @@ export function AgentPage({ session }: AgentPageProps) {
                 onChange={(event) =>
                   handleFieldChange('description', event.target.value)
                 }
-                placeholder="Decris le besoin ou l incident."
+                placeholder="Décris le besoin ou l’incident."
                 rows={4}
                 value={draft.description}
               />
             </label>
 
             <label className="field">
-              <span>Categorie</span>
+              <span>Catégorie</span>
               <select
                 onChange={(event) =>
                   handleFieldChange('categoryId', event.target.value)
                 }
                 value={draft.categoryId}
               >
-                <option value="">Choisir une categorie</option>
+                <option value="">Choisir une catégorie</option>
                 {catalog.categories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
@@ -243,7 +249,7 @@ export function AgentPage({ session }: AgentPageProps) {
                 <option value="">Choisir un canal</option>
                 {catalog.channels.map((channel) => (
                   <option key={channel.id} value={channel.id}>
-                    {channel.name}
+                    {translateChannel(channel.name)}
                   </option>
                 ))}
               </select>
@@ -267,17 +273,17 @@ export function AgentPage({ session }: AgentPageProps) {
             </label>
 
             <label className="field">
-              <span>Priorite</span>
+              <span>Priorité</span>
               <select
                 onChange={(event) =>
                   handleFieldChange('priorityId', event.target.value)
                 }
                 value={draft.priorityId}
               >
-                <option value="">Choisir une priorite</option>
+                <option value="">Choisir une priorité</option>
                 {catalog.priorities.map((priority) => (
                   <option key={priority.id} value={priority.id}>
-                    {priority.name}
+                    {translatePriority(priority.name)}
                   </option>
                 ))}
               </select>
@@ -301,7 +307,7 @@ export function AgentPage({ session }: AgentPageProps) {
             </label>
 
             <label className="field">
-              <span>CI lie</span>
+              <span>CI lié</span>
               <select
                 onChange={(event) =>
                   handleFieldChange('ciId', event.target.value)
@@ -319,48 +325,56 @@ export function AgentPage({ session }: AgentPageProps) {
           </form>
 
           <aside className="ticket-preview-card">
-            <h3>Apercu de la selection</h3>
+            <h3>Aperçu de la sélection</h3>
             <p>
-              Cette colonne montre ce que le formulaire consomme reellement dans
-              les referentiels charges depuis le backend.
+              Cette colonne montre ce que le formulaire consomme réellement dans
+              les référentiels chargés depuis le backend.
             </p>
 
             <dl className="status-grid ticket-preview-grid">
               <div>
-                <dt>Categorie</dt>
-                <dd>{selectedCategory?.name ?? 'Non selectionnee'}</dd>
+                <dt>Catégorie</dt>
+                <dd>{selectedCategory?.name ?? 'Non sélectionnée'}</dd>
               </div>
               <div>
                 <dt>Canal</dt>
-                <dd>{selectedChannel?.name ?? 'Non selectionne'}</dd>
+                <dd>
+                  {selectedChannel
+                    ? translateChannel(selectedChannel.name)
+                    : 'Non sélectionné'}
+                </dd>
               </div>
               <div>
                 <dt>Service</dt>
-                <dd>{selectedService?.name ?? 'Non selectionne'}</dd>
+                <dd>{selectedService?.name ?? 'Non sélectionné'}</dd>
               </div>
               <div>
-                <dt>Priorite</dt>
-                <dd>{selectedPriority?.name ?? 'Non selectionnee'}</dd>
+                <dt>Priorité</dt>
+                <dd>
+                  {selectedPriority
+                    ? translatePriority(selectedPriority.name)
+                    : 'Non sélectionnée'}
+                </dd>
               </div>
               <div>
                 <dt>Groupe</dt>
-                <dd>{selectedGroup?.name ?? 'Non selectionne'}</dd>
+                <dd>{selectedGroup?.name ?? 'Non sélectionné'}</dd>
               </div>
               <div>
                 <dt>CI</dt>
-                <dd>{selectedCi?.name ?? 'Non selectionne'}</dd>
+                <dd>{selectedCi?.name ?? 'Non sélectionné'}</dd>
               </div>
             </dl>
 
             <ul className="checklist">
               <li>Les listes viennent de `/referentials`.</li>
-              <li>Le formulaire ne depend plus de valeurs ecrites en dur.</li>
+              <li>Le formulaire ne dépend plus de valeurs écrites en dur.</li>
               <li>
-                Le demandeur peut maintenant preparer un ticket comme les autres
-                roles.
+                Le demandeur peut maintenant préparer un ticket comme les autres
+                rôles.
               </li>
               <li>
-                La vraie creation incident/demande viendra en `P3.6` et `P3.7`.
+                La vraie création incident/demande viendra en `P3.6` et `P3.7`.
               </li>
             </ul>
           </aside>

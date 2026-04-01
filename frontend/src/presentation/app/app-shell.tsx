@@ -1,4 +1,4 @@
-import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
+﻿import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import { getVisibleRoutes } from '../../application/auth/access-control';
 import { ROUTES } from '../../domain/navigation/route';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
@@ -25,15 +25,16 @@ export function AppShell({
     <div className="app-shell">
       <header className="app-header">
         <div>
-          <p className="eyebrow">TikIA</p>
-          <h1>Frontend Technical Base</h1>
+          <p className="eyebrow">Jarvis Connect</p>
+          <h1>Portail de ticketing ITSM</h1>
           <p className="lead">
-            Modular React structure with minimal routing, ready for the next
-            product slices.
+            Centre de support PME pour incidents, demandes et supervision des
+            accès. Interface de travail unifiée pour demandeurs, agents et
+            administrateurs.
           </p>
         </div>
 
-        <nav aria-label="Primary" className="app-nav">
+        <nav aria-label="Navigation principale" className="app-nav">
           {visibleRoutes.map((route) => (
             <button
               className="nav-link"
@@ -45,7 +46,7 @@ export function AppShell({
             </button>
           ))}
           <button className="secondary-button" onClick={onLogout} type="button">
-            {isAuthenticated ? 'Logout' : 'Clear session'}
+            {isAuthenticated ? 'Fermer la session' : 'Effacer la session'}
           </button>
         </nav>
       </header>

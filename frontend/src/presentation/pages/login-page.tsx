@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react';
+﻿import { type FormEvent, useState } from 'react';
 
 type LoginPageProps = {
   errorMessage: string | null;
@@ -18,10 +18,10 @@ export function LoginPage({ errorMessage, isBusy, onSubmit }: LoginPageProps) {
   return (
     <section className="panel">
       <span className="panel-tag">P1.4</span>
-      <h2>Login and session management</h2>
+      <h2>Connexion et gestion de session</h2>
       <p>
-        Authenticate against Supabase, store the session locally, and validate
-        the connected user through the backend token check.
+        Authentifiez-vous via Supabase, conservez la session localement et
+        vérifiez le profil métier connecté auprès du backend.
       </p>
 
       <form
@@ -39,7 +39,7 @@ export function LoginPage({ errorMessage, isBusy, onSubmit }: LoginPageProps) {
         </label>
 
         <label className="field">
-          <span>Password</span>
+          <span>Mot de passe</span>
           <input
             autoComplete="current-password"
             onChange={(event) => setPassword(event.target.value)}
@@ -49,30 +49,30 @@ export function LoginPage({ errorMessage, isBusy, onSubmit }: LoginPageProps) {
         </label>
 
         <button className="primary-button" disabled={isBusy} type="submit">
-          {isBusy ? 'Signing in...' : 'Sign in'}
+          {isBusy ? 'Connexion en cours...' : 'Se connecter'}
         </button>
       </form>
 
       <dl className="status-grid">
         <div>
-          <dt>Default test email</dt>
+          <dt>Compte de test par défaut</dt>
           <dd>demandeur@jarvis.fr</dd>
         </div>
         <div>
-          <dt>Default app role</dt>
+          <dt>Rôle applicatif par défaut</dt>
           <dd>DEMANDEUR</dd>
         </div>
         <div>
-          <dt>Other test accounts</dt>
+          <dt>Autres comptes de test</dt>
           <dd>agent@jarvis.fr / admin@jarvis.fr</dd>
         </div>
         <div>
-          <dt>Known test passwords</dt>
+          <dt>Mots de passe connus</dt>
           <dd>Demandeur123! / Agent123! / Admin123!</dd>
         </div>
         <div>
-          <dt>Last error</dt>
-          <dd>{errorMessage ?? 'none'}</dd>
+          <dt>Dernière erreur</dt>
+          <dd>{errorMessage ?? 'aucune'}</dd>
         </div>
       </dl>
     </section>
