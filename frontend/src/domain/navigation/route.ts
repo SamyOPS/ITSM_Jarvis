@@ -24,9 +24,9 @@ export const ROUTES: RouteDefinition[] = [
     title: 'Auth',
   },
   {
-    description: 'Protected route reserved to agents and admins.',
+    description: 'Ticket form route available to authenticated users.',
     path: '/agent',
-    title: 'Agent',
+    title: 'Tickets',
   },
   {
     description: 'Protected route reserved to admins.',
