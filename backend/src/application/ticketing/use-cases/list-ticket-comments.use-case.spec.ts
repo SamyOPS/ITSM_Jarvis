@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketComment } from '../../../domain/ticketing/ticket-comment';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
@@ -41,7 +45,7 @@ describe('ListTicketCommentsUseCase', () => {
         new TicketComment(
           'comment-1',
           'ticket-1',
-          'user-1',
+          'creator-1',
           'Commentaire public',
           false,
           '2026-04-02T08:10:00.000Z',
@@ -58,12 +62,12 @@ describe('ListTicketCommentsUseCase', () => {
     );
 
     await expect(
-      useCase.execute(' ticket-1 ', UserRole.DEMANDEUR),
+      useCase.execute(' ticket-1 ', 'creator-1', UserRole.DEMANDEUR),
     ).resolves.toEqual([
       new TicketComment(
         'comment-1',
         'ticket-1',
-        'user-1',
+        'creator-1',
         'Commentaire public',
         false,
         '2026-04-02T08:10:00.000Z',
@@ -88,7 +92,7 @@ describe('ListTicketCommentsUseCase', () => {
       } as TicketReadRepository,
     );
 
-    await useCase.execute('ticket-1', UserRole.AGENT);
+    await useCase.execute('ticket-1', 'agent-1', UserRole.AGENT);
 
     expect(listTicketComments).toHaveBeenCalledWith({
       includeInternal: true,
@@ -107,9 +111,41 @@ describe('ListTicketCommentsUseCase', () => {
       } as TicketReadRepository,
     );
 
-    await expect(useCase.execute('   ', UserRole.ADMIN)).rejects.toBeInstanceOf(
-      BadRequestException,
+    await expect(
+      useCase.execute('   ', 'admin-1', UserRole.ADMIN),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects an empty user id', async () => {
+    const useCase = new ListTicketCommentsUseCase(
+      {
+        listTicketComments: jest.fn(),
+      } as TicketCommentReadRepository,
+      {
+        getTicketById: jest.fn(),
+        searchTickets: jest.fn(),
+      } as TicketReadRepository,
     );
+
+    await expect(
+      useCase.execute('ticket-1', '   ', UserRole.ADMIN),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects demandeur users outside the ticket perimeter', async () => {
+    const useCase = new ListTicketCommentsUseCase(
+      {
+        listTicketComments: jest.fn(),
+      } as TicketCommentReadRepository,
+      {
+        getTicketById: jest.fn().mockResolvedValue(ticketDetail),
+        searchTickets: jest.fn(),
+      } as TicketReadRepository,
+    );
+
+    await expect(
+      useCase.execute('ticket-1', 'outsider-1', UserRole.DEMANDEUR),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rejects unknown tickets', async () => {
@@ -124,7 +160,7 @@ describe('ListTicketCommentsUseCase', () => {
     );
 
     await expect(
-      useCase.execute('ticket-404', UserRole.ADMIN),
+      useCase.execute('ticket-404', 'admin-1', UserRole.ADMIN),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

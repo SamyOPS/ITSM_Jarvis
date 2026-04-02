@@ -43,6 +43,12 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer()).get('/tickets/ticket-1').expect(401);
   });
 
+  it('/tickets/:id/comments (GET) returns 401 without a bearer token', () => {
+    return request(app.getHttpServer())
+      .get('/tickets/ticket-1/comments')
+      .expect(401);
+  });
+
   it('/tickets/:id/assign (PATCH) returns 401 without a bearer token', () => {
     return request(app.getHttpServer())
       .patch('/tickets/ticket-1/assign')
@@ -58,6 +64,15 @@ describe('AppController (e2e)', () => {
       .patch('/tickets/ticket-1/status')
       .send({
         status: 'IN_PROGRESS',
+      })
+      .expect(401);
+  });
+
+  it('/tickets/:id/comments (POST) returns 401 without a bearer token', () => {
+    return request(app.getHttpServer())
+      .post('/tickets/ticket-1/comments')
+      .send({
+        body: 'Commentaire public',
       })
       .expect(401);
   });
