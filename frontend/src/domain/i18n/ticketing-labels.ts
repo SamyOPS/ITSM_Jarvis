@@ -41,6 +41,19 @@ export function translatePriority(name: string): string {
   }
 }
 
+export function translateIncidentSeverity(value: string): string {
+  switch (value) {
+    case 'LOW':
+      return 'Faible';
+    case 'MEDIUM':
+      return 'Moyenne';
+    case 'HIGH':
+      return 'Haute';
+    default:
+      return value;
+  }
+}
+
 export function translateChannel(name: string): string {
   switch (name) {
     case 'EMAIL':
