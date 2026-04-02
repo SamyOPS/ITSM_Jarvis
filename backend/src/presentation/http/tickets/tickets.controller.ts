@@ -64,8 +64,15 @@ export class TicketsController {
 
   @Get()
   @UseGuards(BearerAuthGuard)
-  listTickets(@Query() query: SearchTicketsQueryDto): Promise<TicketSummary[]> {
-    return this.searchTicketsUseCase.execute(query);
+  listTickets(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: SearchTicketsQueryDto,
+  ): Promise<TicketSummary[]> {
+    return this.searchTicketsUseCase.execute({
+      ...query,
+      requesterUserId: user.id,
+      requesterUserRole: user.role,
+    });
   }
 
   @Get(':id')

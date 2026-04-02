@@ -82,6 +82,21 @@ export function translateChannel(name: string): string {
   }
 }
 
+export function translateTicketStatus(status: string): string {
+  switch (status) {
+    case 'OPEN':
+      return 'Ouvert';
+    case 'IN_PROGRESS':
+      return 'En cours';
+    case 'RESOLVED':
+      return 'Résolu';
+    case 'CLOSED':
+      return 'Clos';
+    default:
+      return status;
+  }
+}
+
 export function translateCiStatus(status: string): string {
   switch (status) {
     case 'IN_SERVICE':

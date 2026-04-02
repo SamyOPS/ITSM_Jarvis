@@ -5,6 +5,7 @@ import {
   translateIncidentSeverity,
   translatePriority,
   translateRequestType,
+  translateTicketStatus,
   translateTicketType,
   translateUserRole,
 } from '../../domain/i18n/ticketing-labels';
@@ -19,10 +20,12 @@ import {
   REQUEST_TYPES,
   type RequestType,
 } from '../../domain/ticketing/request-type';
+import type { TicketSummarySnapshot } from '../../domain/ticketing/ticket-summary';
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
 import {
   createIncident,
   createRequest,
+  searchTickets,
 } from '../../infrastructure/api/ticketing-api';
 
 type AgentPageProps = {
@@ -58,6 +61,14 @@ type IncidentValidationErrors = Partial<
 >;
 type RequestValidationErrors = Partial<Record<keyof RequestDraftState, string>>;
 
+type TicketSearchFiltersState = {
+  categoryId: string;
+  priorityId: string;
+  q: string;
+  status: '' | 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  type: '' | TicketMode;
+};
+
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],
   channels: [],
@@ -90,6 +101,14 @@ const INITIAL_REQUEST_DRAFT: RequestDraftState = {
   title: '',
 };
 
+const INITIAL_SEARCH_FILTERS: TicketSearchFiltersState = {
+  categoryId: '',
+  priorityId: '',
+  q: '',
+  status: '',
+  type: '',
+};
+
 export function AgentPage({ session }: AgentPageProps) {
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
@@ -104,12 +123,20 @@ export function AgentPage({ session }: AgentPageProps) {
     useState<CreatedIncidentSnapshot | null>(null);
   const [createdRequest, setCreatedRequest] =
     useState<CreatedRequestSnapshot | null>(null);
+  const [searchFilters, setSearchFilters] = useState<TicketSearchFiltersState>(
+    INITIAL_SEARCH_FILTERS,
+  );
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingTickets, setIsLoadingTickets] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
+  const [loadTicketsErrorMessage, setLoadTicketsErrorMessage] = useState<
+    string | null
+  >(null);
   const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(
     null,
   );
+  const [tickets, setTickets] = useState<TicketSummarySnapshot[]>([]);
   const [incidentValidationErrors, setIncidentValidationErrors] =
     useState<IncidentValidationErrors>({});
   const [requestValidationErrors, setRequestValidationErrors] =
@@ -176,6 +203,58 @@ export function AgentPage({ session }: AgentPageProps) {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTickets(): Promise<void> {
+      setIsLoadingTickets(true);
+      setLoadTicketsErrorMessage(null);
+
+      try {
+        const nextTickets = await searchTickets(session.accessToken, {
+          categoryId: normalizeOptionalId(searchFilters.categoryId),
+          priorityId: normalizeOptionalId(searchFilters.priorityId),
+          q: normalizeOptionalSearch(searchFilters.q),
+          status: searchFilters.status || null,
+          type: searchFilters.type || null,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        setTickets(nextTickets);
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setLoadTicketsErrorMessage(
+          error instanceof Error
+            ? error.message
+            : 'Erreur inconnue lors du chargement des tickets',
+        );
+      } finally {
+        if (!cancelled) {
+          setIsLoadingTickets(false);
+        }
+      }
+    }
+
+    void loadTickets();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    searchFilters.categoryId,
+    searchFilters.priorityId,
+    searchFilters.q,
+    searchFilters.status,
+    searchFilters.type,
+    session.accessToken,
+  ]);
+
   const selectedCategory = useMemo(() => {
     const categoryId =
       mode === 'INCIDENT' ? incidentDraft.categoryId : requestDraft.categoryId;
@@ -211,6 +290,18 @@ export function AgentPage({ session }: AgentPageProps) {
     [catalog.priorities, requestDraft.priorityId],
   );
 
+  const categoriesById = useMemo(
+    () =>
+      new Map(catalog.categories.map((category) => [category.id, category])),
+    [catalog.categories],
+  );
+
+  const prioritiesById = useMemo(
+    () =>
+      new Map(catalog.priorities.map((priority) => [priority.id, priority])),
+    [catalog.priorities],
+  );
+
   function handleIncidentFieldChange(
     field: keyof IncidentDraftState,
     value: string,
@@ -239,6 +330,16 @@ export function AgentPage({ session }: AgentPageProps) {
       [field]: undefined,
     }));
     setSubmitErrorMessage(null);
+  }
+
+  function handleSearchFilterChange(
+    field: keyof TicketSearchFiltersState,
+    value: string,
+  ): void {
+    setSearchFilters((currentFilters) => ({
+      ...currentFilters,
+      [field]: value,
+    }));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -271,6 +372,10 @@ export function AgentPage({ session }: AgentPageProps) {
         });
 
         setCreatedIncident(result);
+        setSearchFilters((currentFilters) => ({
+          ...currentFilters,
+          type: 'INCIDENT',
+        }));
         setIncidentDraft((currentDraft) => ({
           ...currentDraft,
           description: '',
@@ -312,6 +417,10 @@ export function AgentPage({ session }: AgentPageProps) {
       });
 
       setCreatedRequest(result);
+      setSearchFilters((currentFilters) => ({
+        ...currentFilters,
+        type: 'REQUEST',
+      }));
       setRequestDraft((currentDraft) => ({
         ...currentDraft,
         description: '',
@@ -769,6 +878,157 @@ export function AgentPage({ session }: AgentPageProps) {
           </aside>
         </div>
       )}
+
+      <section className="ticket-list-card">
+        <div className="ticket-list-header">
+          <div>
+            <h3>Liste des tickets</h3>
+            <p>
+              Recherche texte et filtres simples branchés sur l endpoint `GET
+              /tickets`.
+            </p>
+          </div>
+          <div className="ticket-list-meta">
+            <span>Résultats</span>
+            <strong>{tickets.length}</strong>
+          </div>
+        </div>
+
+        <div className="ticket-list-filters">
+          <label className="field ticket-filter-search">
+            <span>Recherche</span>
+            <input
+              onChange={(event) =>
+                handleSearchFilterChange('q', event.target.value)
+              }
+              placeholder="Numéro, titre ou description"
+              value={searchFilters.q}
+            />
+          </label>
+
+          <label className="field">
+            <span>Type</span>
+            <select
+              onChange={(event) =>
+                handleSearchFilterChange('type', event.target.value)
+              }
+              value={searchFilters.type}
+            >
+              <option value="">Tous</option>
+              <option value="INCIDENT">Incident</option>
+              <option value="REQUEST">Demande</option>
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Statut</span>
+            <select
+              onChange={(event) =>
+                handleSearchFilterChange('status', event.target.value)
+              }
+              value={searchFilters.status}
+            >
+              <option value="">Tous</option>
+              <option value="OPEN">Ouvert</option>
+              <option value="IN_PROGRESS">En cours</option>
+              <option value="RESOLVED">Résolu</option>
+              <option value="CLOSED">Clos</option>
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Catégorie</span>
+            <select
+              onChange={(event) =>
+                handleSearchFilterChange('categoryId', event.target.value)
+              }
+              value={searchFilters.categoryId}
+            >
+              <option value="">Toutes</option>
+              {catalog.categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Priorité</span>
+            <select
+              onChange={(event) =>
+                handleSearchFilterChange('priorityId', event.target.value)
+              }
+              value={searchFilters.priorityId}
+            >
+              <option value="">Toutes</option>
+              {catalog.priorities.map((priority) => (
+                <option key={priority.id} value={priority.id}>
+                  {translatePriority(priority.name)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {isLoadingTickets ? (
+          <p className="ticket-form-message">Chargement des tickets...</p>
+        ) : loadTicketsErrorMessage ? (
+          <p className="ticket-form-error">{loadTicketsErrorMessage}</p>
+        ) : tickets.length === 0 ? (
+          <p className="ticket-form-message">
+            Aucun ticket ne correspond aux filtres actuels.
+          </p>
+        ) : (
+          <div className="ticket-results">
+            {tickets.map((ticket) => (
+              <article className="ticket-result-card" key={ticket.id}>
+                <div className="ticket-result-header">
+                  <div>
+                    <span className="ticket-result-number">
+                      {ticket.number}
+                    </span>
+                    <h4>{ticket.title}</h4>
+                  </div>
+                  <span className="ticket-result-badge">
+                    {translateTicketType(ticket.type)}
+                  </span>
+                </div>
+
+                <dl className="ticket-result-grid">
+                  <div>
+                    <dt>Statut</dt>
+                    <dd>{translateTicketStatus(ticket.status)}</dd>
+                  </div>
+                  <div>
+                    <dt>Priorité</dt>
+                    <dd>
+                      {ticket.priorityName
+                        ? translatePriority(ticket.priorityName)
+                        : prioritiesById.get(ticket.priorityId)
+                          ? translatePriority(
+                              prioritiesById.get(ticket.priorityId)!.name,
+                            )
+                          : 'Non définie'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Catégorie</dt>
+                    <dd>
+                      {categoriesById.get(ticket.categoryId)?.name ??
+                        'Non définie'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Créé le</dt>
+                    <dd>{formatTicketDate(ticket.createdAt)}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
     </section>
   );
 }
@@ -821,4 +1081,26 @@ function normalizeOptionalId(value: string): string | null {
   const normalized = value.trim();
 
   return normalized ? normalized : null;
+}
+
+function normalizeOptionalSearch(value: string): string | null {
+  const normalized = value.trim();
+
+  return normalized ? normalized : null;
+}
+
+function formatTicketDate(value: string): string {
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString('fr-FR', {
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 }
