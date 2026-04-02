@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { ReferentialCategoryReadRepository } from '../application/referentials/repositories/referential-category-read.repository';
 import { ReferentialCategoryWriteRepository } from '../application/referentials/repositories/referential-category-write.repository';
 import { ReferentialChannelReadRepository } from '../application/referentials/repositories/referential-channel-read.repository';
@@ -13,6 +13,8 @@ import { ReferentialPriorityReadRepository } from '../application/referentials/r
 import { ReferentialPriorityWriteRepository } from '../application/referentials/repositories/referential-priority-write.repository';
 import { ReferentialServiceReadRepository } from '../application/referentials/repositories/referential-service-read.repository';
 import { ReferentialServiceWriteRepository } from '../application/referentials/repositories/referential-service-write.repository';
+import { TicketCommentReadRepository } from '../application/ticketing/repositories/ticket-comment-read.repository';
+import { TicketCommentWriteRepository } from '../application/ticketing/repositories/ticket-comment-write.repository';
 import { TicketReadRepository } from '../application/ticketing/repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../application/ticketing/repositories/ticket-write.repository';
 import { SupabaseTokenValidatorService } from './auth/supabase-token-validator.service';
@@ -53,12 +55,22 @@ const referentialRepositoryBindings = [
       provide: TicketReadRepository,
       useExisting: SupabaseTicketWriteRepository,
     },
+    {
+      provide: TicketCommentReadRepository,
+      useExisting: SupabaseTicketWriteRepository,
+    },
+    {
+      provide: TicketCommentWriteRepository,
+      useExisting: SupabaseTicketWriteRepository,
+    },
   ],
   exports: [
     SupabaseTokenValidatorService,
     ...referentialRepositoryBindings.map(({ provide }) => provide),
     TicketReadRepository,
     TicketWriteRepository,
+    TicketCommentReadRepository,
+    TicketCommentWriteRepository,
   ],
 })
 export class InfrastructureModule {}

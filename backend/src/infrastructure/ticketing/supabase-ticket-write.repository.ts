@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   Injectable,
   ServiceUnavailableException,
@@ -12,12 +12,21 @@ import {
   CreateRequestRecord,
   TicketWriteRepository,
 } from '../../application/ticketing/repositories/ticket-write.repository';
+import {
+  CreateTicketCommentRecord,
+  TicketCommentWriteRepository,
+} from '../../application/ticketing/repositories/ticket-comment-write.repository';
+import {
+  ListTicketCommentsFilters,
+  TicketCommentReadRepository,
+} from '../../application/ticketing/repositories/ticket-comment-read.repository';
 import { CreatedIncident } from '../../domain/ticketing/created-incident';
 import { CreatedRequest } from '../../domain/ticketing/created-request';
 import { Incident } from '../../domain/ticketing/incident';
 import { PriorityName } from '../../domain/ticketing/priority-name';
 import { RequestTicket } from '../../domain/ticketing/request';
 import { Ticket } from '../../domain/ticketing/ticket';
+import { TicketComment } from '../../domain/ticketing/ticket-comment';
 import { TicketDetail } from '../../domain/ticketing/ticket-detail';
 import { RequestApprovalStatus } from '../../domain/ticketing/request-approval-status';
 import { RequestType } from '../../domain/ticketing/request-type';
@@ -66,13 +75,26 @@ type SupabasePriorityRow = {
 };
 
 type SupabaseTicketDetailRow = SupabaseTicketRow & {
-  incidents: SupabaseIncidentRow[];
-  requests: SupabaseRequestRow[];
+  incidents: SupabaseIncidentRow[] | SupabaseIncidentRow | null;
+  requests: SupabaseRequestRow[] | SupabaseRequestRow | null;
+};
+
+type SupabaseTicketCommentRow = {
+  author_user_id: string;
+  body: string;
+  created_at: string;
+  id: string;
+  is_internal: boolean;
+  ticket_id: string;
 };
 
 @Injectable()
 export class SupabaseTicketWriteRepository
-  implements TicketWriteRepository, TicketReadRepository
+  implements
+    TicketWriteRepository,
+    TicketReadRepository,
+    TicketCommentReadRepository,
+    TicketCommentWriteRepository
 {
   async searchTickets(filters: SearchTicketsFilters): Promise<TicketSummary[]> {
     const query = new URLSearchParams({
@@ -148,16 +170,19 @@ export class SupabaseTicketWriteRepository
       limit: '1',
     });
     const response = await this.send(`tickets?${query.toString()}`, 'GET');
-    const body = (await response.json()) as SupabaseTicketDetailRow[];
-    const [ticket] = body;
+    const body = (await response.json()) as
+      | SupabaseTicketDetailRow[]
+      | SupabaseTicketDetailRow
+      | null;
+    const ticket = extractSingleRow(body);
 
     if (!ticket) {
       return null;
     }
 
     const priorityNames = await this.loadPriorityNames();
-    const [incidentRow] = ticket.incidents;
-    const [requestRow] = ticket.requests;
+    const incidentRow = extractSingleRow(ticket.incidents);
+    const requestRow = extractSingleRow(ticket.requests);
 
     return new TicketDetail(
       new Ticket(
@@ -196,6 +221,79 @@ export class SupabaseTicketWriteRepository
             requestRow.fulfilled_at,
           )
         : null,
+    );
+  }
+
+  async listTicketComments(
+    filters: ListTicketCommentsFilters,
+  ): Promise<TicketComment[]> {
+    const query = new URLSearchParams({
+      order: 'created_at.asc',
+      select: 'id,ticket_id,author_user_id,body,is_internal,created_at',
+      ticket_id: `eq.${filters.ticketId}`,
+    });
+
+    if (!filters.includeInternal) {
+      query.set('is_internal', 'eq.false');
+    }
+
+    const response = await this.send(
+      `ticket_comments?${query.toString()}`,
+      'GET',
+    );
+    const payload = (await response.json()) as
+      | SupabaseTicketCommentRow[]
+      | SupabaseTicketCommentRow
+      | null;
+    const rows = normalizeRows(payload);
+
+    return rows.map(
+      (comment) =>
+        new TicketComment(
+          comment.id,
+          comment.ticket_id,
+          comment.author_user_id,
+          comment.body,
+          comment.is_internal,
+          comment.created_at,
+        ),
+    );
+  }
+
+  async addTicketComment(
+    record: CreateTicketCommentRecord,
+  ): Promise<TicketComment> {
+    const response = await this.send(
+      'ticket_comments',
+      'POST',
+      {
+        author_user_id: record.authorUserId,
+        body: record.body,
+        is_internal: record.isInternal,
+        ticket_id: record.ticketId,
+      },
+      true,
+    );
+
+    const payload = (await response.json()) as
+      | SupabaseTicketCommentRow[]
+      | SupabaseTicketCommentRow
+      | null;
+    const comment = extractSingleRow(payload);
+
+    if (!comment) {
+      throw new ServiceUnavailableException(
+        'Ticket comment creation did not return a persisted row.',
+      );
+    }
+
+    return new TicketComment(
+      comment.id,
+      comment.ticket_id,
+      comment.author_user_id,
+      comment.body,
+      comment.is_internal,
+      comment.created_at,
     );
   }
 
@@ -334,8 +432,11 @@ export class SupabaseTicketWriteRepository
       true,
     );
 
-    const body = (await response.json()) as SupabaseTicketRow[];
-    const [ticket] = body;
+    const payload = (await response.json()) as
+      | SupabaseTicketRow[]
+      | SupabaseTicketRow
+      | null;
+    const ticket = extractSingleRow(payload);
 
     if (!ticket) {
       throw new ServiceUnavailableException(
@@ -363,8 +464,11 @@ export class SupabaseTicketWriteRepository
       true,
     );
 
-    const body = (await response.json()) as SupabaseIncidentRow[];
-    const [incident] = body;
+    const payload = (await response.json()) as
+      | SupabaseIncidentRow[]
+      | SupabaseIncidentRow
+      | null;
+    const incident = extractSingleRow(payload);
 
     if (!incident) {
       throw new ServiceUnavailableException(
@@ -390,8 +494,11 @@ export class SupabaseTicketWriteRepository
       true,
     );
 
-    const body = (await response.json()) as SupabaseRequestRow[];
-    const [request] = body;
+    const payload = (await response.json()) as
+      | SupabaseRequestRow[]
+      | SupabaseRequestRow
+      | null;
+    const request = extractSingleRow(payload);
 
     if (!request) {
       throw new ServiceUnavailableException(
@@ -485,4 +592,17 @@ function applyOptionalFilter(
   }
 
   query.set(column, `eq.${value}`);
+}
+
+function normalizeRows<T>(payload: T[] | T | null | undefined): T[] {
+  if (!payload) {
+    return [];
+  }
+
+  return Array.isArray(payload) ? payload : [payload];
+}
+
+function extractSingleRow<T>(payload: T[] | T | null | undefined): T | null {
+  const rows = normalizeRows(payload);
+  return rows[0] ?? null;
 }

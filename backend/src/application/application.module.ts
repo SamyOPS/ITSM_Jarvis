@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { GetAuthSetupUseCase } from './auth/use-cases/get-auth-setup.use-case';
 import { GetAuthenticatedUserUseCase } from './auth/use-cases/get-authenticated-user.use-case';
 import { GetHealthUseCase } from './health/use-cases/get-health.use-case';
@@ -17,9 +17,11 @@ import { ManageCiTypesUseCase } from './referentials/use-cases/manage-ci-types.u
 import { ManageGroupsUseCase } from './referentials/use-cases/manage-groups.use-case';
 import { ManagePrioritiesUseCase } from './referentials/use-cases/manage-priorities.use-case';
 import { ManageServicesUseCase } from './referentials/use-cases/manage-services.use-case';
+import { AddTicketCommentUseCase } from './ticketing/use-cases/add-ticket-comment.use-case';
 import { CreateIncidentUseCase } from './ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from './ticketing/use-cases/create-request.use-case';
 import { GetTicketByIdUseCase } from './ticketing/use-cases/get-ticket-by-id.use-case';
+import { ListTicketCommentsUseCase } from './ticketing/use-cases/list-ticket-comments.use-case';
 import { SearchTicketsUseCase } from './ticketing/use-cases/search-tickets.use-case';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 
@@ -41,6 +43,15 @@ const referentialUseCases = [
   ManageServicesUseCase,
 ];
 
+const ticketingUseCases = [
+  CreateIncidentUseCase,
+  CreateRequestUseCase,
+  SearchTicketsUseCase,
+  GetTicketByIdUseCase,
+  ListTicketCommentsUseCase,
+  AddTicketCommentUseCase,
+];
+
 @Module({
   imports: [InfrastructureModule],
   providers: [
@@ -48,20 +59,14 @@ const referentialUseCases = [
     GetAuthSetupUseCase,
     GetAuthenticatedUserUseCase,
     ...referentialUseCases,
-    CreateIncidentUseCase,
-    CreateRequestUseCase,
-    SearchTicketsUseCase,
-    GetTicketByIdUseCase,
+    ...ticketingUseCases,
   ],
   exports: [
     GetHealthUseCase,
     GetAuthSetupUseCase,
     GetAuthenticatedUserUseCase,
     ...referentialUseCases,
-    CreateIncidentUseCase,
-    CreateRequestUseCase,
-    SearchTicketsUseCase,
-    GetTicketByIdUseCase,
+    ...ticketingUseCases,
   ],
 })
 export class ApplicationModule {}
