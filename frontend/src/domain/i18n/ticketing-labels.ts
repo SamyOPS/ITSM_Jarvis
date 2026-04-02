@@ -26,6 +26,21 @@ export function translateTicketType(type: TicketType | string): string {
   }
 }
 
+export function translateRequestType(value: string): string {
+  switch (value) {
+    case 'ACCESS':
+      return 'Acces';
+    case 'HARDWARE':
+      return 'Materiel';
+    case 'SOFTWARE':
+      return 'Logiciel';
+    case 'OTHER':
+      return 'Autre';
+    default:
+      return value;
+  }
+}
+
 export function translatePriority(name: string): string {
   switch (name) {
     case 'LOW':
