@@ -1,11 +1,15 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { UserRole } from '../../../domain/auth/user-role';
 import { TicketSummary } from '../../../domain/ticketing/ticket-summary';
 import {
   SearchTicketsFilters,
   TicketReadRepository,
 } from '../repositories/ticket-read.repository';
 
-export type SearchTicketsQuery = SearchTicketsFilters;
+export type SearchTicketsQuery = SearchTicketsFilters & {
+  requesterUserId: string;
+  requesterUserRole: UserRole;
+};
 
 @Injectable()
 export class SearchTicketsUseCase {
@@ -15,7 +19,7 @@ export class SearchTicketsUseCase {
   ) {}
 
   async execute(query: SearchTicketsQuery): Promise<TicketSummary[]> {
-    return this.ticketReadRepository.searchTickets({
+    const normalizedFilters = {
       assignedToUserId: normalizeOptionalId(query.assignedToUserId),
       assignmentGroupId: normalizeOptionalId(query.assignmentGroupId),
       categoryId: normalizeOptionalId(query.categoryId),
@@ -27,7 +31,31 @@ export class SearchTicketsUseCase {
       serviceId: normalizeOptionalId(query.serviceId),
       status: query.status ?? null,
       type: query.type ?? null,
-    });
+    };
+    const requesterUserId = normalizeRequiredId(query.requesterUserId);
+
+    if (query.requesterUserRole !== UserRole.DEMANDEUR) {
+      return this.ticketReadRepository.searchTickets(normalizedFilters);
+    }
+
+    const [createdTickets, requestedTickets] = await Promise.all([
+      this.ticketReadRepository.searchTickets({
+        ...normalizedFilters,
+        createdByUserId: requesterUserId,
+        requestedForUserId: null,
+      }),
+      this.ticketReadRepository.searchTickets({
+        ...normalizedFilters,
+        createdByUserId: null,
+        requestedForUserId: requesterUserId,
+      }),
+    ]);
+
+    return [...new Map(
+      [...createdTickets, ...requestedTickets].map((ticket) => [ticket.id, ticket]),
+    ).values()].sort((left, right) =>
+      right.createdAt.localeCompare(left.createdAt),
+    );
   }
 }
 
@@ -36,6 +64,16 @@ function normalizeOptionalId(value: string | null | undefined): string | null {
 
   if (!normalized) {
     return null;
+  }
+
+  return normalized;
+}
+
+function normalizeRequiredId(value: string): string {
+  const normalized = value.trim();
+
+  if (!normalized) {
+    throw new BadRequestException('requesterUserId is required.');
   }
 
   return normalized;

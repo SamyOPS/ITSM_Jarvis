@@ -190,11 +190,19 @@ describe('TicketsController', () => {
 
   it('delegates ticket search to the dedicated use case', async () => {
     await expect(
-      controller.listTickets({
-        q: 'vpn',
-        status: TicketStatus.OPEN,
-        type: TicketType.INCIDENT,
-      }),
+      controller.listTickets(
+        {
+          accessToken: 'token',
+          email: 'agent@jarvis.local',
+          id: 'user-1',
+          role: UserRole.AGENT,
+        },
+        {
+          q: 'vpn',
+          status: TicketStatus.OPEN,
+          type: TicketType.INCIDENT,
+        },
+      ),
     ).resolves.toEqual([
       {
         id: 'ticket-1',
@@ -206,6 +214,8 @@ describe('TicketsController', () => {
     ]);
 
     expect(searchTickets).toHaveBeenCalledWith({
+      requesterUserId: 'user-1',
+      requesterUserRole: UserRole.AGENT,
       q: 'vpn',
       status: TicketStatus.OPEN,
       type: TicketType.INCIDENT,

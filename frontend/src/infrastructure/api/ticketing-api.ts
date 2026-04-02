@@ -2,6 +2,7 @@ import type { CreatedIncidentSnapshot } from '../../domain/ticketing/created-inc
 import type { CreatedRequestSnapshot } from '../../domain/ticketing/created-request';
 import type { IncidentSeverity } from '../../domain/ticketing/incident-severity';
 import type { RequestType } from '../../domain/ticketing/request-type';
+import type { TicketSummarySnapshot } from '../../domain/ticketing/ticket-summary';
 import { getFrontendRuntimeConfig } from '../config/env';
 
 export type CreateIncidentPayload = {
@@ -24,6 +25,14 @@ export type CreateRequestPayload = {
   requestType?: RequestType | null;
   serviceId?: string | null;
   title: string;
+};
+
+export type SearchTicketsFilters = {
+  categoryId?: string | null;
+  priorityId?: string | null;
+  q?: string | null;
+  status?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | null;
+  type?: 'INCIDENT' | 'REQUEST' | null;
 };
 
 export async function createIncident(
@@ -78,4 +87,51 @@ export async function createRequest(
   }
 
   return (await response.json()) as CreatedRequestSnapshot;
+}
+
+export async function searchTickets(
+  accessToken: string,
+  filters: SearchTicketsFilters,
+): Promise<TicketSummarySnapshot[]> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const query = new URLSearchParams();
+
+  if (filters.q?.trim()) {
+    query.set('q', filters.q.trim());
+  }
+
+  if (filters.type) {
+    query.set('type', filters.type);
+  }
+
+  if (filters.status) {
+    query.set('status', filters.status);
+  }
+
+  if (filters.categoryId?.trim()) {
+    query.set('categoryId', filters.categoryId.trim());
+  }
+
+  if (filters.priorityId?.trim()) {
+    query.set('priorityId', filters.priorityId.trim());
+  }
+
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  const response = await fetch(`${apiUrl}/tickets${suffix}`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message ||
+        `Le chargement des tickets a echoue avec le statut ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as TicketSummarySnapshot[];
 }
