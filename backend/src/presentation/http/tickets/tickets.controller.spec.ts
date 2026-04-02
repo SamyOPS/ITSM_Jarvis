@@ -1,18 +1,27 @@
-﻿import { AddTicketCommentUseCase } from '../../../application/ticketing/use-cases/add-ticket-comment.use-case';
+import { AddTicketCommentUseCase } from '../../../application/ticketing/use-cases/add-ticket-comment.use-case';
+import { AssignTicketUseCase } from '../../../application/ticketing/use-cases/assign-ticket.use-case';
+import { ChangeTicketStatusUseCase } from '../../../application/ticketing/use-cases/change-ticket-status.use-case';
 import { CreateIncidentUseCase } from '../../../application/ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from '../../../application/ticketing/use-cases/create-request.use-case';
 import { GetTicketByIdUseCase } from '../../../application/ticketing/use-cases/get-ticket-by-id.use-case';
 import { ListTicketCommentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-comments.use-case';
 import { SearchTicketsUseCase } from '../../../application/ticketing/use-cases/search-tickets.use-case';
-import { UserRole } from '../../../domain/auth/user-role';
-import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
-import { RequestType } from '../../../domain/ticketing/request-type';
-import { TicketStatus } from '../../../domain/ticketing/ticket-status';
-import { TicketType } from '../../../domain/ticketing/ticket-type';
-import { TicketsController } from './tickets.controller';
 
 describe('TicketsController', () => {
   let controller: TicketsController;
+  const assignTicket = jest.fn().mockResolvedValue({
+    ticket: {
+      assignedToUserId: 'agent-1',
+      assignmentGroupId: 'group-1',
+      id: 'ticket-1',
+    },
+  });
+  const changeTicketStatus = jest.fn().mockResolvedValue({
+    ticket: {
+      id: 'ticket-1',
+      status: TicketStatus.IN_PROGRESS,
+    },
+  });
   const searchTickets = jest.fn().mockResolvedValue([
     {
       id: 'ticket-1',
@@ -64,6 +73,8 @@ describe('TicketsController', () => {
   });
 
   beforeEach(() => {
+    assignTicket.mockClear();
+    changeTicketStatus.mockClear();
     searchTickets.mockClear();
     getTicketById.mockClear();
     listComments.mockClear();
@@ -71,6 +82,12 @@ describe('TicketsController', () => {
     createIncident.mockClear();
     createRequest.mockClear();
     controller = new TicketsController(
+      {
+        execute: assignTicket,
+      } as unknown as AssignTicketUseCase,
+      {
+        execute: changeTicketStatus,
+      } as unknown as ChangeTicketStatusUseCase,
       {
         execute: createIncident,
       } as unknown as CreateIncidentUseCase,
@@ -90,6 +107,45 @@ describe('TicketsController', () => {
         execute: addComment,
       } as unknown as AddTicketCommentUseCase,
     );
+  });
+
+  it('delegates ticket assignment to the dedicated use case', async () => {
+    await expect(
+      controller.assignTicket('ticket-1', {
+        assignedToUserId: 'agent-1',
+        assignmentGroupId: 'group-1',
+      }),
+    ).resolves.toEqual({
+      ticket: {
+        assignedToUserId: 'agent-1',
+        assignmentGroupId: 'group-1',
+        id: 'ticket-1',
+      },
+    });
+
+    expect(assignTicket).toHaveBeenCalledWith({
+      assignedToUserId: 'agent-1',
+      assignmentGroupId: 'group-1',
+      ticketId: 'ticket-1',
+    });
+  });
+
+  it('delegates ticket status updates to the dedicated use case', async () => {
+    await expect(
+      controller.changeStatus('ticket-1', {
+        status: TicketStatus.IN_PROGRESS,
+      }),
+    ).resolves.toEqual({
+      ticket: {
+        id: 'ticket-1',
+        status: TicketStatus.IN_PROGRESS,
+      },
+    });
+
+    expect(changeTicketStatus).toHaveBeenCalledWith({
+      status: TicketStatus.IN_PROGRESS,
+      ticketId: 'ticket-1',
+    });
   });
 
   it('delegates ticket search to the dedicated use case', async () => {

@@ -1,4 +1,5 @@
-﻿import { Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { UserAssignmentProfileRepository } from '../application/auth/repositories/user-assignment-profile.repository';
 import { ReferentialCategoryReadRepository } from '../application/referentials/repositories/referential-category-read.repository';
 import { ReferentialCategoryWriteRepository } from '../application/referentials/repositories/referential-category-write.repository';
 import { ReferentialChannelReadRepository } from '../application/referentials/repositories/referential-channel-read.repository';
@@ -18,6 +19,7 @@ import { TicketCommentWriteRepository } from '../application/ticketing/repositor
 import { TicketReadRepository } from '../application/ticketing/repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../application/ticketing/repositories/ticket-write.repository';
 import { SupabaseTokenValidatorService } from './auth/supabase-token-validator.service';
+import { SupabaseUserAssignmentProfileRepository } from './auth/supabase-user-assignment-profile.repository';
 import { SupabaseReferentialReadRepository } from './referentials/supabase-referential-read.repository';
 import { SupabaseTicketWriteRepository } from './ticketing/supabase-ticket-write.repository';
 
@@ -44,9 +46,14 @@ const referentialRepositoryBindings = [
 @Module({
   providers: [
     SupabaseTokenValidatorService,
+    SupabaseUserAssignmentProfileRepository,
     SupabaseReferentialReadRepository,
     SupabaseTicketWriteRepository,
     ...referentialRepositoryBindings,
+    {
+      provide: UserAssignmentProfileRepository,
+      useExisting: SupabaseUserAssignmentProfileRepository,
+    },
     {
       provide: TicketWriteRepository,
       useExisting: SupabaseTicketWriteRepository,
@@ -67,6 +74,7 @@ const referentialRepositoryBindings = [
   exports: [
     SupabaseTokenValidatorService,
     ...referentialRepositoryBindings.map(({ provide }) => provide),
+    UserAssignmentProfileRepository,
     TicketReadRepository,
     TicketWriteRepository,
     TicketCommentReadRepository,

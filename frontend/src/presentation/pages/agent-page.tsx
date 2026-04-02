@@ -1,29 +1,36 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
-import type { ReferentialCatalogSnapshot } from '../../domain/referentials/referential-catalog';
-import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
 import {
   translateChannel,
+  translateIncidentSeverity,
   translatePriority,
-  translateTicketType,
   translateUserRole,
 } from '../../domain/i18n/ticketing-labels';
+import type { ReferentialCatalogSnapshot } from '../../domain/referentials/referential-catalog';
+import type { CreatedIncidentSnapshot } from '../../domain/ticketing/created-incident';
+import {
+  INCIDENT_SEVERITIES,
+  type IncidentSeverity,
+} from '../../domain/ticketing/incident-severity';
+import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
+import { createIncident } from '../../infrastructure/api/ticketing-api';
 
 type AgentPageProps = {
   session: AuthSessionSnapshot;
 };
 
-type TicketDraftState = {
+type IncidentDraftState = {
   categoryId: string;
   channelId: string;
   ciId: string;
   description: string;
-  groupId: string;
-  priorityId: string;
+  impact: IncidentSeverity;
   serviceId: string;
   title: string;
-  type: 'INCIDENT' | 'REQUEST';
+  urgency: IncidentSeverity;
 };
+
+type ValidationErrors = Partial<Record<keyof IncidentDraftState, string>>;
 
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],
@@ -35,22 +42,32 @@ const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   services: [],
 };
 
+const INITIAL_DRAFT: IncidentDraftState = {
+  categoryId: '',
+  channelId: '',
+  ciId: '',
+  description: '',
+  impact: 'MEDIUM',
+  serviceId: '',
+  title: '',
+  urgency: 'MEDIUM',
+};
+
 export function AgentPage({ session }: AgentPageProps) {
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
-  const [draft, setDraft] = useState<TicketDraftState>({
-    categoryId: '',
-    channelId: '',
-    ciId: '',
-    description: '',
-    groupId: '',
-    priorityId: '',
-    serviceId: '',
-    title: '',
-    type: 'INCIDENT',
-  });
+  const [draft, setDraft] = useState<IncidentDraftState>(INITIAL_DRAFT);
+  const [createdIncident, setCreatedIncident] =
+    useState<CreatedIncidentSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
+  const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(
+    null,
+  );
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
+    {},
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -74,9 +91,6 @@ export function AgentPage({ session }: AgentPageProps) {
           channelId:
             currentDraft.channelId || nextCatalog.channels[0]?.id || '',
           ciId: currentDraft.ciId || nextCatalog.cis[0]?.id || '',
-          groupId: currentDraft.groupId || nextCatalog.groups[0]?.id || '',
-          priorityId:
-            currentDraft.priorityId || nextCatalog.priorities[0]?.id || '',
           serviceId:
             currentDraft.serviceId || nextCatalog.services[0]?.id || '',
         }));
@@ -88,7 +102,7 @@ export function AgentPage({ session }: AgentPageProps) {
         setLoadErrorMessage(
           error instanceof Error
             ? error.message
-            : 'Erreur inconnue lors du chargement des référentiels ticket',
+            : 'Erreur inconnue lors du chargement des referentiels ticket',
         );
       } finally {
         if (!cancelled) {
@@ -117,39 +131,77 @@ export function AgentPage({ session }: AgentPageProps) {
     () => catalog.cis.find((item) => item.id === draft.ciId) ?? null,
     [catalog.cis, draft.ciId],
   );
-  const selectedGroup = useMemo(
-    () => catalog.groups.find((item) => item.id === draft.groupId) ?? null,
-    [catalog.groups, draft.groupId],
-  );
-  const selectedPriority = useMemo(
-    () =>
-      catalog.priorities.find((item) => item.id === draft.priorityId) ?? null,
-    [catalog.priorities, draft.priorityId],
-  );
   const selectedService = useMemo(
     () => catalog.services.find((item) => item.id === draft.serviceId) ?? null,
     [catalog.services, draft.serviceId],
   );
 
   function handleFieldChange(
-    field: keyof TicketDraftState,
+    field: keyof IncidentDraftState,
     value: string,
   ): void {
     setDraft((currentDraft) => ({
       ...currentDraft,
       [field]: value,
     }));
+    setValidationErrors((currentErrors) => ({
+      ...currentErrors,
+      [field]: undefined,
+    }));
+    setSubmitErrorMessage(null);
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const errors = validateIncidentDraft(draft);
+    setValidationErrors(errors);
+    setSubmitErrorMessage(null);
+    setCreatedIncident(null);
+
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const result = await createIncident(session.accessToken, {
+        categoryId: draft.categoryId.trim(),
+        channelId: normalizeOptionalId(draft.channelId),
+        ciId: normalizeOptionalId(draft.ciId),
+        description: draft.description.trim(),
+        impact: draft.impact,
+        serviceId: normalizeOptionalId(draft.serviceId),
+        title: draft.title.trim(),
+        urgency: draft.urgency,
+      });
+
+      setCreatedIncident(result);
+      setDraft((currentDraft) => ({
+        ...currentDraft,
+        description: '',
+        title: '',
+      }));
+    } catch (error) {
+      setSubmitErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Erreur inconnue lors de la creation de l incident',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
     <section className="panel ticket-form-panel">
-      <span className="panel-tag">P2.5</span>
-      <h2>Formulaire ticket branché sur les référentiels</h2>
+      <span className="panel-tag">P3.6</span>
+      <h2>Création d incident</h2>
       <p>
-        Cette étape valide l’intégration front : le formulaire consomme les
-        référentiels d’administration déjà configurés et remplace les futurs
-        champs libres par des listes cohérentes pour la création de ticket, y
-        compris pour un compte demandeur.
+        Cette étape branche le formulaire frontend sur le backend de création d
+        incident, avec validation des champs essentiels et calcul de priorité
+        côté serveur à partir de l impact et de l urgence.
       </p>
 
       <div className="ticket-form-summary">
@@ -162,17 +214,15 @@ export function AgentPage({ session }: AgentPageProps) {
           <strong>{translateUserRole(session.user.role)}</strong>
         </article>
         <article>
-          <span>Type de ticket</span>
-          <strong>{translateTicketType(draft.type)}</strong>
+          <span>Mode actif</span>
+          <strong>Création incident</strong>
         </article>
         <article>
-          <span>référentiels chargés</span>
+          <span>Référentiels chargés</span>
           <strong>
             {catalog.categories.length +
               catalog.channels.length +
               catalog.cis.length +
-              catalog.groups.length +
-              catalog.priorities.length +
               catalog.services.length}
           </strong>
         </article>
@@ -184,29 +234,19 @@ export function AgentPage({ session }: AgentPageProps) {
         <p className="ticket-form-error">{loadErrorMessage}</p>
       ) : (
         <div className="ticket-form-layout">
-          <form className="ticket-form-grid">
-            <label className="field">
-              <span>Type de ticket</span>
-              <select
-                onChange={(event) =>
-                  handleFieldChange('type', event.target.value)
-                }
-                value={draft.type}
-              >
-                <option value="INCIDENT">Incident</option>
-                <option value="REQUEST">Demande</option>
-              </select>
-            </label>
-
+          <form className="ticket-form-grid" onSubmit={handleSubmit}>
             <label className="field ticket-form-span-2">
               <span>Titre</span>
               <input
                 onChange={(event) =>
                   handleFieldChange('title', event.target.value)
                 }
-                placeholder="Ex. : VPN inaccessible pour équipe finance"
+                placeholder="Ex. : VPN inaccessible pour l agence Nord"
                 value={draft.title}
               />
+              {validationErrors.title ? (
+                <small className="field-error">{validationErrors.title}</small>
+              ) : null}
             </label>
 
             <label className="field ticket-form-span-2">
@@ -215,10 +255,15 @@ export function AgentPage({ session }: AgentPageProps) {
                 onChange={(event) =>
                   handleFieldChange('description', event.target.value)
                 }
-                placeholder="Décris le besoin ou l’incident."
-                rows={4}
+                placeholder="Décris le symptôme, le contexte et les impacts."
+                rows={5}
                 value={draft.description}
               />
+              {validationErrors.description ? (
+                <small className="field-error">
+                  {validationErrors.description}
+                </small>
+              ) : null}
             </label>
 
             <label className="field">
@@ -236,6 +281,11 @@ export function AgentPage({ session }: AgentPageProps) {
                   </option>
                 ))}
               </select>
+              {validationErrors.categoryId ? (
+                <small className="field-error">
+                  {validationErrors.categoryId}
+                </small>
+              ) : null}
             </label>
 
             <label className="field">
@@ -273,40 +323,6 @@ export function AgentPage({ session }: AgentPageProps) {
             </label>
 
             <label className="field">
-              <span>Priorité</span>
-              <select
-                onChange={(event) =>
-                  handleFieldChange('priorityId', event.target.value)
-                }
-                value={draft.priorityId}
-              >
-                <option value="">Choisir une priorité</option>
-                {catalog.priorities.map((priority) => (
-                  <option key={priority.id} value={priority.id}>
-                    {translatePriority(priority.name)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Groupe cible</span>
-              <select
-                onChange={(event) =>
-                  handleFieldChange('groupId', event.target.value)
-                }
-                value={draft.groupId}
-              >
-                <option value="">Choisir un groupe</option>
-                {catalog.groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
               <span>Équipement concerné</span>
               <select
                 onChange={(event) =>
@@ -314,7 +330,7 @@ export function AgentPage({ session }: AgentPageProps) {
                 }
                 value={draft.ciId}
               >
-                <option value="">Choisir un CI</option>
+                <option value="">Choisir un équipement</option>
                 {catalog.cis.map((ci) => (
                   <option key={ci.id} value={ci.id}>
                     {ci.name}
@@ -322,13 +338,60 @@ export function AgentPage({ session }: AgentPageProps) {
                 ))}
               </select>
             </label>
+
+            <label className="field">
+              <span>Impact</span>
+              <select
+                onChange={(event) =>
+                  handleFieldChange('impact', event.target.value)
+                }
+                value={draft.impact}
+              >
+                {INCIDENT_SEVERITIES.map((severity) => (
+                  <option key={severity} value={severity}>
+                    {translateIncidentSeverity(severity)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field">
+              <span>Urgence</span>
+              <select
+                onChange={(event) =>
+                  handleFieldChange('urgency', event.target.value)
+                }
+                value={draft.urgency}
+              >
+                {INCIDENT_SEVERITIES.map((severity) => (
+                  <option key={severity} value={severity}>
+                    {translateIncidentSeverity(severity)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="ticket-form-actions ticket-form-span-2">
+              <button className="primary-button" disabled={isSubmitting}>
+                {isSubmitting ? 'Création en cours...' : 'Créer l incident'}
+              </button>
+              <span className="ticket-form-helper">
+                La priorité sera calculée automatiquement par le backend.
+              </span>
+            </div>
+
+            {submitErrorMessage ? (
+              <p className="ticket-form-error ticket-form-span-2">
+                {submitErrorMessage}
+              </p>
+            ) : null}
           </form>
 
           <aside className="ticket-preview-card">
-            <h3>Aperçu de la sélection</h3>
+            <h3>Préparation incident</h3>
             <p>
-              Cette colonne montre ce que le formulaire consomme réellement dans
-              les référentiels chargés depuis le backend.
+              Les référentiels alimentent les listes, puis le backend transforme
+              l impact et l urgence en priorité métier au moment de la création.
             </p>
 
             <dl className="status-grid ticket-preview-grid">
@@ -349,32 +412,45 @@ export function AgentPage({ session }: AgentPageProps) {
                 <dd>{selectedService?.name ?? 'Non sélectionné'}</dd>
               </div>
               <div>
-                <dt>Priorité</dt>
-                <dd>
-                  {selectedPriority
-                    ? translatePriority(selectedPriority.name)
-                    : 'Non sélectionnée'}
-                </dd>
-              </div>
-              <div>
-                <dt>Groupe</dt>
-                <dd>{selectedGroup?.name ?? 'Non sélectionné'}</dd>
-              </div>
-              <div>
                 <dt>Équipement concerné</dt>
                 <dd>{selectedCi?.name ?? 'Non sélectionné'}</dd>
               </div>
+              <div>
+                <dt>Impact</dt>
+                <dd>{translateIncidentSeverity(draft.impact)}</dd>
+              </div>
+              <div>
+                <dt>Urgence</dt>
+                <dd>{translateIncidentSeverity(draft.urgency)}</dd>
+              </div>
             </dl>
 
+            {createdIncident ? (
+              <article className="ticket-created-card">
+                <span>Incident créé</span>
+                <strong>{createdIncident.ticket.number}</strong>
+                <p>{createdIncident.ticket.title}</p>
+                <dl className="ticket-created-grid">
+                  <div>
+                    <dt>Statut</dt>
+                    <dd>{createdIncident.ticket.status}</dd>
+                  </div>
+                  <div>
+                    <dt>Priorité calculée</dt>
+                    <dd>{translatePriority(createdIncident.priorityName)}</dd>
+                  </div>
+                </dl>
+              </article>
+            ) : null}
+
             <ul className="checklist">
-              <li>Les listes viennent de `/referentials`.</li>
-              <li>Le formulaire ne dépend plus de valeurs écrites en dur.</li>
+              <li>Le formulaire consomme toujours les référentiels backend.</li>
               <li>
-                Le demandeur peut maintenant préparer un ticket comme les autres
-                rôles.
+                Le mode incident est maintenant réellement soumis à l API.
               </li>
               <li>
-                La vraie création incident/demande viendra en `P3.6` et `P3.7`.
+                La priorité n est plus choisie à la main : elle dépend de l
+                impact et de l urgence.
               </li>
             </ul>
           </aside>
@@ -382,4 +458,28 @@ export function AgentPage({ session }: AgentPageProps) {
       )}
     </section>
   );
+}
+
+function validateIncidentDraft(draft: IncidentDraftState): ValidationErrors {
+  const errors: ValidationErrors = {};
+
+  if (!draft.title.trim()) {
+    errors.title = 'Le titre est obligatoire.';
+  }
+
+  if (!draft.description.trim()) {
+    errors.description = 'La description est obligatoire.';
+  }
+
+  if (!draft.categoryId.trim()) {
+    errors.categoryId = 'La catégorie est obligatoire.';
+  }
+
+  return errors;
+}
+
+function normalizeOptionalId(value: string): string | null {
+  const normalized = value.trim();
+
+  return normalized ? normalized : null;
 }

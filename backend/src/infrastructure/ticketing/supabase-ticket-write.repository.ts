@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   Injectable,
   ServiceUnavailableException,
@@ -11,6 +11,7 @@ import {
   CreateIncidentRecord,
   CreateRequestRecord,
   TicketWriteRepository,
+  UpdateTicketAssignmentRecord,
 } from '../../application/ticketing/repositories/ticket-write.repository';
 import {
   CreateTicketCommentRecord,
@@ -96,6 +97,32 @@ export class SupabaseTicketWriteRepository
     TicketCommentReadRepository,
     TicketCommentWriteRepository
 {
+  async updateAssignment(
+    ticketId: string,
+    record: UpdateTicketAssignmentRecord,
+  ): Promise<void> {
+    await this.send(
+      `tickets?id=eq.${ticketId}`,
+      'PATCH',
+      {
+        assigned_to_user_id: record.assignedToUserId,
+        assignment_group_id: record.assignmentGroupId,
+      },
+      false,
+    );
+  }
+
+  async updateStatus(ticketId: string, status: TicketStatus): Promise<void> {
+    await this.send(
+      `tickets?id=eq.${ticketId}`,
+      'PATCH',
+      {
+        status,
+      },
+      false,
+    );
+  }
+
   async searchTickets(filters: SearchTicketsFilters): Promise<TicketSummary[]> {
     const query = new URLSearchParams({
       order: 'created_at.desc',
@@ -519,7 +546,7 @@ export class SupabaseTicketWriteRepository
 
   private async send(
     path: string,
-    method: 'GET' | 'POST' | 'DELETE',
+    method: 'GET' | 'PATCH' | 'POST' | 'DELETE',
     body?: unknown,
     returnRepresentation = false,
   ): Promise<Response> {
