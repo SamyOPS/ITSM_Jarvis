@@ -4,6 +4,14 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import {
+  ListTicketAttachmentsFilters,
+  TicketAttachmentReadRepository,
+} from '../../application/ticketing/repositories/ticket-attachment-read.repository';
+import {
+  CreateTicketAttachmentRecord,
+  TicketAttachmentWriteRepository,
+} from '../../application/ticketing/repositories/ticket-attachment-write.repository';
+import {
   ListTicketCommentsFilters,
   TicketCommentReadRepository,
 } from '../../application/ticketing/repositories/ticket-comment-read.repository';
@@ -24,6 +32,7 @@ import {
 import { CreatedIncident } from '../../domain/ticketing/created-incident';
 import { CreatedRequest } from '../../domain/ticketing/created-request';
 import { Incident } from '../../domain/ticketing/incident';
+import { TicketAttachment } from '../../domain/ticketing/ticket-attachment';
 import { PriorityName } from '../../domain/ticketing/priority-name';
 import { RequestApprovalStatus } from '../../domain/ticketing/request-approval-status';
 import { RequestTicket } from '../../domain/ticketing/request';
@@ -79,6 +88,18 @@ type SupabaseTicketCommentRow = {
   ticket_id: string;
 };
 
+type SupabaseTicketAttachmentRow = {
+  bucket_id: string;
+  created_at: string;
+  file_name: string;
+  id: string;
+  mime_type: string | null;
+  size_bytes: number | string;
+  storage_path: string;
+  ticket_id: string;
+  uploaded_by_user_id: string;
+};
+
 type SupabasePriorityRow = {
   id: string;
   name: PriorityName;
@@ -95,7 +116,9 @@ export class SupabaseTicketWriteRepository
     TicketWriteRepository,
     TicketReadRepository,
     TicketCommentReadRepository,
-    TicketCommentWriteRepository
+    TicketCommentWriteRepository,
+    TicketAttachmentReadRepository,
+    TicketAttachmentWriteRepository
 {
   async updateAssignment(
     ticketId: string,
@@ -323,6 +346,84 @@ export class SupabaseTicketWriteRepository
       comment.body,
       comment.is_internal,
       comment.created_at,
+    );
+  }
+
+  async listTicketAttachments(
+    filters: ListTicketAttachmentsFilters,
+  ): Promise<TicketAttachment[]> {
+    const query = new URLSearchParams({
+      order: 'created_at.asc',
+      select:
+        'id,ticket_id,uploaded_by_user_id,bucket_id,storage_path,file_name,mime_type,size_bytes,created_at',
+      ticket_id: `eq.${filters.ticketId}`,
+    });
+
+    const response = await this.send(
+      `ticket_attachments?${query.toString()}`,
+      'GET',
+    );
+    const body = (await response.json()) as
+      | SupabaseTicketAttachmentRow[]
+      | SupabaseTicketAttachmentRow
+      | null;
+
+    return normalizeRows(body).map(
+      (attachment) =>
+        new TicketAttachment(
+          attachment.id,
+          attachment.ticket_id,
+          attachment.uploaded_by_user_id,
+          attachment.bucket_id,
+          attachment.storage_path,
+          attachment.file_name,
+          attachment.mime_type,
+          Number(attachment.size_bytes),
+          attachment.created_at,
+        ),
+    );
+  }
+
+  async addTicketAttachment(
+    record: CreateTicketAttachmentRecord,
+  ): Promise<TicketAttachment> {
+    const response = await this.send(
+      'ticket_attachments',
+      'POST',
+      {
+        bucket_id: record.bucketId,
+        file_name: record.fileName,
+        mime_type: record.mimeType,
+        size_bytes: record.sizeBytes,
+        storage_path: record.storagePath,
+        ticket_id: record.ticketId,
+        uploaded_by_user_id: record.uploadedByUserId,
+      },
+      true,
+    );
+
+    const body = (await response.json()) as
+      | SupabaseTicketAttachmentRow[]
+      | SupabaseTicketAttachmentRow
+      | null;
+    const attachment = extractSingleRow(body);
+
+    if (!attachment) {
+      throw new ServiceUnavailableException(
+        'Ticket attachment creation did not return a persisted row.',
+      );
+    }
+
+    return new TicketAttachment(
+      attachment.id,
+      attachment.ticket_id,
+      attachment.uploaded_by_user_id,
+      attachment.bucket_id,
+      attachment.storage_path,
+      attachment.file_name,
+      attachment.mime_type,
+      Number(attachment.size_bytes),
+      attachment.created_at,
     );
   }
 

@@ -49,6 +49,34 @@ describe('AppController (e2e)', () => {
       .expect(401);
   });
 
+  it('/tickets/:id/comments (POST) returns 401 without a bearer token', () => {
+    return request(app.getHttpServer())
+      .post('/tickets/ticket-1/comments')
+      .send({
+        body: 'Commentaire public',
+      })
+      .expect(401);
+  });
+
+  it('/tickets/:id/attachments (GET) returns 401 without a bearer token', () => {
+    return request(app.getHttpServer())
+      .get('/tickets/ticket-1/attachments')
+      .expect(401);
+  });
+
+  it('/tickets/:id/attachments (POST) returns 401 without a bearer token', () => {
+    return request(app.getHttpServer())
+      .post('/tickets/ticket-1/attachments')
+      .send({
+        bucketId: 'ticket-attachments',
+        fileName: 'test-upload.txt',
+        mimeType: 'text/plain',
+        sizeBytes: 21,
+        storagePath: 'user-1/test-upload.txt',
+      })
+      .expect(401);
+  });
+
   it('/tickets/:id/assign (PATCH) returns 401 without a bearer token', () => {
     return request(app.getHttpServer())
       .patch('/tickets/ticket-1/assign')
@@ -64,15 +92,6 @@ describe('AppController (e2e)', () => {
       .patch('/tickets/ticket-1/status')
       .send({
         status: 'IN_PROGRESS',
-      })
-      .expect(401);
-  });
-
-  it('/tickets/:id/comments (POST) returns 401 without a bearer token', () => {
-    return request(app.getHttpServer())
-      .post('/tickets/ticket-1/comments')
-      .send({
-        body: 'Commentaire public',
       })
       .expect(401);
   });
@@ -98,7 +117,7 @@ describe('AppController (e2e)', () => {
         description: 'Besoin d un acces VPN',
         priorityId: 'priority-medium',
         requestType: 'ACCESS',
-        title: 'Demande accès VPN',
+        title: 'Demande acces VPN',
       })
       .expect(401);
   });
