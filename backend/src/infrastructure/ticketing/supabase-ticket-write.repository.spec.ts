@@ -151,6 +151,91 @@ describe('SupabaseTicketWriteRepository', () => {
     );
   });
 
+  it('lists ticket attachments through Supabase', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue([
+        {
+          bucket_id: 'ticket-attachments',
+          created_at: '2026-04-02T08:20:00.000Z',
+          file_name: 'test-upload.txt',
+          id: 'attachment-1',
+          mime_type: 'text/plain',
+          size_bytes: 21,
+          storage_path: 'user-1/test-upload.txt',
+          ticket_id: 'ticket-1',
+          uploaded_by_user_id: 'user-1',
+        },
+      ]),
+    });
+
+    const repository = new SupabaseTicketWriteRepository();
+    const attachments = await repository.listTicketAttachments({
+      ticketId: 'ticket-1',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '/rest/v1/ticket_attachments?order=created_at.asc&select=id%2Cticket_id%2Cuploaded_by_user_id%2Cbucket_id%2Cstorage_path%2Cfile_name%2Cmime_type%2Csize_bytes%2Ccreated_at&ticket_id=eq.ticket-1',
+      ),
+      expect.any(Object),
+    );
+    expect(attachments).toEqual([
+      expect.objectContaining({
+        bucketId: 'ticket-attachments',
+        fileName: 'test-upload.txt',
+        id: 'attachment-1',
+        sizeBytes: 21,
+        storagePath: 'user-1/test-upload.txt',
+        ticketId: 'ticket-1',
+        uploadedByUserId: 'user-1',
+      }),
+    ]);
+  });
+
+  it('creates a ticket attachment through Supabase', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue([
+        {
+          bucket_id: 'ticket-attachments',
+          created_at: '2026-04-02T08:21:00.000Z',
+          file_name: 'test-upload.txt',
+          id: 'attachment-1',
+          mime_type: 'text/plain',
+          size_bytes: 21,
+          storage_path: 'user-1/test-upload.txt',
+          ticket_id: 'ticket-1',
+          uploaded_by_user_id: 'user-1',
+        },
+      ]),
+    });
+
+    const repository = new SupabaseTicketWriteRepository();
+
+    await expect(
+      repository.addTicketAttachment({
+        bucketId: 'ticket-attachments',
+        fileName: 'test-upload.txt',
+        mimeType: 'text/plain',
+        sizeBytes: 21,
+        storagePath: 'user-1/test-upload.txt',
+        ticketId: 'ticket-1',
+        uploadedByUserId: 'user-1',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        bucketId: 'ticket-attachments',
+        fileName: 'test-upload.txt',
+        id: 'attachment-1',
+        sizeBytes: 21,
+        storagePath: 'user-1/test-upload.txt',
+        ticketId: 'ticket-1',
+        uploadedByUserId: 'user-1',
+      }),
+    );
+  });
+
   it('fails when Supabase config is missing', async () => {
     process.env.SUPABASE_URL = '';
 

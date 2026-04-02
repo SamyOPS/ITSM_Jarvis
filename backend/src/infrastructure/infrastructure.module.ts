@@ -14,6 +14,8 @@ import { ReferentialPriorityReadRepository } from '../application/referentials/r
 import { ReferentialPriorityWriteRepository } from '../application/referentials/repositories/referential-priority-write.repository';
 import { ReferentialServiceReadRepository } from '../application/referentials/repositories/referential-service-read.repository';
 import { ReferentialServiceWriteRepository } from '../application/referentials/repositories/referential-service-write.repository';
+import { TicketAttachmentReadRepository } from '../application/ticketing/repositories/ticket-attachment-read.repository';
+import { TicketAttachmentWriteRepository } from '../application/ticketing/repositories/ticket-attachment-write.repository';
 import { TicketCommentReadRepository } from '../application/ticketing/repositories/ticket-comment-read.repository';
 import { TicketCommentWriteRepository } from '../application/ticketing/repositories/ticket-comment-write.repository';
 import { TicketReadRepository } from '../application/ticketing/repositories/ticket-read.repository';
@@ -67,6 +69,14 @@ const referentialRepositoryBindings = [
       useExisting: SupabaseTicketWriteRepository,
     },
     {
+      provide: TicketAttachmentReadRepository,
+      useExisting: SupabaseTicketWriteRepository,
+    },
+    {
+      provide: TicketAttachmentWriteRepository,
+      useExisting: SupabaseTicketWriteRepository,
+    },
+    {
       provide: UserAssignmentProfileRepository,
       useExisting: SupabaseUserAssignmentProfileRepository,
     },
@@ -79,6 +89,8 @@ const referentialRepositoryBindings = [
     TicketWriteRepository,
     TicketCommentReadRepository,
     TicketCommentWriteRepository,
+    TicketAttachmentReadRepository,
+    TicketAttachmentWriteRepository,
   ],
 })
 export class InfrastructureModule {}

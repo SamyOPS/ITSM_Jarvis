@@ -8,18 +8,21 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { AddTicketAttachmentUseCase } from '../../../application/ticketing/use-cases/add-ticket-attachment.use-case';
 import { AddTicketCommentUseCase } from '../../../application/ticketing/use-cases/add-ticket-comment.use-case';
 import { AssignTicketUseCase } from '../../../application/ticketing/use-cases/assign-ticket.use-case';
 import { ChangeTicketStatusUseCase } from '../../../application/ticketing/use-cases/change-ticket-status.use-case';
 import { CreateIncidentUseCase } from '../../../application/ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from '../../../application/ticketing/use-cases/create-request.use-case';
 import { GetTicketByIdUseCase } from '../../../application/ticketing/use-cases/get-ticket-by-id.use-case';
+import { ListTicketAttachmentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-attachments.use-case';
 import { ListTicketCommentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-comments.use-case';
 import { SearchTicketsUseCase } from '../../../application/ticketing/use-cases/search-tickets.use-case';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
 import { UserRole } from '../../../domain/auth/user-role';
 import { CreatedIncident } from '../../../domain/ticketing/created-incident';
 import { CreatedRequest } from '../../../domain/ticketing/created-request';
+import { TicketAttachment } from '../../../domain/ticketing/ticket-attachment';
 import { TicketComment } from '../../../domain/ticketing/ticket-comment';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
@@ -29,6 +32,7 @@ import { BearerAuthGuard } from '../auth/bearer-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import type { AddTicketAttachmentDto } from './add-ticket-attachment.dto';
 import type { AddTicketCommentDto } from './add-ticket-comment.dto';
 import type { AssignTicketDto } from './assign-ticket.dto';
 import type { ChangeTicketStatusDto } from './change-ticket-status.dto';
@@ -60,6 +64,8 @@ export class TicketsController {
     private readonly getTicketByIdUseCase: GetTicketByIdUseCase,
     private readonly listTicketCommentsUseCase: ListTicketCommentsUseCase,
     private readonly addTicketCommentUseCase: AddTicketCommentUseCase,
+    private readonly listTicketAttachmentsUseCase: ListTicketAttachmentsUseCase,
+    private readonly addTicketAttachmentUseCase: AddTicketAttachmentUseCase,
   ) {}
 
   @Get()
@@ -81,6 +87,50 @@ export class TicketsController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<TicketComment[]> {
     return this.listTicketCommentsUseCase.execute(id, user.id, user.role);
+  }
+
+  @Post(':id/comments')
+  @UseGuards(BearerAuthGuard)
+  addComment(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: AddTicketCommentDto,
+  ): Promise<TicketComment> {
+    return this.addTicketCommentUseCase.execute({
+      authorRole: user.role,
+      authorUserId: user.id,
+      body: body.body,
+      isInternal: body.isInternal,
+      ticketId: id,
+    });
+  }
+
+  @Get(':id/attachments')
+  @UseGuards(BearerAuthGuard)
+  listAttachments(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<TicketAttachment[]> {
+    return this.listTicketAttachmentsUseCase.execute(id, user.id, user.role);
+  }
+
+  @Post(':id/attachments')
+  @UseGuards(BearerAuthGuard)
+  addAttachment(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: AddTicketAttachmentDto,
+  ): Promise<TicketAttachment> {
+    return this.addTicketAttachmentUseCase.execute({
+      bucketId: body.bucketId,
+      fileName: body.fileName,
+      mimeType: body.mimeType,
+      sizeBytes: body.sizeBytes,
+      storagePath: body.storagePath,
+      ticketId: id,
+      uploaderRole: user.role,
+      uploaderUserId: user.id,
+    });
   }
 
   @Patch(':id/assign')
@@ -106,22 +156,6 @@ export class TicketsController {
   ): Promise<TicketDetail> {
     return this.changeTicketStatusUseCase.execute({
       status: body.status,
-      ticketId: id,
-    });
-  }
-
-  @Post(':id/comments')
-  @UseGuards(BearerAuthGuard)
-  addComment(
-    @Param('id') id: string,
-    @CurrentUser() user: AuthenticatedUser,
-    @Body() body: AddTicketCommentDto,
-  ): Promise<TicketComment> {
-    return this.addTicketCommentUseCase.execute({
-      authorRole: user.role,
-      authorUserId: user.id,
-      body: body.body,
-      isInternal: body.isInternal,
       ticketId: id,
     });
   }
