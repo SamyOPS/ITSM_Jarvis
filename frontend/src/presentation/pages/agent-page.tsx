@@ -4,20 +4,32 @@ import {
   translateChannel,
   translateIncidentSeverity,
   translatePriority,
+  translateRequestType,
+  translateTicketType,
   translateUserRole,
 } from '../../domain/i18n/ticketing-labels';
 import type { ReferentialCatalogSnapshot } from '../../domain/referentials/referential-catalog';
 import type { CreatedIncidentSnapshot } from '../../domain/ticketing/created-incident';
+import type { CreatedRequestSnapshot } from '../../domain/ticketing/created-request';
 import {
   INCIDENT_SEVERITIES,
   type IncidentSeverity,
 } from '../../domain/ticketing/incident-severity';
+import {
+  REQUEST_TYPES,
+  type RequestType,
+} from '../../domain/ticketing/request-type';
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
-import { createIncident } from '../../infrastructure/api/ticketing-api';
+import {
+  createIncident,
+  createRequest,
+} from '../../infrastructure/api/ticketing-api';
 
 type AgentPageProps = {
   session: AuthSessionSnapshot;
 };
+
+type TicketMode = 'INCIDENT' | 'REQUEST';
 
 type IncidentDraftState = {
   categoryId: string;
@@ -30,7 +42,21 @@ type IncidentDraftState = {
   urgency: IncidentSeverity;
 };
 
-type ValidationErrors = Partial<Record<keyof IncidentDraftState, string>>;
+type RequestDraftState = {
+  categoryId: string;
+  channelId: string;
+  ciId: string;
+  description: string;
+  priorityId: string;
+  requestType: RequestType;
+  serviceId: string;
+  title: string;
+};
+
+type IncidentValidationErrors = Partial<
+  Record<keyof IncidentDraftState, string>
+>;
+type RequestValidationErrors = Partial<Record<keyof RequestDraftState, string>>;
 
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],
@@ -42,7 +68,7 @@ const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   services: [],
 };
 
-const INITIAL_DRAFT: IncidentDraftState = {
+const INITIAL_INCIDENT_DRAFT: IncidentDraftState = {
   categoryId: '',
   channelId: '',
   ciId: '',
@@ -53,21 +79,41 @@ const INITIAL_DRAFT: IncidentDraftState = {
   urgency: 'MEDIUM',
 };
 
+const INITIAL_REQUEST_DRAFT: RequestDraftState = {
+  categoryId: '',
+  channelId: '',
+  ciId: '',
+  description: '',
+  priorityId: '',
+  requestType: 'OTHER',
+  serviceId: '',
+  title: '',
+};
+
 export function AgentPage({ session }: AgentPageProps) {
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
-  const [draft, setDraft] = useState<IncidentDraftState>(INITIAL_DRAFT);
+  const [mode, setMode] = useState<TicketMode>('INCIDENT');
+  const [incidentDraft, setIncidentDraft] = useState<IncidentDraftState>(
+    INITIAL_INCIDENT_DRAFT,
+  );
+  const [requestDraft, setRequestDraft] = useState<RequestDraftState>(
+    INITIAL_REQUEST_DRAFT,
+  );
   const [createdIncident, setCreatedIncident] =
     useState<CreatedIncidentSnapshot | null>(null);
+  const [createdRequest, setCreatedRequest] =
+    useState<CreatedRequestSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
   const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(
     null,
   );
-  const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
-    {},
-  );
+  const [incidentValidationErrors, setIncidentValidationErrors] =
+    useState<IncidentValidationErrors>({});
+  const [requestValidationErrors, setRequestValidationErrors] =
+    useState<RequestValidationErrors>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -84,13 +130,25 @@ export function AgentPage({ session }: AgentPageProps) {
         }
 
         setCatalog(nextCatalog);
-        setDraft((currentDraft) => ({
+        setIncidentDraft((currentDraft) => ({
           ...currentDraft,
           categoryId:
             currentDraft.categoryId || nextCatalog.categories[0]?.id || '',
           channelId:
             currentDraft.channelId || nextCatalog.channels[0]?.id || '',
           ciId: currentDraft.ciId || nextCatalog.cis[0]?.id || '',
+          serviceId:
+            currentDraft.serviceId || nextCatalog.services[0]?.id || '',
+        }));
+        setRequestDraft((currentDraft) => ({
+          ...currentDraft,
+          categoryId:
+            currentDraft.categoryId || nextCatalog.categories[0]?.id || '',
+          channelId:
+            currentDraft.channelId || nextCatalog.channels[0]?.id || '',
+          ciId: currentDraft.ciId || nextCatalog.cis[0]?.id || '',
+          priorityId:
+            currentDraft.priorityId || nextCatalog.priorities[0]?.id || '',
           serviceId:
             currentDraft.serviceId || nextCatalog.services[0]?.id || '',
         }));
@@ -118,33 +176,65 @@ export function AgentPage({ session }: AgentPageProps) {
     };
   }, []);
 
-  const selectedCategory = useMemo(
+  const selectedCategory = useMemo(() => {
+    const categoryId =
+      mode === 'INCIDENT' ? incidentDraft.categoryId : requestDraft.categoryId;
+    return catalog.categories.find((item) => item.id === categoryId) ?? null;
+  }, [
+    catalog.categories,
+    incidentDraft.categoryId,
+    mode,
+    requestDraft.categoryId,
+  ]);
+
+  const selectedChannel = useMemo(() => {
+    const channelId =
+      mode === 'INCIDENT' ? incidentDraft.channelId : requestDraft.channelId;
+    return catalog.channels.find((item) => item.id === channelId) ?? null;
+  }, [catalog.channels, incidentDraft.channelId, mode, requestDraft.channelId]);
+
+  const selectedCi = useMemo(() => {
+    const ciId = mode === 'INCIDENT' ? incidentDraft.ciId : requestDraft.ciId;
+    return catalog.cis.find((item) => item.id === ciId) ?? null;
+  }, [catalog.cis, incidentDraft.ciId, mode, requestDraft.ciId]);
+
+  const selectedService = useMemo(() => {
+    const serviceId =
+      mode === 'INCIDENT' ? incidentDraft.serviceId : requestDraft.serviceId;
+    return catalog.services.find((item) => item.id === serviceId) ?? null;
+  }, [catalog.services, incidentDraft.serviceId, mode, requestDraft.serviceId]);
+
+  const selectedPriority = useMemo(
     () =>
-      catalog.categories.find((item) => item.id === draft.categoryId) ?? null,
-    [catalog.categories, draft.categoryId],
-  );
-  const selectedChannel = useMemo(
-    () => catalog.channels.find((item) => item.id === draft.channelId) ?? null,
-    [catalog.channels, draft.channelId],
-  );
-  const selectedCi = useMemo(
-    () => catalog.cis.find((item) => item.id === draft.ciId) ?? null,
-    [catalog.cis, draft.ciId],
-  );
-  const selectedService = useMemo(
-    () => catalog.services.find((item) => item.id === draft.serviceId) ?? null,
-    [catalog.services, draft.serviceId],
+      catalog.priorities.find((item) => item.id === requestDraft.priorityId) ??
+      null,
+    [catalog.priorities, requestDraft.priorityId],
   );
 
-  function handleFieldChange(
+  function handleIncidentFieldChange(
     field: keyof IncidentDraftState,
     value: string,
   ): void {
-    setDraft((currentDraft) => ({
+    setIncidentDraft((currentDraft) => ({
       ...currentDraft,
       [field]: value,
     }));
-    setValidationErrors((currentErrors) => ({
+    setIncidentValidationErrors((currentErrors) => ({
+      ...currentErrors,
+      [field]: undefined,
+    }));
+    setSubmitErrorMessage(null);
+  }
+
+  function handleRequestFieldChange(
+    field: keyof RequestDraftState,
+    value: string,
+  ): void {
+    setRequestDraft((currentDraft) => ({
+      ...currentDraft,
+      [field]: value,
+    }));
+    setRequestValidationErrors((currentErrors) => ({
       ...currentErrors,
       [field]: undefined,
     }));
@@ -153,11 +243,55 @@ export function AgentPage({ session }: AgentPageProps) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    const errors = validateIncidentDraft(draft);
-    setValidationErrors(errors);
     setSubmitErrorMessage(null);
     setCreatedIncident(null);
+    setCreatedRequest(null);
+
+    if (mode === 'INCIDENT') {
+      const errors = validateIncidentDraft(incidentDraft);
+      setIncidentValidationErrors(errors);
+      setRequestValidationErrors({});
+
+      if (Object.keys(errors).length > 0) {
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      try {
+        const result = await createIncident(session.accessToken, {
+          categoryId: incidentDraft.categoryId.trim(),
+          channelId: normalizeOptionalId(incidentDraft.channelId),
+          ciId: normalizeOptionalId(incidentDraft.ciId),
+          description: incidentDraft.description.trim(),
+          impact: incidentDraft.impact,
+          serviceId: normalizeOptionalId(incidentDraft.serviceId),
+          title: incidentDraft.title.trim(),
+          urgency: incidentDraft.urgency,
+        });
+
+        setCreatedIncident(result);
+        setIncidentDraft((currentDraft) => ({
+          ...currentDraft,
+          description: '',
+          title: '',
+        }));
+      } catch (error) {
+        setSubmitErrorMessage(
+          error instanceof Error
+            ? error.message
+            : 'Erreur inconnue lors de la creation de l incident',
+        );
+      } finally {
+        setIsSubmitting(false);
+      }
+
+      return;
+    }
+
+    const errors = validateRequestDraft(requestDraft);
+    setRequestValidationErrors(errors);
+    setIncidentValidationErrors({});
 
     if (Object.keys(errors).length > 0) {
       return;
@@ -166,19 +300,19 @@ export function AgentPage({ session }: AgentPageProps) {
     setIsSubmitting(true);
 
     try {
-      const result = await createIncident(session.accessToken, {
-        categoryId: draft.categoryId.trim(),
-        channelId: normalizeOptionalId(draft.channelId),
-        ciId: normalizeOptionalId(draft.ciId),
-        description: draft.description.trim(),
-        impact: draft.impact,
-        serviceId: normalizeOptionalId(draft.serviceId),
-        title: draft.title.trim(),
-        urgency: draft.urgency,
+      const result = await createRequest(session.accessToken, {
+        categoryId: requestDraft.categoryId.trim(),
+        channelId: normalizeOptionalId(requestDraft.channelId),
+        ciId: normalizeOptionalId(requestDraft.ciId),
+        description: requestDraft.description.trim(),
+        priorityId: requestDraft.priorityId.trim(),
+        requestType: requestDraft.requestType,
+        serviceId: normalizeOptionalId(requestDraft.serviceId),
+        title: requestDraft.title.trim(),
       });
 
-      setCreatedIncident(result);
-      setDraft((currentDraft) => ({
+      setCreatedRequest(result);
+      setRequestDraft((currentDraft) => ({
         ...currentDraft,
         description: '',
         title: '',
@@ -187,7 +321,7 @@ export function AgentPage({ session }: AgentPageProps) {
       setSubmitErrorMessage(
         error instanceof Error
           ? error.message
-          : 'Erreur inconnue lors de la creation de l incident',
+          : 'Erreur inconnue lors de la creation de la demande',
       );
     } finally {
       setIsSubmitting(false);
@@ -196,56 +330,92 @@ export function AgentPage({ session }: AgentPageProps) {
 
   return (
     <section className="panel ticket-form-panel">
-      <span className="panel-tag">P3.6</span>
-      <h2>Création d incident</h2>
+      <span className="panel-tag">P3.6 / P3.7</span>
+      <h2>Creation de ticket</h2>
       <p>
-        Cette étape branche le formulaire frontend sur le backend de création d
-        incident, avec validation des champs essentiels et calcul de priorité
-        côté serveur à partir de l impact et de l urgence.
+        La page gere maintenant les deux parcours frontend du lot P3 : incident
+        avec priorite calculee, et demande avec priorite choisie manuellement.
       </p>
 
       <div className="ticket-form-summary">
         <article>
-          <span>Utilisateur connecté</span>
+          <span>Utilisateur connecte</span>
           <strong>{session.user.email}</strong>
         </article>
         <article>
-          <span>Rôle</span>
+          <span>Role</span>
           <strong>{translateUserRole(session.user.role)}</strong>
         </article>
         <article>
           <span>Mode actif</span>
-          <strong>Création incident</strong>
+          <strong>{translateTicketType(mode)}</strong>
         </article>
         <article>
-          <span>Référentiels chargés</span>
+          <span>Referentiels charges</span>
           <strong>
             {catalog.categories.length +
               catalog.channels.length +
               catalog.cis.length +
+              catalog.priorities.length +
               catalog.services.length}
           </strong>
         </article>
       </div>
 
       {isLoading ? (
-        <p className="ticket-form-message">Chargement des référentiels...</p>
+        <p className="ticket-form-message">Chargement des referentiels...</p>
       ) : loadErrorMessage ? (
         <p className="ticket-form-error">{loadErrorMessage}</p>
       ) : (
         <div className="ticket-form-layout">
           <form className="ticket-form-grid" onSubmit={handleSubmit}>
+            <div className="ticket-mode-switch ticket-form-span-2">
+              <button
+                className={
+                  mode === 'INCIDENT' ? 'primary-button' : 'secondary-button'
+                }
+                onClick={() => setMode('INCIDENT')}
+                type="button"
+              >
+                Incident
+              </button>
+              <button
+                className={
+                  mode === 'REQUEST' ? 'primary-button' : 'secondary-button'
+                }
+                onClick={() => setMode('REQUEST')}
+                type="button"
+              >
+                Demande
+              </button>
+            </div>
+
             <label className="field ticket-form-span-2">
               <span>Titre</span>
               <input
                 onChange={(event) =>
-                  handleFieldChange('title', event.target.value)
+                  mode === 'INCIDENT'
+                    ? handleIncidentFieldChange('title', event.target.value)
+                    : handleRequestFieldChange('title', event.target.value)
                 }
-                placeholder="Ex. : VPN inaccessible pour l agence Nord"
-                value={draft.title}
+                placeholder={
+                  mode === 'INCIDENT'
+                    ? 'Ex. : VPN inaccessible pour l agence Nord'
+                    : 'Ex. : Demande d acces VPN pour l agence Nord'
+                }
+                value={
+                  mode === 'INCIDENT' ? incidentDraft.title : requestDraft.title
+                }
               />
-              {validationErrors.title ? (
-                <small className="field-error">{validationErrors.title}</small>
+              {mode === 'INCIDENT' && incidentValidationErrors.title ? (
+                <small className="field-error">
+                  {incidentValidationErrors.title}
+                </small>
+              ) : null}
+              {mode === 'REQUEST' && requestValidationErrors.title ? (
+                <small className="field-error">
+                  {requestValidationErrors.title}
+                </small>
               ) : null}
             </label>
 
@@ -253,37 +423,72 @@ export function AgentPage({ session }: AgentPageProps) {
               <span>Description</span>
               <textarea
                 onChange={(event) =>
-                  handleFieldChange('description', event.target.value)
+                  mode === 'INCIDENT'
+                    ? handleIncidentFieldChange(
+                        'description',
+                        event.target.value,
+                      )
+                    : handleRequestFieldChange(
+                        'description',
+                        event.target.value,
+                      )
                 }
-                placeholder="Décris le symptôme, le contexte et les impacts."
+                placeholder={
+                  mode === 'INCIDENT'
+                    ? 'Decris le symptome, le contexte et les impacts.'
+                    : 'Decris le besoin, le contexte et le resultat attendu.'
+                }
                 rows={5}
-                value={draft.description}
+                value={
+                  mode === 'INCIDENT'
+                    ? incidentDraft.description
+                    : requestDraft.description
+                }
               />
-              {validationErrors.description ? (
+              {mode === 'INCIDENT' && incidentValidationErrors.description ? (
                 <small className="field-error">
-                  {validationErrors.description}
+                  {incidentValidationErrors.description}
+                </small>
+              ) : null}
+              {mode === 'REQUEST' && requestValidationErrors.description ? (
+                <small className="field-error">
+                  {requestValidationErrors.description}
                 </small>
               ) : null}
             </label>
 
             <label className="field">
-              <span>Catégorie</span>
+              <span>Categorie</span>
               <select
                 onChange={(event) =>
-                  handleFieldChange('categoryId', event.target.value)
+                  mode === 'INCIDENT'
+                    ? handleIncidentFieldChange(
+                        'categoryId',
+                        event.target.value,
+                      )
+                    : handleRequestFieldChange('categoryId', event.target.value)
                 }
-                value={draft.categoryId}
+                value={
+                  mode === 'INCIDENT'
+                    ? incidentDraft.categoryId
+                    : requestDraft.categoryId
+                }
               >
-                <option value="">Choisir une catégorie</option>
+                <option value="">Choisir une categorie</option>
                 {catalog.categories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
                 ))}
               </select>
-              {validationErrors.categoryId ? (
+              {mode === 'INCIDENT' && incidentValidationErrors.categoryId ? (
                 <small className="field-error">
-                  {validationErrors.categoryId}
+                  {incidentValidationErrors.categoryId}
+                </small>
+              ) : null}
+              {mode === 'REQUEST' && requestValidationErrors.categoryId ? (
+                <small className="field-error">
+                  {requestValidationErrors.categoryId}
                 </small>
               ) : null}
             </label>
@@ -292,9 +497,15 @@ export function AgentPage({ session }: AgentPageProps) {
               <span>Canal</span>
               <select
                 onChange={(event) =>
-                  handleFieldChange('channelId', event.target.value)
+                  mode === 'INCIDENT'
+                    ? handleIncidentFieldChange('channelId', event.target.value)
+                    : handleRequestFieldChange('channelId', event.target.value)
                 }
-                value={draft.channelId}
+                value={
+                  mode === 'INCIDENT'
+                    ? incidentDraft.channelId
+                    : requestDraft.channelId
+                }
               >
                 <option value="">Choisir un canal</option>
                 {catalog.channels.map((channel) => (
@@ -309,9 +520,15 @@ export function AgentPage({ session }: AgentPageProps) {
               <span>Service</span>
               <select
                 onChange={(event) =>
-                  handleFieldChange('serviceId', event.target.value)
+                  mode === 'INCIDENT'
+                    ? handleIncidentFieldChange('serviceId', event.target.value)
+                    : handleRequestFieldChange('serviceId', event.target.value)
                 }
-                value={draft.serviceId}
+                value={
+                  mode === 'INCIDENT'
+                    ? incidentDraft.serviceId
+                    : requestDraft.serviceId
+                }
               >
                 <option value="">Choisir un service</option>
                 {catalog.services.map((service) => (
@@ -323,14 +540,18 @@ export function AgentPage({ session }: AgentPageProps) {
             </label>
 
             <label className="field">
-              <span>Équipement concerné</span>
+              <span>Equipement concerne</span>
               <select
                 onChange={(event) =>
-                  handleFieldChange('ciId', event.target.value)
+                  mode === 'INCIDENT'
+                    ? handleIncidentFieldChange('ciId', event.target.value)
+                    : handleRequestFieldChange('ciId', event.target.value)
                 }
-                value={draft.ciId}
+                value={
+                  mode === 'INCIDENT' ? incidentDraft.ciId : requestDraft.ciId
+                }
               >
-                <option value="">Choisir un équipement</option>
+                <option value="">Choisir un equipement</option>
                 {catalog.cis.map((ci) => (
                   <option key={ci.id} value={ci.id}>
                     {ci.name}
@@ -339,44 +560,97 @@ export function AgentPage({ session }: AgentPageProps) {
               </select>
             </label>
 
-            <label className="field">
-              <span>Impact</span>
-              <select
-                onChange={(event) =>
-                  handleFieldChange('impact', event.target.value)
-                }
-                value={draft.impact}
-              >
-                {INCIDENT_SEVERITIES.map((severity) => (
-                  <option key={severity} value={severity}>
-                    {translateIncidentSeverity(severity)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {mode === 'INCIDENT' ? (
+              <>
+                <label className="field">
+                  <span>Impact</span>
+                  <select
+                    onChange={(event) =>
+                      handleIncidentFieldChange('impact', event.target.value)
+                    }
+                    value={incidentDraft.impact}
+                  >
+                    {INCIDENT_SEVERITIES.map((severity) => (
+                      <option key={severity} value={severity}>
+                        {translateIncidentSeverity(severity)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            <label className="field">
-              <span>Urgence</span>
-              <select
-                onChange={(event) =>
-                  handleFieldChange('urgency', event.target.value)
-                }
-                value={draft.urgency}
-              >
-                {INCIDENT_SEVERITIES.map((severity) => (
-                  <option key={severity} value={severity}>
-                    {translateIncidentSeverity(severity)}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <label className="field">
+                  <span>Urgence</span>
+                  <select
+                    onChange={(event) =>
+                      handleIncidentFieldChange('urgency', event.target.value)
+                    }
+                    value={incidentDraft.urgency}
+                  >
+                    {INCIDENT_SEVERITIES.map((severity) => (
+                      <option key={severity} value={severity}>
+                        {translateIncidentSeverity(severity)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            ) : (
+              <>
+                <label className="field">
+                  <span>Priorite</span>
+                  <select
+                    onChange={(event) =>
+                      handleRequestFieldChange('priorityId', event.target.value)
+                    }
+                    value={requestDraft.priorityId}
+                  >
+                    <option value="">Choisir une priorite</option>
+                    {catalog.priorities.map((priority) => (
+                      <option key={priority.id} value={priority.id}>
+                        {translatePriority(priority.name)}
+                      </option>
+                    ))}
+                  </select>
+                  {requestValidationErrors.priorityId ? (
+                    <small className="field-error">
+                      {requestValidationErrors.priorityId}
+                    </small>
+                  ) : null}
+                </label>
+
+                <label className="field">
+                  <span>Type de demande</span>
+                  <select
+                    onChange={(event) =>
+                      handleRequestFieldChange(
+                        'requestType',
+                        event.target.value,
+                      )
+                    }
+                    value={requestDraft.requestType}
+                  >
+                    {REQUEST_TYPES.map((requestType) => (
+                      <option key={requestType} value={requestType}>
+                        {translateRequestType(requestType)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            )}
 
             <div className="ticket-form-actions ticket-form-span-2">
               <button className="primary-button" disabled={isSubmitting}>
-                {isSubmitting ? 'Création en cours...' : 'Créer l incident'}
+                {isSubmitting
+                  ? 'Creation en cours...'
+                  : mode === 'INCIDENT'
+                    ? 'Creer incident'
+                    : 'Creer demande'}
               </button>
               <span className="ticket-form-helper">
-                La priorité sera calculée automatiquement par le backend.
+                {mode === 'INCIDENT'
+                  ? 'La priorite sera calculee automatiquement par le backend.'
+                  : 'La priorite choisie sera envoyee telle quelle au backend.'}
               </span>
             </div>
 
@@ -388,46 +662,70 @@ export function AgentPage({ session }: AgentPageProps) {
           </form>
 
           <aside className="ticket-preview-card">
-            <h3>Préparation incident</h3>
+            <h3>
+              {mode === 'INCIDENT'
+                ? 'Preparation incident'
+                : 'Preparation demande'}
+            </h3>
             <p>
-              Les référentiels alimentent les listes, puis le backend transforme
-              l impact et l urgence en priorité métier au moment de la création.
+              {mode === 'INCIDENT'
+                ? 'Le backend transformera impact et urgence en priorite metier.'
+                : 'La demande utilise une priorite manuelle et un type de demande explicite.'}
             </p>
 
             <dl className="status-grid ticket-preview-grid">
               <div>
-                <dt>Catégorie</dt>
-                <dd>{selectedCategory?.name ?? 'Non sélectionnée'}</dd>
+                <dt>Categorie</dt>
+                <dd>{selectedCategory?.name ?? 'Non selectionnee'}</dd>
               </div>
               <div>
                 <dt>Canal</dt>
                 <dd>
                   {selectedChannel
                     ? translateChannel(selectedChannel.name)
-                    : 'Non sélectionné'}
+                    : 'Non selectionne'}
                 </dd>
               </div>
               <div>
                 <dt>Service</dt>
-                <dd>{selectedService?.name ?? 'Non sélectionné'}</dd>
+                <dd>{selectedService?.name ?? 'Non selectionne'}</dd>
               </div>
               <div>
-                <dt>Équipement concerné</dt>
-                <dd>{selectedCi?.name ?? 'Non sélectionné'}</dd>
+                <dt>Equipement concerne</dt>
+                <dd>{selectedCi?.name ?? 'Non selectionne'}</dd>
               </div>
-              <div>
-                <dt>Impact</dt>
-                <dd>{translateIncidentSeverity(draft.impact)}</dd>
-              </div>
-              <div>
-                <dt>Urgence</dt>
-                <dd>{translateIncidentSeverity(draft.urgency)}</dd>
-              </div>
+              {mode === 'INCIDENT' ? (
+                <>
+                  <div>
+                    <dt>Impact</dt>
+                    <dd>{translateIncidentSeverity(incidentDraft.impact)}</dd>
+                  </div>
+                  <div>
+                    <dt>Urgence</dt>
+                    <dd>{translateIncidentSeverity(incidentDraft.urgency)}</dd>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <dt>Priorite</dt>
+                    <dd>
+                      {selectedPriority
+                        ? translatePriority(selectedPriority.name)
+                        : 'Non selectionnee'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Type de demande</dt>
+                    <dd>{translateRequestType(requestDraft.requestType)}</dd>
+                  </div>
+                </>
+              )}
             </dl>
 
             {createdIncident ? (
               <article className="ticket-created-card">
-                <span>Incident créé</span>
+                <span>Incident cree</span>
                 <strong>{createdIncident.ticket.number}</strong>
                 <p>{createdIncident.ticket.title}</p>
                 <dl className="ticket-created-grid">
@@ -436,22 +734,37 @@ export function AgentPage({ session }: AgentPageProps) {
                     <dd>{createdIncident.ticket.status}</dd>
                   </div>
                   <div>
-                    <dt>Priorité calculée</dt>
+                    <dt>Priorite calculee</dt>
                     <dd>{translatePriority(createdIncident.priorityName)}</dd>
                   </div>
                 </dl>
               </article>
             ) : null}
 
+            {createdRequest ? (
+              <article className="ticket-created-card">
+                <span>Demande creee</span>
+                <strong>{createdRequest.ticket.number}</strong>
+                <p>{createdRequest.ticket.title}</p>
+                <dl className="ticket-created-grid">
+                  <div>
+                    <dt>Statut</dt>
+                    <dd>{createdRequest.ticket.status}</dd>
+                  </div>
+                  <div>
+                    <dt>Priorite retenue</dt>
+                    <dd>{translatePriority(createdRequest.priorityName)}</dd>
+                  </div>
+                </dl>
+              </article>
+            ) : null}
+
             <ul className="checklist">
-              <li>Le formulaire consomme toujours les référentiels backend.</li>
+              <li>Le formulaire consomme toujours les referentiels backend.</li>
               <li>
-                Le mode incident est maintenant réellement soumis à l API.
+                Incident : impact et urgence sont obligatoires cote metier.
               </li>
-              <li>
-                La priorité n est plus choisie à la main : elle dépend de l
-                impact et de l urgence.
-              </li>
+              <li>Demande : la priorite est choisie manuellement.</li>
             </ul>
           </aside>
         </div>
@@ -460,8 +773,10 @@ export function AgentPage({ session }: AgentPageProps) {
   );
 }
 
-function validateIncidentDraft(draft: IncidentDraftState): ValidationErrors {
-  const errors: ValidationErrors = {};
+function validateIncidentDraft(
+  draft: IncidentDraftState,
+): IncidentValidationErrors {
+  const errors: IncidentValidationErrors = {};
 
   if (!draft.title.trim()) {
     errors.title = 'Le titre est obligatoire.';
@@ -472,7 +787,31 @@ function validateIncidentDraft(draft: IncidentDraftState): ValidationErrors {
   }
 
   if (!draft.categoryId.trim()) {
-    errors.categoryId = 'La catégorie est obligatoire.';
+    errors.categoryId = 'La categorie est obligatoire.';
+  }
+
+  return errors;
+}
+
+function validateRequestDraft(
+  draft: RequestDraftState,
+): RequestValidationErrors {
+  const errors: RequestValidationErrors = {};
+
+  if (!draft.title.trim()) {
+    errors.title = 'Le titre est obligatoire.';
+  }
+
+  if (!draft.description.trim()) {
+    errors.description = 'La description est obligatoire.';
+  }
+
+  if (!draft.categoryId.trim()) {
+    errors.categoryId = 'La categorie est obligatoire.';
+  }
+
+  if (!draft.priorityId.trim()) {
+    errors.priorityId = 'La priorite est obligatoire.';
   }
 
   return errors;
