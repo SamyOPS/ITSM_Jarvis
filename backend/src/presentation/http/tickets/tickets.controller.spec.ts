@@ -1,8 +1,10 @@
+import { AddTicketCommentUseCase } from '../../../application/ticketing/use-cases/add-ticket-comment.use-case';
 import { AssignTicketUseCase } from '../../../application/ticketing/use-cases/assign-ticket.use-case';
 import { ChangeTicketStatusUseCase } from '../../../application/ticketing/use-cases/change-ticket-status.use-case';
 import { CreateIncidentUseCase } from '../../../application/ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from '../../../application/ticketing/use-cases/create-request.use-case';
 import { GetTicketByIdUseCase } from '../../../application/ticketing/use-cases/get-ticket-by-id.use-case';
+import { ListTicketCommentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-comments.use-case';
 import { SearchTicketsUseCase } from '../../../application/ticketing/use-cases/search-tickets.use-case';
 import { UserRole } from '../../../domain/auth/user-role';
 import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
@@ -39,6 +41,24 @@ describe('TicketsController', () => {
     priorityName: 'HIGH',
     ticket: { id: 'ticket-1', number: 'TICK-000001' },
   });
+  const listComments = jest.fn().mockResolvedValue([
+    {
+      authorUserId: 'user-1',
+      body: 'Commentaire public',
+      createdAt: '2026-04-02T08:10:00.000Z',
+      id: 'comment-1',
+      isInternal: false,
+      ticketId: 'ticket-1',
+    },
+  ]);
+  const addComment = jest.fn().mockResolvedValue({
+    authorUserId: 'user-1',
+    body: 'Commentaire public',
+    createdAt: '2026-04-02T08:10:00.000Z',
+    id: 'comment-1',
+    isInternal: false,
+    ticketId: 'ticket-1',
+  });
   const createIncident = jest.fn().mockResolvedValue({
     incident: {
       impact: IncidentSeverity.HIGH,
@@ -63,6 +83,8 @@ describe('TicketsController', () => {
     changeTicketStatus.mockClear();
     searchTickets.mockClear();
     getTicketById.mockClear();
+    listComments.mockClear();
+    addComment.mockClear();
     createIncident.mockClear();
     createRequest.mockClear();
     controller = new TicketsController(
@@ -84,6 +106,12 @@ describe('TicketsController', () => {
       {
         execute: getTicketById,
       } as unknown as GetTicketByIdUseCase,
+      {
+        execute: listComments,
+      } as unknown as ListTicketCommentsUseCase,
+      {
+        execute: addComment,
+      } as unknown as AddTicketCommentUseCase,
     );
   });
 
@@ -157,6 +185,61 @@ describe('TicketsController', () => {
     });
 
     expect(getTicketById).toHaveBeenCalledWith('ticket-1');
+  });
+
+  it('delegates ticket comment listing with the authenticated role', async () => {
+    await expect(
+      controller.listComments('ticket-1', {
+        accessToken: 'token',
+        email: 'agent@jarvis.local',
+        id: 'user-1',
+        role: UserRole.AGENT,
+      }),
+    ).resolves.toEqual([
+      {
+        authorUserId: 'user-1',
+        body: 'Commentaire public',
+        createdAt: '2026-04-02T08:10:00.000Z',
+        id: 'comment-1',
+        isInternal: false,
+        ticketId: 'ticket-1',
+      },
+    ]);
+
+    expect(listComments).toHaveBeenCalledWith('ticket-1', UserRole.AGENT);
+  });
+
+  it('delegates ticket comment creation with the authenticated user', async () => {
+    await expect(
+      controller.addComment(
+        'ticket-1',
+        {
+          accessToken: 'token',
+          email: 'agent@jarvis.local',
+          id: 'user-1',
+          role: UserRole.AGENT,
+        },
+        {
+          body: 'Commentaire public',
+          isInternal: true,
+        },
+      ),
+    ).resolves.toEqual({
+      authorUserId: 'user-1',
+      body: 'Commentaire public',
+      createdAt: '2026-04-02T08:10:00.000Z',
+      id: 'comment-1',
+      isInternal: false,
+      ticketId: 'ticket-1',
+    });
+
+    expect(addComment).toHaveBeenCalledWith({
+      authorRole: UserRole.AGENT,
+      authorUserId: 'user-1',
+      body: 'Commentaire public',
+      isInternal: true,
+      ticketId: 'ticket-1',
+    });
   });
 
   it('delegates incident creation to the use case with the authenticated user id', async () => {
