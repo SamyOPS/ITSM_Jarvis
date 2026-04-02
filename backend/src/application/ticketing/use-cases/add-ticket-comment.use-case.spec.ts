@@ -45,7 +45,7 @@ describe('AddTicketCommentUseCase', () => {
         new TicketComment(
           'comment-1',
           'ticket-1',
-          'user-1',
+          'creator-1',
           'Commentaire public',
           false,
           '2026-04-02T08:10:00.000Z',
@@ -64,7 +64,7 @@ describe('AddTicketCommentUseCase', () => {
     await expect(
       useCase.execute({
         authorRole: UserRole.DEMANDEUR,
-        authorUserId: ' user-1 ',
+        authorUserId: ' creator-1 ',
         body: ' Commentaire public ',
         ticketId: ' ticket-1 ',
       }),
@@ -72,7 +72,7 @@ describe('AddTicketCommentUseCase', () => {
       new TicketComment(
         'comment-1',
         'ticket-1',
-        'user-1',
+        'creator-1',
         'Commentaire public',
         false,
         '2026-04-02T08:10:00.000Z',
@@ -80,7 +80,7 @@ describe('AddTicketCommentUseCase', () => {
     );
 
     expect(addTicketComment).toHaveBeenCalledWith({
-      authorUserId: 'user-1',
+      authorUserId: 'creator-1',
       body: 'Commentaire public',
       isInternal: false,
       ticketId: 'ticket-1',
@@ -101,7 +101,7 @@ describe('AddTicketCommentUseCase', () => {
     await expect(
       useCase.execute({
         authorRole: UserRole.DEMANDEUR,
-        authorUserId: 'user-1',
+        authorUserId: 'creator-1',
         body: 'Interne',
         isInternal: true,
         ticketId: 'ticket-1',
@@ -149,5 +149,26 @@ describe('AddTicketCommentUseCase', () => {
         ticketId: 'ticket-404',
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('rejects demandeur users outside the ticket perimeter', async () => {
+    const useCase = new AddTicketCommentUseCase(
+      {
+        addTicketComment: jest.fn(),
+      } as TicketCommentWriteRepository,
+      {
+        getTicketById: jest.fn().mockResolvedValue(ticketDetail),
+        searchTickets: jest.fn(),
+      } as TicketReadRepository,
+    );
+
+    await expect(
+      useCase.execute({
+        authorRole: UserRole.DEMANDEUR,
+        authorUserId: 'outsider-1',
+        body: 'Commentaire',
+        ticketId: 'ticket-1',
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

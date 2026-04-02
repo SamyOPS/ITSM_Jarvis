@@ -80,7 +80,7 @@ export class TicketsController {
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<TicketComment[]> {
-    return this.listTicketCommentsUseCase.execute(id, user.role);
+    return this.listTicketCommentsUseCase.execute(id, user.id, user.role);
   }
 
   @Patch(':id/assign')

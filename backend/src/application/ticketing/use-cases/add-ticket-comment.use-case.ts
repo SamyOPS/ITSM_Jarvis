@@ -9,6 +9,7 @@ import { UserRole } from '../../../domain/auth/user-role';
 import { TicketComment } from '../../../domain/ticketing/ticket-comment';
 import { TicketCommentWriteRepository } from '../repositories/ticket-comment-write.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
+import { assertTicketCommentAccess } from '../ticket-comment-access';
 
 export type AddTicketCommentCommand = {
   authorRole: UserRole;
@@ -59,6 +60,12 @@ export class AddTicketCommentUseCase {
         `Ticket ${normalizedTicketId} was not found.`,
       );
     }
+
+    assertTicketCommentAccess({
+      ticket,
+      userId: normalizedAuthorUserId,
+      userRole: command.authorRole,
+    });
 
     return this.ticketCommentWriteRepository.addTicketComment({
       authorUserId: normalizedAuthorUserId,

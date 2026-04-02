@@ -206,7 +206,11 @@ describe('TicketsController', () => {
       },
     ]);
 
-    expect(listComments).toHaveBeenCalledWith('ticket-1', UserRole.AGENT);
+    expect(listComments).toHaveBeenCalledWith(
+      'ticket-1',
+      'user-1',
+      UserRole.AGENT,
+    );
   });
 
   it('delegates ticket comment creation with the authenticated user', async () => {
