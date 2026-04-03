@@ -82,11 +82,11 @@ export class ChangeTicketPriorityUseCase {
       eventType: TicketHistoryEventType.PRIORITY_CHANGED,
       payload: {
         fromPriorityId: existingTicket.ticket.priorityId,
-        fromResolutionDueAt: existingTicket.ticket.resolutionDueAt,
         fromResponseDueAt: existingTicket.ticket.responseDueAt,
+        fromResolutionDueAt: existingTicket.ticket.resolutionDueAt,
         toPriorityId: updatedTicket.ticket.priorityId,
-        toResolutionDueAt: updatedTicket.ticket.resolutionDueAt,
         toResponseDueAt: updatedTicket.ticket.responseDueAt,
+        toResolutionDueAt: updatedTicket.ticket.resolutionDueAt,
       },
       ticketId,
     });

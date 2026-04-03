@@ -8,8 +8,8 @@ import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
-import { TicketAuditService } from '../ticket-audit.service';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
+import { TicketAuditService } from '../ticket-audit.service';
 import { ChangeTicketPriorityUseCase } from './change-ticket-priority.use-case';
 
 describe('ChangeTicketPriorityUseCase', () => {
@@ -21,7 +21,7 @@ describe('ChangeTicketPriorityUseCase', () => {
     jest.useRealTimers();
   });
 
-  it('updates priority and recalculates SLA targets', async () => {
+  it('updates priority, recalculates SLA targets and writes audit', async () => {
     const ticket = new Ticket(
       'ticket-1',
       'TICK-000001',
@@ -126,11 +126,11 @@ describe('ChangeTicketPriorityUseCase', () => {
       eventType: TicketHistoryEventType.PRIORITY_CHANGED,
       payload: {
         fromPriorityId: 'priority-low',
-        fromResolutionDueAt: '2026-04-05T09:00:00.000Z',
         fromResponseDueAt: '2026-04-04T09:00:00.000Z',
+        fromResolutionDueAt: '2026-04-05T09:00:00.000Z',
         toPriorityId: 'priority-high',
-        toResolutionDueAt: '2026-04-03T18:00:00.000Z',
         toResponseDueAt: '2026-04-03T14:00:00.000Z',
+        toResolutionDueAt: '2026-04-03T18:00:00.000Z',
       },
       ticketId: 'ticket-1',
     });
