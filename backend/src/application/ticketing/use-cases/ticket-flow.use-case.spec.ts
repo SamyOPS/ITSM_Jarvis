@@ -1,4 +1,4 @@
-import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
+﻿import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { ReferentialPriority } from '../../../domain/referentials/referential-priority';
 import { UserRole } from '../../../domain/auth/user-role';
 import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
@@ -10,6 +10,7 @@ import { Ticket } from '../../../domain/ticketing/ticket';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
+import { TicketAuditService } from '../ticket-audit.service';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import {
   CreateIncidentRecord,
@@ -32,13 +33,26 @@ describe('Ticket flow', () => {
 
   it('creates an incident, assigns it, then changes its status', async () => {
     const repository = new InMemoryTicketRepository();
-    const createIncidentUseCase = new CreateIncidentUseCase(repository, {
-      listPriorities: jest
-        .fn()
-        .mockResolvedValue([
-          new ReferentialPriority('priority-high', PriorityName.HIGH, 3, 4, 8),
-        ]),
-    } as ReferentialPriorityReadRepository);
+    const auditService = {
+      write: jest.fn().mockResolvedValue(undefined),
+    } as unknown as TicketAuditService;
+    const createIncidentUseCase = new CreateIncidentUseCase(
+      repository,
+      {
+        listPriorities: jest
+          .fn()
+          .mockResolvedValue([
+            new ReferentialPriority(
+              'priority-high',
+              PriorityName.HIGH,
+              3,
+              4,
+              8,
+            ),
+          ]),
+      } as ReferentialPriorityReadRepository,
+      auditService,
+    );
     const assignTicketUseCase = new AssignTicketUseCase(
       repository,
       repository,
@@ -50,10 +64,12 @@ describe('Ticket flow', () => {
           role: UserRole.AGENT,
         }),
       } as UserAssignmentProfileRepository,
+      auditService,
     );
     const changeTicketStatusUseCase = new ChangeTicketStatusUseCase(
       repository,
       repository,
+      auditService,
     );
     const changeTicketPriorityUseCase = new ChangeTicketPriorityUseCase(
       repository,
@@ -96,6 +112,7 @@ describe('Ticket flow', () => {
     );
 
     const assignedTicket = await assignTicketUseCase.execute({
+      actorUserId: 'agent-1',
       assignedToUserId: 'agent-1',
       assignmentGroupId: 'group-1',
       ticketId: createdIncident.ticket.id,
@@ -105,6 +122,7 @@ describe('Ticket flow', () => {
     expect(assignedTicket.ticket.assignedToUserId).toBe('agent-1');
 
     const updatedTicket = await changeTicketStatusUseCase.execute({
+      actorUserId: 'agent-1',
       status: TicketStatus.IN_PROGRESS,
       ticketId: createdIncident.ticket.id,
     });

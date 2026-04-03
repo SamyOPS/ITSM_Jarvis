@@ -1,15 +1,17 @@
-import { UserRole } from '../../../domain/auth/user-role';
+﻿import { UserRole } from '../../../domain/auth/user-role';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { Ticket } from '../../../domain/ticketing/ticket';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
 import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
+import { TicketAuditService } from '../ticket-audit.service';
 import { AssignTicketUseCase } from './assign-ticket.use-case';
 
 describe('AssignTicketUseCase', () => {
-  it('assigns a ticket to an active agent in the assignment group', async () => {
+  it('assigns a ticket to an active agent in the assignment group and writes audit', async () => {
     const detail = new TicketDetail(
       new Ticket(
         'ticket-1',
@@ -51,6 +53,7 @@ describe('AssignTicketUseCase', () => {
       isActive: true,
       role: UserRole.AGENT,
     });
+    const write = jest.fn().mockResolvedValue(undefined);
     const useCase = new AssignTicketUseCase(
       {
         getTicketById,
@@ -61,10 +64,14 @@ describe('AssignTicketUseCase', () => {
       {
         getById,
       } as unknown as UserAssignmentProfileRepository,
+      {
+        write,
+      } as unknown as TicketAuditService,
     );
 
     await expect(
       useCase.execute({
+        actorUserId: 'agent-2',
         assignedToUserId: 'agent-1',
         assignmentGroupId: 'group-1',
         ticketId: 'ticket-1',
@@ -79,6 +86,87 @@ describe('AssignTicketUseCase', () => {
     expect(updateAssignment).toHaveBeenCalledWith('ticket-1', {
       assignedToUserId: 'agent-1',
       assignmentGroupId: 'group-1',
+    });
+    expect(write).toHaveBeenCalledWith({
+      actorUserId: 'agent-2',
+      eventType: TicketHistoryEventType.ASSIGNED,
+      payload: {
+        fromAssignedToUserId: null,
+        fromAssignmentGroupId: null,
+        toAssignedToUserId: 'agent-1',
+        toAssignmentGroupId: 'group-1',
+      },
+      ticketId: 'ticket-1',
+    });
+  });
+
+  it('writes ASSIGNED when only a group assignment is set', async () => {
+    const detail = new TicketDetail(
+      new Ticket(
+        'ticket-1',
+        'TICK-000001',
+        TicketType.INCIDENT,
+        TicketStatus.OPEN,
+        'VPN KO',
+        'Impossible de se connecter',
+        'priority-1',
+        'category-1',
+        'creator-1',
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        '2026-03-31T10:00:00.000Z',
+      ),
+      null,
+      null,
+      null,
+    );
+    const getTicketById = jest
+      .fn()
+      .mockResolvedValueOnce(detail)
+      .mockResolvedValueOnce({
+        ...detail,
+        ticket: {
+          ...detail.ticket,
+          assignedToUserId: null,
+          assignmentGroupId: 'group-1',
+        },
+      });
+    const write = jest.fn().mockResolvedValue(undefined);
+    const useCase = new AssignTicketUseCase(
+      {
+        getTicketById,
+      } as unknown as TicketReadRepository,
+      {
+        updateAssignment: jest.fn().mockResolvedValue(undefined),
+      } as unknown as TicketWriteRepository,
+      {
+        getById: jest.fn(),
+      } as unknown as UserAssignmentProfileRepository,
+      {
+        write,
+      } as unknown as TicketAuditService,
+    );
+
+    await useCase.execute({
+      actorUserId: 'agent-2',
+      assignmentGroupId: 'group-1',
+      ticketId: 'ticket-1',
+    });
+
+    expect(write).toHaveBeenCalledWith({
+      actorUserId: 'agent-2',
+      eventType: TicketHistoryEventType.ASSIGNED,
+      payload: {
+        fromAssignedToUserId: null,
+        fromAssignmentGroupId: null,
+        toAssignedToUserId: null,
+        toAssignmentGroupId: 'group-1',
+      },
+      ticketId: 'ticket-1',
     });
   });
 
@@ -121,10 +209,14 @@ describe('AssignTicketUseCase', () => {
           role: UserRole.AGENT,
         }),
       } as unknown as UserAssignmentProfileRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(
       useCase.execute({
+        actorUserId: 'agent-2',
         assignedToUserId: 'agent-1',
         assignmentGroupId: 'group-1',
         ticketId: 'ticket-1',

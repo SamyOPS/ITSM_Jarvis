@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   Inject,
   Injectable,
@@ -6,9 +6,11 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketAttachment } from '../../../domain/ticketing/ticket-attachment';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketAttachmentWriteRepository } from '../repositories/ticket-attachment-write.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { assertTicketAttachmentAccess } from '../ticket-attachment-access';
+import { TicketAuditService } from '../ticket-audit.service';
 
 export type AddTicketAttachmentCommand = {
   bucketId: string;
@@ -28,6 +30,7 @@ export class AddTicketAttachmentUseCase {
     private readonly ticketAttachmentWriteRepository: TicketAttachmentWriteRepository,
     @Inject(TicketReadRepository)
     private readonly ticketReadRepository: TicketReadRepository,
+    private readonly ticketAuditService: TicketAuditService,
   ) {}
 
   async execute(
@@ -81,14 +84,30 @@ export class AddTicketAttachmentUseCase {
       userRole: command.uploaderRole,
     });
 
-    return this.ticketAttachmentWriteRepository.addTicketAttachment({
-      bucketId: normalizedBucketId,
-      fileName: normalizedFileName,
-      mimeType: normalizedMimeType,
-      sizeBytes: command.sizeBytes,
-      storagePath: normalizedStoragePath,
+    const attachment =
+      await this.ticketAttachmentWriteRepository.addTicketAttachment({
+        bucketId: normalizedBucketId,
+        fileName: normalizedFileName,
+        mimeType: normalizedMimeType,
+        sizeBytes: command.sizeBytes,
+        storagePath: normalizedStoragePath,
+        ticketId: normalizedTicketId,
+        uploadedByUserId: normalizedUploaderUserId,
+      });
+
+    await this.ticketAuditService.write({
+      actorUserId: normalizedUploaderUserId,
+      eventType: TicketHistoryEventType.ATTACHMENT_ADDED,
+      payload: {
+        attachmentId: attachment.id,
+        bucketId: attachment.bucketId,
+        fileName: attachment.fileName,
+        sizeBytes: attachment.sizeBytes,
+        storagePath: attachment.storagePath,
+      },
       ticketId: normalizedTicketId,
-      uploadedByUserId: normalizedUploaderUserId,
     });
+
+    return attachment;
   }
 }

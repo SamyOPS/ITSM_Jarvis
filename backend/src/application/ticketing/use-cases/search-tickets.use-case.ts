@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+﻿import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketSummary } from '../../../domain/ticketing/ticket-summary';
 import {

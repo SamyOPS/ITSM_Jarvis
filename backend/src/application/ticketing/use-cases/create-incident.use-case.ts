@@ -1,12 +1,14 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { CreatedIncident } from '../../../domain/ticketing/created-incident';
+import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
+import { TicketAuditService } from '../ticket-audit.service';
+import { resolveIncidentPriorityName } from '../incident-priority';
 import {
   CreateIncidentRecord,
   TicketWriteRepository,
 } from '../repositories/ticket-write.repository';
-import { CreatedIncident } from '../../../domain/ticketing/created-incident';
-import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
-import { resolveIncidentPriorityName } from '../incident-priority';
 import { calculateSlaTargets } from '../sla-targets';
 
 export type CreateIncidentCommand = {
@@ -31,12 +33,14 @@ export class CreateIncidentUseCase {
     private readonly ticketWriteRepository: TicketWriteRepository,
     @Inject(ReferentialPriorityReadRepository)
     private readonly priorityRepository: ReferentialPriorityReadRepository,
+    private readonly ticketAuditService: TicketAuditService,
   ) {}
 
   async execute(command: CreateIncidentCommand): Promise<CreatedIncident> {
     const title = command.title.trim();
     const description = command.description.trim();
     const categoryId = command.categoryId.trim();
+    const createdByUserId = command.createdByUserId.trim();
 
     if (!title) {
       throw new BadRequestException('title is required.');
@@ -48,6 +52,10 @@ export class CreateIncidentUseCase {
 
     if (!categoryId) {
       throw new BadRequestException('categoryId is required.');
+    }
+
+    if (!createdByUserId) {
+      throw new BadRequestException('createdByUserId is required.');
     }
 
     const priorityName = resolveIncidentPriorityName(
@@ -64,13 +72,14 @@ export class CreateIncidentUseCase {
         `Priority ${priorityName} is not configured in referentials.`,
       );
     }
+
     const slaTargets = calculateSlaTargets(resolvedPriority);
 
     const record: CreateIncidentRecord = {
       categoryId,
       channelId: normalizeOptionalId(command.channelId),
       ciId: normalizeOptionalId(command.ciId),
-      createdByUserId: command.createdByUserId,
+      createdByUserId,
       description,
       impact: command.impact,
       priorityId: resolvedPriority.id,
@@ -85,7 +94,21 @@ export class CreateIncidentUseCase {
       workaround: normalizeOptionalText(command.workaround),
     };
 
-    return this.ticketWriteRepository.createIncident(record);
+    const createdIncident =
+      await this.ticketWriteRepository.createIncident(record);
+
+    await this.ticketAuditService.write({
+      actorUserId: createdByUserId,
+      eventType: TicketHistoryEventType.CREATED,
+      payload: {
+        status: createdIncident.ticket.status,
+        ticketNumber: createdIncident.ticket.number,
+        type: createdIncident.ticket.type,
+      },
+      ticketId: createdIncident.ticket.id,
+    });
+
+    return createdIncident;
   }
 }
 

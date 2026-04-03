@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
@@ -6,11 +6,13 @@ import {
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketAttachment } from '../../../domain/ticketing/ticket-attachment';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { Ticket } from '../../../domain/ticketing/ticket';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
 import { TicketAttachmentWriteRepository } from '../repositories/ticket-attachment-write.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
+import { TicketAuditService } from '../ticket-audit.service';
 import { AddTicketAttachmentUseCase } from './add-ticket-attachment.use-case';
 
 describe('AddTicketAttachmentUseCase', () => {
@@ -38,7 +40,7 @@ describe('AddTicketAttachmentUseCase', () => {
     null,
   );
 
-  it('registers attachment metadata for a demandeur on an allowed ticket', async () => {
+  it('registers attachment metadata for a demandeur on an allowed ticket and writes audit', async () => {
     const addTicketAttachment = jest
       .fn()
       .mockResolvedValue(
@@ -54,6 +56,7 @@ describe('AddTicketAttachmentUseCase', () => {
           '2026-04-02T08:10:00.000Z',
         ),
       );
+    const write = jest.fn().mockResolvedValue(undefined);
     const useCase = new AddTicketAttachmentUseCase(
       {
         addTicketAttachment,
@@ -62,6 +65,9 @@ describe('AddTicketAttachmentUseCase', () => {
         getTicketById: jest.fn().mockResolvedValue(ticketDetail),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write,
+      } as unknown as TicketAuditService,
     );
 
     await expect(
@@ -98,6 +104,18 @@ describe('AddTicketAttachmentUseCase', () => {
       ticketId: 'ticket-1',
       uploadedByUserId: 'creator-1',
     });
+    expect(write).toHaveBeenCalledWith({
+      actorUserId: 'creator-1',
+      eventType: TicketHistoryEventType.ATTACHMENT_ADDED,
+      payload: {
+        attachmentId: 'attachment-1',
+        bucketId: 'ticket-attachments',
+        fileName: 'test-upload.txt',
+        sizeBytes: 21,
+        storagePath: 'creator-1/test-upload.txt',
+      },
+      ticketId: 'ticket-1',
+    });
   });
 
   it('rejects unknown tickets', async () => {
@@ -109,6 +127,9 @@ describe('AddTicketAttachmentUseCase', () => {
         getTicketById: jest.fn().mockResolvedValue(null),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(
@@ -133,6 +154,9 @@ describe('AddTicketAttachmentUseCase', () => {
         getTicketById: jest.fn().mockResolvedValue(ticketDetail),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(
@@ -157,6 +181,9 @@ describe('AddTicketAttachmentUseCase', () => {
         getTicketById: jest.fn(),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(
@@ -181,6 +208,9 @@ describe('AddTicketAttachmentUseCase', () => {
         getTicketById: jest.fn(),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(

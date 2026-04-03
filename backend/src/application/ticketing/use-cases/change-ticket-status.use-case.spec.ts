@@ -1,13 +1,15 @@
-import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
+﻿import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { Ticket } from '../../../domain/ticketing/ticket';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
+import { TicketAuditService } from '../ticket-audit.service';
 import { ChangeTicketStatusUseCase } from './change-ticket-status.use-case';
 
 describe('ChangeTicketStatusUseCase', () => {
-  it('updates the ticket status when the workflow allows it', async () => {
+  it('updates the ticket status when the workflow allows it and writes audit', async () => {
     const detail = new TicketDetail(
       new Ticket(
         'ticket-1',
@@ -42,6 +44,7 @@ describe('ChangeTicketStatusUseCase', () => {
         },
       });
     const updateStatus = jest.fn().mockResolvedValue(undefined);
+    const write = jest.fn().mockResolvedValue(undefined);
     const useCase = new ChangeTicketStatusUseCase(
       {
         getTicketById,
@@ -49,10 +52,14 @@ describe('ChangeTicketStatusUseCase', () => {
       {
         updateStatus,
       } as unknown as TicketWriteRepository,
+      {
+        write,
+      } as unknown as TicketAuditService,
     );
 
     await expect(
       useCase.execute({
+        actorUserId: 'agent-1',
         status: TicketStatus.IN_PROGRESS,
         ticketId: 'ticket-1',
       }),
@@ -66,6 +73,15 @@ describe('ChangeTicketStatusUseCase', () => {
       'ticket-1',
       TicketStatus.IN_PROGRESS,
     );
+    expect(write).toHaveBeenCalledWith({
+      actorUserId: 'agent-1',
+      eventType: TicketHistoryEventType.STATUS_CHANGED,
+      payload: {
+        fromStatus: TicketStatus.OPEN,
+        toStatus: TicketStatus.IN_PROGRESS,
+      },
+      ticketId: 'ticket-1',
+    });
   });
 
   it('rejects a forbidden workflow transition', async () => {
@@ -99,10 +115,14 @@ describe('ChangeTicketStatusUseCase', () => {
       {
         updateStatus: jest.fn(),
       } as unknown as TicketWriteRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(
       useCase.execute({
+        actorUserId: 'agent-1',
         status: TicketStatus.IN_PROGRESS,
         ticketId: 'ticket-1',
       }),
