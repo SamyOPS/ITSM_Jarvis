@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { UserAssignmentProfileRepository } from '../application/auth/repositories/user-assignment-profile.repository';
 import { ReferentialCategoryReadRepository } from '../application/referentials/repositories/referential-category-read.repository';
 import { ReferentialCategoryWriteRepository } from '../application/referentials/repositories/referential-category-write.repository';
@@ -18,6 +18,7 @@ import { TicketAttachmentReadRepository } from '../application/ticketing/reposit
 import { TicketAttachmentWriteRepository } from '../application/ticketing/repositories/ticket-attachment-write.repository';
 import { TicketCommentReadRepository } from '../application/ticketing/repositories/ticket-comment-read.repository';
 import { TicketCommentWriteRepository } from '../application/ticketing/repositories/ticket-comment-write.repository';
+import { TicketHistoryWriteRepository } from '../application/ticketing/repositories/ticket-history-write.repository';
 import { TicketReadRepository } from '../application/ticketing/repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../application/ticketing/repositories/ticket-write.repository';
 import { SupabaseTokenValidatorService } from './auth/supabase-token-validator.service';
@@ -77,6 +78,10 @@ const referentialRepositoryBindings = [
       useExisting: SupabaseTicketWriteRepository,
     },
     {
+      provide: TicketHistoryWriteRepository,
+      useExisting: SupabaseTicketWriteRepository,
+    },
+    {
       provide: UserAssignmentProfileRepository,
       useExisting: SupabaseUserAssignmentProfileRepository,
     },
@@ -91,6 +96,7 @@ const referentialRepositoryBindings = [
     TicketCommentWriteRepository,
     TicketAttachmentReadRepository,
     TicketAttachmentWriteRepository,
+    TicketHistoryWriteRepository,
   ],
 })
 export class InfrastructureModule {}

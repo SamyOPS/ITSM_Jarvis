@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   ForbiddenException,
   Inject,
@@ -7,8 +7,10 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketComment } from '../../../domain/ticketing/ticket-comment';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketCommentWriteRepository } from '../repositories/ticket-comment-write.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
+import { TicketAuditService } from '../ticket-audit.service';
 import { assertTicketCommentAccess } from '../ticket-comment-access';
 
 export type AddTicketCommentCommand = {
@@ -26,6 +28,7 @@ export class AddTicketCommentUseCase {
     private readonly ticketCommentWriteRepository: TicketCommentWriteRepository,
     @Inject(TicketReadRepository)
     private readonly ticketReadRepository: TicketReadRepository,
+    private readonly ticketAuditService: TicketAuditService,
   ) {}
 
   async execute(command: AddTicketCommentCommand): Promise<TicketComment> {
@@ -67,11 +70,23 @@ export class AddTicketCommentUseCase {
       userRole: command.authorRole,
     });
 
-    return this.ticketCommentWriteRepository.addTicketComment({
+    const comment = await this.ticketCommentWriteRepository.addTicketComment({
       authorUserId: normalizedAuthorUserId,
       body: normalizedBody,
       isInternal,
       ticketId: normalizedTicketId,
     });
+
+    await this.ticketAuditService.write({
+      actorUserId: normalizedAuthorUserId,
+      eventType: TicketHistoryEventType.COMMENT_ADDED,
+      payload: {
+        commentId: comment.id,
+        isInternal: comment.isInternal,
+      },
+      ticketId: normalizedTicketId,
+    });
+
+    return comment;
   }
 }

@@ -1,11 +1,13 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+﻿import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { CreatedRequest } from '../../../domain/ticketing/created-request';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
+import { RequestType } from '../../../domain/ticketing/request-type';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
+import { TicketAuditService } from '../ticket-audit.service';
 import {
   CreateRequestRecord,
   TicketWriteRepository,
 } from '../repositories/ticket-write.repository';
-import { CreatedRequest } from '../../../domain/ticketing/created-request';
-import { RequestType } from '../../../domain/ticketing/request-type';
 
 export type CreateRequestCommand = {
   categoryId: string;
@@ -27,6 +29,7 @@ export class CreateRequestUseCase {
     private readonly ticketWriteRepository: TicketWriteRepository,
     @Inject(ReferentialPriorityReadRepository)
     private readonly priorityRepository: ReferentialPriorityReadRepository,
+    private readonly ticketAuditService: TicketAuditService,
   ) {}
 
   async execute(command: CreateRequestCommand): Promise<CreatedRequest> {
@@ -34,6 +37,7 @@ export class CreateRequestUseCase {
     const description = command.description.trim();
     const categoryId = command.categoryId.trim();
     const priorityId = command.priorityId.trim();
+    const createdByUserId = command.createdByUserId.trim();
 
     if (!title) {
       throw new BadRequestException('title is required.');
@@ -49,6 +53,10 @@ export class CreateRequestUseCase {
 
     if (!priorityId) {
       throw new BadRequestException('priorityId is required.');
+    }
+
+    if (!createdByUserId) {
+      throw new BadRequestException('createdByUserId is required.');
     }
 
     const priorities = await this.priorityRepository.listPriorities();
@@ -67,7 +75,7 @@ export class CreateRequestUseCase {
       categoryId,
       channelId: normalizeOptionalId(command.channelId),
       ciId: normalizeOptionalId(command.ciId),
-      createdByUserId: command.createdByUserId,
+      createdByUserId,
       description,
       priorityId,
       priorityName: resolvedPriority.name,
@@ -77,7 +85,21 @@ export class CreateRequestUseCase {
       title,
     };
 
-    return this.ticketWriteRepository.createRequest(record);
+    const createdRequest =
+      await this.ticketWriteRepository.createRequest(record);
+
+    await this.ticketAuditService.write({
+      actorUserId: createdByUserId,
+      eventType: TicketHistoryEventType.CREATED,
+      payload: {
+        status: createdRequest.ticket.status,
+        ticketNumber: createdRequest.ticket.number,
+        type: createdRequest.ticket.type,
+      },
+      ticketId: createdRequest.ticket.id,
+    });
+
+    return createdRequest;
   }
 }
 
