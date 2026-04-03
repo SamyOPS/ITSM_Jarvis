@@ -20,5 +20,7 @@ export class TicketSummary {
     public readonly assignedToUserId: string | null,
     public readonly ciId: string | null,
     public readonly createdAt: string,
+    public readonly responseDueAt: string | null = null,
+    public readonly resolutionDueAt: string | null = null,
   ) {}
 }

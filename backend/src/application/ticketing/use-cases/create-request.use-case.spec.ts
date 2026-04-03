@@ -1,4 +1,4 @@
-﻿import { BadRequestException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { ReferentialPriority } from '../../../domain/referentials/referential-priority';
 import { CreatedRequest } from '../../../domain/ticketing/created-request';
@@ -14,6 +14,14 @@ import { TicketWriteRepository } from '../repositories/ticket-write.repository';
 import { CreateRequestUseCase } from './create-request.use-case';
 
 describe('CreateRequestUseCase', () => {
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-04-03T10:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('uses the manual priority id before writing the request and writes audit', async () => {
     const createdRequest = new CreatedRequest(
       new Ticket(
@@ -33,6 +41,8 @@ describe('CreateRequestUseCase', () => {
         null,
         null,
         '2026-04-03T09:00:00.000Z',
+        '2026-04-03T18:00:00.000Z',
+        '2026-04-04T10:00:00.000Z',
       ),
       new RequestTicket('ticket-2', RequestType.ACCESS, null, null),
       PriorityName.MEDIUM,
@@ -81,6 +91,8 @@ describe('CreateRequestUseCase', () => {
         priorityId: 'priority-medium',
         priorityName: PriorityName.MEDIUM,
         requestType: RequestType.ACCESS,
+        responseDueAt: '2026-04-03T18:00:00.000Z',
+        resolutionDueAt: '2026-04-04T10:00:00.000Z',
       }),
     );
     expect(write).toHaveBeenCalledWith({

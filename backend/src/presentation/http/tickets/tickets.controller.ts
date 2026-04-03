@@ -11,6 +11,7 @@
 import { AddTicketAttachmentUseCase } from '../../../application/ticketing/use-cases/add-ticket-attachment.use-case';
 import { AddTicketCommentUseCase } from '../../../application/ticketing/use-cases/add-ticket-comment.use-case';
 import { AssignTicketUseCase } from '../../../application/ticketing/use-cases/assign-ticket.use-case';
+import { ChangeTicketPriorityUseCase } from '../../../application/ticketing/use-cases/change-ticket-priority.use-case';
 import { ChangeTicketStatusUseCase } from '../../../application/ticketing/use-cases/change-ticket-status.use-case';
 import { CreateIncidentUseCase } from '../../../application/ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from '../../../application/ticketing/use-cases/create-request.use-case';
@@ -35,6 +36,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import type { AddTicketAttachmentDto } from './add-ticket-attachment.dto';
 import type { AddTicketCommentDto } from './add-ticket-comment.dto';
 import type { AssignTicketDto } from './assign-ticket.dto';
+import type { ChangeTicketPriorityDto } from './change-ticket-priority.dto';
 import type { ChangeTicketStatusDto } from './change-ticket-status.dto';
 import type { CreateIncidentDto } from './create-incident.dto';
 import type { CreateRequestDto } from './create-request.dto';
@@ -57,6 +59,7 @@ type SearchTicketsQueryDto = {
 export class TicketsController {
   constructor(
     private readonly assignTicketUseCase: AssignTicketUseCase,
+    private readonly changeTicketPriorityUseCase: ChangeTicketPriorityUseCase,
     private readonly changeTicketStatusUseCase: ChangeTicketStatusUseCase,
     private readonly createIncidentUseCase: CreateIncidentUseCase,
     private readonly createRequestUseCase: CreateRequestUseCase,
@@ -167,6 +170,19 @@ export class TicketsController {
     return this.changeTicketStatusUseCase.execute({
       actorUserId: user.id,
       status: body.status,
+      ticketId: id,
+    });
+  }
+
+  @Patch(':id/priority')
+  @UseGuards(BearerAuthGuard, RolesGuard)
+  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  changePriority(
+    @Param('id') id: string,
+    @Body() body: ChangeTicketPriorityDto,
+  ): Promise<TicketDetail> {
+    return this.changeTicketPriorityUseCase.execute({
+      priorityId: body.priorityId,
       ticketId: id,
     });
   }

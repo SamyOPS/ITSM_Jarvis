@@ -1,4 +1,4 @@
-﻿import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { CreatedRequest } from '../../../domain/ticketing/created-request';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { RequestType } from '../../../domain/ticketing/request-type';
@@ -8,6 +8,7 @@ import {
   CreateRequestRecord,
   TicketWriteRepository,
 } from '../repositories/ticket-write.repository';
+import { calculateSlaTargets } from '../sla-targets';
 
 export type CreateRequestCommand = {
   categoryId: string;
@@ -70,6 +71,8 @@ export class CreateRequestUseCase {
       );
     }
 
+    const slaTargets = calculateSlaTargets(resolvedPriority);
+
     const record: CreateRequestRecord = {
       approvalStatus: null,
       categoryId,
@@ -79,6 +82,8 @@ export class CreateRequestUseCase {
       description,
       priorityId,
       priorityName: resolvedPriority.name,
+      resolutionDueAt: slaTargets.resolutionDueAt,
+      responseDueAt: slaTargets.responseDueAt,
       requestedForUserId: normalizeOptionalId(command.requestedForUserId),
       requestType: command.requestType ?? RequestType.OTHER,
       serviceId: normalizeOptionalId(command.serviceId),

@@ -1,4 +1,4 @@
-﻿import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { CreatedIncident } from '../../../domain/ticketing/created-incident';
 import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
@@ -9,6 +9,7 @@ import {
   CreateIncidentRecord,
   TicketWriteRepository,
 } from '../repositories/ticket-write.repository';
+import { calculateSlaTargets } from '../sla-targets';
 
 export type CreateIncidentCommand = {
   categoryId: string;
@@ -72,6 +73,8 @@ export class CreateIncidentUseCase {
       );
     }
 
+    const slaTargets = calculateSlaTargets(resolvedPriority);
+
     const record: CreateIncidentRecord = {
       categoryId,
       channelId: normalizeOptionalId(command.channelId),
@@ -81,6 +84,8 @@ export class CreateIncidentUseCase {
       impact: command.impact,
       priorityId: resolvedPriority.id,
       priorityName,
+      resolutionDueAt: slaTargets.resolutionDueAt,
+      responseDueAt: slaTargets.responseDueAt,
       requestedForUserId: normalizeOptionalId(command.requestedForUserId),
       rootCause: normalizeOptionalText(command.rootCause),
       serviceId: normalizeOptionalId(command.serviceId),

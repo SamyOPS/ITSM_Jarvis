@@ -1,4 +1,4 @@
-﻿import { BadRequestException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { ReferentialPriority } from '../../../domain/referentials/referential-priority';
 import { CreatedIncident } from '../../../domain/ticketing/created-incident';
@@ -14,6 +14,14 @@ import { TicketWriteRepository } from '../repositories/ticket-write.repository';
 import { CreateIncidentUseCase } from './create-incident.use-case';
 
 describe('CreateIncidentUseCase', () => {
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-04-03T10:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('derives the priority from impact and urgency before writing the incident and writes audit', async () => {
     const createdIncident = new CreatedIncident(
       new Ticket(
@@ -33,6 +41,8 @@ describe('CreateIncidentUseCase', () => {
         null,
         null,
         '2026-04-03T09:00:00.000Z',
+        '2026-04-03T14:00:00.000Z',
+        '2026-04-03T18:00:00.000Z',
       ),
       new Incident(
         'ticket-1',
@@ -78,6 +88,8 @@ describe('CreateIncidentUseCase', () => {
       expect.objectContaining({
         priorityId: 'priority-high',
         priorityName: PriorityName.HIGH,
+        responseDueAt: '2026-04-03T14:00:00.000Z',
+        resolutionDueAt: '2026-04-03T18:00:00.000Z',
       }),
     );
     expect(write).toHaveBeenCalledWith({

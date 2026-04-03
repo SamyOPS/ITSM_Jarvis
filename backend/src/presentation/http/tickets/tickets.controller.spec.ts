@@ -1,6 +1,7 @@
 ﻿import { AddTicketAttachmentUseCase } from '../../../application/ticketing/use-cases/add-ticket-attachment.use-case';
 import { AddTicketCommentUseCase } from '../../../application/ticketing/use-cases/add-ticket-comment.use-case';
 import { AssignTicketUseCase } from '../../../application/ticketing/use-cases/assign-ticket.use-case';
+import { ChangeTicketPriorityUseCase } from '../../../application/ticketing/use-cases/change-ticket-priority.use-case';
 import { ChangeTicketStatusUseCase } from '../../../application/ticketing/use-cases/change-ticket-status.use-case';
 import { CreateIncidentUseCase } from '../../../application/ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from '../../../application/ticketing/use-cases/create-request.use-case';
@@ -28,6 +29,12 @@ describe('TicketsController', () => {
     ticket: {
       id: 'ticket-1',
       status: TicketStatus.IN_PROGRESS,
+    },
+  });
+  const changeTicketPriority = jest.fn().mockResolvedValue({
+    ticket: {
+      id: 'ticket-1',
+      priorityId: 'priority-high',
     },
   });
   const searchTickets = jest.fn().mockResolvedValue([
@@ -107,6 +114,7 @@ describe('TicketsController', () => {
   beforeEach(() => {
     assignTicket.mockClear();
     changeTicketStatus.mockClear();
+    changeTicketPriority.mockClear();
     searchTickets.mockClear();
     getTicketById.mockClear();
     listComments.mockClear();
@@ -119,6 +127,9 @@ describe('TicketsController', () => {
       {
         execute: assignTicket,
       } as unknown as AssignTicketUseCase,
+      {
+        execute: changeTicketPriority,
+      } as unknown as ChangeTicketPriorityUseCase,
       {
         execute: changeTicketStatus,
       } as unknown as ChangeTicketStatusUseCase,
@@ -204,6 +215,24 @@ describe('TicketsController', () => {
     expect(changeTicketStatus).toHaveBeenCalledWith({
       actorUserId: 'user-1',
       status: TicketStatus.IN_PROGRESS,
+      ticketId: 'ticket-1',
+    });
+  });
+
+  it('delegates ticket priority updates to the dedicated use case', async () => {
+    await expect(
+      controller.changePriority('ticket-1', {
+        priorityId: 'priority-high',
+      }),
+    ).resolves.toEqual({
+      ticket: {
+        id: 'ticket-1',
+        priorityId: 'priority-high',
+      },
+    });
+
+    expect(changeTicketPriority).toHaveBeenCalledWith({
+      priorityId: 'priority-high',
       ticketId: 'ticket-1',
     });
   });
