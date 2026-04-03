@@ -23,14 +23,13 @@ import { CreateIncidentUseCase } from './create-incident.use-case';
 describe('Ticket flow', () => {
   it('creates an incident, assigns it, then changes its status', async () => {
     const repository = new InMemoryTicketRepository();
-    const createIncidentUseCase = new CreateIncidentUseCase(
-      repository,
-      {
-        listPriorities: jest.fn().mockResolvedValue([
+    const createIncidentUseCase = new CreateIncidentUseCase(repository, {
+      listPriorities: jest
+        .fn()
+        .mockResolvedValue([
           new ReferentialPriority('priority-high', PriorityName.HIGH, 3, 4, 8),
         ]),
-      } as ReferentialPriorityReadRepository,
-    );
+    } as ReferentialPriorityReadRepository);
     const assignTicketUseCase = new AssignTicketUseCase(
       repository,
       repository,
@@ -80,7 +79,9 @@ describe('Ticket flow', () => {
 
     expect(updatedTicket.ticket.status).toBe(TicketStatus.IN_PROGRESS);
 
-    const reloadedTicket = await repository.getTicketById(createdIncident.ticket.id);
+    const reloadedTicket = await repository.getTicketById(
+      createdIncident.ticket.id,
+    );
 
     expect(reloadedTicket).toMatchObject({
       ticket: {
@@ -113,7 +114,7 @@ class InMemoryTicketRepository
     }
   >();
 
-  async createIncident(record: CreateIncidentRecord): Promise<CreatedIncident> {
+  createIncident(record: CreateIncidentRecord): Promise<CreatedIncident> {
     const ticketId = 'ticket-1';
     const createdTicket = new Ticket(
       ticketId,
@@ -147,14 +148,16 @@ class InMemoryTicketRepository
       ticket: createdTicket,
     });
 
-    return new CreatedIncident(createdTicket, createdIncident, record.priorityName);
+    return Promise.resolve(
+      new CreatedIncident(createdTicket, createdIncident, record.priorityName),
+    );
   }
 
-  async createRequest(): Promise<never> {
+  createRequest(): Promise<never> {
     throw new Error('Not implemented in this flow test.');
   }
 
-  async updateAssignment(
+  updateAssignment(
     ticketId: string,
     record: UpdateTicketAssignmentRecord,
   ): Promise<void> {
@@ -185,9 +188,11 @@ class InMemoryTicketRepository
         current.ticket.createdAt,
       ),
     });
+
+    return Promise.resolve();
   }
 
-  async updateStatus(ticketId: string, status: TicketStatus): Promise<void> {
+  updateStatus(ticketId: string, status: TicketStatus): Promise<void> {
     const current = this.tickets.get(ticketId);
 
     if (!current) {
@@ -215,24 +220,28 @@ class InMemoryTicketRepository
         current.ticket.createdAt,
       ),
     });
+
+    return Promise.resolve();
   }
 
-  async getTicketById(ticketId: string): Promise<TicketDetail | null> {
+  getTicketById(ticketId: string): Promise<TicketDetail | null> {
     const current = this.tickets.get(ticketId);
 
     if (!current) {
-      return null;
+      return Promise.resolve(null);
     }
 
-    return new TicketDetail(
-      current.ticket,
-      current.priorityName,
-      current.incident,
-      null,
+    return Promise.resolve(
+      new TicketDetail(
+        current.ticket,
+        current.priorityName,
+        current.incident,
+        null,
+      ),
     );
   }
 
-  async searchTickets(): Promise<[]> {
-    return [];
+  searchTickets(): Promise<[]> {
+    return Promise.resolve([]);
   }
 }
