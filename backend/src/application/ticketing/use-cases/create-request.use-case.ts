@@ -6,6 +6,7 @@ import {
 } from '../repositories/ticket-write.repository';
 import { CreatedRequest } from '../../../domain/ticketing/created-request';
 import { RequestType } from '../../../domain/ticketing/request-type';
+import { calculateSlaTargets } from '../sla-targets';
 
 export type CreateRequestCommand = {
   categoryId: string;
@@ -61,6 +62,7 @@ export class CreateRequestUseCase {
         `Priority ${priorityId} is not configured in referentials.`,
       );
     }
+    const slaTargets = calculateSlaTargets(resolvedPriority);
 
     const record: CreateRequestRecord = {
       approvalStatus: null,
@@ -71,6 +73,8 @@ export class CreateRequestUseCase {
       description,
       priorityId,
       priorityName: resolvedPriority.name,
+      resolutionDueAt: slaTargets.resolutionDueAt,
+      responseDueAt: slaTargets.responseDueAt,
       requestedForUserId: normalizeOptionalId(command.requestedForUserId),
       requestType: command.requestType ?? RequestType.OTHER,
       serviceId: normalizeOptionalId(command.serviceId),

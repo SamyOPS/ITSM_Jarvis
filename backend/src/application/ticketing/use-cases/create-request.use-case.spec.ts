@@ -7,6 +7,14 @@ import { CreateRequestUseCase } from './create-request.use-case';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
 
 describe('CreateRequestUseCase', () => {
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-04-03T10:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('uses the manual priority id before writing the request', async () => {
     const createRequest = jest.fn().mockResolvedValue('created-request');
     const ticketWriteRepository: TicketWriteRepository = {
@@ -48,6 +56,8 @@ describe('CreateRequestUseCase', () => {
         priorityId: 'priority-medium',
         priorityName: PriorityName.MEDIUM,
         requestType: RequestType.ACCESS,
+        responseDueAt: '2026-04-03T18:00:00.000Z',
+        resolutionDueAt: '2026-04-04T10:00:00.000Z',
       }),
     );
   });

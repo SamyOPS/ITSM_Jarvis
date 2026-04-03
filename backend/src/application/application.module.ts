@@ -20,6 +20,7 @@ import { ManageServicesUseCase } from './referentials/use-cases/manage-services.
 import { AddTicketAttachmentUseCase } from './ticketing/use-cases/add-ticket-attachment.use-case';
 import { AddTicketCommentUseCase } from './ticketing/use-cases/add-ticket-comment.use-case';
 import { AssignTicketUseCase } from './ticketing/use-cases/assign-ticket.use-case';
+import { ChangeTicketPriorityUseCase } from './ticketing/use-cases/change-ticket-priority.use-case';
 import { ChangeTicketStatusUseCase } from './ticketing/use-cases/change-ticket-status.use-case';
 import { CreateIncidentUseCase } from './ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from './ticketing/use-cases/create-request.use-case';
@@ -51,6 +52,7 @@ const ticketingUseCases = [
   CreateIncidentUseCase,
   CreateRequestUseCase,
   AssignTicketUseCase,
+  ChangeTicketPriorityUseCase,
   ChangeTicketStatusUseCase,
   SearchTicketsUseCase,
   GetTicketByIdUseCase,

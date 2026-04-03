@@ -7,6 +7,7 @@ import {
 import { CreatedIncident } from '../../../domain/ticketing/created-incident';
 import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
 import { resolveIncidentPriorityName } from '../incident-priority';
+import { calculateSlaTargets } from '../sla-targets';
 
 export type CreateIncidentCommand = {
   categoryId: string;
@@ -63,6 +64,7 @@ export class CreateIncidentUseCase {
         `Priority ${priorityName} is not configured in referentials.`,
       );
     }
+    const slaTargets = calculateSlaTargets(resolvedPriority);
 
     const record: CreateIncidentRecord = {
       categoryId,
@@ -73,6 +75,8 @@ export class CreateIncidentUseCase {
       impact: command.impact,
       priorityId: resolvedPriority.id,
       priorityName,
+      resolutionDueAt: slaTargets.resolutionDueAt,
+      responseDueAt: slaTargets.responseDueAt,
       requestedForUserId: normalizeOptionalId(command.requestedForUserId),
       rootCause: normalizeOptionalText(command.rootCause),
       serviceId: normalizeOptionalId(command.serviceId),

@@ -57,6 +57,8 @@ type SupabaseTicketRow = {
   id: string;
   number: string;
   priority_id: string;
+  resolution_due_at: string | null;
+  response_due_at: string | null;
   requested_for_user_id: string | null;
   service_id: string | null;
   status: TicketStatus;
@@ -146,11 +148,31 @@ export class SupabaseTicketWriteRepository
     );
   }
 
+  async updatePriority(
+    ticketId: string,
+    record: {
+      priorityId: string;
+      responseDueAt: string | null;
+      resolutionDueAt: string | null;
+    },
+  ): Promise<void> {
+    await this.send(
+      `tickets?id=eq.${ticketId}`,
+      'PATCH',
+      {
+        priority_id: record.priorityId,
+        resolution_due_at: record.resolutionDueAt,
+        response_due_at: record.responseDueAt,
+      },
+      false,
+    );
+  }
+
   async searchTickets(filters: SearchTicketsFilters): Promise<TicketSummary[]> {
     const query = new URLSearchParams({
       order: 'created_at.desc',
       select:
-        'id,number,type,status,title,priority_id,category_id,created_by_user_id,requested_for_user_id,service_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at',
+        'id,number,type,status,title,priority_id,category_id,created_by_user_id,requested_for_user_id,service_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,response_due_at,resolution_due_at',
     });
 
     applyOptionalFilter(query, 'assigned_to_user_id', filters.assignedToUserId);
@@ -211,6 +233,8 @@ export class SupabaseTicketWriteRepository
           ticket.assigned_to_user_id,
           ticket.ci_id,
           ticket.created_at,
+          ticket.response_due_at,
+          ticket.resolution_due_at,
         ),
     );
   }
@@ -218,7 +242,7 @@ export class SupabaseTicketWriteRepository
   async getTicketById(ticketId: string): Promise<TicketDetail | null> {
     const query = new URLSearchParams({
       select:
-        'id,number,type,status,title,description,priority_id,category_id,created_by_user_id,requested_for_user_id,service_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,incidents(*),requests(*)',
+        'id,number,type,status,title,description,priority_id,category_id,created_by_user_id,requested_for_user_id,service_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,response_due_at,resolution_due_at,incidents(*),requests(*)',
       id: `eq.${ticketId}`,
       limit: '1',
     });
@@ -255,6 +279,8 @@ export class SupabaseTicketWriteRepository
         ticket.assigned_to_user_id,
         ticket.ci_id,
         ticket.created_at,
+        ticket.response_due_at,
+        ticket.resolution_due_at,
       ),
       priorityNames.get(ticket.priority_id) ?? null,
       incidentRow
@@ -436,6 +462,8 @@ export class SupabaseTicketWriteRepository
       description: record.description,
       priorityId: record.priorityId,
       requestedForUserId: record.requestedForUserId,
+      resolutionDueAt: record.resolutionDueAt,
+      responseDueAt: record.responseDueAt,
       serviceId: record.serviceId,
       status: TicketStatus.OPEN,
       title: record.title,
@@ -463,6 +491,8 @@ export class SupabaseTicketWriteRepository
           ticket.assigned_to_user_id,
           ticket.ci_id,
           ticket.created_at,
+          ticket.response_due_at,
+          ticket.resolution_due_at,
         ),
         new Incident(
           incident.ticket_id,
@@ -488,6 +518,8 @@ export class SupabaseTicketWriteRepository
       description: record.description,
       priorityId: record.priorityId,
       requestedForUserId: record.requestedForUserId,
+      resolutionDueAt: record.resolutionDueAt,
+      responseDueAt: record.responseDueAt,
       serviceId: record.serviceId,
       status: TicketStatus.OPEN,
       title: record.title,
@@ -515,6 +547,8 @@ export class SupabaseTicketWriteRepository
           ticket.assigned_to_user_id,
           ticket.ci_id,
           ticket.created_at,
+          ticket.response_due_at,
+          ticket.resolution_due_at,
         ),
         new RequestTicket(
           request.ticket_id,
@@ -537,6 +571,8 @@ export class SupabaseTicketWriteRepository
     createdByUserId: string;
     description: string;
     priorityId: string;
+    resolutionDueAt: string | null;
+    responseDueAt: string | null;
     requestedForUserId: string | null;
     serviceId: string | null;
     status: TicketStatus;
@@ -553,6 +589,8 @@ export class SupabaseTicketWriteRepository
         created_by_user_id: record.createdByUserId,
         description: record.description,
         priority_id: record.priorityId,
+        resolution_due_at: record.resolutionDueAt,
+        response_due_at: record.responseDueAt,
         requested_for_user_id: record.requestedForUserId,
         service_id: record.serviceId,
         status: record.status,

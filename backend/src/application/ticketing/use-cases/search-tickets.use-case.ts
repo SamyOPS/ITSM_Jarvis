@@ -51,11 +51,14 @@ export class SearchTicketsUseCase {
       }),
     ]);
 
-    return [...new Map(
-      [...createdTickets, ...requestedTickets].map((ticket) => [ticket.id, ticket]),
-    ).values()].sort((left, right) =>
-      right.createdAt.localeCompare(left.createdAt),
-    );
+    return [
+      ...new Map(
+        [...createdTickets, ...requestedTickets].map((ticket) => [
+          ticket.id,
+          ticket,
+        ]),
+      ).values(),
+    ].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 }
 

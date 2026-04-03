@@ -17,10 +17,19 @@ import {
   UpdateTicketAssignmentRecord,
 } from '../repositories/ticket-write.repository';
 import { AssignTicketUseCase } from './assign-ticket.use-case';
+import { ChangeTicketPriorityUseCase } from './change-ticket-priority.use-case';
 import { ChangeTicketStatusUseCase } from './change-ticket-status.use-case';
 import { CreateIncidentUseCase } from './create-incident.use-case';
 
 describe('Ticket flow', () => {
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-04-03T09:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('creates an incident, assigns it, then changes its status', async () => {
     const repository = new InMemoryTicketRepository();
     const createIncidentUseCase = new CreateIncidentUseCase(repository, {
@@ -46,6 +55,23 @@ describe('Ticket flow', () => {
       repository,
       repository,
     );
+    const changeTicketPriorityUseCase = new ChangeTicketPriorityUseCase(
+      repository,
+      repository,
+      {
+        listPriorities: jest
+          .fn()
+          .mockResolvedValue([
+            new ReferentialPriority(
+              'priority-critical',
+              PriorityName.CRITICAL,
+              4,
+              1,
+              4,
+            ),
+          ]),
+      } as ReferentialPriorityReadRepository,
+    );
 
     const createdIncident = await createIncidentUseCase.execute({
       categoryId: 'category-1',
@@ -62,6 +88,12 @@ describe('Ticket flow', () => {
     expect(createdIncident).toBeInstanceOf(CreatedIncident);
     expect(createdIncident.ticket.status).toBe(TicketStatus.OPEN);
     expect(createdIncident.priorityName).toBe(PriorityName.HIGH);
+    expect(createdIncident.ticket.responseDueAt).toBe(
+      '2026-04-03T13:00:00.000Z',
+    );
+    expect(createdIncident.ticket.resolutionDueAt).toBe(
+      '2026-04-03T17:00:00.000Z',
+    );
 
     const assignedTicket = await assignTicketUseCase.execute({
       assignedToUserId: 'agent-1',
@@ -79,6 +111,19 @@ describe('Ticket flow', () => {
 
     expect(updatedTicket.ticket.status).toBe(TicketStatus.IN_PROGRESS);
 
+    const reprioritizedTicket = await changeTicketPriorityUseCase.execute({
+      priorityId: 'priority-critical',
+      ticketId: createdIncident.ticket.id,
+    });
+
+    expect(reprioritizedTicket.ticket.priorityId).toBe('priority-critical');
+    expect(reprioritizedTicket.ticket.responseDueAt).toBe(
+      '2026-04-03T10:00:00.000Z',
+    );
+    expect(reprioritizedTicket.ticket.resolutionDueAt).toBe(
+      '2026-04-03T13:00:00.000Z',
+    );
+
     const reloadedTicket = await repository.getTicketById(
       createdIncident.ticket.id,
     );
@@ -88,7 +133,10 @@ describe('Ticket flow', () => {
         assignedToUserId: 'agent-1',
         assignmentGroupId: 'group-1',
         createdByUserId: 'demandeur-1',
+        priorityId: 'priority-critical',
         requestedForUserId: 'demandeur-1',
+        responseDueAt: '2026-04-03T10:00:00.000Z',
+        resolutionDueAt: '2026-04-03T13:00:00.000Z',
         status: TicketStatus.IN_PROGRESS,
         title: 'VPN inaccessible',
         type: TicketType.INCIDENT,
@@ -133,6 +181,8 @@ class InMemoryTicketRepository
       null,
       record.ciId,
       '2026-04-03T09:00:00.000Z',
+      record.responseDueAt,
+      record.resolutionDueAt,
     );
     const createdIncident = new Incident(
       ticketId,
@@ -186,6 +236,8 @@ class InMemoryTicketRepository
         record.assignedToUserId,
         current.ticket.ciId,
         current.ticket.createdAt,
+        current.ticket.responseDueAt,
+        current.ticket.resolutionDueAt,
       ),
     });
 
@@ -218,6 +270,49 @@ class InMemoryTicketRepository
         current.ticket.assignedToUserId,
         current.ticket.ciId,
         current.ticket.createdAt,
+        current.ticket.responseDueAt,
+        current.ticket.resolutionDueAt,
+      ),
+    });
+
+    return Promise.resolve();
+  }
+
+  updatePriority(
+    ticketId: string,
+    record: {
+      priorityId: string;
+      responseDueAt: string | null;
+      resolutionDueAt: string | null;
+    },
+  ): Promise<void> {
+    const current = this.tickets.get(ticketId);
+
+    if (!current) {
+      throw new Error(`Ticket ${ticketId} not found in memory.`);
+    }
+
+    this.tickets.set(ticketId, {
+      ...current,
+      ticket: new Ticket(
+        current.ticket.id,
+        current.ticket.number,
+        current.ticket.type,
+        current.ticket.status,
+        current.ticket.title,
+        current.ticket.description,
+        record.priorityId,
+        current.ticket.categoryId,
+        current.ticket.createdByUserId,
+        current.ticket.requestedForUserId,
+        current.ticket.serviceId,
+        current.ticket.channelId,
+        current.ticket.assignmentGroupId,
+        current.ticket.assignedToUserId,
+        current.ticket.ciId,
+        current.ticket.createdAt,
+        record.responseDueAt,
+        record.resolutionDueAt,
       ),
     });
 

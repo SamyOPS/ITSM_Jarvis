@@ -7,6 +7,14 @@ import { CreateIncidentUseCase } from './create-incident.use-case';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
 
 describe('CreateIncidentUseCase', () => {
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-04-03T10:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('derives the priority from impact and urgency before writing the incident', async () => {
     const createIncident = jest.fn().mockResolvedValue('created-incident');
     const ticketWriteRepository: TicketWriteRepository = {
@@ -39,6 +47,8 @@ describe('CreateIncidentUseCase', () => {
       expect.objectContaining({
         priorityId: 'priority-high',
         priorityName: PriorityName.HIGH,
+        responseDueAt: '2026-04-03T14:00:00.000Z',
+        resolutionDueAt: '2026-04-03T18:00:00.000Z',
       }),
     );
   });

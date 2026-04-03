@@ -96,6 +96,15 @@ describe('AppController (e2e)', () => {
       .expect(401);
   });
 
+  it('/tickets/:id/priority (PATCH) returns 401 without a bearer token', () => {
+    return request(app.getHttpServer())
+      .patch('/tickets/ticket-1/priority')
+      .send({
+        priorityId: 'priority-high',
+      })
+      .expect(401);
+  });
+
   it('/tickets/incidents (POST) returns 401 without a bearer token', () => {
     return request(app.getHttpServer())
       .post('/tickets/incidents')

@@ -15,6 +15,8 @@ export type CreateIncidentRecord = {
   impact: IncidentSeverity;
   priorityId: string;
   priorityName: PriorityName;
+  resolutionDueAt: string | null;
+  responseDueAt: string | null;
   requestedForUserId: string | null;
   rootCause: string | null;
   serviceId: string | null;
@@ -31,6 +33,8 @@ export type CreateRequestRecord = {
   description: string;
   priorityId: string;
   priorityName: PriorityName;
+  resolutionDueAt: string | null;
+  responseDueAt: string | null;
   requestedForUserId: string | null;
   requestType: RequestType;
   approvalStatus: RequestApprovalStatus | null;
@@ -41,6 +45,12 @@ export type CreateRequestRecord = {
 export type UpdateTicketAssignmentRecord = {
   assignedToUserId: string | null;
   assignmentGroupId: string | null;
+};
+
+export type UpdateTicketPriorityRecord = {
+  priorityId: string;
+  resolutionDueAt: string | null;
+  responseDueAt: string | null;
 };
 
 export abstract class TicketWriteRepository {
@@ -56,4 +66,9 @@ export abstract class TicketWriteRepository {
   ): Promise<void>;
 
   abstract updateStatus(ticketId: string, status: TicketStatus): Promise<void>;
+
+  abstract updatePriority(
+    ticketId: string,
+    record: UpdateTicketPriorityRecord,
+  ): Promise<void>;
 }
