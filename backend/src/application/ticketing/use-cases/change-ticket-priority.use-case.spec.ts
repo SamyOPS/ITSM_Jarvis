@@ -1,13 +1,15 @@
-import { BadRequestException } from '@nestjs/common';
+﻿import { BadRequestException } from '@nestjs/common';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { ReferentialPriority } from '../../../domain/referentials/referential-priority';
 import { PriorityName } from '../../../domain/ticketing/priority-name';
 import { Ticket } from '../../../domain/ticketing/ticket';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
+import { TicketAuditService } from '../ticket-audit.service';
 import { ChangeTicketPriorityUseCase } from './change-ticket-priority.use-case';
 
 describe('ChangeTicketPriorityUseCase', () => {
@@ -19,7 +21,7 @@ describe('ChangeTicketPriorityUseCase', () => {
     jest.useRealTimers();
   });
 
-  it('updates priority and recalculates SLA targets', async () => {
+  it('updates priority, recalculates SLA targets and writes audit', async () => {
     const ticket = new Ticket(
       'ticket-1',
       'TICK-000001',
@@ -90,14 +92,19 @@ describe('ChangeTicketPriorityUseCase', () => {
           new ReferentialPriority('priority-high', PriorityName.HIGH, 3, 4, 8),
         ]),
     };
+    const write = jest.fn().mockResolvedValue(undefined);
     const useCase = new ChangeTicketPriorityUseCase(
       ticketReadRepository,
       ticketWriteRepository,
       priorityRepository,
+      {
+        write,
+      } as unknown as TicketAuditService,
     );
 
     await expect(
       useCase.execute({
+        actorUserId: 'agent-1',
         priorityId: 'priority-high',
         ticketId: 'ticket-1',
       }),
@@ -115,6 +122,19 @@ describe('ChangeTicketPriorityUseCase', () => {
       priorityId: 'priority-high',
       responseDueAt: '2026-04-03T14:00:00.000Z',
       resolutionDueAt: '2026-04-03T18:00:00.000Z',
+    });
+    expect(write).toHaveBeenCalledWith({
+      actorUserId: 'agent-1',
+      eventType: TicketHistoryEventType.PRIORITY_CHANGED,
+      payload: {
+        fromPriorityId: 'priority-low',
+        toPriorityId: 'priority-high',
+        fromResponseDueAt: '2026-04-04T09:00:00.000Z',
+        toResponseDueAt: '2026-04-03T14:00:00.000Z',
+        fromResolutionDueAt: '2026-04-05T09:00:00.000Z',
+        toResolutionDueAt: '2026-04-03T18:00:00.000Z',
+      },
+      ticketId: 'ticket-1',
     });
   });
 
@@ -163,10 +183,14 @@ describe('ChangeTicketPriorityUseCase', () => {
       ticketReadRepository,
       ticketWriteRepository,
       priorityRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(
       useCase.execute({
+        actorUserId: 'agent-1',
         priorityId: 'unknown-priority',
         ticketId: 'ticket-1',
       }),

@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable } from '@nestjs/common';
+﻿import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { TicketHistoryEventType } from '../../domain/ticketing/ticket-history-event-type';
 import {
   CreateTicketHistoryRecord,
@@ -20,11 +20,24 @@ export class TicketAuditService {
   ) {}
 
   async write(input: WriteTicketAuditInput): Promise<void> {
+    const actorUserId = input.actorUserId.trim();
+    const ticketId = input.ticketId.trim();
+
+    if (!actorUserId) {
+      throw new BadRequestException(
+        'actorUserId is required for ticket audit.',
+      );
+    }
+
+    if (!ticketId) {
+      throw new BadRequestException('ticketId is required for ticket audit.');
+    }
+
     const record: CreateTicketHistoryRecord = {
-      actorUserId: input.actorUserId.trim(),
+      actorUserId,
       eventType: input.eventType,
       payload: input.payload ?? null,
-      ticketId: input.ticketId.trim(),
+      ticketId,
     };
 
     await this.ticketHistoryWriteRepository.addTicketHistoryEntry(record);
