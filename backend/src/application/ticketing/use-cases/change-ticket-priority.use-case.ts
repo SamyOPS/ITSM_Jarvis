@@ -1,11 +1,11 @@
-﻿import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
-import { calculateSlaTargets } from '../sla-targets';
 import { TicketAuditService } from '../ticket-audit.service';
+import { calculateSlaTargets } from '../sla-targets';
 
 export type ChangeTicketPriorityCommand = {
   actorUserId: string;
@@ -26,9 +26,13 @@ export class ChangeTicketPriorityUseCase {
   ) {}
 
   async execute(command: ChangeTicketPriorityCommand): Promise<TicketDetail> {
+    const actorUserId = command.actorUserId.trim();
     const ticketId = command.ticketId.trim();
     const priorityId = command.priorityId.trim();
-    const actorUserId = command.actorUserId.trim();
+
+    if (!actorUserId) {
+      throw new BadRequestException('actorUserId is required.');
+    }
 
     if (!ticketId) {
       throw new BadRequestException('ticketId is required.');
@@ -36,10 +40,6 @@ export class ChangeTicketPriorityUseCase {
 
     if (!priorityId) {
       throw new BadRequestException('priorityId is required.');
-    }
-
-    if (!actorUserId) {
-      throw new BadRequestException('actorUserId is required.');
     }
 
     const existingTicket =
@@ -82,10 +82,10 @@ export class ChangeTicketPriorityUseCase {
       eventType: TicketHistoryEventType.PRIORITY_CHANGED,
       payload: {
         fromPriorityId: existingTicket.ticket.priorityId,
-        toPriorityId: priorityId,
         fromResponseDueAt: existingTicket.ticket.responseDueAt,
-        toResponseDueAt: updatedTicket.ticket.responseDueAt,
         fromResolutionDueAt: existingTicket.ticket.resolutionDueAt,
+        toPriorityId: updatedTicket.ticket.priorityId,
+        toResponseDueAt: updatedTicket.ticket.responseDueAt,
         toResolutionDueAt: updatedTicket.ticket.resolutionDueAt,
       },
       ticketId,

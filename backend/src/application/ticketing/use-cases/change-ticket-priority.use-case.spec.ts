@@ -1,4 +1,4 @@
-﻿import { BadRequestException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { ReferentialPriority } from '../../../domain/referentials/referential-priority';
 import { PriorityName } from '../../../domain/ticketing/priority-name';
@@ -78,6 +78,7 @@ describe('ChangeTicketPriorityUseCase', () => {
       searchTickets: jest.fn(),
     };
     const updatePriority = jest.fn().mockResolvedValue(undefined);
+    const write = jest.fn().mockResolvedValue(undefined);
     const ticketWriteRepository: TicketWriteRepository = {
       createIncident: jest.fn(),
       createRequest: jest.fn(),
@@ -92,14 +93,11 @@ describe('ChangeTicketPriorityUseCase', () => {
           new ReferentialPriority('priority-high', PriorityName.HIGH, 3, 4, 8),
         ]),
     };
-    const write = jest.fn().mockResolvedValue(undefined);
     const useCase = new ChangeTicketPriorityUseCase(
       ticketReadRepository,
       ticketWriteRepository,
       priorityRepository,
-      {
-        write,
-      } as unknown as TicketAuditService,
+      { write } as unknown as TicketAuditService,
     );
 
     await expect(
@@ -128,10 +126,10 @@ describe('ChangeTicketPriorityUseCase', () => {
       eventType: TicketHistoryEventType.PRIORITY_CHANGED,
       payload: {
         fromPriorityId: 'priority-low',
-        toPriorityId: 'priority-high',
         fromResponseDueAt: '2026-04-04T09:00:00.000Z',
-        toResponseDueAt: '2026-04-03T14:00:00.000Z',
         fromResolutionDueAt: '2026-04-05T09:00:00.000Z',
+        toPriorityId: 'priority-high',
+        toResponseDueAt: '2026-04-03T14:00:00.000Z',
         toResolutionDueAt: '2026-04-03T18:00:00.000Z',
       },
       ticketId: 'ticket-1',
@@ -183,9 +181,7 @@ describe('ChangeTicketPriorityUseCase', () => {
       ticketReadRepository,
       ticketWriteRepository,
       priorityRepository,
-      {
-        write: jest.fn(),
-      } as unknown as TicketAuditService,
+      { write: jest.fn() } as unknown as TicketAuditService,
     );
 
     await expect(
