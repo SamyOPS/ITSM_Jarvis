@@ -1,11 +1,14 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
+import { TicketAuditService } from '../ticket-audit.service';
 import { calculateSlaTargets } from '../sla-targets';
 
 export type ChangeTicketPriorityCommand = {
+  actorUserId: string;
   priorityId: string;
   ticketId: string;
 };
@@ -19,11 +22,17 @@ export class ChangeTicketPriorityUseCase {
     private readonly ticketWriteRepository: TicketWriteRepository,
     @Inject(ReferentialPriorityReadRepository)
     private readonly priorityRepository: ReferentialPriorityReadRepository,
+    private readonly ticketAuditService: TicketAuditService,
   ) {}
 
   async execute(command: ChangeTicketPriorityCommand): Promise<TicketDetail> {
+    const actorUserId = command.actorUserId.trim();
     const ticketId = command.ticketId.trim();
     const priorityId = command.priorityId.trim();
+
+    if (!actorUserId) {
+      throw new BadRequestException('actorUserId is required.');
+    }
 
     if (!ticketId) {
       throw new BadRequestException('ticketId is required.');
@@ -67,6 +76,20 @@ export class ChangeTicketPriorityUseCase {
         `Ticket ${ticketId} could not be reloaded after priority update.`,
       );
     }
+
+    await this.ticketAuditService.write({
+      actorUserId,
+      eventType: TicketHistoryEventType.PRIORITY_CHANGED,
+      payload: {
+        fromPriorityId: existingTicket.ticket.priorityId,
+        fromResolutionDueAt: existingTicket.ticket.resolutionDueAt,
+        fromResponseDueAt: existingTicket.ticket.responseDueAt,
+        toPriorityId: updatedTicket.ticket.priorityId,
+        toResolutionDueAt: updatedTicket.ticket.resolutionDueAt,
+        toResponseDueAt: updatedTicket.ticket.responseDueAt,
+      },
+      ticketId,
+    });
 
     return updatedTicket;
   }

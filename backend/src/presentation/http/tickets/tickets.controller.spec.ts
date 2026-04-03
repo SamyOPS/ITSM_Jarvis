@@ -221,9 +221,18 @@ describe('TicketsController', () => {
 
   it('delegates ticket priority updates to the dedicated use case', async () => {
     await expect(
-      controller.changePriority('ticket-1', {
-        priorityId: 'priority-high',
-      }),
+      controller.changePriority(
+        'ticket-1',
+        {
+          accessToken: 'token',
+          email: 'agent@jarvis.local',
+          id: 'user-1',
+          role: UserRole.AGENT,
+        },
+        {
+          priorityId: 'priority-high',
+        },
+      ),
     ).resolves.toEqual({
       ticket: {
         id: 'ticket-1',
@@ -232,6 +241,7 @@ describe('TicketsController', () => {
     });
 
     expect(changeTicketPriority).toHaveBeenCalledWith({
+      actorUserId: 'user-1',
       priorityId: 'priority-high',
       ticketId: 'ticket-1',
     });

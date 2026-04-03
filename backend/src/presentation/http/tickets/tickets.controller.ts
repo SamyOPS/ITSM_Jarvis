@@ -179,9 +179,11 @@ export class TicketsController {
   @Roles(UserRole.AGENT, UserRole.ADMIN)
   changePriority(
     @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() body: ChangeTicketPriorityDto,
   ): Promise<TicketDetail> {
     return this.changeTicketPriorityUseCase.execute({
+      actorUserId: user.id,
       priorityId: body.priorityId,
       ticketId: id,
     });

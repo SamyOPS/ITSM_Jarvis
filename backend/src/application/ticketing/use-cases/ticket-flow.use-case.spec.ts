@@ -87,6 +87,7 @@ describe('Ticket flow', () => {
             ),
           ]),
       } as ReferentialPriorityReadRepository,
+      auditService,
     );
 
     const createdIncident = await createIncidentUseCase.execute({
@@ -130,6 +131,7 @@ describe('Ticket flow', () => {
     expect(updatedTicket.ticket.status).toBe(TicketStatus.IN_PROGRESS);
 
     const reprioritizedTicket = await changeTicketPriorityUseCase.execute({
+      actorUserId: 'agent-1',
       priorityId: 'priority-critical',
       ticketId: createdIncident.ticket.id,
     });
