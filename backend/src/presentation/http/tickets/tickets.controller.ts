@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   Get,
@@ -145,9 +145,11 @@ export class TicketsController {
   @Roles(UserRole.AGENT, UserRole.ADMIN)
   assignTicket(
     @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() body: AssignTicketDto,
   ): Promise<TicketDetail> {
     return this.assignTicketUseCase.execute({
+      actorUserId: user.id,
       assignedToUserId: body.assignedToUserId ?? null,
       assignmentGroupId: body.assignmentGroupId ?? null,
       ticketId: id,
@@ -159,9 +161,11 @@ export class TicketsController {
   @Roles(UserRole.AGENT, UserRole.ADMIN)
   changeStatus(
     @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() body: ChangeTicketStatusDto,
   ): Promise<TicketDetail> {
     return this.changeTicketStatusUseCase.execute({
+      actorUserId: user.id,
       status: body.status,
       ticketId: id,
     });

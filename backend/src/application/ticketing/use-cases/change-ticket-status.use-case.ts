@@ -1,12 +1,15 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+﻿import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
+import { TicketAuditService } from '../ticket-audit.service';
 import { assertAllowedTicketStatusTransition } from '../ticketing-rules';
 
 export type ChangeTicketStatusCommand = {
+  actorUserId: string;
   status: TicketStatus;
   ticketId: string;
 };
@@ -18,13 +21,19 @@ export class ChangeTicketStatusUseCase {
     private readonly ticketReadRepository: TicketReadRepository,
     @Inject(TicketWriteRepository)
     private readonly ticketWriteRepository: TicketWriteRepository,
+    private readonly ticketAuditService: TicketAuditService,
   ) {}
 
   async execute(command: ChangeTicketStatusCommand): Promise<TicketDetail> {
     const ticketId = command.ticketId.trim();
+    const actorUserId = command.actorUserId.trim();
 
     if (!ticketId) {
       throw new BadRequestException('ticketId is required.');
+    }
+
+    if (!actorUserId) {
+      throw new BadRequestException('actorUserId is required.');
     }
 
     const existingTicket =
@@ -57,6 +66,16 @@ export class ChangeTicketStatusUseCase {
         `Ticket ${ticketId} could not be reloaded after status update.`,
       );
     }
+
+    await this.ticketAuditService.write({
+      actorUserId,
+      eventType: TicketHistoryEventType.STATUS_CHANGED,
+      payload: {
+        fromStatus: existingTicket.ticket.status,
+        toStatus: command.status,
+      },
+      ticketId,
+    });
 
     return updatedTicket;
   }

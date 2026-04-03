@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+﻿import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketSummary } from '../../../domain/ticketing/ticket-summary';
 import {
@@ -51,11 +51,14 @@ export class SearchTicketsUseCase {
       }),
     ]);
 
-    return [...new Map(
-      [...createdTickets, ...requestedTickets].map((ticket) => [ticket.id, ticket]),
-    ).values()].sort((left, right) =>
-      right.createdAt.localeCompare(left.createdAt),
-    );
+    return [
+      ...new Map(
+        [...createdTickets, ...requestedTickets].map((ticket) => [
+          ticket.id,
+          ticket,
+        ]),
+      ).values(),
+    ].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 }
 

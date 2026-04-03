@@ -1,4 +1,4 @@
-import { AddTicketAttachmentUseCase } from '../../../application/ticketing/use-cases/add-ticket-attachment.use-case';
+﻿import { AddTicketAttachmentUseCase } from '../../../application/ticketing/use-cases/add-ticket-attachment.use-case';
 import { AddTicketCommentUseCase } from '../../../application/ticketing/use-cases/add-ticket-comment.use-case';
 import { AssignTicketUseCase } from '../../../application/ticketing/use-cases/assign-ticket.use-case';
 import { ChangeTicketStatusUseCase } from '../../../application/ticketing/use-cases/change-ticket-status.use-case';
@@ -151,10 +151,19 @@ describe('TicketsController', () => {
 
   it('delegates ticket assignment to the dedicated use case', async () => {
     await expect(
-      controller.assignTicket('ticket-1', {
-        assignedToUserId: 'agent-1',
-        assignmentGroupId: 'group-1',
-      }),
+      controller.assignTicket(
+        'ticket-1',
+        {
+          accessToken: 'token',
+          email: 'agent@jarvis.local',
+          id: 'user-1',
+          role: UserRole.AGENT,
+        },
+        {
+          assignedToUserId: 'agent-1',
+          assignmentGroupId: 'group-1',
+        },
+      ),
     ).resolves.toEqual({
       ticket: {
         assignedToUserId: 'agent-1',
@@ -164,6 +173,7 @@ describe('TicketsController', () => {
     });
 
     expect(assignTicket).toHaveBeenCalledWith({
+      actorUserId: 'user-1',
       assignedToUserId: 'agent-1',
       assignmentGroupId: 'group-1',
       ticketId: 'ticket-1',
@@ -172,9 +182,18 @@ describe('TicketsController', () => {
 
   it('delegates ticket status updates to the dedicated use case', async () => {
     await expect(
-      controller.changeStatus('ticket-1', {
-        status: TicketStatus.IN_PROGRESS,
-      }),
+      controller.changeStatus(
+        'ticket-1',
+        {
+          accessToken: 'token',
+          email: 'agent@jarvis.local',
+          id: 'user-1',
+          role: UserRole.AGENT,
+        },
+        {
+          status: TicketStatus.IN_PROGRESS,
+        },
+      ),
     ).resolves.toEqual({
       ticket: {
         id: 'ticket-1',
@@ -183,6 +202,7 @@ describe('TicketsController', () => {
     });
 
     expect(changeTicketStatus).toHaveBeenCalledWith({
+      actorUserId: 'user-1',
       status: TicketStatus.IN_PROGRESS,
       ticketId: 'ticket-1',
     });

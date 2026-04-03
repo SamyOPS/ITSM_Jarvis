@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
@@ -6,11 +6,13 @@ import {
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketComment } from '../../../domain/ticketing/ticket-comment';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { Ticket } from '../../../domain/ticketing/ticket';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
 import { TicketCommentWriteRepository } from '../repositories/ticket-comment-write.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
+import { TicketAuditService } from '../ticket-audit.service';
 import { AddTicketCommentUseCase } from './add-ticket-comment.use-case';
 
 describe('AddTicketCommentUseCase', () => {
@@ -38,7 +40,7 @@ describe('AddTicketCommentUseCase', () => {
     null,
   );
 
-  it('creates a public comment for a demandeur', async () => {
+  it('creates a public comment for a demandeur and writes audit', async () => {
     const addTicketComment = jest
       .fn()
       .mockResolvedValue(
@@ -51,6 +53,7 @@ describe('AddTicketCommentUseCase', () => {
           '2026-04-02T08:10:00.000Z',
         ),
       );
+    const write = jest.fn().mockResolvedValue(undefined);
     const useCase = new AddTicketCommentUseCase(
       {
         addTicketComment,
@@ -59,6 +62,9 @@ describe('AddTicketCommentUseCase', () => {
         getTicketById: jest.fn().mockResolvedValue(ticketDetail),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write,
+      } as unknown as TicketAuditService,
     );
 
     await expect(
@@ -85,6 +91,15 @@ describe('AddTicketCommentUseCase', () => {
       isInternal: false,
       ticketId: 'ticket-1',
     });
+    expect(write).toHaveBeenCalledWith({
+      actorUserId: 'creator-1',
+      eventType: TicketHistoryEventType.COMMENT_ADDED,
+      payload: {
+        commentId: 'comment-1',
+        isInternal: false,
+      },
+      ticketId: 'ticket-1',
+    });
   });
 
   it('rejects internal comments for demandeur users', async () => {
@@ -96,6 +111,9 @@ describe('AddTicketCommentUseCase', () => {
         getTicketById: jest.fn(),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(
@@ -118,6 +136,9 @@ describe('AddTicketCommentUseCase', () => {
         getTicketById: jest.fn(),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(
@@ -139,6 +160,9 @@ describe('AddTicketCommentUseCase', () => {
         getTicketById: jest.fn().mockResolvedValue(null),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(
@@ -160,6 +184,9 @@ describe('AddTicketCommentUseCase', () => {
         getTicketById: jest.fn().mockResolvedValue(ticketDetail),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(

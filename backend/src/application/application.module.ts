@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { GetAuthSetupUseCase } from './auth/use-cases/get-auth-setup.use-case';
 import { GetAuthenticatedUserUseCase } from './auth/use-cases/get-authenticated-user.use-case';
 import { GetHealthUseCase } from './health/use-cases/get-health.use-case';
@@ -17,6 +17,8 @@ import { ManageCiTypesUseCase } from './referentials/use-cases/manage-ci-types.u
 import { ManageGroupsUseCase } from './referentials/use-cases/manage-groups.use-case';
 import { ManagePrioritiesUseCase } from './referentials/use-cases/manage-priorities.use-case';
 import { ManageServicesUseCase } from './referentials/use-cases/manage-services.use-case';
+import { InfrastructureModule } from '../infrastructure/infrastructure.module';
+import { TicketAuditService } from './ticketing/ticket-audit.service';
 import { AddTicketAttachmentUseCase } from './ticketing/use-cases/add-ticket-attachment.use-case';
 import { AddTicketCommentUseCase } from './ticketing/use-cases/add-ticket-comment.use-case';
 import { AssignTicketUseCase } from './ticketing/use-cases/assign-ticket.use-case';
@@ -27,7 +29,6 @@ import { GetTicketByIdUseCase } from './ticketing/use-cases/get-ticket-by-id.use
 import { ListTicketAttachmentsUseCase } from './ticketing/use-cases/list-ticket-attachments.use-case';
 import { ListTicketCommentsUseCase } from './ticketing/use-cases/list-ticket-comments.use-case';
 import { SearchTicketsUseCase } from './ticketing/use-cases/search-tickets.use-case';
-import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 
 const referentialUseCases = [
   ListCategoriesUseCase,
@@ -48,6 +49,7 @@ const referentialUseCases = [
 ];
 
 const ticketingUseCases = [
+  TicketAuditService,
   CreateIncidentUseCase,
   CreateRequestUseCase,
   AssignTicketUseCase,

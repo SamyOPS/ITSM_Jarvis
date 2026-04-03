@@ -1,4 +1,5 @@
-import { ServiceUnavailableException } from '@nestjs/common';
+﻿import { ServiceUnavailableException } from '@nestjs/common';
+import { TicketHistoryEventType } from '../../domain/ticketing/ticket-history-event-type';
 import { TicketStatus } from '../../domain/ticketing/ticket-status';
 import { TicketType } from '../../domain/ticketing/ticket-type';
 import { SupabaseTicketWriteRepository } from './supabase-ticket-write.repository';
@@ -232,6 +233,43 @@ describe('SupabaseTicketWriteRepository', () => {
         storagePath: 'user-1/test-upload.txt',
         ticketId: 'ticket-1',
         uploadedByUserId: 'user-1',
+      }),
+    );
+  });
+
+  it('creates a ticket history entry through Supabase', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: jest.fn().mockResolvedValue(''),
+    });
+
+    const repository = new SupabaseTicketWriteRepository();
+
+    await expect(
+      repository.addTicketHistoryEntry({
+        actorUserId: 'agent-1',
+        eventType: TicketHistoryEventType.STATUS_CHANGED,
+        payload: {
+          fromStatus: 'OPEN',
+          toStatus: 'IN_PROGRESS',
+        },
+        ticketId: 'ticket-1',
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/rest/v1/ticket_history'),
+      expect.objectContaining({
+        body: JSON.stringify({
+          actor_user_id: 'agent-1',
+          event_type: TicketHistoryEventType.STATUS_CHANGED,
+          payload: {
+            fromStatus: 'OPEN',
+            toStatus: 'IN_PROGRESS',
+          },
+          ticket_id: 'ticket-1',
+        }),
+        method: 'POST',
       }),
     );
   });

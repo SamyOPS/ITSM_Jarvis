@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   Injectable,
   ServiceUnavailableException,
@@ -29,6 +29,7 @@ import {
   TicketWriteRepository,
   UpdateTicketAssignmentRecord,
 } from '../../application/ticketing/repositories/ticket-write.repository';
+import { CreateTicketHistoryRecord } from '../../application/ticketing/repositories/ticket-history-write.repository';
 import { CreatedIncident } from '../../domain/ticketing/created-incident';
 import { CreatedRequest } from '../../domain/ticketing/created-request';
 import { Incident } from '../../domain/ticketing/incident';
@@ -381,6 +382,22 @@ export class SupabaseTicketWriteRepository
           Number(attachment.size_bytes),
           attachment.created_at,
         ),
+    );
+  }
+
+  async addTicketHistoryEntry(
+    record: CreateTicketHistoryRecord,
+  ): Promise<void> {
+    await this.send(
+      'ticket_history',
+      'POST',
+      {
+        actor_user_id: record.actorUserId,
+        event_type: record.eventType,
+        payload: record.payload ?? null,
+        ticket_id: record.ticketId,
+      },
+      false,
     );
   }
 
