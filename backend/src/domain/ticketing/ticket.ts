@@ -1,5 +1,6 @@
 import { TicketStatus } from './ticket-status';
 import { TicketType } from './ticket-type';
+import { SlaIndicator } from './sla-indicator';
 
 export class Ticket {
   constructor(
@@ -21,5 +22,7 @@ export class Ticket {
     public readonly createdAt: string,
     public readonly responseDueAt: string | null = null,
     public readonly resolutionDueAt: string | null = null,
+    public readonly responseSlaStatus: SlaIndicator | null = null,
+    public readonly resolutionSlaStatus: SlaIndicator | null = null,
   ) {}
 }

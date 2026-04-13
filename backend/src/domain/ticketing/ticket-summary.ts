@@ -1,4 +1,5 @@
 import { PriorityName } from './priority-name';
+import { SlaIndicator } from './sla-indicator';
 import { TicketStatus } from './ticket-status';
 import { TicketType } from './ticket-type';
 
@@ -22,5 +23,7 @@ export class TicketSummary {
     public readonly createdAt: string,
     public readonly responseDueAt: string | null = null,
     public readonly resolutionDueAt: string | null = null,
+    public readonly responseSlaStatus: SlaIndicator | null = null,
+    public readonly resolutionSlaStatus: SlaIndicator | null = null,
   ) {}
 }

@@ -50,6 +50,8 @@ describe('SupabaseTicketWriteRepository', () => {
             },
             number: 'TICK-000001',
             priority_id: 'priority-1',
+            resolution_due_at: '2026-04-02T16:00:00.000Z',
+            response_due_at: '2026-04-02T10:00:00.000Z',
             requests: null,
             requested_for_user_id: null,
             service_id: null,
@@ -76,6 +78,8 @@ describe('SupabaseTicketWriteRepository', () => {
       ticket: {
         id: 'ticket-1',
         number: 'TICK-000001',
+        resolutionSlaStatus: 'OVERDUE',
+        responseSlaStatus: 'OVERDUE',
       },
     });
   });

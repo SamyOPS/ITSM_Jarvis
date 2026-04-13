@@ -360,4 +360,3 @@ class InMemoryTicketRepository
     return Promise.resolve([]);
   }
 }
-
