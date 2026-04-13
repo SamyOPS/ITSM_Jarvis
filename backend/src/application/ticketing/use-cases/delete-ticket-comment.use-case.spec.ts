@@ -8,10 +8,12 @@ import { TicketComment } from '../../../domain/ticketing/ticket-comment';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { Ticket } from '../../../domain/ticketing/ticket';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
 import { TicketCommentReadRepository } from '../repositories/ticket-comment-read.repository';
 import { TicketCommentWriteRepository } from '../repositories/ticket-comment-write.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
+import { TicketAuditService } from '../ticket-audit.service';
 import { DeleteTicketCommentUseCase } from './delete-ticket-comment.use-case';
 
 describe('DeleteTicketCommentUseCase', () => {
@@ -41,6 +43,7 @@ describe('DeleteTicketCommentUseCase', () => {
 
   it('allows admins to delete any comment', async () => {
     const deleteTicketComment = jest.fn().mockResolvedValue(undefined);
+    const write = jest.fn().mockResolvedValue(undefined);
     const useCase = new DeleteTicketCommentUseCase(
       {
         getTicketCommentById: jest
@@ -65,6 +68,9 @@ describe('DeleteTicketCommentUseCase', () => {
         getTicketById: jest.fn().mockResolvedValue(ticketDetail),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write,
+      } as unknown as TicketAuditService,
     );
 
     await expect(
@@ -77,10 +83,21 @@ describe('DeleteTicketCommentUseCase', () => {
     ).resolves.toBeUndefined();
 
     expect(deleteTicketComment).toHaveBeenCalledWith('ticket-1', 'comment-1');
+    expect(write).toHaveBeenCalledWith({
+      actorUserId: 'admin-1',
+      eventType: TicketHistoryEventType.COMMENT_DELETED,
+      payload: {
+        authorUserId: 'creator-1',
+        commentId: 'comment-1',
+        isInternal: false,
+      },
+      ticketId: 'ticket-1',
+    });
   });
 
   it('allows demandeur users to delete their own comment', async () => {
     const deleteTicketComment = jest.fn().mockResolvedValue(undefined);
+    const write = jest.fn().mockResolvedValue(undefined);
     const useCase = new DeleteTicketCommentUseCase(
       {
         getTicketCommentById: jest
@@ -105,6 +122,9 @@ describe('DeleteTicketCommentUseCase', () => {
         getTicketById: jest.fn().mockResolvedValue(ticketDetail),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write,
+      } as unknown as TicketAuditService,
     );
 
     await expect(
@@ -115,6 +135,17 @@ describe('DeleteTicketCommentUseCase', () => {
         ticketId: 'ticket-1',
       }),
     ).resolves.toBeUndefined();
+
+    expect(write).toHaveBeenCalledWith({
+      actorUserId: 'creator-1',
+      eventType: TicketHistoryEventType.COMMENT_DELETED,
+      payload: {
+        authorUserId: 'creator-1',
+        commentId: 'comment-1',
+        isInternal: false,
+      },
+      ticketId: 'ticket-1',
+    });
   });
 
   it('rejects empty identifiers', async () => {
@@ -131,6 +162,9 @@ describe('DeleteTicketCommentUseCase', () => {
         getTicketById: jest.fn(),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(
@@ -157,6 +191,9 @@ describe('DeleteTicketCommentUseCase', () => {
         getTicketById: jest.fn().mockResolvedValue(null),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(
@@ -183,6 +220,9 @@ describe('DeleteTicketCommentUseCase', () => {
         getTicketById: jest.fn().mockResolvedValue(ticketDetail),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(
@@ -220,6 +260,9 @@ describe('DeleteTicketCommentUseCase', () => {
         getTicketById: jest.fn().mockResolvedValue(ticketDetail),
         searchTickets: jest.fn(),
       } as TicketReadRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
     );
 
     await expect(
