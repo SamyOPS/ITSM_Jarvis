@@ -26,6 +26,7 @@ import { ChangeTicketPriorityUseCase } from './ticketing/use-cases/change-ticket
 import { ChangeTicketStatusUseCase } from './ticketing/use-cases/change-ticket-status.use-case';
 import { CreateIncidentUseCase } from './ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from './ticketing/use-cases/create-request.use-case';
+import { DeleteTicketAttachmentUseCase } from './ticketing/use-cases/delete-ticket-attachment.use-case';
 import { DeleteTicketCommentUseCase } from './ticketing/use-cases/delete-ticket-comment.use-case';
 import { GetTicketByIdUseCase } from './ticketing/use-cases/get-ticket-by-id.use-case';
 import { ListTicketAttachmentsUseCase } from './ticketing/use-cases/list-ticket-attachments.use-case';
@@ -64,6 +65,7 @@ const ticketingUseCases = [
   DeleteTicketCommentUseCase,
   ListTicketAttachmentsUseCase,
   AddTicketAttachmentUseCase,
+  DeleteTicketAttachmentUseCase,
 ];
 
 @Module({

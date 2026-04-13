@@ -14,4 +14,9 @@ export abstract class TicketAttachmentWriteRepository {
   abstract addTicketAttachment(
     record: CreateTicketAttachmentRecord,
   ): Promise<TicketAttachment>;
+
+  abstract deleteTicketAttachment(
+    ticketId: string,
+    attachmentId: string,
+  ): Promise<void>;
 }

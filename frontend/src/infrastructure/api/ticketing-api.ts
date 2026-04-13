@@ -1,11 +1,13 @@
 import type { CreatedIncidentSnapshot } from '../../domain/ticketing/created-incident';
 import type { CreatedRequestSnapshot } from '../../domain/ticketing/created-request';
 import type { IncidentSeverity } from '../../domain/ticketing/incident-severity';
+import type { TicketAttachmentSnapshot } from '../../domain/ticketing/ticket-attachment';
 import type { RequestType } from '../../domain/ticketing/request-type';
 import type { TicketCommentSnapshot } from '../../domain/ticketing/ticket-comment';
 import type { TicketDetailSnapshot } from '../../domain/ticketing/ticket-detail';
 import type { TicketSummarySnapshot } from '../../domain/ticketing/ticket-summary';
 import { getFrontendRuntimeConfig } from '../config/env';
+import { getFrontendSupabaseConfig } from '../config/supabase-env';
 
 export type CreateIncidentPayload = {
   categoryId: string;
@@ -49,6 +51,14 @@ export type ChangeTicketStatusPayload = {
 export type AddTicketCommentPayload = {
   body: string;
   isInternal?: boolean;
+};
+
+export type AddTicketAttachmentPayload = {
+  bucketId: string;
+  fileName: string;
+  mimeType?: string | null;
+  sizeBytes: number;
+  storagePath: string;
 };
 
 export async function createIncident(
@@ -244,6 +254,178 @@ export async function deleteTicketComment(
     throw new Error(
       message ||
         `La suppression du commentaire a echoue avec le statut ${response.status}`,
+    );
+  }
+}
+
+export async function getTicketAttachments(
+  accessToken: string,
+  ticketId: string,
+): Promise<TicketAttachmentSnapshot[]> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/tickets/${ticketId}/attachments`, {
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      message ||
+        `Le chargement des pieces jointes a echoue avec le statut ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as TicketAttachmentSnapshot[];
+}
+
+export async function addTicketAttachment(
+  accessToken: string,
+  ticketId: string,
+  payload: AddTicketAttachmentPayload,
+): Promise<TicketAttachmentSnapshot> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/tickets/${ticketId}/attachments`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      message ||
+        `L enregistrement de la piece jointe a echoue avec le statut ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as TicketAttachmentSnapshot;
+}
+
+export async function deleteTicketAttachment(
+  accessToken: string,
+  ticketId: string,
+  attachmentId: string,
+): Promise<void> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(
+    `${apiUrl}/tickets/${ticketId}/attachments/${attachmentId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      message ||
+        `La suppression de la piece jointe a echoue avec le statut ${response.status}`,
+    );
+  }
+}
+
+export async function uploadTicketAttachmentBinary(
+  accessToken: string,
+  bucketId: string,
+  storagePath: string,
+  file: File,
+): Promise<void> {
+  const supabaseConfig = getFrontendSupabaseConfig();
+  const encodedPath = storagePath
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+  const response = await fetch(
+    `${supabaseConfig.url}/storage/v1/object/${bucketId}/${encodedPath}`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: supabaseConfig.anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': file.type || 'application/octet-stream',
+        'x-upsert': 'false',
+      },
+      body: file,
+    },
+  );
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      message ||
+        `L upload du fichier a echoue avec le statut ${response.status}`,
+    );
+  }
+}
+
+export async function downloadTicketAttachmentBinary(
+  accessToken: string,
+  bucketId: string,
+  storagePath: string,
+): Promise<Blob> {
+  const supabaseConfig = getFrontendSupabaseConfig();
+  const encodedPath = storagePath
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+  const response = await fetch(
+    `${supabaseConfig.url}/storage/v1/object/authenticated/${bucketId}/${encodedPath}`,
+    {
+      headers: {
+        apikey: supabaseConfig.anonKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      message ||
+        `Le chargement du fichier a echoue avec le statut ${response.status}`,
+    );
+  }
+
+  return await response.blob();
+}
+
+export async function deleteTicketAttachmentBinary(
+  accessToken: string,
+  bucketId: string,
+  storagePath: string,
+): Promise<void> {
+  const supabaseConfig = getFrontendSupabaseConfig();
+  const encodedPath = storagePath
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+  const response = await fetch(
+    `${supabaseConfig.url}/storage/v1/object/${bucketId}/${encodedPath}`,
+    {
+      method: 'DELETE',
+      headers: {
+        apikey: supabaseConfig.anonKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      message ||
+        `La suppression du fichier a echoue avec le statut ${response.status}`,
     );
   }
 }
