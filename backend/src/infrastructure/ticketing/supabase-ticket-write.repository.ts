@@ -30,6 +30,7 @@ import {
   UpdateTicketAssignmentRecord,
 } from '../../application/ticketing/repositories/ticket-write.repository';
 import { CreateTicketHistoryRecord } from '../../application/ticketing/repositories/ticket-history-write.repository';
+import { calculateTicketSlaStatus } from '../../application/ticketing/sla-status';
 import { CreatedIncident } from '../../domain/ticketing/created-incident';
 import { CreatedRequest } from '../../domain/ticketing/created-request';
 import { Incident } from '../../domain/ticketing/incident';
@@ -215,29 +216,52 @@ export class SupabaseTicketWriteRepository
       | null;
     const priorityNames = await this.loadPriorityNames();
 
-    return normalizeRows(body).map(
-      (ticket) =>
-        new TicketSummary(
-          ticket.id,
-          ticket.number,
-          ticket.type,
-          ticket.status,
-          ticket.title,
-          ticket.priority_id,
-          priorityNames.get(ticket.priority_id) ?? null,
-          ticket.category_id,
-          ticket.created_by_user_id,
-          ticket.requested_for_user_id,
-          ticket.service_id,
-          ticket.channel_id,
-          ticket.assignment_group_id,
-          ticket.assigned_to_user_id,
-          ticket.ci_id,
-          ticket.created_at,
-          ticket.response_due_at,
-          ticket.resolution_due_at,
-        ),
-    );
+    return normalizeRows(body).map((ticket) => {
+      const mappedTicket = new Ticket(
+        ticket.id,
+        ticket.number,
+        ticket.type,
+        ticket.status,
+        ticket.title,
+        '',
+        ticket.priority_id,
+        ticket.category_id,
+        ticket.created_by_user_id,
+        ticket.requested_for_user_id,
+        ticket.service_id,
+        ticket.channel_id,
+        ticket.assignment_group_id,
+        ticket.assigned_to_user_id,
+        ticket.ci_id,
+        ticket.created_at,
+        ticket.response_due_at,
+        ticket.resolution_due_at,
+      );
+      const slaStatus = calculateTicketSlaStatus(mappedTicket);
+
+      return new TicketSummary(
+        ticket.id,
+        ticket.number,
+        ticket.type,
+        ticket.status,
+        ticket.title,
+        ticket.priority_id,
+        priorityNames.get(ticket.priority_id) ?? null,
+        ticket.category_id,
+        ticket.created_by_user_id,
+        ticket.requested_for_user_id,
+        ticket.service_id,
+        ticket.channel_id,
+        ticket.assignment_group_id,
+        ticket.assigned_to_user_id,
+        ticket.ci_id,
+        ticket.created_at,
+        ticket.response_due_at,
+        ticket.resolution_due_at,
+        slaStatus.responseSlaStatus,
+        slaStatus.resolutionSlaStatus,
+      );
+    });
   }
 
   async getTicketById(ticketId: string): Promise<TicketDetail | null> {
@@ -262,26 +286,50 @@ export class SupabaseTicketWriteRepository
     const incidentRow = getEmbeddedRow(ticket.incidents);
     const requestRow = getEmbeddedRow(ticket.requests);
 
+    const mappedTicket = new Ticket(
+      ticket.id,
+      ticket.number,
+      ticket.type,
+      ticket.status,
+      ticket.title,
+      ticket.description,
+      ticket.priority_id,
+      ticket.category_id,
+      ticket.created_by_user_id,
+      ticket.requested_for_user_id,
+      ticket.service_id,
+      ticket.channel_id,
+      ticket.assignment_group_id,
+      ticket.assigned_to_user_id,
+      ticket.ci_id,
+      ticket.created_at,
+      ticket.response_due_at,
+      ticket.resolution_due_at,
+    );
+    const slaStatus = calculateTicketSlaStatus(mappedTicket);
+
     return new TicketDetail(
       new Ticket(
-        ticket.id,
-        ticket.number,
-        ticket.type,
-        ticket.status,
-        ticket.title,
-        ticket.description,
-        ticket.priority_id,
-        ticket.category_id,
-        ticket.created_by_user_id,
-        ticket.requested_for_user_id,
-        ticket.service_id,
-        ticket.channel_id,
-        ticket.assignment_group_id,
-        ticket.assigned_to_user_id,
-        ticket.ci_id,
-        ticket.created_at,
-        ticket.response_due_at,
-        ticket.resolution_due_at,
+        mappedTicket.id,
+        mappedTicket.number,
+        mappedTicket.type,
+        mappedTicket.status,
+        mappedTicket.title,
+        mappedTicket.description,
+        mappedTicket.priorityId,
+        mappedTicket.categoryId,
+        mappedTicket.createdByUserId,
+        mappedTicket.requestedForUserId,
+        mappedTicket.serviceId,
+        mappedTicket.channelId,
+        mappedTicket.assignmentGroupId,
+        mappedTicket.assignedToUserId,
+        mappedTicket.ciId,
+        mappedTicket.createdAt,
+        mappedTicket.responseDueAt,
+        mappedTicket.resolutionDueAt,
+        slaStatus.responseSlaStatus,
+        slaStatus.resolutionSlaStatus,
       ),
       priorityNames.get(ticket.priority_id) ?? null,
       incidentRow
@@ -510,6 +558,8 @@ export class SupabaseTicketWriteRepository
           ticket.created_at,
           ticket.response_due_at,
           ticket.resolution_due_at,
+          null,
+          null,
         ),
         new Incident(
           incident.ticket_id,
@@ -566,6 +616,8 @@ export class SupabaseTicketWriteRepository
           ticket.created_at,
           ticket.response_due_at,
           ticket.resolution_due_at,
+          null,
+          null,
         ),
         new RequestTicket(
           request.ticket_id,
