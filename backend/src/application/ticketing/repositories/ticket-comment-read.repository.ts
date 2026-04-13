@@ -6,6 +6,11 @@ export type ListTicketCommentsFilters = {
 };
 
 export abstract class TicketCommentReadRepository {
+  abstract getTicketCommentById(
+    ticketId: string,
+    commentId: string,
+  ): Promise<TicketComment | null>;
+
   abstract listTicketComments(
     filters: ListTicketCommentsFilters,
   ): Promise<TicketComment[]>;

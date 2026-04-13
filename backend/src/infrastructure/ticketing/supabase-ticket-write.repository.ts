@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   Injectable,
   ServiceUnavailableException,
@@ -123,6 +123,41 @@ export class SupabaseTicketWriteRepository
     TicketAttachmentReadRepository,
     TicketAttachmentWriteRepository
 {
+  async getTicketCommentById(
+    ticketId: string,
+    commentId: string,
+  ): Promise<TicketComment | null> {
+    const query = new URLSearchParams({
+      select: 'id,ticket_id,author_user_id,body,is_internal,created_at',
+      id: `eq.${commentId}`,
+      ticket_id: `eq.${ticketId}`,
+      limit: '1',
+    });
+
+    const response = await this.send(
+      `ticket_comments?${query.toString()}`,
+      'GET',
+    );
+    const body = (await response.json()) as
+      | SupabaseTicketCommentRow[]
+      | SupabaseTicketCommentRow
+      | null;
+    const comment = extractSingleRow(body);
+
+    if (!comment) {
+      return null;
+    }
+
+    return new TicketComment(
+      comment.id,
+      comment.ticket_id,
+      comment.author_user_id,
+      comment.body,
+      comment.is_internal,
+      comment.created_at,
+    );
+  }
+
   async updateAssignment(
     ticketId: string,
     record: UpdateTicketAssignmentRecord,
@@ -374,6 +409,18 @@ export class SupabaseTicketWriteRepository
       comment.is_internal,
       comment.created_at,
     );
+  }
+
+  async deleteTicketComment(
+    ticketId: string,
+    commentId: string,
+  ): Promise<void> {
+    const query = new URLSearchParams({
+      id: `eq.${commentId}`,
+      ticket_id: `eq.${ticketId}`,
+    });
+
+    await this.send(`ticket_comments?${query.toString()}`, 'DELETE');
   }
 
   async listTicketAttachments(

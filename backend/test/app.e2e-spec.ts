@@ -58,6 +58,12 @@ describe('AppController (e2e)', () => {
       .expect(401);
   });
 
+  it('/tickets/:ticketId/comments/:commentId (DELETE) returns 401 without a bearer token', () => {
+    return request(app.getHttpServer())
+      .delete('/tickets/ticket-1/comments/comment-1')
+      .expect(401);
+  });
+
   it('/tickets/:id/attachments (GET) returns 401 without a bearer token', () => {
     return request(app.getHttpServer())
       .get('/tickets/ticket-1/attachments')

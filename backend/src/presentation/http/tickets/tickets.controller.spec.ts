@@ -1,10 +1,11 @@
-﻿import { AddTicketAttachmentUseCase } from '../../../application/ticketing/use-cases/add-ticket-attachment.use-case';
+import { AddTicketAttachmentUseCase } from '../../../application/ticketing/use-cases/add-ticket-attachment.use-case';
 import { AddTicketCommentUseCase } from '../../../application/ticketing/use-cases/add-ticket-comment.use-case';
 import { AssignTicketUseCase } from '../../../application/ticketing/use-cases/assign-ticket.use-case';
 import { ChangeTicketPriorityUseCase } from '../../../application/ticketing/use-cases/change-ticket-priority.use-case';
 import { ChangeTicketStatusUseCase } from '../../../application/ticketing/use-cases/change-ticket-status.use-case';
 import { CreateIncidentUseCase } from '../../../application/ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from '../../../application/ticketing/use-cases/create-request.use-case';
+import { DeleteTicketCommentUseCase } from '../../../application/ticketing/use-cases/delete-ticket-comment.use-case';
 import { GetTicketByIdUseCase } from '../../../application/ticketing/use-cases/get-ticket-by-id.use-case';
 import { ListTicketAttachmentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-attachments.use-case';
 import { ListTicketCommentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-comments.use-case';
@@ -68,6 +69,7 @@ describe('TicketsController', () => {
     isInternal: false,
     ticketId: 'ticket-1',
   });
+  const deleteComment = jest.fn().mockResolvedValue(undefined);
   const listAttachments = jest.fn().mockResolvedValue([
     {
       bucketId: 'ticket-attachments',
@@ -119,6 +121,7 @@ describe('TicketsController', () => {
     getTicketById.mockClear();
     listComments.mockClear();
     addComment.mockClear();
+    deleteComment.mockClear();
     listAttachments.mockClear();
     addAttachment.mockClear();
     createIncident.mockClear();
@@ -151,6 +154,9 @@ describe('TicketsController', () => {
       {
         execute: addComment,
       } as unknown as AddTicketCommentUseCase,
+      {
+        execute: deleteComment,
+      } as unknown as DeleteTicketCommentUseCase,
       {
         execute: listAttachments,
       } as unknown as ListTicketAttachmentsUseCase,
@@ -345,6 +351,24 @@ describe('TicketsController', () => {
       authorUserId: 'user-1',
       body: 'Commentaire public',
       isInternal: true,
+      ticketId: 'ticket-1',
+    });
+  });
+
+  it('delegates ticket comment deletion with the authenticated user', async () => {
+    await expect(
+      controller.deleteComment('ticket-1', 'comment-1', {
+        accessToken: 'token',
+        email: 'agent@jarvis.local',
+        id: 'user-1',
+        role: UserRole.AGENT,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(deleteComment).toHaveBeenCalledWith({
+      actorRole: UserRole.AGENT,
+      actorUserId: 'user-1',
+      commentId: 'comment-1',
       ticketId: 'ticket-1',
     });
   });
