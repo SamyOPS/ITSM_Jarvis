@@ -25,6 +25,7 @@ import {
   type IncidentSeverity,
 } from '../../domain/ticketing/incident-severity';
 
+import type { TicketCommentSnapshot } from '../../domain/ticketing/ticket-comment';
 import type { TicketDetailSnapshot } from '../../domain/ticketing/ticket-detail';
 
 import {
@@ -37,11 +38,14 @@ import type { TicketSummarySnapshot } from '../../domain/ticketing/ticket-summar
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
 
 import {
+  addTicketComment,
   assignTicket,
+  deleteTicketComment,
   changeTicketStatus,
   createIncident,
   createRequest,
   getTicketById,
+  getTicketComments,
   searchTickets,
 } from '../../infrastructure/api/ticketing-api';
 
@@ -93,6 +97,12 @@ type AssignmentDraftState = {
   assignedToUserId: string;
 
   assignmentGroupId: string;
+};
+
+type CommentDraftState = {
+  body: string;
+
+  isInternal: boolean;
 };
 
 type IncidentValidationErrors = Partial<
@@ -183,6 +193,12 @@ const INITIAL_ASSIGNMENT_DRAFT: AssignmentDraftState = {
   assignmentGroupId: '',
 };
 
+const INITIAL_COMMENT_DRAFT: CommentDraftState = {
+  body: '',
+
+  isInternal: false,
+};
+
 export function AgentPage({ session }: AgentPageProps) {
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
@@ -212,8 +228,16 @@ export function AgentPage({ session }: AgentPageProps) {
   const [selectedTicketDetail, setSelectedTicketDetail] =
     useState<TicketDetailSnapshot | null>(null);
 
+  const [selectedTicketComments, setSelectedTicketComments] = useState<
+    TicketCommentSnapshot[]
+  >([]);
+
   const [assignmentDraft, setAssignmentDraft] = useState<AssignmentDraftState>(
     INITIAL_ASSIGNMENT_DRAFT,
+  );
+
+  const [commentDraft, setCommentDraft] = useState<CommentDraftState>(
+    INITIAL_COMMENT_DRAFT,
   );
 
   const [statusDraft, setStatusDraft] = useState<TicketStatus>('OPEN');
@@ -230,6 +254,14 @@ export function AgentPage({ session }: AgentPageProps) {
 
   const [isSubmittingStatus, setIsSubmittingStatus] = useState(false);
 
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(
+    null,
+  );
+
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
 
   const [loadTicketsErrorMessage, setLoadTicketsErrorMessage] = useState<
@@ -237,6 +269,10 @@ export function AgentPage({ session }: AgentPageProps) {
   >(null);
 
   const [loadDetailErrorMessage, setLoadDetailErrorMessage] = useState<
+    string | null
+  >(null);
+
+  const [loadCommentsErrorMessage, setLoadCommentsErrorMessage] = useState<
     string | null
   >(null);
 
@@ -252,6 +288,14 @@ export function AgentPage({ session }: AgentPageProps) {
     string | null
   >(null);
 
+  const [commentErrorMessage, setCommentErrorMessage] = useState<string | null>(
+    null,
+  );
+
+  const [commentSuccessMessage, setCommentSuccessMessage] = useState<
+    string | null
+  >(null);
+
   const [tickets, setTickets] = useState<TicketSummarySnapshot[]>([]);
 
   const [incidentValidationErrors, setIncidentValidationErrors] =
@@ -261,6 +305,10 @@ export function AgentPage({ session }: AgentPageProps) {
     useState<RequestValidationErrors>({});
 
   const canManageTicket = canManageTicketActions(session.user.role);
+
+  const canCreateInternalComments = canCreateInternalTicketComments(
+    session.user.role,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -406,11 +454,23 @@ export function AgentPage({ session }: AgentPageProps) {
     if (!selectedTicketId) {
       setSelectedTicketDetail(null);
 
+      setSelectedTicketComments([]);
+
+      setCommentDraft(INITIAL_COMMENT_DRAFT);
+
+      setDeletingCommentId(null);
+
       setLoadDetailErrorMessage(null);
+
+      setLoadCommentsErrorMessage(null);
 
       setDetailActionErrorMessage(null);
 
       setDetailActionSuccessMessage(null);
+
+      setCommentErrorMessage(null);
+
+      setCommentSuccessMessage(null);
 
       return;
     }
@@ -459,6 +519,53 @@ export function AgentPage({ session }: AgentPageProps) {
     }
 
     void loadSelectedTicket();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTicketId, session.accessToken]);
+
+  useEffect(() => {
+    if (!selectedTicketId) {
+      return;
+    }
+
+    const currentTicketId = selectedTicketId;
+
+    let cancelled = false;
+
+    async function loadSelectedTicketComments(): Promise<void> {
+      setIsLoadingComments(true);
+
+      setLoadCommentsErrorMessage(null);
+
+      try {
+        const nextComments = await getTicketComments(
+          session.accessToken,
+          currentTicketId,
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setSelectedTicketComments(nextComments);
+      } catch (error) {
+        if (!cancelled) {
+          setLoadCommentsErrorMessage(
+            error instanceof Error
+              ? error.message
+              : 'Erreur inconnue lors du chargement des commentaires',
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingComments(false);
+        }
+      }
+    }
+
+    void loadSelectedTicketComments();
 
     return () => {
       cancelled = true;
@@ -890,15 +997,144 @@ export function AgentPage({ session }: AgentPageProps) {
     }
   }
 
+  function handleCommentBodyChange(value: string): void {
+    setCommentDraft((currentDraft) => ({
+      ...currentDraft,
+
+      body: value,
+    }));
+
+    setCommentErrorMessage(null);
+
+    setCommentSuccessMessage(null);
+  }
+
+  function handleCommentInternalToggle(isInternal: boolean): void {
+    setCommentDraft((currentDraft) => ({
+      ...currentDraft,
+
+      isInternal,
+    }));
+
+    setCommentErrorMessage(null);
+
+    setCommentSuccessMessage(null);
+  }
+
+  async function handleDeleteComment(commentId: string): Promise<void> {
+    if (!selectedTicketDetail) {
+      return;
+    }
+
+    const normalizedCommentId = commentId.trim();
+
+    if (!normalizedCommentId) {
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      'Supprimer definitivement ce commentaire ?',
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setDeletingCommentId(normalizedCommentId);
+    setCommentErrorMessage(null);
+    setCommentSuccessMessage(null);
+
+    try {
+      await deleteTicketComment(
+        session.accessToken,
+        selectedTicketDetail.ticket.id,
+        normalizedCommentId,
+      );
+
+      setSelectedTicketComments((currentComments) =>
+        currentComments.filter((comment) => comment.id !== normalizedCommentId),
+      );
+      setCommentSuccessMessage('Commentaire supprime.');
+    } catch (error) {
+      setCommentErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Erreur inconnue lors de la suppression du commentaire',
+      );
+    } finally {
+      setDeletingCommentId(null);
+    }
+  }
+
+  async function handleCommentSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> {
+    event.preventDefault();
+
+    if (!selectedTicketDetail) {
+      return;
+    }
+
+    const body = commentDraft.body.trim();
+
+    if (!body) {
+      setCommentErrorMessage('Le commentaire ne peut pas etre vide.');
+      return;
+    }
+
+    setIsSubmittingComment(true);
+
+    setCommentErrorMessage(null);
+
+    setCommentSuccessMessage(null);
+
+    try {
+      const createdComment = await addTicketComment(
+        session.accessToken,
+        selectedTicketDetail.ticket.id,
+        {
+          body,
+          isInternal: canCreateInternalComments
+            ? commentDraft.isInternal
+            : false,
+        },
+      );
+
+      setSelectedTicketComments((currentComments) => [
+        ...currentComments,
+        createdComment,
+      ]);
+
+      setCommentDraft(INITIAL_COMMENT_DRAFT);
+
+      setDeletingCommentId(null);
+
+      setCommentSuccessMessage(
+        createdComment.isInternal
+          ? 'Note interne ajoutee.'
+          : 'Commentaire ajoute.',
+      );
+    } catch (error) {
+      setCommentErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Erreur inconnue lors de l ajout du commentaire',
+      );
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  }
+
   return (
     <section className="panel ticket-form-panel">
-      <span className="panel-tag">P3.9</span>
+      <span className="panel-tag">P3.9 / P4.6</span>
 
       <h2>Creation, liste et detail des tickets</h2>
 
       <p>
         La page couvre maintenant la creation front, la recherche ticket, le
-        detail, puis les actions agent pour l assignation et le workflow.
+        detail, les commentaires, puis les actions agent pour l assignation et
+        le workflow.
       </p>
 
       <div className="ticket-form-summary">
@@ -1757,6 +1993,153 @@ export function AgentPage({ session }: AgentPageProps) {
                 </dl>
               ) : null}
 
+              <section className="ticket-comments-card">
+                <div className="ticket-comments-header">
+                  <div>
+                    <h4>Commentaires</h4>
+
+                    <p>
+                      Historique de discussion du ticket et ajout de nouveaux
+                      commentaires.
+                    </p>
+                  </div>
+
+                  <span className="ticket-result-badge">
+                    {selectedTicketComments.length}
+                  </span>
+                </div>
+
+                {isLoadingComments ? (
+                  <p className="ticket-form-message">
+                    Chargement des commentaires...
+                  </p>
+                ) : loadCommentsErrorMessage ? (
+                  <p className="ticket-form-error">
+                    {loadCommentsErrorMessage}
+                  </p>
+                ) : selectedTicketComments.length === 0 ? (
+                  <p className="ticket-form-message">
+                    Aucun commentaire pour ce ticket.
+                  </p>
+                ) : (
+                  <div className="ticket-comments-list">
+                    {selectedTicketComments.map((comment) => {
+                      const canDeleteComment = canDeleteTicketComment(
+                        session.user.role,
+                        session.user.id,
+                        comment.authorUserId,
+                      );
+
+                      return (
+                        <article
+                          className={
+                            comment.isInternal
+                              ? 'ticket-comment-card is-internal'
+                              : 'ticket-comment-card'
+                          }
+                          key={comment.id}
+                        >
+                          <div className="ticket-comment-meta">
+                            <div className="ticket-comment-author">
+                              <strong>{comment.authorUserId}</strong>
+
+                              <span>{formatTicketDate(comment.createdAt)}</span>
+                            </div>
+
+                            <div className="ticket-comment-meta-actions">
+                              <span
+                                className={
+                                  comment.isInternal
+                                    ? 'ticket-comment-badge is-internal'
+                                    : 'ticket-comment-badge'
+                                }
+                              >
+                                {comment.isInternal ? 'Interne' : 'Public'}
+                              </span>
+
+                              {canDeleteComment ? (
+                                <button
+                                  className="ticket-comment-delete-button"
+                                  disabled={deletingCommentId === comment.id}
+                                  onClick={() =>
+                                    void handleDeleteComment(comment.id)
+                                  }
+                                  type="button"
+                                >
+                                  {deletingCommentId === comment.id
+                                    ? 'Suppression...'
+                                    : 'Supprimer'}
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <p>{comment.body}</p>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <form
+                  className="ticket-comment-form"
+                  onSubmit={handleCommentSubmit}
+                >
+                  <label className="field">
+                    <span>Nouveau commentaire</span>
+
+                    <textarea
+                      className="ticket-comment-textarea"
+                      onChange={(event) =>
+                        handleCommentBodyChange(event.target.value)
+                      }
+                      placeholder="Ajouter un commentaire utile pour ce ticket"
+                      rows={4}
+                      value={commentDraft.body}
+                    />
+                  </label>
+
+                  {canCreateInternalComments ? (
+                    <label className="ticket-comment-toggle">
+                      <span>Commentaire interne</span>
+
+                      <input
+                        checked={commentDraft.isInternal}
+                        onChange={(event) =>
+                          handleCommentInternalToggle(event.target.checked)
+                        }
+                        type="checkbox"
+                      />
+                    </label>
+                  ) : null}
+
+                  <div className="ticket-comment-actions">
+                    <button
+                      className="secondary-button"
+                      disabled={isSubmittingComment}
+                    >
+                      {isSubmittingComment
+                        ? 'Envoi...'
+                        : 'Ajouter le commentaire'}
+                    </button>
+
+                    <span className="ticket-form-helper">
+                      {canCreateInternalComments
+                        ? 'Les agents et admins peuvent publier des notes internes.'
+                        : 'Les commentaires internes restent reserves aux agents et admins.'}
+                    </span>
+                  </div>
+                </form>
+
+                {commentErrorMessage ? (
+                  <p className="ticket-form-error">{commentErrorMessage}</p>
+                ) : null}
+
+                {commentSuccessMessage ? (
+                  <p className="ticket-form-message">{commentSuccessMessage}</p>
+                ) : null}
+              </section>
+
               {canManageTicket ? (
                 <div className="ticket-detail-actions">
                   <form
@@ -1965,4 +2348,20 @@ function asTicketStatus(value: string): TicketStatus | null {
   }
 
   return null;
+}
+
+function canCreateInternalTicketComments(role: UserRole): boolean {
+  return role === 'AGENT' || role === 'ADMIN';
+}
+
+function canDeleteTicketComment(
+  role: UserRole,
+  currentUserId: string,
+  authorUserId: string,
+): boolean {
+  if (role === 'AGENT' || role === 'ADMIN') {
+    return true;
+  }
+
+  return role === 'DEMANDEUR' && currentUserId === authorUserId;
 }

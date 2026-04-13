@@ -1,4 +1,4 @@
-﻿import { Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { GetAuthSetupUseCase } from './auth/use-cases/get-auth-setup.use-case';
 import { GetAuthenticatedUserUseCase } from './auth/use-cases/get-authenticated-user.use-case';
 import { GetHealthUseCase } from './health/use-cases/get-health.use-case';
@@ -26,6 +26,7 @@ import { ChangeTicketPriorityUseCase } from './ticketing/use-cases/change-ticket
 import { ChangeTicketStatusUseCase } from './ticketing/use-cases/change-ticket-status.use-case';
 import { CreateIncidentUseCase } from './ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from './ticketing/use-cases/create-request.use-case';
+import { DeleteTicketCommentUseCase } from './ticketing/use-cases/delete-ticket-comment.use-case';
 import { GetTicketByIdUseCase } from './ticketing/use-cases/get-ticket-by-id.use-case';
 import { ListTicketAttachmentsUseCase } from './ticketing/use-cases/list-ticket-attachments.use-case';
 import { ListTicketCommentsUseCase } from './ticketing/use-cases/list-ticket-comments.use-case';
@@ -60,6 +61,7 @@ const ticketingUseCases = [
   GetTicketByIdUseCase,
   ListTicketCommentsUseCase,
   AddTicketCommentUseCase,
+  DeleteTicketCommentUseCase,
   ListTicketAttachmentsUseCase,
   AddTicketAttachmentUseCase,
 ];

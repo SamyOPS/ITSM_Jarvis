@@ -1,6 +1,7 @@
-﻿import {
+import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -15,6 +16,7 @@ import { ChangeTicketPriorityUseCase } from '../../../application/ticketing/use-
 import { ChangeTicketStatusUseCase } from '../../../application/ticketing/use-cases/change-ticket-status.use-case';
 import { CreateIncidentUseCase } from '../../../application/ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from '../../../application/ticketing/use-cases/create-request.use-case';
+import { DeleteTicketCommentUseCase } from '../../../application/ticketing/use-cases/delete-ticket-comment.use-case';
 import { GetTicketByIdUseCase } from '../../../application/ticketing/use-cases/get-ticket-by-id.use-case';
 import { ListTicketAttachmentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-attachments.use-case';
 import { ListTicketCommentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-comments.use-case';
@@ -67,6 +69,7 @@ export class TicketsController {
     private readonly getTicketByIdUseCase: GetTicketByIdUseCase,
     private readonly listTicketCommentsUseCase: ListTicketCommentsUseCase,
     private readonly addTicketCommentUseCase: AddTicketCommentUseCase,
+    private readonly deleteTicketCommentUseCase: DeleteTicketCommentUseCase,
     private readonly listTicketAttachmentsUseCase: ListTicketAttachmentsUseCase,
     private readonly addTicketAttachmentUseCase: AddTicketAttachmentUseCase,
   ) {}
@@ -112,6 +115,21 @@ export class TicketsController {
       body: body.body,
       isInternal: body.isInternal,
       ticketId: id,
+    });
+  }
+
+  @Delete(':ticketId/comments/:commentId')
+  @UseGuards(BearerAuthGuard)
+  async deleteComment(
+    @Param('ticketId') ticketId: string,
+    @Param('commentId') commentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    await this.deleteTicketCommentUseCase.execute({
+      actorRole: user.role,
+      actorUserId: user.id,
+      commentId,
+      ticketId,
     });
   }
 

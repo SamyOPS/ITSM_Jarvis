@@ -765,6 +765,113 @@ a {
   gap: 12px;
 }
 
+.ticket-comments-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 18px;
+  background: rgba(245, 248, 255, 0.86);
+}
+
+.ticket-comments-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.ticket-comments-header h4 {
+  margin: 0 0 6px;
+}
+
+.ticket-comments-header p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.ticket-comments-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ticket-comment-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.ticket-comment-card.is-internal {
+  border-color: rgba(178, 115, 17, 0.35);
+  background: rgba(255, 248, 234, 0.95);
+}
+
+.ticket-comment-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.ticket-comment-author {
+  display: grid;
+  gap: 4px;
+}
+
+.ticket-comment-author strong {
+  color: #17335f;
+}
+
+.ticket-comment-author span {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.ticket-comment-badge {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(25, 86, 179, 0.12);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ticket-comment-badge.is-internal {
+  background: rgba(178, 115, 17, 0.14);
+  color: #8b5a10;
+}
+
+.ticket-comment-form {
+  display: grid;
+  gap: 12px;
+}
+
+.ticket-comment-textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.ticket-comment-toggle {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: #24406c;
+  font-weight: 600;
+}
+
+.ticket-comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 760px) {
   .app-shell {
     width: min(100vw - 20px, 1100px);
@@ -809,7 +916,9 @@ a {
 
   .ticket-list-header,
   .ticket-detail-header,
-  .ticket-result-header {
+  .ticket-result-header,
+  .ticket-comments-header,
+  .ticket-comment-meta {
     flex-direction: column;
   }
 
