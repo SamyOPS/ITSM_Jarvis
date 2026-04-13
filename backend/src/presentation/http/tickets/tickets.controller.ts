@@ -16,6 +16,7 @@ import { ChangeTicketPriorityUseCase } from '../../../application/ticketing/use-
 import { ChangeTicketStatusUseCase } from '../../../application/ticketing/use-cases/change-ticket-status.use-case';
 import { CreateIncidentUseCase } from '../../../application/ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from '../../../application/ticketing/use-cases/create-request.use-case';
+import { DeleteTicketAttachmentUseCase } from '../../../application/ticketing/use-cases/delete-ticket-attachment.use-case';
 import { DeleteTicketCommentUseCase } from '../../../application/ticketing/use-cases/delete-ticket-comment.use-case';
 import { GetTicketByIdUseCase } from '../../../application/ticketing/use-cases/get-ticket-by-id.use-case';
 import { ListTicketAttachmentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-attachments.use-case';
@@ -72,6 +73,7 @@ export class TicketsController {
     private readonly deleteTicketCommentUseCase: DeleteTicketCommentUseCase,
     private readonly listTicketAttachmentsUseCase: ListTicketAttachmentsUseCase,
     private readonly addTicketAttachmentUseCase: AddTicketAttachmentUseCase,
+    private readonly deleteTicketAttachmentUseCase: DeleteTicketAttachmentUseCase,
   ) {}
 
   @Get()
@@ -158,6 +160,21 @@ export class TicketsController {
       ticketId: id,
       uploaderRole: user.role,
       uploaderUserId: user.id,
+    });
+  }
+
+  @Delete(':ticketId/attachments/:attachmentId')
+  @UseGuards(BearerAuthGuard)
+  async deleteAttachment(
+    @Param('ticketId') ticketId: string,
+    @Param('attachmentId') attachmentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    await this.deleteTicketAttachmentUseCase.execute({
+      actorRole: user.role,
+      actorUserId: user.id,
+      attachmentId,
+      ticketId,
     });
   }
 

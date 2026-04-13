@@ -795,6 +795,86 @@ a {
   gap: 10px;
 }
 
+.ticket-attachments-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ticket-attachment-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.ticket-attachment-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.ticket-attachment-meta strong {
+  display: block;
+  color: #17335f;
+}
+
+.ticket-attachment-meta span {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.ticket-attachment-preview {
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.ticket-attachment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ticket-attachment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.ticket-attachment-grid div {
+  padding: 12px 14px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 14px;
+  background: rgba(245, 248, 255, 0.9);
+}
+
+.ticket-attachment-grid dt {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.ticket-attachment-grid dd {
+  margin: 0;
+  color: #24406c;
+  word-break: break-word;
+}
+
+.ticket-attachment-path {
+  grid-column: span 2;
+}
+
 .ticket-comment-card {
   display: grid;
   gap: 10px;
@@ -918,11 +998,20 @@ a {
   .ticket-detail-header,
   .ticket-result-header,
   .ticket-comments-header,
-  .ticket-comment-meta {
+  .ticket-comment-meta,
+  .ticket-attachment-meta {
     flex-direction: column;
   }
 
   .ticket-form-span-2 {
+    grid-column: span 1;
+  }
+
+  .ticket-attachment-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ticket-attachment-path {
     grid-column: span 1;
   }
 }

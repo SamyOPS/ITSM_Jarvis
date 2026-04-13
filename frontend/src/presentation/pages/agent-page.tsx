@@ -26,6 +26,7 @@ import {
 } from '../../domain/ticketing/incident-severity';
 
 import type { TicketCommentSnapshot } from '../../domain/ticketing/ticket-comment';
+import type { TicketAttachmentSnapshot } from '../../domain/ticketing/ticket-attachment';
 import type { TicketDetailSnapshot } from '../../domain/ticketing/ticket-detail';
 
 import {
@@ -39,14 +40,20 @@ import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-a
 
 import {
   addTicketComment,
+  addTicketAttachment,
   assignTicket,
+  deleteTicketAttachment,
+  deleteTicketAttachmentBinary,
   deleteTicketComment,
   changeTicketStatus,
   createIncident,
   createRequest,
+  downloadTicketAttachmentBinary,
+  getTicketAttachments,
   getTicketById,
   getTicketComments,
   searchTickets,
+  uploadTicketAttachmentBinary,
 } from '../../infrastructure/api/ticketing-api';
 
 type AgentPageProps = {
@@ -103,6 +110,10 @@ type CommentDraftState = {
   body: string;
 
   isInternal: boolean;
+};
+
+type AttachmentDraftState = {
+  file: File | null;
 };
 
 type IncidentValidationErrors = Partial<
@@ -199,6 +210,12 @@ const INITIAL_COMMENT_DRAFT: CommentDraftState = {
   isInternal: false,
 };
 
+const INITIAL_ATTACHMENT_DRAFT: AttachmentDraftState = {
+  file: null,
+};
+
+const TICKET_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
+
 export function AgentPage({ session }: AgentPageProps) {
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
@@ -232,12 +249,20 @@ export function AgentPage({ session }: AgentPageProps) {
     TicketCommentSnapshot[]
   >([]);
 
+  const [selectedTicketAttachments, setSelectedTicketAttachments] = useState<
+    TicketAttachmentSnapshot[]
+  >([]);
+
   const [assignmentDraft, setAssignmentDraft] = useState<AssignmentDraftState>(
     INITIAL_ASSIGNMENT_DRAFT,
   );
 
   const [commentDraft, setCommentDraft] = useState<CommentDraftState>(
     INITIAL_COMMENT_DRAFT,
+  );
+
+  const [attachmentDraft, setAttachmentDraft] = useState<AttachmentDraftState>(
+    INITIAL_ATTACHMENT_DRAFT,
   );
 
   const [statusDraft, setStatusDraft] = useState<TicketStatus>('OPEN');
@@ -258,6 +283,14 @@ export function AgentPage({ session }: AgentPageProps) {
 
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
+  const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
+
+  const [isSubmittingAttachment, setIsSubmittingAttachment] = useState(false);
+
+  const [deletingAttachmentId, setDeletingAttachmentId] = useState<
+    string | null
+  >(null);
+
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(
     null,
   );
@@ -275,6 +308,9 @@ export function AgentPage({ session }: AgentPageProps) {
   const [loadCommentsErrorMessage, setLoadCommentsErrorMessage] = useState<
     string | null
   >(null);
+
+  const [loadAttachmentsErrorMessage, setLoadAttachmentsErrorMessage] =
+    useState<string | null>(null);
 
   const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(
     null,
@@ -295,6 +331,20 @@ export function AgentPage({ session }: AgentPageProps) {
   const [commentSuccessMessage, setCommentSuccessMessage] = useState<
     string | null
   >(null);
+
+  const [attachmentErrorMessage, setAttachmentErrorMessage] = useState<
+    string | null
+  >(null);
+
+  const [attachmentSuccessMessage, setAttachmentSuccessMessage] = useState<
+    string | null
+  >(null);
+
+  const [attachmentInputKey, setAttachmentInputKey] = useState(0);
+
+  const [attachmentPreviewUrls, setAttachmentPreviewUrls] = useState<
+    Record<string, string>
+  >({});
 
   const [tickets, setTickets] = useState<TicketSummarySnapshot[]>([]);
 
@@ -456,13 +506,25 @@ export function AgentPage({ session }: AgentPageProps) {
 
       setSelectedTicketComments([]);
 
+      setSelectedTicketAttachments([]);
+
       setCommentDraft(INITIAL_COMMENT_DRAFT);
+
+      setAttachmentDraft(INITIAL_ATTACHMENT_DRAFT);
+
+      setAttachmentInputKey(0);
+
+      setAttachmentPreviewUrls({});
+
+      setDeletingAttachmentId(null);
 
       setDeletingCommentId(null);
 
       setLoadDetailErrorMessage(null);
 
       setLoadCommentsErrorMessage(null);
+
+      setLoadAttachmentsErrorMessage(null);
 
       setDetailActionErrorMessage(null);
 
@@ -471,6 +533,10 @@ export function AgentPage({ session }: AgentPageProps) {
       setCommentErrorMessage(null);
 
       setCommentSuccessMessage(null);
+
+      setAttachmentErrorMessage(null);
+
+      setAttachmentSuccessMessage(null);
 
       return;
     }
@@ -526,6 +592,66 @@ export function AgentPage({ session }: AgentPageProps) {
   }, [selectedTicketId, session.accessToken]);
 
   useEffect(() => {
+    const imageAttachments = selectedTicketAttachments.filter((attachment) =>
+      attachment.mimeType?.startsWith('image/'),
+    );
+
+    if (imageAttachments.length === 0) {
+      setAttachmentPreviewUrls((currentUrls) => {
+        Object.values(currentUrls).forEach((url) => URL.revokeObjectURL(url));
+        return {};
+      });
+      return;
+    }
+
+    let cancelled = false;
+    const createdUrls: string[] = [];
+
+    async function loadAttachmentPreviews(): Promise<void> {
+      try {
+        const nextEntries = await Promise.all(
+          imageAttachments.map(async (attachment) => {
+            const blob = await downloadTicketAttachmentBinary(
+              session.accessToken,
+              attachment.bucketId,
+              attachment.storagePath,
+            );
+            const objectUrl = URL.createObjectURL(blob);
+            createdUrls.push(objectUrl);
+
+            return [attachment.id, objectUrl] as const;
+          }),
+        );
+
+        if (cancelled) {
+          createdUrls.forEach((url) => URL.revokeObjectURL(url));
+          return;
+        }
+
+        setAttachmentPreviewUrls((currentUrls) => {
+          Object.values(currentUrls).forEach((url) => URL.revokeObjectURL(url));
+          return Object.fromEntries(nextEntries);
+        });
+      } catch {
+        if (!cancelled) {
+          setAttachmentPreviewUrls((currentUrls) => {
+            Object.values(currentUrls).forEach((url) =>
+              URL.revokeObjectURL(url),
+            );
+            return {};
+          });
+        }
+      }
+    }
+
+    void loadAttachmentPreviews();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTicketAttachments, session.accessToken]);
+
+  useEffect(() => {
     if (!selectedTicketId) {
       return;
     }
@@ -566,6 +692,53 @@ export function AgentPage({ session }: AgentPageProps) {
     }
 
     void loadSelectedTicketComments();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTicketId, session.accessToken]);
+
+  useEffect(() => {
+    if (!selectedTicketId) {
+      return;
+    }
+
+    const currentTicketId = selectedTicketId;
+
+    let cancelled = false;
+
+    async function loadSelectedTicketAttachments(): Promise<void> {
+      setIsLoadingAttachments(true);
+
+      setLoadAttachmentsErrorMessage(null);
+
+      try {
+        const nextAttachments = await getTicketAttachments(
+          session.accessToken,
+          currentTicketId,
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setSelectedTicketAttachments(nextAttachments);
+      } catch (error) {
+        if (!cancelled) {
+          setLoadAttachmentsErrorMessage(
+            error instanceof Error
+              ? error.message
+              : 'Erreur inconnue lors du chargement des pieces jointes',
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingAttachments(false);
+        }
+      }
+    }
+
+    void loadSelectedTicketAttachments();
 
     return () => {
       cancelled = true;
@@ -1021,6 +1194,12 @@ export function AgentPage({ session }: AgentPageProps) {
     setCommentSuccessMessage(null);
   }
 
+  function handleAttachmentSelection(file: File | null): void {
+    setAttachmentDraft({ file });
+    setAttachmentErrorMessage(null);
+    setAttachmentSuccessMessage(null);
+  }
+
   async function handleDeleteComment(commentId: string): Promise<void> {
     if (!selectedTicketDetail) {
       return;
@@ -1122,6 +1301,164 @@ export function AgentPage({ session }: AgentPageProps) {
       );
     } finally {
       setIsSubmittingComment(false);
+    }
+  }
+
+  async function handleAttachmentSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> {
+    event.preventDefault();
+
+    if (!selectedTicketDetail) {
+      return;
+    }
+
+    const file = attachmentDraft.file;
+
+    if (!file) {
+      setAttachmentErrorMessage('Selectionne un fichier a envoyer.');
+      return;
+    }
+
+    setIsSubmittingAttachment(true);
+    setAttachmentErrorMessage(null);
+    setAttachmentSuccessMessage(null);
+
+    const storagePath = buildTicketAttachmentStoragePath(
+      session.user.id,
+      selectedTicketDetail.ticket.id,
+      file.name,
+    );
+
+    try {
+      await uploadTicketAttachmentBinary(
+        session.accessToken,
+        TICKET_ATTACHMENTS_BUCKET_ID,
+        storagePath,
+        file,
+      );
+
+      const createdAttachment = await addTicketAttachment(
+        session.accessToken,
+        selectedTicketDetail.ticket.id,
+        {
+          bucketId: TICKET_ATTACHMENTS_BUCKET_ID,
+          fileName: file.name,
+          mimeType: file.type || null,
+          sizeBytes: file.size,
+          storagePath,
+        },
+      );
+
+      setSelectedTicketAttachments((currentAttachments) => [
+        createdAttachment,
+        ...currentAttachments,
+      ]);
+      setAttachmentDraft(INITIAL_ATTACHMENT_DRAFT);
+      setAttachmentInputKey((currentKey) => currentKey + 1);
+      setAttachmentSuccessMessage('Piece jointe ajoutee.');
+    } catch (error) {
+      setAttachmentErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue lors de l'ajout de la piece jointe",
+      );
+    } finally {
+      setIsSubmittingAttachment(false);
+    }
+  }
+
+  async function handleDeleteAttachment(
+    attachment: TicketAttachmentSnapshot,
+  ): Promise<void> {
+    if (!selectedTicketDetail) {
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      'Supprimer definitivement cette piece jointe ?',
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setDeletingAttachmentId(attachment.id);
+    setAttachmentErrorMessage(null);
+    setAttachmentSuccessMessage(null);
+
+    try {
+      await deleteTicketAttachmentBinary(
+        session.accessToken,
+        attachment.bucketId,
+        attachment.storagePath,
+      );
+
+      await deleteTicketAttachment(
+        session.accessToken,
+        selectedTicketDetail.ticket.id,
+        attachment.id,
+      );
+
+      setSelectedTicketAttachments((currentAttachments) =>
+        currentAttachments.filter(
+          (currentAttachment) => currentAttachment.id !== attachment.id,
+        ),
+      );
+      setAttachmentPreviewUrls((currentUrls) => {
+        const nextUrls = { ...currentUrls };
+        const previewUrl = nextUrls[attachment.id];
+
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+          delete nextUrls[attachment.id];
+        }
+
+        return nextUrls;
+      });
+
+      const nextAttachments = await getTicketAttachments(
+        session.accessToken,
+        selectedTicketDetail.ticket.id,
+      );
+
+      setSelectedTicketAttachments(nextAttachments);
+      setAttachmentSuccessMessage('Piece jointe supprimee.');
+    } catch (error) {
+      setAttachmentErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Erreur inconnue lors de la suppression de la piece jointe',
+      );
+    } finally {
+      setDeletingAttachmentId(null);
+    }
+  }
+
+  async function handleDownloadAttachment(
+    attachment: TicketAttachmentSnapshot,
+  ): Promise<void> {
+    try {
+      const blob = await downloadTicketAttachmentBinary(
+        session.accessToken,
+        attachment.bucketId,
+        attachment.storagePath,
+      );
+      const downloadUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+
+      anchor.href = downloadUrl;
+      anchor.download = attachment.fileName;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      setAttachmentErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Erreur inconnue lors du telechargement de la piece jointe',
+      );
     }
   }
 
@@ -1996,6 +2333,158 @@ export function AgentPage({ session }: AgentPageProps) {
               <section className="ticket-comments-card">
                 <div className="ticket-comments-header">
                   <div>
+                    <h4>Pieces jointes</h4>
+
+                    <p>
+                      Liste des fichiers rattaches au ticket et ajout de
+                      nouveaux documents.
+                    </p>
+                  </div>
+
+                  <span className="ticket-result-badge">
+                    {selectedTicketAttachments.length}
+                  </span>
+                </div>
+
+                {isLoadingAttachments ? (
+                  <p className="ticket-form-message">
+                    Chargement des pieces jointes...
+                  </p>
+                ) : loadAttachmentsErrorMessage ? (
+                  <p className="ticket-form-error">
+                    {loadAttachmentsErrorMessage}
+                  </p>
+                ) : selectedTicketAttachments.length === 0 ? (
+                  <p className="ticket-form-message">
+                    Aucune piece jointe pour ce ticket.
+                  </p>
+                ) : (
+                  <div className="ticket-attachments-list">
+                    {selectedTicketAttachments.map((attachment) => (
+                      <article
+                        className="ticket-attachment-card"
+                        key={attachment.id}
+                      >
+                        <div className="ticket-attachment-meta">
+                          <div>
+                            <strong>{attachment.fileName}</strong>
+                            <span>
+                              Ajoute par {attachment.uploadedByUserId} le{' '}
+                              {formatTicketDate(attachment.createdAt)}
+                            </span>
+                          </div>
+
+                          <span className="ticket-comment-badge">
+                            {formatFileSize(attachment.sizeBytes)}
+                          </span>
+                        </div>
+
+                        <div className="ticket-attachment-actions">
+                          <button
+                            className="secondary-button"
+                            onClick={() =>
+                              void handleDownloadAttachment(attachment)
+                            }
+                            type="button"
+                          >
+                            Telecharger
+                          </button>
+
+                          <button
+                            className="ticket-comment-delete-button"
+                            disabled={deletingAttachmentId === attachment.id}
+                            onClick={() =>
+                              void handleDeleteAttachment(attachment)
+                            }
+                            type="button"
+                          >
+                            {deletingAttachmentId === attachment.id
+                              ? 'Suppression...'
+                              : 'Supprimer'}
+                          </button>
+                        </div>
+
+                        {attachment.mimeType?.startsWith('image/') &&
+                        attachmentPreviewUrls[attachment.id] ? (
+                          <img
+                            alt={attachment.fileName}
+                            className="ticket-attachment-preview"
+                            src={attachmentPreviewUrls[attachment.id]}
+                          />
+                        ) : null}
+
+                        <dl className="ticket-attachment-grid">
+                          <div>
+                            <dt>Type MIME</dt>
+                            <dd>{attachment.mimeType ?? 'Non renseigne'}</dd>
+                          </div>
+
+                          <div>
+                            <dt>Bucket</dt>
+                            <dd>{attachment.bucketId}</dd>
+                          </div>
+
+                          <div className="ticket-attachment-path">
+                            <dt>Chemin de stockage</dt>
+                            <dd>{attachment.storagePath}</dd>
+                          </div>
+                        </dl>
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                <form
+                  className="ticket-comment-form"
+                  onSubmit={handleAttachmentSubmit}
+                >
+                  <label className="field">
+                    <span>Nouvelle piece jointe</span>
+
+                    <input
+                      accept="*/*"
+                      key={attachmentInputKey}
+                      onChange={(event) =>
+                        handleAttachmentSelection(
+                          event.target.files?.[0] ?? null,
+                        )
+                      }
+                      type="file"
+                    />
+                  </label>
+
+                  <div className="ticket-comment-actions">
+                    <button
+                      className="secondary-button"
+                      disabled={isSubmittingAttachment}
+                    >
+                      {isSubmittingAttachment
+                        ? 'Envoi...'
+                        : 'Ajouter la piece jointe'}
+                    </button>
+
+                    <span className="ticket-form-helper">
+                      {attachmentDraft.file
+                        ? `${attachmentDraft.file.name} (${formatFileSize(attachmentDraft.file.size)})`
+                        : 'Selectionne un fichier local a rattacher au ticket.'}
+                    </span>
+                  </div>
+                </form>
+
+                {attachmentErrorMessage ? (
+                  <p className="ticket-form-error">{attachmentErrorMessage}</p>
+                ) : null}
+
+                {attachmentSuccessMessage ? (
+                  <p className="ticket-form-message">
+                    {attachmentSuccessMessage}
+                  </p>
+                ) : null}
+              </section>
+
+              <section className="ticket-comments-card">
+                <div className="ticket-comments-header">
+                  <div>
                     <h4>Commentaires</h4>
 
                     <p>
@@ -2331,6 +2820,29 @@ function formatTicketDate(value: string): string {
 
     year: 'numeric',
   });
+}
+
+function formatFileSize(sizeBytes: number): string {
+  if (sizeBytes < 1024) {
+    return `${sizeBytes} o`;
+  }
+
+  if (sizeBytes < 1024 * 1024) {
+    return `${(sizeBytes / 1024).toFixed(1)} Ko`;
+  }
+
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} Mo`;
+}
+
+function buildTicketAttachmentStoragePath(
+  userId: string,
+  ticketId: string,
+  fileName: string,
+): string {
+  const timestamp = Date.now();
+  const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '-');
+
+  return `${userId}/${ticketId}/${timestamp}-${sanitizedFileName}`;
 }
 
 function canManageTicketActions(role: UserRole): boolean {

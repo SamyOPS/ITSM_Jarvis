@@ -5,6 +5,11 @@ export type ListTicketAttachmentsFilters = {
 };
 
 export abstract class TicketAttachmentReadRepository {
+  abstract getTicketAttachmentById(
+    ticketId: string,
+    attachmentId: string,
+  ): Promise<TicketAttachment | null>;
+
   abstract listTicketAttachments(
     filters: ListTicketAttachmentsFilters,
   ): Promise<TicketAttachment[]>;

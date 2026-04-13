@@ -124,6 +124,45 @@ export class SupabaseTicketWriteRepository
     TicketAttachmentReadRepository,
     TicketAttachmentWriteRepository
 {
+  async getTicketAttachmentById(
+    ticketId: string,
+    attachmentId: string,
+  ): Promise<TicketAttachment | null> {
+    const query = new URLSearchParams({
+      select:
+        'id,ticket_id,uploaded_by_user_id,bucket_id,storage_path,file_name,mime_type,size_bytes,created_at',
+      id: `eq.${attachmentId}`,
+      ticket_id: `eq.${ticketId}`,
+      limit: '1',
+    });
+
+    const response = await this.send(
+      `ticket_attachments?${query.toString()}`,
+      'GET',
+    );
+    const body = (await response.json()) as
+      | SupabaseTicketAttachmentRow[]
+      | SupabaseTicketAttachmentRow
+      | null;
+    const attachment = extractSingleRow(body);
+
+    if (!attachment) {
+      return null;
+    }
+
+    return new TicketAttachment(
+      attachment.id,
+      attachment.ticket_id,
+      attachment.uploaded_by_user_id,
+      attachment.bucket_id,
+      attachment.storage_path,
+      attachment.file_name,
+      attachment.mime_type,
+      Number(attachment.size_bytes),
+      attachment.created_at,
+    );
+  }
+
   async getTicketCommentById(
     ticketId: string,
     commentId: string,
@@ -563,6 +602,18 @@ export class SupabaseTicketWriteRepository
       Number(attachment.size_bytes),
       attachment.created_at,
     );
+  }
+
+  async deleteTicketAttachment(
+    ticketId: string,
+    attachmentId: string,
+  ): Promise<void> {
+    const query = new URLSearchParams({
+      id: `eq.${attachmentId}`,
+      ticket_id: `eq.${ticketId}`,
+    });
+
+    await this.send(`ticket_attachments?${query.toString()}`, 'DELETE');
   }
 
   async createIncident(record: CreateIncidentRecord): Promise<CreatedIncident> {

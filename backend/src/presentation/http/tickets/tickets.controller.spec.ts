@@ -5,6 +5,7 @@ import { ChangeTicketPriorityUseCase } from '../../../application/ticketing/use-
 import { ChangeTicketStatusUseCase } from '../../../application/ticketing/use-cases/change-ticket-status.use-case';
 import { CreateIncidentUseCase } from '../../../application/ticketing/use-cases/create-incident.use-case';
 import { CreateRequestUseCase } from '../../../application/ticketing/use-cases/create-request.use-case';
+import { DeleteTicketAttachmentUseCase } from '../../../application/ticketing/use-cases/delete-ticket-attachment.use-case';
 import { DeleteTicketCommentUseCase } from '../../../application/ticketing/use-cases/delete-ticket-comment.use-case';
 import { GetTicketByIdUseCase } from '../../../application/ticketing/use-cases/get-ticket-by-id.use-case';
 import { ListTicketAttachmentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-attachments.use-case';
@@ -94,6 +95,7 @@ describe('TicketsController', () => {
     ticketId: 'ticket-1',
     uploadedByUserId: 'user-1',
   });
+  const deleteAttachment = jest.fn().mockResolvedValue(undefined);
   const createIncident = jest.fn().mockResolvedValue({
     incident: {
       impact: IncidentSeverity.HIGH,
@@ -124,6 +126,7 @@ describe('TicketsController', () => {
     deleteComment.mockClear();
     listAttachments.mockClear();
     addAttachment.mockClear();
+    deleteAttachment.mockClear();
     createIncident.mockClear();
     createRequest.mockClear();
     controller = new TicketsController(
@@ -163,6 +166,9 @@ describe('TicketsController', () => {
       {
         execute: addAttachment,
       } as unknown as AddTicketAttachmentUseCase,
+      {
+        execute: deleteAttachment,
+      } as unknown as DeleteTicketAttachmentUseCase,
     );
   });
 
@@ -441,6 +447,24 @@ describe('TicketsController', () => {
       ticketId: 'ticket-1',
       uploaderRole: UserRole.AGENT,
       uploaderUserId: 'user-1',
+    });
+  });
+
+  it('delegates ticket attachment deletion with the authenticated user', async () => {
+    await expect(
+      controller.deleteAttachment('ticket-1', 'attachment-1', {
+        accessToken: 'token',
+        email: 'agent@jarvis.local',
+        id: 'user-1',
+        role: UserRole.AGENT,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(deleteAttachment).toHaveBeenCalledWith({
+      actorRole: UserRole.AGENT,
+      actorUserId: 'user-1',
+      attachmentId: 'attachment-1',
+      ticketId: 'ticket-1',
     });
   });
 
