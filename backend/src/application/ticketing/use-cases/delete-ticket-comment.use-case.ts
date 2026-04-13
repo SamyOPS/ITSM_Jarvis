@@ -6,9 +6,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { UserRole } from '../../../domain/auth/user-role';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketCommentReadRepository } from '../repositories/ticket-comment-read.repository';
 import { TicketCommentWriteRepository } from '../repositories/ticket-comment-write.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
+import { TicketAuditService } from '../ticket-audit.service';
 import { assertTicketCommentAccess } from '../ticket-comment-access';
 
 export type DeleteTicketCommentCommand = {
@@ -27,6 +29,7 @@ export class DeleteTicketCommentUseCase {
     private readonly ticketCommentWriteRepository: TicketCommentWriteRepository,
     @Inject(TicketReadRepository)
     private readonly ticketReadRepository: TicketReadRepository,
+    private readonly ticketAuditService: TicketAuditService,
   ) {}
 
   async execute(command: DeleteTicketCommentCommand): Promise<void> {
@@ -85,5 +88,16 @@ export class DeleteTicketCommentUseCase {
       normalizedTicketId,
       normalizedCommentId,
     );
+
+    await this.ticketAuditService.write({
+      actorUserId: normalizedActorUserId,
+      eventType: TicketHistoryEventType.COMMENT_DELETED,
+      payload: {
+        authorUserId: comment.authorUserId,
+        commentId: comment.id,
+        isInternal: comment.isInternal,
+      },
+      ticketId: normalizedTicketId,
+    });
   }
 }
