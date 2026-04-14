@@ -112,6 +112,28 @@ export async function fetchAdminUsers(
   return (await response.json()) as AdminUserSummary[];
 }
 
+export async function fetchUserDirectory(
+  accessToken: string,
+): Promise<AdminUserSummary[]> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/auth/users`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message || `Users directory lookup failed with status ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as AdminUserSummary[];
+}
+
 async function fetchProtectedArea(
   path: '/auth/agent-area' | '/auth/admin-area',
   accessToken: string,

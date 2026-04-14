@@ -63,4 +63,10 @@ export class AuthController {
   listAdminUsers(): Promise<AdminUserSummary[]> {
     return this.listAdminUsersUseCase.execute();
   }
+
+  @Get('users')
+  @UseGuards(BearerAuthGuard)
+  listUsers(): Promise<AdminUserSummary[]> {
+    return this.listAdminUsersUseCase.execute();
+  }
 }
