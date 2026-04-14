@@ -93,6 +93,16 @@ function renderPage({
         <NotFoundPage />
       );
     case '/agent/tickets':
+      if (pathname.startsWith('/agent/tickets/')) {
+        const ticketId = pathname.replace('/agent/tickets/', '').trim();
+
+        return session && ticketId ? (
+          <AgentPage section="DETAIL" session={session} ticketId={ticketId} />
+        ) : (
+          <NotFoundPage />
+        );
+      }
+
       return session ? (
         <AgentPage section="LIST" session={session} />
       ) : (
