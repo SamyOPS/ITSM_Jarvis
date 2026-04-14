@@ -72,7 +72,29 @@ function renderPage({
     case '/admin':
       return session ? <AdminPage session={session} /> : <NotFoundPage />;
     case '/agent':
-      return session ? <AgentPage session={session} /> : <NotFoundPage />;
+      return session ? (
+        <AgentPage section="LIST" session={session} />
+      ) : (
+        <NotFoundPage />
+      );
+    case '/agent/incidents/new':
+      return session ? (
+        <AgentPage section="INCIDENT_CREATE" session={session} />
+      ) : (
+        <NotFoundPage />
+      );
+    case '/agent/requests/new':
+      return session ? (
+        <AgentPage section="REQUEST_CREATE" session={session} />
+      ) : (
+        <NotFoundPage />
+      );
+    case '/agent/tickets':
+      return session ? (
+        <AgentPage section="LIST" session={session} />
+      ) : (
+        <NotFoundPage />
+      );
     case '/auth':
       return (
         <AuthPage
@@ -188,6 +210,7 @@ export function App() {
     <AppShell
       isAuthenticated={sessionState === 'authenticated'}
       onLogout={handleLogout}
+      pathname={pathname}
       session={session}
     >
       {renderPage({

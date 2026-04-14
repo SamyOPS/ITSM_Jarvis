@@ -55,14 +55,18 @@ import {
   searchTickets,
   uploadTicketAttachmentBinary,
 } from '../../infrastructure/api/ticketing-api';
+import { navigateTo } from '../../infrastructure/routing/browser-router';
 
 type AgentPageProps = {
+  section: 'INCIDENT_CREATE' | 'REQUEST_CREATE' | 'LIST';
   session: AuthSessionSnapshot;
 };
 
 type TicketMode = 'INCIDENT' | 'REQUEST';
 
 type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+
+type DetailWorkspaceTab = 'COMMENTS' | 'ATTACHMENTS';
 
 type IncidentDraftState = {
   categoryId: string;
@@ -215,8 +219,9 @@ const INITIAL_ATTACHMENT_DRAFT: AttachmentDraftState = {
 };
 
 const TICKET_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
+const TICKETS_PER_PAGE = 10;
 
-export function AgentPage({ session }: AgentPageProps) {
+export function AgentPage({ section, session }: AgentPageProps) {
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
 
@@ -346,7 +351,11 @@ export function AgentPage({ session }: AgentPageProps) {
     Record<string, string>
   >({});
 
+  const [detailWorkspaceTab, setDetailWorkspaceTab] =
+    useState<DetailWorkspaceTab>('COMMENTS');
+
   const [tickets, setTickets] = useState<TicketSummarySnapshot[]>([]);
+  const [ticketPage, setTicketPage] = useState(1);
 
   const [incidentValidationErrors, setIncidentValidationErrors] =
     useState<IncidentValidationErrors>({});
@@ -359,6 +368,20 @@ export function AgentPage({ session }: AgentPageProps) {
   const canCreateInternalComments = canCreateInternalTicketComments(
     session.user.role,
   );
+
+  const isIncidentCreatePage = section === 'INCIDENT_CREATE';
+  const isRequestCreatePage = section === 'REQUEST_CREATE';
+  const isListPage = section === 'LIST';
+  const showCreationPanel = isIncidentCreatePage || isRequestCreatePage;
+  const showListPanel = isListPage;
+  const totalTicketPages = Math.max(
+    1,
+    Math.ceil(tickets.length / TICKETS_PER_PAGE),
+  );
+  const paginatedTickets = useMemo(() => {
+    const startIndex = (ticketPage - 1) * TICKETS_PER_PAGE;
+    return tickets.slice(startIndex, startIndex + TICKETS_PER_PAGE);
+  }, [ticketPage, tickets]);
 
   useEffect(() => {
     let cancelled = false;
@@ -430,6 +453,53 @@ export function AgentPage({ session }: AgentPageProps) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    setTicketPage(1);
+  }, [
+    searchFilters.categoryId,
+    searchFilters.priorityId,
+    searchFilters.q,
+    searchFilters.status,
+    searchFilters.type,
+  ]);
+
+  useEffect(() => {
+    if (ticketPage > totalTicketPages) {
+      setTicketPage(totalTicketPages);
+    }
+  }, [ticketPage, totalTicketPages]);
+
+  useEffect(() => {
+    if (!selectedTicketId) {
+      return;
+    }
+
+    const selectedIndex = tickets.findIndex(
+      (ticket) => ticket.id === selectedTicketId,
+    );
+
+    if (selectedIndex === -1) {
+      return;
+    }
+
+    const nextPage = Math.floor(selectedIndex / TICKETS_PER_PAGE) + 1;
+
+    if (nextPage !== ticketPage) {
+      setTicketPage(nextPage);
+    }
+  }, [selectedTicketId, ticketPage, tickets]);
+
+  useEffect(() => {
+    if (isIncidentCreatePage) {
+      setMode('INCIDENT');
+      return;
+    }
+
+    if (isRequestCreatePage) {
+      setMode('REQUEST');
+    }
+  }, [isIncidentCreatePage, isRequestCreatePage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1293,6 +1363,7 @@ export function AgentPage({ session }: AgentPageProps) {
           ? 'Note interne ajoutee.'
           : 'Commentaire ajoute.',
       );
+      setDetailWorkspaceTab('COMMENTS');
     } catch (error) {
       setCommentErrorMessage(
         error instanceof Error
@@ -1357,6 +1428,7 @@ export function AgentPage({ session }: AgentPageProps) {
       setAttachmentDraft(INITIAL_ATTACHMENT_DRAFT);
       setAttachmentInputKey((currentKey) => currentKey + 1);
       setAttachmentSuccessMessage('Piece jointe ajoutee.');
+      setDetailWorkspaceTab('ATTACHMENTS');
     } catch (error) {
       setAttachmentErrorMessage(
         error instanceof Error
@@ -1424,6 +1496,7 @@ export function AgentPage({ session }: AgentPageProps) {
 
       setSelectedTicketAttachments(nextAttachments);
       setAttachmentSuccessMessage('Piece jointe supprimee.');
+      setDetailWorkspaceTab('ATTACHMENTS');
     } catch (error) {
       setAttachmentErrorMessage(
         error instanceof Error
@@ -1462,304 +1535,673 @@ export function AgentPage({ session }: AgentPageProps) {
     }
   }
 
+  const pageTitle = isIncidentCreatePage
+    ? 'Créer un incident'
+    : isRequestCreatePage
+      ? 'Créer une demande'
+      : 'Liste des tickets';
+
+  const pageDescription = isIncidentCreatePage
+    ? 'Déclare un incident avec qualification métier, impact, urgence et rattachement aux référentiels existants.'
+    : isRequestCreatePage
+      ? 'Enregistre une demande avec priorité manuelle, type de demande et rattachement au catalogue existant.'
+      : 'Recherche, filtre, consulte et traite les tickets existants dans une vue dédiée.';
+
+  const heroActionLabel = isListPage ? 'Créer un incident' : 'Voir la liste';
+
+  function handleHeroAction(): void {
+    if (isListPage) {
+      navigateTo('/agent/incidents/new');
+      return;
+    }
+
+    navigateTo('/agent/tickets');
+  }
+
   return (
-    <section className="panel ticket-form-panel">
-      <span className="panel-tag">P3.9 / P4.6</span>
+    <section className="ticket-page-shell">
+      {!showListPanel ? (
+        <section className="ticket-workspace-topbar ticket-page-hero">
+          <div className="ticket-workspace-topbar-copy">
+            <span className="panel-tag">Workspace ticketing</span>
 
-      <h2>Creation, liste et detail des tickets</h2>
+            <h2>{pageTitle}</h2>
 
-      <p>
-        La page couvre maintenant la creation front, la recherche ticket, le
-        detail, les commentaires, puis les actions agent pour l assignation et
-        le workflow.
-      </p>
+            <p>{pageDescription}</p>
+          </div>
 
-      <div className="ticket-form-summary">
-        <article>
-          <span>Utilisateur connecte</span>
+          <div className="ticket-workspace-topbar-actions">
+            <button
+              className="primary-button ticket-workspace-create-button"
+              onClick={handleHeroAction}
+              type="button"
+            >
+              {heroActionLabel}
+            </button>
+          </div>
+        </section>
+      ) : null}
 
-          <strong>{session.user.email}</strong>
-        </article>
+      <section className="ticket-workspace-stage">
+        {showCreationPanel ? (
+          <section className="panel ticket-form-panel ticket-creation-panel">
+            <div className="ticket-workspace-section-heading">
+              <div>
+                <span className="panel-tag">Creation</span>
 
-        <article>
-          <span>Role</span>
+                <h3>
+                  {mode === 'INCIDENT'
+                    ? 'Creer un incident'
+                    : 'Creer une demande'}
+                </h3>
 
-          <strong>{translateUserRole(session.user.role)}</strong>
-        </article>
-
-        <article>
-          <span>Mode actif</span>
-
-          <strong>{translateTicketType(mode)}</strong>
-        </article>
-
-        <article>
-          <span>Referentiels charges</span>
-
-          <strong>
-            {catalog.categories.length +
-              catalog.channels.length +
-              catalog.cis.length +
-              catalog.priorities.length +
-              catalog.services.length}
-          </strong>
-        </article>
-      </div>
-
-      {isLoading ? (
-        <p className="ticket-form-message">Chargement des referentiels...</p>
-      ) : loadErrorMessage ? (
-        <p className="ticket-form-error">{loadErrorMessage}</p>
-      ) : (
-        <div className="ticket-form-layout">
-          <form className="ticket-form-grid" onSubmit={handleSubmit}>
-            <div className="ticket-mode-switch ticket-form-span-2">
-              <button
-                className={
-                  mode === 'INCIDENT' ? 'primary-button' : 'secondary-button'
-                }
-                onClick={() => setMode('INCIDENT')}
-                type="button"
-              >
-                Incident
-              </button>
-
-              <button
-                className={
-                  mode === 'REQUEST' ? 'primary-button' : 'secondary-button'
-                }
-                onClick={() => setMode('REQUEST')}
-                type="button"
-              >
-                Demande
-              </button>
+                <p>
+                  Utilise les formulaires existants dans une presentation plus
+                  orientee poste de travail.
+                </p>
+              </div>
             </div>
 
-            <label className="field ticket-form-span-2">
-              <span>Titre</span>
+            <div className="ticket-form-summary ticket-workspace-kpis">
+              <article>
+                <span>Utilisateur connecte</span>
 
-              <input
-                onChange={(event) =>
-                  mode === 'INCIDENT'
-                    ? handleIncidentFieldChange('title', event.target.value)
-                    : handleRequestFieldChange('title', event.target.value)
-                }
-                placeholder={
-                  mode === 'INCIDENT'
-                    ? 'Ex. : VPN inaccessible pour l agence Nord'
-                    : 'Ex. : Demande d acces VPN pour l agence Nord'
-                }
-                value={
-                  mode === 'INCIDENT' ? incidentDraft.title : requestDraft.title
-                }
-              />
+                <strong>{session.user.email}</strong>
+              </article>
 
-              {mode === 'INCIDENT' && incidentValidationErrors.title ? (
-                <small className="field-error">
-                  {incidentValidationErrors.title}
-                </small>
-              ) : null}
+              <article>
+                <span>Role</span>
 
-              {mode === 'REQUEST' && requestValidationErrors.title ? (
-                <small className="field-error">
-                  {requestValidationErrors.title}
-                </small>
-              ) : null}
-            </label>
+                <strong>{translateUserRole(session.user.role)}</strong>
+              </article>
 
-            <label className="field ticket-form-span-2">
-              <span>Description</span>
+              <article>
+                <span>Mode actif</span>
 
-              <textarea
-                onChange={(event) =>
-                  mode === 'INCIDENT'
-                    ? handleIncidentFieldChange(
-                        'description',
+                <strong>{translateTicketType(mode)}</strong>
+              </article>
 
-                        event.target.value,
-                      )
-                    : handleRequestFieldChange(
-                        'description',
+              <article>
+                <span>Referentiels charges</span>
 
-                        event.target.value,
-                      )
-                }
-                placeholder={
-                  mode === 'INCIDENT'
-                    ? 'Decris le symptome, le contexte et les impacts.'
-                    : 'Decris le besoin, le contexte et le resultat attendu.'
-                }
-                rows={5}
-                value={
-                  mode === 'INCIDENT'
-                    ? incidentDraft.description
-                    : requestDraft.description
-                }
-              />
+                <strong>
+                  {catalog.categories.length +
+                    catalog.channels.length +
+                    catalog.cis.length +
+                    catalog.priorities.length +
+                    catalog.services.length}
+                </strong>
+              </article>
+            </div>
 
-              {mode === 'INCIDENT' && incidentValidationErrors.description ? (
-                <small className="field-error">
-                  {incidentValidationErrors.description}
-                </small>
-              ) : null}
-
-              {mode === 'REQUEST' && requestValidationErrors.description ? (
-                <small className="field-error">
-                  {requestValidationErrors.description}
-                </small>
-              ) : null}
-            </label>
-
-            <label className="field">
-              <span>Categorie</span>
-
-              <select
-                onChange={(event) =>
-                  mode === 'INCIDENT'
-                    ? handleIncidentFieldChange(
-                        'categoryId',
-
-                        event.target.value,
-                      )
-                    : handleRequestFieldChange('categoryId', event.target.value)
-                }
-                value={
-                  mode === 'INCIDENT'
-                    ? incidentDraft.categoryId
-                    : requestDraft.categoryId
-                }
-              >
-                <option value="">Choisir une categorie</option>
-
-                {catalog.categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Canal</span>
-
-              <select
-                onChange={(event) =>
-                  mode === 'INCIDENT'
-                    ? handleIncidentFieldChange('channelId', event.target.value)
-                    : handleRequestFieldChange('channelId', event.target.value)
-                }
-                value={
-                  mode === 'INCIDENT'
-                    ? incidentDraft.channelId
-                    : requestDraft.channelId
-                }
-              >
-                <option value="">Choisir un canal</option>
-
-                {catalog.channels.map((channel) => (
-                  <option key={channel.id} value={channel.id}>
-                    {translateChannel(channel.name)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Service</span>
-
-              <select
-                onChange={(event) =>
-                  mode === 'INCIDENT'
-                    ? handleIncidentFieldChange('serviceId', event.target.value)
-                    : handleRequestFieldChange('serviceId', event.target.value)
-                }
-                value={
-                  mode === 'INCIDENT'
-                    ? incidentDraft.serviceId
-                    : requestDraft.serviceId
-                }
-              >
-                <option value="">Choisir un service</option>
-
-                {catalog.services.map((service) => (
-                  <option key={service.id} value={service.id}>
-                    {service.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Equipement concerne</span>
-
-              <select
-                onChange={(event) =>
-                  mode === 'INCIDENT'
-                    ? handleIncidentFieldChange('ciId', event.target.value)
-                    : handleRequestFieldChange('ciId', event.target.value)
-                }
-                value={
-                  mode === 'INCIDENT' ? incidentDraft.ciId : requestDraft.ciId
-                }
-              >
-                <option value="">Choisir un equipement</option>
-
-                {catalog.cis.map((ci) => (
-                  <option key={ci.id} value={ci.id}>
-                    {ci.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {mode === 'INCIDENT' ? (
-              <>
-                <label className="field">
-                  <span>Impact</span>
-
-                  <select
-                    onChange={(event) =>
-                      handleIncidentFieldChange('impact', event.target.value)
-                    }
-                    value={incidentDraft.impact}
-                  >
-                    {INCIDENT_SEVERITIES.map((severity) => (
-                      <option key={severity} value={severity}>
-                        {translateIncidentSeverity(severity)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="field">
-                  <span>Urgence</span>
-
-                  <select
-                    onChange={(event) =>
-                      handleIncidentFieldChange('urgency', event.target.value)
-                    }
-                    value={incidentDraft.urgency}
-                  >
-                    {INCIDENT_SEVERITIES.map((severity) => (
-                      <option key={severity} value={severity}>
-                        {translateIncidentSeverity(severity)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </>
+            {isLoading ? (
+              <p className="ticket-form-message">
+                Chargement des referentiels...
+              </p>
+            ) : loadErrorMessage ? (
+              <p className="ticket-form-error">{loadErrorMessage}</p>
             ) : (
-              <>
+              <div className="ticket-form-layout">
+                <form className="ticket-form-grid" onSubmit={handleSubmit}>
+                  <label className="field ticket-form-span-2">
+                    <span>Titre</span>
+
+                    <input
+                      onChange={(event) =>
+                        mode === 'INCIDENT'
+                          ? handleIncidentFieldChange(
+                              'title',
+                              event.target.value,
+                            )
+                          : handleRequestFieldChange(
+                              'title',
+                              event.target.value,
+                            )
+                      }
+                      placeholder={
+                        mode === 'INCIDENT'
+                          ? 'Ex. : VPN inaccessible pour l agence Nord'
+                          : 'Ex. : Demande d acces VPN pour l agence Nord'
+                      }
+                      value={
+                        mode === 'INCIDENT'
+                          ? incidentDraft.title
+                          : requestDraft.title
+                      }
+                    />
+
+                    {mode === 'INCIDENT' && incidentValidationErrors.title ? (
+                      <small className="field-error">
+                        {incidentValidationErrors.title}
+                      </small>
+                    ) : null}
+
+                    {mode === 'REQUEST' && requestValidationErrors.title ? (
+                      <small className="field-error">
+                        {requestValidationErrors.title}
+                      </small>
+                    ) : null}
+                  </label>
+
+                  <label className="field ticket-form-span-2">
+                    <span>Description</span>
+
+                    <textarea
+                      onChange={(event) =>
+                        mode === 'INCIDENT'
+                          ? handleIncidentFieldChange(
+                              'description',
+
+                              event.target.value,
+                            )
+                          : handleRequestFieldChange(
+                              'description',
+
+                              event.target.value,
+                            )
+                      }
+                      placeholder={
+                        mode === 'INCIDENT'
+                          ? 'Decris le symptome, le contexte et les impacts.'
+                          : 'Decris le besoin, le contexte et le resultat attendu.'
+                      }
+                      rows={5}
+                      value={
+                        mode === 'INCIDENT'
+                          ? incidentDraft.description
+                          : requestDraft.description
+                      }
+                    />
+
+                    {mode === 'INCIDENT' &&
+                    incidentValidationErrors.description ? (
+                      <small className="field-error">
+                        {incidentValidationErrors.description}
+                      </small>
+                    ) : null}
+
+                    {mode === 'REQUEST' &&
+                    requestValidationErrors.description ? (
+                      <small className="field-error">
+                        {requestValidationErrors.description}
+                      </small>
+                    ) : null}
+                  </label>
+
+                  <label className="field">
+                    <span>Categorie</span>
+
+                    <select
+                      onChange={(event) =>
+                        mode === 'INCIDENT'
+                          ? handleIncidentFieldChange(
+                              'categoryId',
+
+                              event.target.value,
+                            )
+                          : handleRequestFieldChange(
+                              'categoryId',
+                              event.target.value,
+                            )
+                      }
+                      value={
+                        mode === 'INCIDENT'
+                          ? incidentDraft.categoryId
+                          : requestDraft.categoryId
+                      }
+                    >
+                      <option value="">Choisir une categorie</option>
+
+                      {catalog.categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="field">
+                    <span>Canal</span>
+
+                    <select
+                      onChange={(event) =>
+                        mode === 'INCIDENT'
+                          ? handleIncidentFieldChange(
+                              'channelId',
+                              event.target.value,
+                            )
+                          : handleRequestFieldChange(
+                              'channelId',
+                              event.target.value,
+                            )
+                      }
+                      value={
+                        mode === 'INCIDENT'
+                          ? incidentDraft.channelId
+                          : requestDraft.channelId
+                      }
+                    >
+                      <option value="">Choisir un canal</option>
+
+                      {catalog.channels.map((channel) => (
+                        <option key={channel.id} value={channel.id}>
+                          {translateChannel(channel.name)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="field">
+                    <span>Service</span>
+
+                    <select
+                      onChange={(event) =>
+                        mode === 'INCIDENT'
+                          ? handleIncidentFieldChange(
+                              'serviceId',
+                              event.target.value,
+                            )
+                          : handleRequestFieldChange(
+                              'serviceId',
+                              event.target.value,
+                            )
+                      }
+                      value={
+                        mode === 'INCIDENT'
+                          ? incidentDraft.serviceId
+                          : requestDraft.serviceId
+                      }
+                    >
+                      <option value="">Choisir un service</option>
+
+                      {catalog.services.map((service) => (
+                        <option key={service.id} value={service.id}>
+                          {service.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="field">
+                    <span>Equipement concerne</span>
+
+                    <select
+                      onChange={(event) =>
+                        mode === 'INCIDENT'
+                          ? handleIncidentFieldChange(
+                              'ciId',
+                              event.target.value,
+                            )
+                          : handleRequestFieldChange('ciId', event.target.value)
+                      }
+                      value={
+                        mode === 'INCIDENT'
+                          ? incidentDraft.ciId
+                          : requestDraft.ciId
+                      }
+                    >
+                      <option value="">Choisir un equipement</option>
+
+                      {catalog.cis.map((ci) => (
+                        <option key={ci.id} value={ci.id}>
+                          {ci.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {mode === 'INCIDENT' ? (
+                    <>
+                      <label className="field">
+                        <span>Impact</span>
+
+                        <select
+                          onChange={(event) =>
+                            handleIncidentFieldChange(
+                              'impact',
+                              event.target.value,
+                            )
+                          }
+                          value={incidentDraft.impact}
+                        >
+                          {INCIDENT_SEVERITIES.map((severity) => (
+                            <option key={severity} value={severity}>
+                              {translateIncidentSeverity(severity)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="field">
+                        <span>Urgence</span>
+
+                        <select
+                          onChange={(event) =>
+                            handleIncidentFieldChange(
+                              'urgency',
+                              event.target.value,
+                            )
+                          }
+                          value={incidentDraft.urgency}
+                        >
+                          {INCIDENT_SEVERITIES.map((severity) => (
+                            <option key={severity} value={severity}>
+                              {translateIncidentSeverity(severity)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </>
+                  ) : (
+                    <>
+                      <label className="field">
+                        <span>Priorite</span>
+
+                        <select
+                          onChange={(event) =>
+                            handleRequestFieldChange(
+                              'priorityId',
+                              event.target.value,
+                            )
+                          }
+                          value={requestDraft.priorityId}
+                        >
+                          <option value="">Choisir une priorite</option>
+
+                          {catalog.priorities.map((priority) => (
+                            <option key={priority.id} value={priority.id}>
+                              {translatePriority(priority.name)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="field">
+                        <span>Type de demande</span>
+
+                        <select
+                          onChange={(event) =>
+                            handleRequestFieldChange(
+                              'requestType',
+
+                              event.target.value,
+                            )
+                          }
+                          value={requestDraft.requestType}
+                        >
+                          {REQUEST_TYPES.map((requestType) => (
+                            <option key={requestType} value={requestType}>
+                              {translateRequestType(requestType)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </>
+                  )}
+
+                  <div className="ticket-form-actions ticket-form-span-2">
+                    <button className="primary-button" disabled={isSubmitting}>
+                      {isSubmitting
+                        ? 'Creation en cours...'
+                        : mode === 'INCIDENT'
+                          ? 'Creer incident'
+                          : 'Creer demande'}
+                    </button>
+
+                    <span className="ticket-form-helper">
+                      {mode === 'INCIDENT'
+                        ? 'La priorite sera calculee automatiquement par le backend.'
+                        : 'La priorite choisie sera envoyee telle quelle au backend.'}
+                    </span>
+                  </div>
+
+                  {submitErrorMessage ? (
+                    <p className="ticket-form-error ticket-form-span-2">
+                      {submitErrorMessage}
+                    </p>
+                  ) : null}
+                </form>
+
+                <aside className="ticket-preview-card">
+                  <h3>
+                    {mode === 'INCIDENT'
+                      ? 'Preparation incident'
+                      : 'Preparation demande'}
+                  </h3>
+
+                  <p>
+                    {mode === 'INCIDENT'
+                      ? 'Le backend transformera impact et urgence en priorite metier.'
+                      : 'La demande utilise une priorite manuelle et un type de demande explicite.'}
+                  </p>
+
+                  <dl className="status-grid ticket-preview-grid">
+                    <div>
+                      <dt>Categorie</dt>
+
+                      <dd>{selectedCategory?.name ?? 'Non selectionnee'}</dd>
+                    </div>
+
+                    <div>
+                      <dt>Canal</dt>
+
+                      <dd>
+                        {selectedChannel
+                          ? translateChannel(selectedChannel.name)
+                          : 'Non selectionne'}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt>Service</dt>
+
+                      <dd>{selectedService?.name ?? 'Non selectionne'}</dd>
+                    </div>
+
+                    <div>
+                      <dt>Equipement concerne</dt>
+
+                      <dd>{selectedCi?.name ?? 'Non selectionne'}</dd>
+                    </div>
+
+                    {mode === 'INCIDENT' ? (
+                      <>
+                        <div>
+                          <dt>Impact</dt>
+
+                          <dd>
+                            {translateIncidentSeverity(incidentDraft.impact)}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt>Urgence</dt>
+
+                          <dd>
+                            {translateIncidentSeverity(incidentDraft.urgency)}
+                          </dd>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <dt>Priorite</dt>
+
+                          <dd>
+                            {selectedPriority
+                              ? translatePriority(selectedPriority.name)
+                              : 'Non selectionnee'}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt>Type de demande</dt>
+
+                          <dd>
+                            {translateRequestType(requestDraft.requestType)}
+                          </dd>
+                        </div>
+                      </>
+                    )}
+                  </dl>
+
+                  {createdIncident ? (
+                    <article className="ticket-created-card">
+                      <span>Incident cree</span>
+
+                      <strong>{createdIncident.ticket.number}</strong>
+
+                      <p>{createdIncident.ticket.title}</p>
+
+                      <dl className="ticket-created-grid">
+                        <div>
+                          <dt>Statut</dt>
+
+                          <dd>{createdIncident.ticket.status}</dd>
+                        </div>
+
+                        <div>
+                          <dt>Priorite calculee</dt>
+
+                          <dd>
+                            {translatePriority(createdIncident.priorityName)}
+                          </dd>
+                        </div>
+                      </dl>
+                    </article>
+                  ) : null}
+
+                  {createdRequest ? (
+                    <article className="ticket-created-card">
+                      <span>Demande creee</span>
+
+                      <strong>{createdRequest.ticket.number}</strong>
+
+                      <p>{createdRequest.ticket.title}</p>
+
+                      <dl className="ticket-created-grid">
+                        <div>
+                          <dt>Statut</dt>
+
+                          <dd>{createdRequest.ticket.status}</dd>
+                        </div>
+
+                        <div>
+                          <dt>Priorite retenue</dt>
+
+                          <dd>
+                            {translatePriority(createdRequest.priorityName)}
+                          </dd>
+                        </div>
+                      </dl>
+                    </article>
+                  ) : null}
+                </aside>
+              </div>
+            )}
+          </section>
+        ) : null}
+
+        {showListPanel ? (
+          <section className="ticket-detail-layout ticket-workspace-detail-layout">
+            <section className="ticket-list-card">
+              <div className="ticket-list-header">
+                <div>
+                  <h3>Liste des tickets</h3>
+
+                  <p>
+                    Recherche texte et filtres simples branches sur l endpoint
+                    `GET /tickets`.
+                  </p>
+                </div>
+
+                <div className="ticket-list-meta">
+                  <span>Resultats</span>
+
+                  <strong>{tickets.length}</strong>
+                </div>
+              </div>
+
+              <div className="ticket-list-filters">
+                <label className="field ticket-filter-search">
+                  <span>Recherche</span>
+
+                  <input
+                    onChange={(event) =>
+                      handleSearchFilterChange('q', event.target.value)
+                    }
+                    placeholder="Numero, titre ou description"
+                    value={searchFilters.q}
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Type</span>
+
+                  <select
+                    onChange={(event) =>
+                      handleSearchFilterChange('type', event.target.value)
+                    }
+                    value={searchFilters.type}
+                  >
+                    <option value="">Tous</option>
+
+                    <option value="INCIDENT">Incident</option>
+
+                    <option value="REQUEST">Demande</option>
+                  </select>
+                </label>
+
+                <label className="field">
+                  <span>Statut</span>
+
+                  <select
+                    onChange={(event) =>
+                      handleSearchFilterChange('status', event.target.value)
+                    }
+                    value={searchFilters.status}
+                  >
+                    <option value="">Tous</option>
+
+                    <option value="OPEN">Ouvert</option>
+
+                    <option value="IN_PROGRESS">En cours</option>
+
+                    <option value="RESOLVED">Resolu</option>
+
+                    <option value="CLOSED">Clos</option>
+                  </select>
+                </label>
+
+                <label className="field">
+                  <span>Categorie</span>
+
+                  <select
+                    onChange={(event) =>
+                      handleSearchFilterChange('categoryId', event.target.value)
+                    }
+                    value={searchFilters.categoryId}
+                  >
+                    <option value="">Toutes</option>
+
+                    {catalog.categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
                 <label className="field">
                   <span>Priorite</span>
 
                   <select
                     onChange={(event) =>
-                      handleRequestFieldChange('priorityId', event.target.value)
+                      handleSearchFilterChange('priorityId', event.target.value)
                     }
-                    value={requestDraft.priorityId}
+                    value={searchFilters.priorityId}
                   >
-                    <option value="">Choisir une priorite</option>
+                    <option value="">Toutes</option>
 
                     {catalog.priorities.map((priority) => (
                       <option key={priority.id} value={priority.id}>
@@ -1768,979 +2210,813 @@ export function AgentPage({ session }: AgentPageProps) {
                     ))}
                   </select>
                 </label>
-
-                <label className="field">
-                  <span>Type de demande</span>
-
-                  <select
-                    onChange={(event) =>
-                      handleRequestFieldChange(
-                        'requestType',
-
-                        event.target.value,
-                      )
-                    }
-                    value={requestDraft.requestType}
-                  >
-                    {REQUEST_TYPES.map((requestType) => (
-                      <option key={requestType} value={requestType}>
-                        {translateRequestType(requestType)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </>
-            )}
-
-            <div className="ticket-form-actions ticket-form-span-2">
-              <button className="primary-button" disabled={isSubmitting}>
-                {isSubmitting
-                  ? 'Creation en cours...'
-                  : mode === 'INCIDENT'
-                    ? 'Creer incident'
-                    : 'Creer demande'}
-              </button>
-
-              <span className="ticket-form-helper">
-                {mode === 'INCIDENT'
-                  ? 'La priorite sera calculee automatiquement par le backend.'
-                  : 'La priorite choisie sera envoyee telle quelle au backend.'}
-              </span>
-            </div>
-
-            {submitErrorMessage ? (
-              <p className="ticket-form-error ticket-form-span-2">
-                {submitErrorMessage}
-              </p>
-            ) : null}
-          </form>
-
-          <aside className="ticket-preview-card">
-            <h3>
-              {mode === 'INCIDENT'
-                ? 'Preparation incident'
-                : 'Preparation demande'}
-            </h3>
-
-            <p>
-              {mode === 'INCIDENT'
-                ? 'Le backend transformera impact et urgence en priorite metier.'
-                : 'La demande utilise une priorite manuelle et un type de demande explicite.'}
-            </p>
-
-            <dl className="status-grid ticket-preview-grid">
-              <div>
-                <dt>Categorie</dt>
-
-                <dd>{selectedCategory?.name ?? 'Non selectionnee'}</dd>
               </div>
 
-              <div>
-                <dt>Canal</dt>
-
-                <dd>
-                  {selectedChannel
-                    ? translateChannel(selectedChannel.name)
-                    : 'Non selectionne'}
-                </dd>
-              </div>
-
-              <div>
-                <dt>Service</dt>
-
-                <dd>{selectedService?.name ?? 'Non selectionne'}</dd>
-              </div>
-
-              <div>
-                <dt>Equipement concerne</dt>
-
-                <dd>{selectedCi?.name ?? 'Non selectionne'}</dd>
-              </div>
-
-              {mode === 'INCIDENT' ? (
-                <>
-                  <div>
-                    <dt>Impact</dt>
-
-                    <dd>{translateIncidentSeverity(incidentDraft.impact)}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Urgence</dt>
-
-                    <dd>{translateIncidentSeverity(incidentDraft.urgency)}</dd>
-                  </div>
-                </>
+              {isLoadingTickets ? (
+                <p className="ticket-form-message">Chargement des tickets...</p>
+              ) : loadTicketsErrorMessage ? (
+                <p className="ticket-form-error">{loadTicketsErrorMessage}</p>
+              ) : tickets.length === 0 ? (
+                <p className="ticket-form-message">
+                  Aucun ticket ne correspond aux filtres actuels.
+                </p>
               ) : (
                 <>
-                  <div>
-                    <dt>Priorite</dt>
-
-                    <dd>
-                      {selectedPriority
-                        ? translatePriority(selectedPriority.name)
-                        : 'Non selectionnee'}
-                    </dd>
-                  </div>
-
-                  <div>
-                    <dt>Type de demande</dt>
-
-                    <dd>{translateRequestType(requestDraft.requestType)}</dd>
-                  </div>
-                </>
-              )}
-            </dl>
-
-            {createdIncident ? (
-              <article className="ticket-created-card">
-                <span>Incident cree</span>
-
-                <strong>{createdIncident.ticket.number}</strong>
-
-                <p>{createdIncident.ticket.title}</p>
-
-                <dl className="ticket-created-grid">
-                  <div>
-                    <dt>Statut</dt>
-
-                    <dd>{createdIncident.ticket.status}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Priorite calculee</dt>
-
-                    <dd>{translatePriority(createdIncident.priorityName)}</dd>
-                  </div>
-                </dl>
-              </article>
-            ) : null}
-
-            {createdRequest ? (
-              <article className="ticket-created-card">
-                <span>Demande creee</span>
-
-                <strong>{createdRequest.ticket.number}</strong>
-
-                <p>{createdRequest.ticket.title}</p>
-
-                <dl className="ticket-created-grid">
-                  <div>
-                    <dt>Statut</dt>
-
-                    <dd>{createdRequest.ticket.status}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Priorite retenue</dt>
-
-                    <dd>{translatePriority(createdRequest.priorityName)}</dd>
-                  </div>
-                </dl>
-              </article>
-            ) : null}
-          </aside>
-        </div>
-      )}
-
-      <section className="ticket-detail-layout">
-        <section className="ticket-list-card">
-          <div className="ticket-list-header">
-            <div>
-              <h3>Liste des tickets</h3>
-
-              <p>
-                Recherche texte et filtres simples branches sur l endpoint `GET
-                /tickets`.
-              </p>
-            </div>
-
-            <div className="ticket-list-meta">
-              <span>Resultats</span>
-
-              <strong>{tickets.length}</strong>
-            </div>
-          </div>
-
-          <div className="ticket-list-filters">
-            <label className="field ticket-filter-search">
-              <span>Recherche</span>
-
-              <input
-                onChange={(event) =>
-                  handleSearchFilterChange('q', event.target.value)
-                }
-                placeholder="Numero, titre ou description"
-                value={searchFilters.q}
-              />
-            </label>
-
-            <label className="field">
-              <span>Type</span>
-
-              <select
-                onChange={(event) =>
-                  handleSearchFilterChange('type', event.target.value)
-                }
-                value={searchFilters.type}
-              >
-                <option value="">Tous</option>
-
-                <option value="INCIDENT">Incident</option>
-
-                <option value="REQUEST">Demande</option>
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Statut</span>
-
-              <select
-                onChange={(event) =>
-                  handleSearchFilterChange('status', event.target.value)
-                }
-                value={searchFilters.status}
-              >
-                <option value="">Tous</option>
-
-                <option value="OPEN">Ouvert</option>
-
-                <option value="IN_PROGRESS">En cours</option>
-
-                <option value="RESOLVED">Resolu</option>
-
-                <option value="CLOSED">Clos</option>
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Categorie</span>
-
-              <select
-                onChange={(event) =>
-                  handleSearchFilterChange('categoryId', event.target.value)
-                }
-                value={searchFilters.categoryId}
-              >
-                <option value="">Toutes</option>
-
-                {catalog.categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Priorite</span>
-
-              <select
-                onChange={(event) =>
-                  handleSearchFilterChange('priorityId', event.target.value)
-                }
-                value={searchFilters.priorityId}
-              >
-                <option value="">Toutes</option>
-
-                {catalog.priorities.map((priority) => (
-                  <option key={priority.id} value={priority.id}>
-                    {translatePriority(priority.name)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          {isLoadingTickets ? (
-            <p className="ticket-form-message">Chargement des tickets...</p>
-          ) : loadTicketsErrorMessage ? (
-            <p className="ticket-form-error">{loadTicketsErrorMessage}</p>
-          ) : tickets.length === 0 ? (
-            <p className="ticket-form-message">
-              Aucun ticket ne correspond aux filtres actuels.
-            </p>
-          ) : (
-            <div className="ticket-results">
-              {tickets.map((ticket) => (
-                <article className="ticket-result-card" key={ticket.id}>
-                  <button
-                    className={
-                      selectedTicketId === ticket.id
-                        ? 'ticket-result-overlay is-selected'
-                        : 'ticket-result-overlay'
-                    }
-                    onClick={() => setSelectedTicketId(ticket.id)}
-                    type="button"
-                  >
-                    Ouvrir le detail du ticket {ticket.number}
-                  </button>
-
-                  <div className="ticket-result-header">
-                    <div>
-                      <span className="ticket-result-number">
-                        {ticket.number}
-                      </span>
-
-                      <h4>{ticket.title}</h4>
-                    </div>
-
-                    <span className="ticket-result-badge">
-                      {translateTicketType(ticket.type)}
-                    </span>
-                  </div>
-
-                  <dl className="ticket-result-grid">
-                    <div>
-                      <dt>Statut</dt>
-
-                      <dd>{translateTicketStatus(ticket.status)}</dd>
-                    </div>
-
-                    <div>
-                      <dt>Priorite</dt>
-
-                      <dd>
-                        {ticket.priorityName
-                          ? translatePriority(ticket.priorityName)
-                          : prioritiesById.get(ticket.priorityId)
-                            ? translatePriority(
-                                prioritiesById.get(ticket.priorityId)!.name,
-                              )
-                            : 'Non definie'}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt>Categorie</dt>
-
-                      <dd>
-                        {categoriesById.get(ticket.categoryId)?.name ??
-                          'Non definie'}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt>Cree le</dt>
-
-                      <dd>{formatTicketDate(ticket.createdAt)}</dd>
-                    </div>
-                  </dl>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <aside className="ticket-detail-card">
-          <div className="ticket-detail-header">
-            <div>
-              <h3>Detail du ticket</h3>
-
-              <p>
-                Lecture detaillee et actions agent pour l assignation et le
-                workflow.
-              </p>
-            </div>
-
-            {selectedTicketDetail ? (
-              <span className="ticket-result-badge">
-                {selectedTicketDetail.ticket.number}
-              </span>
-            ) : null}
-          </div>
-
-          {!selectedTicketId ? (
-            <p className="ticket-form-message">
-              Selectionne un ticket dans la liste pour afficher son detail.
-            </p>
-          ) : isLoadingDetail ? (
-            <p className="ticket-form-message">Chargement du detail...</p>
-          ) : loadDetailErrorMessage ? (
-            <p className="ticket-form-error">{loadDetailErrorMessage}</p>
-          ) : !selectedTicketDetail ? (
-            <p className="ticket-form-message">
-              Aucun detail ticket disponible.
-            </p>
-          ) : (
-            <>
-              <div className="ticket-detail-summary">
-                <article>
-                  <span>Type</span>
-
-                  <strong>
-                    {translateTicketType(selectedTicketDetail.ticket.type)}
-                  </strong>
-                </article>
-
-                <article>
-                  <span>Statut</span>
-
-                  <strong>
-                    {translateTicketStatus(selectedTicketDetail.ticket.status)}
-                  </strong>
-                </article>
-
-                <article>
-                  <span>Priorite</span>
-
-                  <strong>
-                    {selectedTicketDetail.priorityName
-                      ? translatePriority(selectedTicketDetail.priorityName)
-                      : prioritiesById.get(
-                            selectedTicketDetail.ticket.priorityId,
-                          )
-                        ? translatePriority(
-                            prioritiesById.get(
-                              selectedTicketDetail.ticket.priorityId,
-                            )!.name,
-                          )
-                        : 'Non definie'}
-                  </strong>
-                </article>
-
-                <article>
-                  <span>Cree le</span>
-
-                  <strong>
-                    {formatTicketDate(selectedTicketDetail.ticket.createdAt)}
-                  </strong>
-                </article>
-              </div>
-
-              <div className="ticket-detail-block">
-                <h4>{selectedTicketDetail.ticket.title}</h4>
-
-                <p>{selectedTicketDetail.ticket.description}</p>
-              </div>
-
-              <dl className="status-grid ticket-detail-grid">
-                <div>
-                  <dt>Categorie</dt>
-
-                  <dd>
-                    {categoriesById.get(selectedTicketDetail.ticket.categoryId)
-                      ?.name ?? 'Non definie'}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt>Canal</dt>
-
-                  <dd>
-                    {selectedTicketDetail.ticket.channelId
-                      ? translateChannel(
-                          channelsById.get(
-                            selectedTicketDetail.ticket.channelId,
-                          )?.name ?? selectedTicketDetail.ticket.channelId,
-                        )
-                      : 'Non renseigne'}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt>Service</dt>
-
-                  <dd>
-                    {selectedTicketDetail.ticket.serviceId
-                      ? (servicesById.get(selectedTicketDetail.ticket.serviceId)
-                          ?.name ?? selectedTicketDetail.ticket.serviceId)
-                      : 'Non renseigne'}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt>Equipement concerne</dt>
-
-                  <dd>
-                    {selectedTicketDetail.ticket.ciId
-                      ? (cisById.get(selectedTicketDetail.ticket.ciId)?.name ??
-                        selectedTicketDetail.ticket.ciId)
-                      : 'Non renseigne'}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt>Groupe d affectation</dt>
-
-                  <dd>
-                    {selectedTicketDetail.ticket.assignmentGroupId
-                      ? (groupsById.get(
-                          selectedTicketDetail.ticket.assignmentGroupId,
-                        )?.name ??
-                        selectedTicketDetail.ticket.assignmentGroupId)
-                      : 'Non affecte'}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt>Agent assigne</dt>
-
-                  <dd>
-                    {selectedTicketDetail.ticket.assignedToUserId ??
-                      'Non assigne'}
-                  </dd>
-                </div>
-              </dl>
-
-              {selectedTicketDetail.incident ? (
-                <dl className="status-grid ticket-detail-grid">
-                  <div>
-                    <dt>Impact</dt>
-
-                    <dd>
-                      {translateIncidentSeverity(
-                        selectedTicketDetail.incident.impact,
-                      )}
-                    </dd>
-                  </div>
-
-                  <div>
-                    <dt>Urgence</dt>
-
-                    <dd>
-                      {translateIncidentSeverity(
-                        selectedTicketDetail.incident.urgency,
-                      )}
-                    </dd>
-                  </div>
-                </dl>
-              ) : null}
-
-              {selectedTicketDetail.request ? (
-                <dl className="status-grid ticket-detail-grid">
-                  <div>
-                    <dt>Type de demande</dt>
-
-                    <dd>
-                      {translateRequestType(
-                        selectedTicketDetail.request.requestType,
-                      )}
-                    </dd>
-                  </div>
-
-                  <div>
-                    <dt>Approbation</dt>
-
-                    <dd>
-                      {selectedTicketDetail.request.approvalStatus ??
-                        'Non definie'}
-                    </dd>
-                  </div>
-                </dl>
-              ) : null}
-
-              <section className="ticket-comments-card">
-                <div className="ticket-comments-header">
-                  <div>
-                    <h4>Pieces jointes</h4>
-
-                    <p>
-                      Liste des fichiers rattaches au ticket et ajout de
-                      nouveaux documents.
-                    </p>
-                  </div>
-
-                  <span className="ticket-result-badge">
-                    {selectedTicketAttachments.length}
-                  </span>
-                </div>
-
-                {isLoadingAttachments ? (
-                  <p className="ticket-form-message">
-                    Chargement des pieces jointes...
-                  </p>
-                ) : loadAttachmentsErrorMessage ? (
-                  <p className="ticket-form-error">
-                    {loadAttachmentsErrorMessage}
-                  </p>
-                ) : selectedTicketAttachments.length === 0 ? (
-                  <p className="ticket-form-message">
-                    Aucune piece jointe pour ce ticket.
-                  </p>
-                ) : (
-                  <div className="ticket-attachments-list">
-                    {selectedTicketAttachments.map((attachment) => (
-                      <article
-                        className="ticket-attachment-card"
-                        key={attachment.id}
-                      >
-                        <div className="ticket-attachment-meta">
+                  <div className="ticket-results">
+                    {paginatedTickets.map((ticket) => (
+                      <article className="ticket-result-card" key={ticket.id}>
+                        <button
+                          className={
+                            selectedTicketId === ticket.id
+                              ? 'ticket-result-overlay is-selected'
+                              : 'ticket-result-overlay'
+                          }
+                          onClick={() => setSelectedTicketId(ticket.id)}
+                          type="button"
+                        >
+                          Ouvrir le detail du ticket {ticket.number}
+                        </button>
+
+                        <div className="ticket-result-header">
                           <div>
-                            <strong>{attachment.fileName}</strong>
-                            <span>
-                              Ajoute par {attachment.uploadedByUserId} le{' '}
-                              {formatTicketDate(attachment.createdAt)}
+                            <span className="ticket-result-number">
+                              {ticket.number}
                             </span>
+
+                            <h4>{ticket.title}</h4>
                           </div>
 
-                          <span className="ticket-comment-badge">
-                            {formatFileSize(attachment.sizeBytes)}
+                          <span className="ticket-result-badge">
+                            {translateTicketType(ticket.type)}
                           </span>
                         </div>
 
-                        <div className="ticket-attachment-actions">
-                          <button
-                            className="secondary-button"
-                            onClick={() =>
-                              void handleDownloadAttachment(attachment)
-                            }
-                            type="button"
-                          >
-                            Telecharger
-                          </button>
-
-                          <button
-                            className="ticket-comment-delete-button"
-                            disabled={deletingAttachmentId === attachment.id}
-                            onClick={() =>
-                              void handleDeleteAttachment(attachment)
-                            }
-                            type="button"
-                          >
-                            {deletingAttachmentId === attachment.id
-                              ? 'Suppression...'
-                              : 'Supprimer'}
-                          </button>
-                        </div>
-
-                        {attachment.mimeType?.startsWith('image/') &&
-                        attachmentPreviewUrls[attachment.id] ? (
-                          <img
-                            alt={attachment.fileName}
-                            className="ticket-attachment-preview"
-                            src={attachmentPreviewUrls[attachment.id]}
-                          />
-                        ) : null}
-
-                        <dl className="ticket-attachment-grid">
+                        <dl className="ticket-result-grid">
                           <div>
-                            <dt>Type MIME</dt>
-                            <dd>{attachment.mimeType ?? 'Non renseigne'}</dd>
+                            <dt>Statut</dt>
+
+                            <dd>{translateTicketStatus(ticket.status)}</dd>
                           </div>
 
                           <div>
-                            <dt>Bucket</dt>
-                            <dd>{attachment.bucketId}</dd>
+                            <dt>Priorite</dt>
+
+                            <dd>
+                              {ticket.priorityName
+                                ? translatePriority(ticket.priorityName)
+                                : prioritiesById.get(ticket.priorityId)
+                                  ? translatePriority(
+                                      prioritiesById.get(ticket.priorityId)!
+                                        .name,
+                                    )
+                                  : 'Non definie'}
+                            </dd>
                           </div>
 
-                          <div className="ticket-attachment-path">
-                            <dt>Chemin de stockage</dt>
-                            <dd>{attachment.storagePath}</dd>
+                          <div>
+                            <dt>Categorie</dt>
+
+                            <dd>
+                              {categoriesById.get(ticket.categoryId)?.name ??
+                                'Non definie'}
+                            </dd>
+                          </div>
+
+                          <div>
+                            <dt>Cree le</dt>
+
+                            <dd>{formatTicketDate(ticket.createdAt)}</dd>
                           </div>
                         </dl>
                       </article>
                     ))}
                   </div>
-                )}
 
-                <form
-                  className="ticket-comment-form"
-                  onSubmit={handleAttachmentSubmit}
-                >
-                  <label className="field">
-                    <span>Nouvelle piece jointe</span>
-
-                    <input
-                      accept="*/*"
-                      key={attachmentInputKey}
-                      onChange={(event) =>
-                        handleAttachmentSelection(
-                          event.target.files?.[0] ?? null,
-                        )
-                      }
-                      type="file"
-                    />
-                  </label>
-
-                  <div className="ticket-comment-actions">
-                    <button
-                      className="secondary-button"
-                      disabled={isSubmittingAttachment}
-                    >
-                      {isSubmittingAttachment
-                        ? 'Envoi...'
-                        : 'Ajouter la piece jointe'}
-                    </button>
-
-                    <span className="ticket-form-helper">
-                      {attachmentDraft.file
-                        ? `${attachmentDraft.file.name} (${formatFileSize(attachmentDraft.file.size)})`
-                        : 'Selectionne un fichier local a rattacher au ticket.'}
-                    </span>
-                  </div>
-                </form>
-
-                {attachmentErrorMessage ? (
-                  <p className="ticket-form-error">{attachmentErrorMessage}</p>
-                ) : null}
-
-                {attachmentSuccessMessage ? (
-                  <p className="ticket-form-message">
-                    {attachmentSuccessMessage}
-                  </p>
-                ) : null}
-              </section>
-
-              <section className="ticket-comments-card">
-                <div className="ticket-comments-header">
-                  <div>
-                    <h4>Commentaires</h4>
-
-                    <p>
-                      Historique de discussion du ticket et ajout de nouveaux
-                      commentaires.
+                  <div className="ticket-pagination">
+                    <p className="ticket-form-helper">
+                      Page {ticketPage} sur {totalTicketPages} -{' '}
+                      {tickets.length} tickets
                     </p>
-                  </div>
 
-                  <span className="ticket-result-badge">
-                    {selectedTicketComments.length}
-                  </span>
+                    <div className="ticket-pagination-actions">
+                      <button
+                        className="secondary-button"
+                        disabled={ticketPage <= 1}
+                        onClick={() =>
+                          setTicketPage((currentPage) => currentPage - 1)
+                        }
+                        type="button"
+                      >
+                        Precedent
+                      </button>
+
+                      <div className="ticket-pagination-pages">
+                        {Array.from(
+                          { length: totalTicketPages },
+                          (_, index) => {
+                            const pageNumber = index + 1;
+
+                            return (
+                              <button
+                                className={
+                                  pageNumber === ticketPage
+                                    ? 'ticket-workspace-view-button is-active'
+                                    : 'ticket-workspace-view-button'
+                                }
+                                key={pageNumber}
+                                onClick={() => setTicketPage(pageNumber)}
+                                type="button"
+                              >
+                                {pageNumber}
+                              </button>
+                            );
+                          },
+                        )}
+                      </div>
+
+                      <button
+                        className="secondary-button"
+                        disabled={ticketPage >= totalTicketPages}
+                        onClick={() =>
+                          setTicketPage((currentPage) => currentPage + 1)
+                        }
+                        type="button"
+                      >
+                        Suivant
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </section>
+
+            <aside className="ticket-detail-card">
+              <div className="ticket-detail-header">
+                <div>
+                  <h3>Detail du ticket</h3>
+
+                  <p>
+                    Lecture detaillee et actions agent pour l assignation et le
+                    workflow.
+                  </p>
                 </div>
 
-                {isLoadingComments ? (
-                  <p className="ticket-form-message">
-                    Chargement des commentaires...
-                  </p>
-                ) : loadCommentsErrorMessage ? (
-                  <p className="ticket-form-error">
-                    {loadCommentsErrorMessage}
-                  </p>
-                ) : selectedTicketComments.length === 0 ? (
-                  <p className="ticket-form-message">
-                    Aucun commentaire pour ce ticket.
-                  </p>
-                ) : (
-                  <div className="ticket-comments-list">
-                    {selectedTicketComments.map((comment) => {
-                      const canDeleteComment = canDeleteTicketComment(
-                        session.user.role,
-                        session.user.id,
-                        comment.authorUserId,
-                      );
+                {selectedTicketDetail ? (
+                  <span className="ticket-result-badge">
+                    {selectedTicketDetail.ticket.number}
+                  </span>
+                ) : null}
+              </div>
 
-                      return (
-                        <article
-                          className={
-                            comment.isInternal
-                              ? 'ticket-comment-card is-internal'
-                              : 'ticket-comment-card'
-                          }
-                          key={comment.id}
-                        >
-                          <div className="ticket-comment-meta">
-                            <div className="ticket-comment-author">
-                              <strong>{comment.authorUserId}</strong>
+              {!selectedTicketId ? (
+                <p className="ticket-form-message">
+                  Selectionne un ticket dans la liste pour afficher son detail.
+                </p>
+              ) : isLoadingDetail ? (
+                <p className="ticket-form-message">Chargement du detail...</p>
+              ) : loadDetailErrorMessage ? (
+                <p className="ticket-form-error">{loadDetailErrorMessage}</p>
+              ) : !selectedTicketDetail ? (
+                <p className="ticket-form-message">
+                  Aucun detail ticket disponible.
+                </p>
+              ) : (
+                <>
+                  <div className="ticket-detail-summary">
+                    <article>
+                      <span>Type</span>
 
-                              <span>{formatTicketDate(comment.createdAt)}</span>
-                            </div>
+                      <strong>
+                        {translateTicketType(selectedTicketDetail.ticket.type)}
+                      </strong>
+                    </article>
 
-                            <div className="ticket-comment-meta-actions">
-                              <span
-                                className={
-                                  comment.isInternal
-                                    ? 'ticket-comment-badge is-internal'
-                                    : 'ticket-comment-badge'
-                                }
-                              >
-                                {comment.isInternal ? 'Interne' : 'Public'}
-                              </span>
+                    <article>
+                      <span>Statut</span>
 
-                              {canDeleteComment ? (
+                      <strong>
+                        {translateTicketStatus(
+                          selectedTicketDetail.ticket.status,
+                        )}
+                      </strong>
+                    </article>
+
+                    <article>
+                      <span>Priorite</span>
+
+                      <strong>
+                        {selectedTicketDetail.priorityName
+                          ? translatePriority(selectedTicketDetail.priorityName)
+                          : prioritiesById.get(
+                                selectedTicketDetail.ticket.priorityId,
+                              )
+                            ? translatePriority(
+                                prioritiesById.get(
+                                  selectedTicketDetail.ticket.priorityId,
+                                )!.name,
+                              )
+                            : 'Non definie'}
+                      </strong>
+                    </article>
+
+                    <article>
+                      <span>Cree le</span>
+
+                      <strong>
+                        {formatTicketDate(
+                          selectedTicketDetail.ticket.createdAt,
+                        )}
+                      </strong>
+                    </article>
+                  </div>
+
+                  <div className="ticket-detail-block">
+                    <h4>{selectedTicketDetail.ticket.title}</h4>
+
+                    <p>{selectedTicketDetail.ticket.description}</p>
+                  </div>
+
+                  <dl className="status-grid ticket-detail-grid">
+                    <div>
+                      <dt>Categorie</dt>
+
+                      <dd>
+                        {categoriesById.get(
+                          selectedTicketDetail.ticket.categoryId,
+                        )?.name ?? 'Non definie'}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt>Canal</dt>
+
+                      <dd>
+                        {selectedTicketDetail.ticket.channelId
+                          ? translateChannel(
+                              channelsById.get(
+                                selectedTicketDetail.ticket.channelId,
+                              )?.name ?? selectedTicketDetail.ticket.channelId,
+                            )
+                          : 'Non renseigne'}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt>Service</dt>
+
+                      <dd>
+                        {selectedTicketDetail.ticket.serviceId
+                          ? (servicesById.get(
+                              selectedTicketDetail.ticket.serviceId,
+                            )?.name ?? selectedTicketDetail.ticket.serviceId)
+                          : 'Non renseigne'}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt>Equipement concerne</dt>
+
+                      <dd>
+                        {selectedTicketDetail.ticket.ciId
+                          ? (cisById.get(selectedTicketDetail.ticket.ciId)
+                              ?.name ?? selectedTicketDetail.ticket.ciId)
+                          : 'Non renseigne'}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt>Groupe d affectation</dt>
+
+                      <dd>
+                        {selectedTicketDetail.ticket.assignmentGroupId
+                          ? (groupsById.get(
+                              selectedTicketDetail.ticket.assignmentGroupId,
+                            )?.name ??
+                            selectedTicketDetail.ticket.assignmentGroupId)
+                          : 'Non affecte'}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt>Agent assigne</dt>
+
+                      <dd>
+                        {selectedTicketDetail.ticket.assignedToUserId ??
+                          'Non assigne'}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {selectedTicketDetail.incident ? (
+                    <dl className="status-grid ticket-detail-grid">
+                      <div>
+                        <dt>Impact</dt>
+
+                        <dd>
+                          {translateIncidentSeverity(
+                            selectedTicketDetail.incident.impact,
+                          )}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>Urgence</dt>
+
+                        <dd>
+                          {translateIncidentSeverity(
+                            selectedTicketDetail.incident.urgency,
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
+                  ) : null}
+
+                  {selectedTicketDetail.request ? (
+                    <dl className="status-grid ticket-detail-grid">
+                      <div>
+                        <dt>Type de demande</dt>
+
+                        <dd>
+                          {translateRequestType(
+                            selectedTicketDetail.request.requestType,
+                          )}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>Approbation</dt>
+
+                        <dd>
+                          {selectedTicketDetail.request.approvalStatus ??
+                            'Non definie'}
+                        </dd>
+                      </div>
+                    </dl>
+                  ) : null}
+
+                  <div className="ticket-detail-tabbar">
+                    <button
+                      className={
+                        detailWorkspaceTab === 'COMMENTS'
+                          ? 'ticket-workspace-view-button is-active'
+                          : 'ticket-workspace-view-button'
+                      }
+                      onClick={() => setDetailWorkspaceTab('COMMENTS')}
+                      type="button"
+                    >
+                      Conversation
+                    </button>
+
+                    <button
+                      className={
+                        detailWorkspaceTab === 'ATTACHMENTS'
+                          ? 'ticket-workspace-view-button is-active'
+                          : 'ticket-workspace-view-button'
+                      }
+                      onClick={() => setDetailWorkspaceTab('ATTACHMENTS')}
+                      type="button"
+                    >
+                      Pieces jointes
+                    </button>
+                  </div>
+
+                  {detailWorkspaceTab === 'ATTACHMENTS' ? (
+                    <section className="ticket-comments-card">
+                      <div className="ticket-comments-header">
+                        <div>
+                          <h4>Pieces jointes</h4>
+
+                          <p>
+                            Liste des fichiers rattaches au ticket et ajout de
+                            nouveaux documents.
+                          </p>
+                        </div>
+
+                        <span className="ticket-result-badge">
+                          {selectedTicketAttachments.length}
+                        </span>
+                      </div>
+
+                      {isLoadingAttachments ? (
+                        <p className="ticket-form-message">
+                          Chargement des pieces jointes...
+                        </p>
+                      ) : loadAttachmentsErrorMessage ? (
+                        <p className="ticket-form-error">
+                          {loadAttachmentsErrorMessage}
+                        </p>
+                      ) : selectedTicketAttachments.length === 0 ? (
+                        <p className="ticket-form-message">
+                          Aucune piece jointe pour ce ticket.
+                        </p>
+                      ) : (
+                        <div className="ticket-attachments-list">
+                          {selectedTicketAttachments.map((attachment) => (
+                            <article
+                              className="ticket-attachment-card"
+                              key={attachment.id}
+                            >
+                              <div className="ticket-attachment-meta">
+                                <div>
+                                  <strong>{attachment.fileName}</strong>
+                                  <span>
+                                    Ajoute par {attachment.uploadedByUserId} le{' '}
+                                    {formatTicketDate(attachment.createdAt)}
+                                  </span>
+                                </div>
+
+                                <span className="ticket-comment-badge">
+                                  {formatFileSize(attachment.sizeBytes)}
+                                </span>
+                              </div>
+
+                              <div className="ticket-attachment-actions">
                                 <button
-                                  className="ticket-comment-delete-button"
-                                  disabled={deletingCommentId === comment.id}
+                                  className="secondary-button"
                                   onClick={() =>
-                                    void handleDeleteComment(comment.id)
+                                    void handleDownloadAttachment(attachment)
                                   }
                                   type="button"
                                 >
-                                  {deletingCommentId === comment.id
+                                  Telecharger
+                                </button>
+
+                                <button
+                                  className="ticket-comment-delete-button"
+                                  disabled={
+                                    deletingAttachmentId === attachment.id
+                                  }
+                                  onClick={() =>
+                                    void handleDeleteAttachment(attachment)
+                                  }
+                                  type="button"
+                                >
+                                  {deletingAttachmentId === attachment.id
                                     ? 'Suppression...'
                                     : 'Supprimer'}
                                 </button>
+                              </div>
+
+                              {attachment.mimeType?.startsWith('image/') &&
+                              attachmentPreviewUrls[attachment.id] ? (
+                                <img
+                                  alt={attachment.fileName}
+                                  className="ticket-attachment-preview"
+                                  src={attachmentPreviewUrls[attachment.id]}
+                                />
                               ) : null}
-                            </div>
-                          </div>
 
-                          <p>{comment.body}</p>
-                        </article>
-                      );
-                    })}
-                  </div>
-                )}
+                              <dl className="ticket-attachment-grid">
+                                <div>
+                                  <dt>Type MIME</dt>
+                                  <dd>
+                                    {attachment.mimeType ?? 'Non renseigne'}
+                                  </dd>
+                                </div>
 
-                <form
-                  className="ticket-comment-form"
-                  onSubmit={handleCommentSubmit}
-                >
-                  <label className="field">
-                    <span>Nouveau commentaire</span>
+                                <div>
+                                  <dt>Bucket</dt>
+                                  <dd>{attachment.bucketId}</dd>
+                                </div>
 
-                    <textarea
-                      className="ticket-comment-textarea"
-                      onChange={(event) =>
-                        handleCommentBodyChange(event.target.value)
-                      }
-                      placeholder="Ajouter un commentaire utile pour ce ticket"
-                      rows={4}
-                      value={commentDraft.body}
-                    />
-                  </label>
+                                <div className="ticket-attachment-path">
+                                  <dt>Chemin de stockage</dt>
+                                  <dd>{attachment.storagePath}</dd>
+                                </div>
+                              </dl>
+                            </article>
+                          ))}
+                        </div>
+                      )}
 
-                  {canCreateInternalComments ? (
-                    <label className="ticket-comment-toggle">
-                      <span>Commentaire interne</span>
+                      <form
+                        className="ticket-comment-form"
+                        onSubmit={handleAttachmentSubmit}
+                      >
+                        <label className="field">
+                          <span>Nouvelle piece jointe</span>
 
-                      <input
-                        checked={commentDraft.isInternal}
-                        onChange={(event) =>
-                          handleCommentInternalToggle(event.target.checked)
-                        }
-                        type="checkbox"
-                      />
-                    </label>
+                          <input
+                            accept="*/*"
+                            key={attachmentInputKey}
+                            onChange={(event) =>
+                              handleAttachmentSelection(
+                                event.target.files?.[0] ?? null,
+                              )
+                            }
+                            type="file"
+                          />
+                        </label>
+
+                        <div className="ticket-comment-actions">
+                          <button
+                            className="secondary-button"
+                            disabled={isSubmittingAttachment}
+                          >
+                            {isSubmittingAttachment
+                              ? 'Envoi...'
+                              : 'Ajouter la piece jointe'}
+                          </button>
+
+                          <span className="ticket-form-helper">
+                            {attachmentDraft.file
+                              ? `${attachmentDraft.file.name} (${formatFileSize(attachmentDraft.file.size)})`
+                              : 'Selectionne un fichier local a rattacher au ticket.'}
+                          </span>
+                        </div>
+                      </form>
+
+                      {attachmentErrorMessage ? (
+                        <p className="ticket-form-error">
+                          {attachmentErrorMessage}
+                        </p>
+                      ) : null}
+
+                      {attachmentSuccessMessage ? (
+                        <p className="ticket-form-message">
+                          {attachmentSuccessMessage}
+                        </p>
+                      ) : null}
+                    </section>
                   ) : null}
 
-                  <div className="ticket-comment-actions">
-                    <button
-                      className="secondary-button"
-                      disabled={isSubmittingComment}
-                    >
-                      {isSubmittingComment
-                        ? 'Envoi...'
-                        : 'Ajouter le commentaire'}
-                    </button>
+                  {detailWorkspaceTab === 'COMMENTS' ? (
+                    <section className="ticket-comments-card">
+                      <div className="ticket-comments-header">
+                        <div>
+                          <h4>Commentaires</h4>
 
-                    <span className="ticket-form-helper">
-                      {canCreateInternalComments
-                        ? 'Les agents et admins peuvent publier des notes internes.'
-                        : 'Les commentaires internes restent reserves aux agents et admins.'}
-                    </span>
-                  </div>
-                </form>
+                          <p>
+                            Historique de discussion du ticket et ajout de
+                            nouveaux commentaires.
+                          </p>
+                        </div>
 
-                {commentErrorMessage ? (
-                  <p className="ticket-form-error">{commentErrorMessage}</p>
-                ) : null}
+                        <span className="ticket-result-badge">
+                          {selectedTicketComments.length}
+                        </span>
+                      </div>
 
-                {commentSuccessMessage ? (
-                  <p className="ticket-form-message">{commentSuccessMessage}</p>
-                ) : null}
-              </section>
+                      {isLoadingComments ? (
+                        <p className="ticket-form-message">
+                          Chargement des commentaires...
+                        </p>
+                      ) : loadCommentsErrorMessage ? (
+                        <p className="ticket-form-error">
+                          {loadCommentsErrorMessage}
+                        </p>
+                      ) : selectedTicketComments.length === 0 ? (
+                        <p className="ticket-form-message">
+                          Aucun commentaire pour ce ticket.
+                        </p>
+                      ) : (
+                        <div className="ticket-comments-list">
+                          {selectedTicketComments.map((comment) => {
+                            const canDeleteComment = canDeleteTicketComment(
+                              session.user.role,
+                              session.user.id,
+                              comment.authorUserId,
+                            );
 
-              {canManageTicket ? (
-                <div className="ticket-detail-actions">
-                  <form
-                    className="ticket-detail-action-card"
-                    onSubmit={handleAssignmentSubmit}
-                  >
-                    <h4>Assignation</h4>
+                            return (
+                              <article
+                                className={
+                                  comment.isInternal
+                                    ? 'ticket-comment-card is-internal'
+                                    : 'ticket-comment-card'
+                                }
+                                key={comment.id}
+                              >
+                                <div className="ticket-comment-meta">
+                                  <div className="ticket-comment-author">
+                                    <strong>{comment.authorUserId}</strong>
 
-                    <label className="field">
-                      <span>Groupe</span>
+                                    <span>
+                                      {formatTicketDate(comment.createdAt)}
+                                    </span>
+                                  </div>
 
-                      <select
-                        onChange={(event) =>
-                          handleAssignmentFieldChange(
-                            'assignmentGroupId',
+                                  <div className="ticket-comment-meta-actions">
+                                    <span
+                                      className={
+                                        comment.isInternal
+                                          ? 'ticket-comment-badge is-internal'
+                                          : 'ticket-comment-badge'
+                                      }
+                                    >
+                                      {comment.isInternal
+                                        ? 'Interne'
+                                        : 'Public'}
+                                    </span>
 
-                            event.target.value,
-                          )
-                        }
-                        value={assignmentDraft.assignmentGroupId}
+                                    {canDeleteComment ? (
+                                      <button
+                                        className="ticket-comment-delete-button"
+                                        disabled={
+                                          deletingCommentId === comment.id
+                                        }
+                                        onClick={() =>
+                                          void handleDeleteComment(comment.id)
+                                        }
+                                        type="button"
+                                      >
+                                        {deletingCommentId === comment.id
+                                          ? 'Suppression...'
+                                          : 'Supprimer'}
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                </div>
+
+                                <p>{comment.body}</p>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      <form
+                        className="ticket-comment-form"
+                        onSubmit={handleCommentSubmit}
                       >
-                        <option value="">Aucun groupe</option>
+                        <label className="field">
+                          <span>Nouveau commentaire</span>
 
-                        {catalog.groups.map((group) => (
-                          <option key={group.id} value={group.id}>
-                            {group.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                          <textarea
+                            className="ticket-comment-textarea"
+                            onChange={(event) =>
+                              handleCommentBodyChange(event.target.value)
+                            }
+                            placeholder="Ajouter un commentaire utile pour ce ticket"
+                            rows={4}
+                            value={commentDraft.body}
+                          />
+                        </label>
 
-                    <label className="field">
-                      <span>Id agent</span>
+                        {canCreateInternalComments ? (
+                          <label className="ticket-comment-toggle">
+                            <span>Commentaire interne</span>
 
-                      <input
-                        onChange={(event) =>
-                          handleAssignmentFieldChange(
-                            'assignedToUserId',
+                            <input
+                              checked={commentDraft.isInternal}
+                              onChange={(event) =>
+                                handleCommentInternalToggle(
+                                  event.target.checked,
+                                )
+                              }
+                              type="checkbox"
+                            />
+                          </label>
+                        ) : null}
 
-                            event.target.value,
-                          )
-                        }
-                        placeholder="Optionnel"
-                        value={assignmentDraft.assignedToUserId}
-                      />
-                    </label>
+                        <div className="ticket-comment-actions">
+                          <button
+                            className="secondary-button"
+                            disabled={isSubmittingComment}
+                          >
+                            {isSubmittingComment
+                              ? 'Envoi...'
+                              : 'Ajouter le commentaire'}
+                          </button>
 
-                    <button
-                      className="secondary-button"
-                      disabled={isSubmittingAssignment}
-                    >
-                      {isSubmittingAssignment
-                        ? 'Mise a jour...'
-                        : 'Mettre a jour l assignation'}
-                    </button>
-                  </form>
+                          <span className="ticket-form-helper">
+                            {canCreateInternalComments
+                              ? 'Les agents et admins peuvent publier des notes internes.'
+                              : 'Les commentaires internes restent reserves aux agents et admins.'}
+                          </span>
+                        </div>
+                      </form>
 
-                  <form
-                    className="ticket-detail-action-card"
-                    onSubmit={handleStatusSubmit}
-                  >
-                    <h4>Workflow</h4>
+                      {commentErrorMessage ? (
+                        <p className="ticket-form-error">
+                          {commentErrorMessage}
+                        </p>
+                      ) : null}
 
-                    <label className="field">
-                      <span>Nouveau statut</span>
+                      {commentSuccessMessage ? (
+                        <p className="ticket-form-message">
+                          {commentSuccessMessage}
+                        </p>
+                      ) : null}
+                    </section>
+                  ) : null}
 
-                      <select
-                        onChange={(event) =>
-                          setStatusDraft(
-                            asTicketStatus(event.target.value) ?? 'OPEN',
-                          )
-                        }
-                        value={statusDraft}
+                  {canManageTicket ? (
+                    <div className="ticket-detail-actions">
+                      <form
+                        className="ticket-detail-action-card"
+                        onSubmit={handleAssignmentSubmit}
                       >
-                        <option value="OPEN">Ouvert</option>
+                        <h4>Assignation</h4>
 
-                        <option value="IN_PROGRESS">En cours</option>
+                        <label className="field">
+                          <span>Groupe</span>
 
-                        <option value="RESOLVED">Resolu</option>
+                          <select
+                            onChange={(event) =>
+                              handleAssignmentFieldChange(
+                                'assignmentGroupId',
 
-                        <option value="CLOSED">Clos</option>
-                      </select>
-                    </label>
+                                event.target.value,
+                              )
+                            }
+                            value={assignmentDraft.assignmentGroupId}
+                          >
+                            <option value="">Aucun groupe</option>
 
-                    <button
-                      className="secondary-button"
-                      disabled={isSubmittingStatus}
-                    >
-                      {isSubmittingStatus
-                        ? 'Mise a jour...'
-                        : 'Changer le statut'}
-                    </button>
-                  </form>
-                </div>
-              ) : (
-                <p className="ticket-form-message">
-                  Les actions agent sont masquees pour le role demandeur.
-                </p>
+                            {catalog.groups.map((group) => (
+                              <option key={group.id} value={group.id}>
+                                {group.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label className="field">
+                          <span>Id agent</span>
+
+                          <input
+                            onChange={(event) =>
+                              handleAssignmentFieldChange(
+                                'assignedToUserId',
+
+                                event.target.value,
+                              )
+                            }
+                            placeholder="Optionnel"
+                            value={assignmentDraft.assignedToUserId}
+                          />
+                        </label>
+
+                        <button
+                          className="secondary-button"
+                          disabled={isSubmittingAssignment}
+                        >
+                          {isSubmittingAssignment
+                            ? 'Mise a jour...'
+                            : 'Mettre a jour l assignation'}
+                        </button>
+                      </form>
+
+                      <form
+                        className="ticket-detail-action-card"
+                        onSubmit={handleStatusSubmit}
+                      >
+                        <h4>Workflow</h4>
+
+                        <label className="field">
+                          <span>Nouveau statut</span>
+
+                          <select
+                            onChange={(event) =>
+                              setStatusDraft(
+                                asTicketStatus(event.target.value) ?? 'OPEN',
+                              )
+                            }
+                            value={statusDraft}
+                          >
+                            <option value="OPEN">Ouvert</option>
+
+                            <option value="IN_PROGRESS">En cours</option>
+
+                            <option value="RESOLVED">Resolu</option>
+
+                            <option value="CLOSED">Clos</option>
+                          </select>
+                        </label>
+
+                        <button
+                          className="secondary-button"
+                          disabled={isSubmittingStatus}
+                        >
+                          {isSubmittingStatus
+                            ? 'Mise a jour...'
+                            : 'Changer le statut'}
+                        </button>
+                      </form>
+                    </div>
+                  ) : (
+                    <p className="ticket-form-message">
+                      Les actions agent sont masquees pour le role demandeur.
+                    </p>
+                  )}
+
+                  {detailActionErrorMessage ? (
+                    <p className="ticket-form-error">
+                      {detailActionErrorMessage}
+                    </p>
+                  ) : null}
+
+                  {detailActionSuccessMessage ? (
+                    <p className="ticket-form-message">
+                      {detailActionSuccessMessage}
+                    </p>
+                  ) : null}
+                </>
               )}
-
-              {detailActionErrorMessage ? (
-                <p className="ticket-form-error">{detailActionErrorMessage}</p>
-              ) : null}
-
-              {detailActionSuccessMessage ? (
-                <p className="ticket-form-message">
-                  {detailActionSuccessMessage}
-                </p>
-              ) : null}
-            </>
-          )}
-        </aside>
+            </aside>
+          </section>
+        ) : null}
       </section>
     </section>
   );

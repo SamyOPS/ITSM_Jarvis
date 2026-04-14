@@ -1,7 +1,10 @@
-﻿export type RoutePath =
+export type RoutePath =
   | '/'
   | '/admin'
   | '/agent'
+  | '/agent/incidents/new'
+  | '/agent/requests/new'
+  | '/agent/tickets'
   | '/auth'
   | '/login'
   | '/status';
@@ -29,6 +32,21 @@ export const ROUTES: RouteDefinition[] = [
       'Espace de travail ticketing réservé aux utilisateurs authentifiés.',
     path: '/agent',
     title: 'Tickets',
+  },
+  {
+    description: 'Création d’un ticket de type incident.',
+    path: '/agent/incidents/new',
+    title: 'Créer un incident',
+  },
+  {
+    description: 'Création d’un ticket de type demande.',
+    path: '/agent/requests/new',
+    title: 'Créer une demande',
+  },
+  {
+    description: 'Liste, recherche et détail des tickets existants.',
+    path: '/agent/tickets',
+    title: 'Liste des tickets',
   },
   {
     description: 'Administration des référentiels et des paramètres métier.',
