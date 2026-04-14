@@ -1,4 +1,5 @@
-﻿import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
+import { useEffect, useRef, useState } from 'react';
+import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import { getVisibleRoutes } from '../../application/auth/access-control';
 import { ROUTES } from '../../domain/navigation/route';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
@@ -18,12 +19,46 @@ export function AppShell({
   pathname,
   session,
 }: AppShellProps) {
+  const [isTicketMenuOpen, setIsTicketMenuOpen] = useState(false);
+  const ticketMenuRef = useRef<HTMLDivElement | null>(null);
   const visibleRoutePaths = getVisibleRoutes(session);
   const visibleRoutes = ROUTES.filter((route) =>
     visibleRoutePaths.includes(route.path),
   );
   const activeRoute = ROUTES.find((route) => route.path === pathname) ?? null;
   const isWorkspaceShell = isAuthenticated;
+  const isLoginShell = pathname === '/login';
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent): void {
+      if (
+        ticketMenuRef.current &&
+        !ticketMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsTicketMenuOpen(false);
+      }
+    }
+
+    window.addEventListener('mousedown', handlePointerDown);
+
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown);
+    };
+  }, []);
+
+  function handleCreateIncidentClick(): void {
+    setIsTicketMenuOpen(false);
+    navigateTo('/agent/incidents/new');
+  }
+
+  function handleCreateRequestClick(): void {
+    setIsTicketMenuOpen(false);
+    navigateTo('/agent/requests/new');
+  }
+
+  if (isLoginShell) {
+    return <div className="app-shell app-shell--login">{children}</div>;
+  }
 
   if (!isWorkspaceShell) {
     return (
@@ -123,13 +158,35 @@ export function AppShell({
               <span>Ctrl K</span>
             </label>
 
-            <button
-              className="primary-button workspace-cta-button"
-              onClick={() => navigateTo('/agent/incidents/new')}
-              type="button"
-            >
-              Nouveau ticket
-            </button>
+            <div className="workspace-ticket-menu" ref={ticketMenuRef}>
+              <button
+                className="primary-button workspace-cta-button"
+                onClick={() => setIsTicketMenuOpen((current) => !current)}
+                type="button"
+              >
+                Nouveau ticket
+              </button>
+
+              {isTicketMenuOpen ? (
+                <div className="workspace-ticket-menu-popover">
+                  <button
+                    className="workspace-ticket-menu-item"
+                    onClick={handleCreateIncidentClick}
+                    type="button"
+                  >
+                    Créer un ticket d'incident
+                  </button>
+
+                  <button
+                    className="workspace-ticket-menu-item"
+                    onClick={handleCreateRequestClick}
+                    type="button"
+                  >
+                    Créer un ticket de demande
+                  </button>
+                </div>
+              ) : null}
+            </div>
 
             <button
               className="secondary-button workspace-logout-button"

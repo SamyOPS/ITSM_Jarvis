@@ -1,3 +1,4 @@
+import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { AuthenticatedUser } from '../../domain/auth/authenticated-user';
 import type { ProtectedApiResult } from '../../domain/auth/protected-api-result';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
@@ -87,6 +88,28 @@ export async function fetchProtectedAdminArea(
   accessToken: string,
 ): Promise<ProtectedApiResult> {
   return fetchProtectedArea('/auth/admin-area', accessToken);
+}
+
+export async function fetchAdminUsers(
+  accessToken: string,
+): Promise<AdminUserSummary[]> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/auth/admin/users`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message || `Admin users lookup failed with status ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as AdminUserSummary[];
 }
 
 async function fetchProtectedArea(

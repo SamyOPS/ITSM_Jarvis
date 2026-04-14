@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GetAuthenticatedUserUseCase } from '../../../application/auth/use-cases/get-authenticated-user.use-case';
 import { GetAuthSetupUseCase } from '../../../application/auth/use-cases/get-auth-setup.use-case';
+import { ListAdminUsersUseCase } from '../../../application/auth/use-cases/list-admin-users.use-case';
 import { UserRole } from '../../../domain/auth/user-role';
 import { AuthController } from './auth.controller';
 
@@ -14,6 +15,12 @@ describe('AuthController', () => {
         GetAuthSetupUseCase,
         {
           provide: GetAuthenticatedUserUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
+          provide: ListAdminUsersUseCase,
           useValue: {
             execute: jest.fn(),
           },
@@ -73,5 +80,30 @@ describe('AuthController', () => {
       area: 'admin',
       role: UserRole.ADMIN,
     });
+  });
+
+  it('returns the admin users directory', async () => {
+    const users = [
+      {
+        displayName: 'Alice Martin',
+        groupId: 'group-1',
+        id: 'user-1',
+        isActive: true,
+        role: UserRole.ADMIN,
+      },
+    ];
+    const useCase = {
+      execute: jest.fn().mockResolvedValue(users),
+    } as unknown as ListAdminUsersUseCase;
+
+    controller = new AuthController(
+      new GetAuthSetupUseCase(),
+      {
+        execute: jest.fn(),
+      } as unknown as GetAuthenticatedUserUseCase,
+      useCase,
+    );
+
+    await expect(controller.listAdminUsers()).resolves.toEqual(users);
   });
 });

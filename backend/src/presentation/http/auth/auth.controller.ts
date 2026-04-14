@@ -4,6 +4,8 @@ import {
   type AuthSetupSnapshot,
 } from '../../../application/auth/use-cases/get-auth-setup.use-case';
 import { GetAuthenticatedUserUseCase } from '../../../application/auth/use-cases/get-authenticated-user.use-case';
+import { ListAdminUsersUseCase } from '../../../application/auth/use-cases/list-admin-users.use-case';
+import { type AdminUserSummary } from '../../../domain/auth/admin-user-summary';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
 import { AuthPolicy } from '../../../domain/auth/auth-policy';
 import { UserRole } from '../../../domain/auth/user-role';
@@ -18,6 +20,7 @@ export class AuthController {
   constructor(
     private readonly getAuthSetupUseCase: GetAuthSetupUseCase,
     private readonly getAuthenticatedUserUseCase: GetAuthenticatedUserUseCase,
+    private readonly listAdminUsersUseCase: ListAdminUsersUseCase,
   ) {}
 
   @Get('setup')
@@ -51,5 +54,13 @@ export class AuthController {
       area: 'admin',
       role: user.role,
     };
+  }
+
+  @Get('admin/users')
+  @UseGuards(BearerAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
+  listAdminUsers(): Promise<AdminUserSummary[]> {
+    return this.listAdminUsersUseCase.execute();
   }
 }

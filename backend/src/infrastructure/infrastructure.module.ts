@@ -1,4 +1,5 @@
-﻿import { Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { AdminUserReadRepository } from '../application/auth/repositories/admin-user-read.repository';
 import { UserAssignmentProfileRepository } from '../application/auth/repositories/user-assignment-profile.repository';
 import { ReferentialCategoryReadRepository } from '../application/referentials/repositories/referential-category-read.repository';
 import { ReferentialCategoryWriteRepository } from '../application/referentials/repositories/referential-category-write.repository';
@@ -21,6 +22,7 @@ import { TicketCommentWriteRepository } from '../application/ticketing/repositor
 import { TicketHistoryWriteRepository } from '../application/ticketing/repositories/ticket-history-write.repository';
 import { TicketReadRepository } from '../application/ticketing/repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../application/ticketing/repositories/ticket-write.repository';
+import { SupabaseAdminUserReadRepository } from './auth/supabase-admin-user-read.repository';
 import { SupabaseTokenValidatorService } from './auth/supabase-token-validator.service';
 import { SupabaseUserAssignmentProfileRepository } from './auth/supabase-user-assignment-profile.repository';
 import { SupabaseReferentialReadRepository } from './referentials/supabase-referential-read.repository';
@@ -49,6 +51,7 @@ const referentialRepositoryBindings = [
 @Module({
   providers: [
     SupabaseTokenValidatorService,
+    SupabaseAdminUserReadRepository,
     SupabaseUserAssignmentProfileRepository,
     SupabaseReferentialReadRepository,
     SupabaseTicketWriteRepository,
@@ -82,6 +85,10 @@ const referentialRepositoryBindings = [
       useExisting: SupabaseTicketWriteRepository,
     },
     {
+      provide: AdminUserReadRepository,
+      useExisting: SupabaseAdminUserReadRepository,
+    },
+    {
       provide: UserAssignmentProfileRepository,
       useExisting: SupabaseUserAssignmentProfileRepository,
     },
@@ -89,6 +96,7 @@ const referentialRepositoryBindings = [
   exports: [
     SupabaseTokenValidatorService,
     ...referentialRepositoryBindings.map(({ provide }) => provide),
+    AdminUserReadRepository,
     UserAssignmentProfileRepository,
     TicketReadRepository,
     TicketWriteRepository,
