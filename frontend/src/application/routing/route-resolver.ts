@@ -9,6 +9,9 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
     pathname === '/' ||
     pathname === '/admin' ||
     pathname === '/agent' ||
+    pathname === '/agent/incidents/new' ||
+    pathname === '/agent/requests/new' ||
+    pathname === '/agent/tickets' ||
     pathname === '/auth' ||
     pathname === '/login' ||
     pathname === '/status'

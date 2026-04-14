@@ -30,11 +30,13 @@ html,
 body,
 #root {
   min-height: 100%;
+  height: 100%;
 }
 
 body {
   margin: 0;
   min-width: 320px;
+  min-height: 100vh;
 }
 
 button,
@@ -68,9 +70,21 @@ a {
 }
 
 .app-shell {
+  min-height: 100vh;
+}
+
+.app-shell--legacy {
   width: min(1100px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 40px 0 56px;
+}
+
+.app-shell--workspace {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  width: 100%;
+  min-height: 100vh;
+  padding: 0;
 }
 
 .app-header {
@@ -106,6 +120,200 @@ a {
   max-width: 46rem;
   margin: 14px 0 0;
   color: var(--text-muted);
+}
+
+.workspace-sidebar {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  min-height: 100vh;
+  padding: 24px 18px;
+  border-right: 1px solid rgba(207, 216, 234, 0.9);
+  background: linear-gradient(180deg, #12243a 0%, #172d47 100%);
+  color: #f3f7fe;
+}
+
+.workspace-sidebar-brand {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.workspace-sidebar-brand strong {
+  display: block;
+  font-size: 1.4rem;
+}
+
+.workspace-sidebar-brand span,
+.workspace-sidebar-footer span {
+  color: rgba(243, 247, 254, 0.72);
+}
+
+.workspace-sidebar-eyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(161, 198, 255, 0.92);
+}
+
+.workspace-sidebar-search {
+  display: grid;
+  gap: 8px;
+}
+
+.workspace-sidebar-search span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(243, 247, 254, 0.72);
+}
+
+.workspace-sidebar-search input {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f3f7fe;
+}
+
+.workspace-sidebar-search input::placeholder {
+  color: rgba(243, 247, 254, 0.54);
+}
+
+.workspace-sidebar-nav {
+  display: grid;
+  gap: 10px;
+}
+
+.workspace-nav-link {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  text-align: left;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.workspace-nav-link strong {
+  font-size: 0.98rem;
+}
+
+.workspace-nav-link span {
+  font-size: 0.85rem;
+  color: rgba(243, 247, 254, 0.68);
+}
+
+.workspace-nav-link:hover {
+  transform: translateY(-1px);
+  border-color: rgba(161, 198, 255, 0.42);
+}
+
+.workspace-nav-link.is-active {
+  background: linear-gradient(
+    180deg,
+    rgba(79, 142, 255, 0.28) 0%,
+    rgba(53, 109, 214, 0.2) 100%
+  );
+  border-color: rgba(141, 181, 255, 0.45);
+}
+
+.workspace-sidebar-footer {
+  display: grid;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.workspace-sidebar-footer strong {
+  word-break: break-word;
+}
+
+.workspace-main {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  min-height: 100vh;
+}
+
+.workspace-topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  padding: 22px 28px;
+  border-bottom: 1px solid rgba(207, 216, 234, 0.9);
+  background: rgba(255, 255, 255, 0.74);
+  backdrop-filter: blur(16px);
+}
+
+.workspace-topbar-copy span {
+  display: inline-block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.workspace-topbar-copy h1 {
+  margin: 0;
+  max-width: 44rem;
+  font-size: clamp(1.4rem, 2.4vw, 2.2rem);
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.workspace-topbar-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.workspace-topbar-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: min(520px, 100%);
+  padding: 10px 14px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.workspace-topbar-search input {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.workspace-topbar-search span {
+  flex: none;
+  padding: 4px 8px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.workspace-cta-button {
+  background: linear-gradient(180deg, #edf4ff 0%, #dceafe 100%);
+  border-color: rgba(25, 86, 179, 0.18);
 }
 
 .app-nav {
@@ -152,6 +360,10 @@ a {
 
 .app-main {
   padding-top: 24px;
+}
+
+.app-main--workspace {
+  padding: 28px;
 }
 
 .panel {
@@ -263,6 +475,86 @@ a {
   margin: 0;
   color: #24406c;
   word-break: break-word;
+}
+
+.auth-dashboard {
+  display: grid;
+  gap: 20px;
+}
+
+.auth-hero-card,
+.auth-section-card {
+  padding: 24px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow);
+}
+
+.auth-hero-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.auth-hero-copy h2 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+}
+
+.auth-hero-copy p,
+.auth-section-heading p {
+  margin: 14px 0 0;
+  max-width: 46rem;
+  color: var(--text-muted);
+}
+
+.auth-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.auth-metric-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow);
+}
+
+.auth-metric-card span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.auth-metric-card strong {
+  font-size: 1.2rem;
+  color: #17335f;
+  text-transform: uppercase;
+}
+
+.auth-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.auth-section-heading {
+  margin-bottom: 16px;
+}
+
+.auth-section-heading h3 {
+  margin: 0;
+  font-size: 1.35rem;
 }
 
 .referentials-panel {
@@ -393,6 +685,218 @@ a {
 
 .referentials-error {
   color: #9b2e3d;
+}
+
+.ticket-workspace-shell {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.ticket-app-sidebar {
+  position: sticky;
+  top: 24px;
+  display: grid;
+  gap: 18px;
+  padding: 22px 18px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 28px;
+  background: linear-gradient(180deg, #12243a 0%, #172d47 100%);
+  color: #f3f7fe;
+  box-shadow: var(--shadow);
+}
+
+.ticket-app-sidebar-brand {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.ticket-app-sidebar-brand strong {
+  display: block;
+  font-size: 1.2rem;
+}
+
+.ticket-app-sidebar-brand span,
+.ticket-app-sidebar-footer span {
+  color: rgba(243, 247, 254, 0.72);
+}
+
+.ticket-app-sidebar-search input {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f3f7fe;
+}
+
+.ticket-app-sidebar-search input::placeholder {
+  color: rgba(243, 247, 254, 0.54);
+}
+
+.ticket-app-sidebar-nav {
+  display: grid;
+  gap: 10px;
+}
+
+.ticket-app-nav-item {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  text-align: left;
+}
+
+.ticket-app-nav-item strong {
+  font-size: 0.98rem;
+}
+
+.ticket-app-nav-item span {
+  color: rgba(243, 247, 254, 0.68);
+  font-size: 0.88rem;
+}
+
+.ticket-app-nav-item.is-active {
+  background: linear-gradient(
+    180deg,
+    rgba(79, 142, 255, 0.28) 0%,
+    rgba(53, 109, 214, 0.2) 100%
+  );
+  border-color: rgba(141, 181, 255, 0.45);
+}
+
+.ticket-app-sidebar-footer {
+  display: grid;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ticket-app-sidebar-footer strong {
+  word-break: break-word;
+}
+
+.ticket-workspace-main {
+  display: grid;
+  gap: 18px;
+}
+
+.ticket-page-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.ticket-page-hero {
+  box-shadow: var(--shadow);
+}
+
+.ticket-workspace-topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 22px 24px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: var(--shadow);
+}
+
+.ticket-workspace-topbar-copy h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  letter-spacing: -0.04em;
+}
+
+.ticket-workspace-topbar-copy p {
+  margin: 8px 0 0;
+  max-width: 48rem;
+  color: var(--text-muted);
+}
+
+.ticket-workspace-topbar-actions {
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.ticket-workspace-searchbar {
+  display: grid;
+  gap: 8px;
+  min-width: min(420px, 100%);
+}
+
+.ticket-workspace-searchbar span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.ticket-workspace-stage {
+  display: grid;
+  gap: 18px;
+}
+
+.ticket-workspace-view-switch,
+.ticket-detail-tabbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: var(--shadow);
+}
+
+.ticket-workspace-view-button {
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #24406c;
+}
+
+.ticket-workspace-view-button.is-active {
+  border-color: rgba(25, 86, 179, 0.42);
+  background: linear-gradient(180deg, #eff5ff 0%, #dfeaff 100%);
+  color: #153d88;
+}
+
+.ticket-workspace-kpis {
+  margin-top: 0;
+}
+
+.ticket-workspace-section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.ticket-workspace-section-heading h3 {
+  margin: 0;
+  font-size: 1.45rem;
+}
+
+.ticket-workspace-section-heading p {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+}
+
+.ticket-creation-panel {
+  box-shadow: var(--shadow);
+}
+
+.ticket-workspace-detail-layout {
+  align-items: start;
 }
 
 .ticket-form-panel {
@@ -605,6 +1109,28 @@ a {
 .ticket-results {
   display: grid;
   gap: 12px;
+}
+
+.ticket-pagination {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ticket-pagination-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ticket-pagination-pages {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .ticket-result-card {
@@ -953,9 +1479,36 @@ a {
 }
 
 @media (max-width: 760px) {
-  .app-shell {
+  .app-shell--legacy {
     width: min(100vw - 20px, 1100px);
     padding-top: 20px;
+  }
+
+  .app-shell--workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-sidebar {
+    min-height: auto;
+    padding: 18px 16px;
+  }
+
+  .workspace-topbar,
+  .workspace-topbar-actions,
+  .auth-hero-card {
+    flex-direction: column;
+  }
+
+  .workspace-topbar {
+    padding: 18px 16px;
+  }
+
+  .app-main--workspace {
+    padding: 16px;
+  }
+
+  .workspace-topbar-search {
+    min-width: 100%;
   }
 
   .app-header {
@@ -976,9 +1529,12 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .auth-metrics-grid,
+  .auth-grid,
   .referentials-summary,
   .referentials-layout,
   .referentials-content,
+  .ticket-workspace-shell,
   .ticket-detail-layout,
   .ticket-form-summary,
   .ticket-form-layout,
@@ -992,6 +1548,17 @@ a {
 
   .referentials-card-header {
     flex-direction: column;
+  }
+
+  .ticket-app-sidebar,
+  .ticket-workspace-topbar,
+  .ticket-workspace-topbar-actions {
+    position: static;
+    flex-direction: column;
+  }
+
+  .ticket-workspace-searchbar {
+    min-width: 100%;
   }
 
   .ticket-list-header,
