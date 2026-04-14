@@ -43,13 +43,17 @@ describe('AuthController', () => {
       controller.getCurrentUser({
         accessToken: 'token',
         email: 'agent@example.com',
+        firstName: 'Alice',
         id: 'user-1',
+        lastName: 'Martin',
         role: UserRole.AGENT,
       }),
     ).toEqual({
       accessToken: 'token',
       email: 'agent@example.com',
+      firstName: 'Alice',
       id: 'user-1',
+      lastName: 'Martin',
       role: UserRole.AGENT,
     });
   });
@@ -86,9 +90,11 @@ describe('AuthController', () => {
     const users = [
       {
         displayName: 'Alice Martin',
+        firstName: 'Alice',
         groupId: 'group-1',
         id: 'user-1',
         isActive: true,
+        lastName: 'Martin',
         role: UserRole.ADMIN,
       },
     ];
@@ -105,5 +111,32 @@ describe('AuthController', () => {
     );
 
     await expect(controller.listAdminUsers()).resolves.toEqual(users);
+  });
+
+  it('returns the authenticated users directory', async () => {
+    const users = [
+      {
+        displayName: 'Alice Martin',
+        firstName: 'Alice',
+        groupId: 'group-1',
+        id: 'user-1',
+        isActive: true,
+        lastName: 'Martin',
+        role: UserRole.ADMIN,
+      },
+    ];
+    const useCase = {
+      execute: jest.fn().mockResolvedValue(users),
+    } as unknown as ListAdminUsersUseCase;
+
+    controller = new AuthController(
+      new GetAuthSetupUseCase(),
+      {
+        execute: jest.fn(),
+      } as unknown as GetAuthenticatedUserUseCase,
+      useCase,
+    );
+
+    await expect(controller.listUsers()).resolves.toEqual(users);
   });
 });

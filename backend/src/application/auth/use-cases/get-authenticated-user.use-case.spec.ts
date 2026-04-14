@@ -8,7 +8,9 @@ describe('GetAuthenticatedUserUseCase', () => {
       validate: jest.fn().mockResolvedValue({
         accessToken: 'token',
         email: 'user@example.com',
+        firstName: 'Alice',
         id: 'user-1',
+        lastName: 'Martin',
         role: UserRole.AGENT,
       }),
     };
@@ -18,7 +20,9 @@ describe('GetAuthenticatedUserUseCase', () => {
     await expect(useCase.execute('token')).resolves.toEqual({
       accessToken: 'token',
       email: 'user@example.com',
+      firstName: 'Alice',
       id: 'user-1',
+      lastName: 'Martin',
       role: UserRole.AGENT,
     });
     expect(validator.validate).toHaveBeenCalledWith('token');

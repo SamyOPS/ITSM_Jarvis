@@ -6,9 +6,11 @@ import { getBackendRuntimeConfig } from '../config/app-config';
 
 type SupabaseAdminUserRow = {
   display_name: string | null;
+  first_name: string | null;
   group_id: string | null;
   id: string;
   is_active: boolean;
+  last_name: string | null;
   role: string;
 };
 
@@ -27,7 +29,7 @@ export class SupabaseAdminUserReadRepository implements AdminUserReadRepository 
 
     const query = new URLSearchParams({
       order: 'display_name.asc.nullslast,role.asc',
-      select: 'id,display_name,role,group_id,is_active',
+      select: 'id,display_name,first_name,last_name,role,group_id,is_active',
     });
 
     let response: Response;
@@ -59,9 +61,11 @@ export class SupabaseAdminUserReadRepository implements AdminUserReadRepository 
 
     return rows.map((row) => ({
       displayName: row.display_name,
+      firstName: row.first_name,
       groupId: row.group_id,
       id: row.id,
       isActive: row.is_active,
+      lastName: row.last_name,
       role: resolveUserRole(row.role),
     }));
   }

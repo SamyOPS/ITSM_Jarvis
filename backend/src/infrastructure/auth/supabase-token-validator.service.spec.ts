@@ -34,7 +34,11 @@ describe('SupabaseTokenValidatorService', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue([{ role: 'ADMIN' }]),
+        json: jest
+          .fn()
+          .mockResolvedValue([
+            { first_name: 'Alice', last_name: 'Martin', role: 'ADMIN' },
+          ]),
       }) as typeof fetch;
 
     const service = new SupabaseTokenValidatorService();
@@ -42,7 +46,9 @@ describe('SupabaseTokenValidatorService', () => {
     await expect(service.validate('token')).resolves.toEqual({
       accessToken: 'token',
       email: 'admin@example.com',
+      firstName: 'Alice',
       id: 'user-1',
+      lastName: 'Martin',
       role: UserRole.ADMIN,
     });
   });
@@ -71,7 +77,9 @@ describe('SupabaseTokenValidatorService', () => {
     await expect(service.validate('token')).resolves.toEqual({
       accessToken: 'token',
       email: 'agent@example.com',
+      firstName: null,
       id: 'user-2',
+      lastName: null,
       role: UserRole.AGENT,
     });
   });

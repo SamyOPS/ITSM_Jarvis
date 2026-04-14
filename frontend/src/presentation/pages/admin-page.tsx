@@ -266,7 +266,13 @@ export function AdminPage({ session }: AdminPageProps) {
       <div className="referentials-summary">
         <article>
           <span>Session admin</span>
-          <strong>{session.user.email}</strong>
+          <strong>
+            {formatUserDisplayName(
+              session.user.firstName,
+              session.user.lastName,
+              session.user.email,
+            )}
+          </strong>
         </article>
         <article>
           <span>Rôle</span>
@@ -308,7 +314,13 @@ export function AdminPage({ session }: AdminPageProps) {
             {adminUsers.map((user) => (
               <article className="admin-user-card" key={user.id}>
                 <div className="admin-user-card-header">
-                  <strong>{user.displayName ?? user.id}</strong>
+                  <strong>
+                    {formatUserDisplayName(
+                      user.firstName,
+                      user.lastName,
+                      user.displayName ?? user.id,
+                    )}
+                  </strong>
                   <span
                     className={
                       user.isActive
@@ -930,4 +942,14 @@ function getItemMeta(
     default:
       return item.id;
   }
+}
+
+function formatUserDisplayName(
+  firstName: string | null,
+  lastName: string | null,
+  fallback: string,
+): string {
+  const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+
+  return fullName || fallback;
 }
