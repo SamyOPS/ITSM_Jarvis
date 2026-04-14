@@ -58,8 +58,9 @@ import {
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 
 type AgentPageProps = {
-  section: 'INCIDENT_CREATE' | 'REQUEST_CREATE' | 'LIST';
+  section: 'INCIDENT_CREATE' | 'REQUEST_CREATE' | 'LIST' | 'DETAIL';
   session: AuthSessionSnapshot;
+  ticketId?: string;
 };
 
 type TicketMode = 'INCIDENT' | 'REQUEST';
@@ -221,7 +222,7 @@ const INITIAL_ATTACHMENT_DRAFT: AttachmentDraftState = {
 const TICKET_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
 const TICKETS_PER_PAGE = 10;
 
-export function AgentPage({ section, session }: AgentPageProps) {
+export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
 
@@ -245,7 +246,9 @@ export function AgentPage({ section, session }: AgentPageProps) {
     INITIAL_SEARCH_FILTERS,
   );
 
-  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(
+    ticketId ?? null,
+  );
 
   const [selectedTicketDetail, setSelectedTicketDetail] =
     useState<TicketDetailSnapshot | null>(null);
@@ -372,8 +375,10 @@ export function AgentPage({ section, session }: AgentPageProps) {
   const isIncidentCreatePage = section === 'INCIDENT_CREATE';
   const isRequestCreatePage = section === 'REQUEST_CREATE';
   const isListPage = section === 'LIST';
+  const isDetailPage = section === 'DETAIL';
   const showCreationPanel = isIncidentCreatePage || isRequestCreatePage;
   const showListPanel = isListPage;
+  const showDetailPanel = isDetailPage;
   const totalTicketPages = Math.max(
     1,
     Math.ceil(tickets.length / TICKETS_PER_PAGE),
@@ -382,6 +387,12 @@ export function AgentPage({ section, session }: AgentPageProps) {
     const startIndex = (ticketPage - 1) * TICKETS_PER_PAGE;
     return tickets.slice(startIndex, startIndex + TICKETS_PER_PAGE);
   }, [ticketPage, tickets]);
+
+  useEffect(() => {
+    if (isDetailPage) {
+      setSelectedTicketId(ticketId ?? null);
+    }
+  }, [isDetailPage, ticketId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -465,12 +476,20 @@ export function AgentPage({ section, session }: AgentPageProps) {
   ]);
 
   useEffect(() => {
+    if (!isListPage) {
+      return;
+    }
+
     if (ticketPage > totalTicketPages) {
       setTicketPage(totalTicketPages);
     }
-  }, [ticketPage, totalTicketPages]);
+  }, [isListPage, ticketPage, totalTicketPages]);
 
   useEffect(() => {
+    if (!isListPage) {
+      return;
+    }
+
     if (!selectedTicketId) {
       return;
     }
@@ -488,7 +507,7 @@ export function AgentPage({ section, session }: AgentPageProps) {
     if (nextPage !== ticketPage) {
       setTicketPage(nextPage);
     }
-  }, [selectedTicketId, ticketPage, tickets]);
+  }, [isListPage, selectedTicketId, ticketPage, tickets]);
 
   useEffect(() => {
     if (isIncidentCreatePage) {
@@ -502,6 +521,10 @@ export function AgentPage({ section, session }: AgentPageProps) {
   }, [isIncidentCreatePage, isRequestCreatePage]);
 
   useEffect(() => {
+    if (!isListPage) {
+      return;
+    }
+
     let cancelled = false;
 
     async function loadTickets(): Promise<void> {
@@ -555,6 +578,7 @@ export function AgentPage({ section, session }: AgentPageProps) {
       cancelled = true;
     };
   }, [
+    isListPage,
     searchFilters.categoryId,
 
     searchFilters.priorityId,
@@ -2102,919 +2126,969 @@ export function AgentPage({ section, session }: AgentPageProps) {
           </section>
         ) : null}
 
-        {showListPanel ? (
-          <section className="ticket-detail-layout ticket-workspace-detail-layout">
-            <section className="ticket-list-card">
-              <div className="ticket-list-header">
-                <div>
-                  <h3>Liste des tickets</h3>
+        {showListPanel || showDetailPanel ? (
+          <section
+            className={
+              showDetailPanel
+                ? 'ticket-detail-layout ticket-workspace-detail-layout ticket-detail-layout--detail-only'
+                : 'ticket-detail-layout ticket-workspace-detail-layout ticket-detail-layout--list-only'
+            }
+          >
+            {showListPanel ? (
+              <section className="ticket-list-card">
+                <div className="ticket-list-header">
+                  <div>
+                    <h3>Liste des tickets</h3>
 
-                  <p>
-                    Recherche texte et filtres simples branches sur l endpoint
-                    `GET /tickets`.
+                    <p>
+                      Vue compacte des tickets avec les colonnes principales de
+                      suivi.
+                    </p>
+                  </div>
+
+                  <div className="ticket-list-meta">
+                    <span>Resultats</span>
+
+                    <strong>{tickets.length}</strong>
+                  </div>
+                </div>
+
+                <div className="ticket-list-filters">
+                  <label className="field ticket-filter-search">
+                    <span>Recherche</span>
+
+                    <input
+                      onChange={(event) =>
+                        handleSearchFilterChange('q', event.target.value)
+                      }
+                      placeholder="Numero, titre ou description"
+                      value={searchFilters.q}
+                    />
+                  </label>
+
+                  <label className="field">
+                    <span>Type</span>
+
+                    <select
+                      onChange={(event) =>
+                        handleSearchFilterChange('type', event.target.value)
+                      }
+                      value={searchFilters.type}
+                    >
+                      <option value="">Tous</option>
+
+                      <option value="INCIDENT">Incident</option>
+
+                      <option value="REQUEST">Demande</option>
+                    </select>
+                  </label>
+
+                  <label className="field">
+                    <span>Statut</span>
+
+                    <select
+                      onChange={(event) =>
+                        handleSearchFilterChange('status', event.target.value)
+                      }
+                      value={searchFilters.status}
+                    >
+                      <option value="">Tous</option>
+
+                      <option value="OPEN">Ouvert</option>
+
+                      <option value="IN_PROGRESS">En cours</option>
+
+                      <option value="RESOLVED">Resolu</option>
+
+                      <option value="CLOSED">Clos</option>
+                    </select>
+                  </label>
+
+                  <label className="field">
+                    <span>Categorie</span>
+
+                    <select
+                      onChange={(event) =>
+                        handleSearchFilterChange(
+                          'categoryId',
+                          event.target.value,
+                        )
+                      }
+                      value={searchFilters.categoryId}
+                    >
+                      <option value="">Toutes</option>
+
+                      {catalog.categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="field">
+                    <span>Priorite</span>
+
+                    <select
+                      onChange={(event) =>
+                        handleSearchFilterChange(
+                          'priorityId',
+                          event.target.value,
+                        )
+                      }
+                      value={searchFilters.priorityId}
+                    >
+                      <option value="">Toutes</option>
+
+                      {catalog.priorities.map((priority) => (
+                        <option key={priority.id} value={priority.id}>
+                          {translatePriority(priority.name)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                {isLoadingTickets ? (
+                  <p className="ticket-form-message">
+                    Chargement des tickets...
                   </p>
-                </div>
+                ) : loadTicketsErrorMessage ? (
+                  <p className="ticket-form-error">{loadTicketsErrorMessage}</p>
+                ) : tickets.length === 0 ? (
+                  <p className="ticket-form-message">
+                    Aucun ticket ne correspond aux filtres actuels.
+                  </p>
+                ) : (
+                  <>
+                    <div className="ticket-results">
+                      <div className="ticket-table-scroll">
+                        <table className="ticket-table">
+                          <thead>
+                            <tr>
+                              <th>ID</th>
+                              <th>Titre</th>
+                              <th>Entité</th>
+                              <th>Statut</th>
+                              <th>Dernière modification</th>
+                              <th>Date d’ouverture</th>
+                              <th>Priorité</th>
+                              <th>Demandeur</th>
+                              <th>Technicien</th>
+                              <th>Catégorie</th>
+                              <th>Temps de résolution</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paginatedTickets.map((ticket) => (
+                              <tr
+                                className="ticket-table-row"
+                                key={ticket.id}
+                                onClick={() =>
+                                  navigateTo(`/agent/tickets/${ticket.id}`)
+                                }
+                              >
+                                <td>
+                                  <div className="ticket-table-primary">
+                                    <strong>{ticket.number}</strong>
+                                    <span>
+                                      {translateTicketType(ticket.type)}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="ticket-table-primary">
+                                    <strong>{ticket.title}</strong>
+                                    <span>{ticket.id}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  {ticket.serviceId
+                                    ? (servicesById.get(ticket.serviceId)
+                                        ?.name ?? ticket.serviceId)
+                                    : 'Service non défini'}
+                                </td>
+                                <td>{translateTicketStatus(ticket.status)}</td>
+                                <td>{formatTicketDate(ticket.createdAt)}</td>
+                                <td>{formatTicketDate(ticket.createdAt)}</td>
+                                <td>
+                                  {ticket.priorityName
+                                    ? translatePriority(ticket.priorityName)
+                                    : prioritiesById.get(ticket.priorityId)
+                                      ? translatePriority(
+                                          prioritiesById.get(ticket.priorityId)!
+                                            .name,
+                                        )
+                                      : 'Non définie'}
+                                </td>
+                                <td>
+                                  {ticket.requestedForUserId ??
+                                    ticket.createdByUserId}
+                                </td>
+                                <td>
+                                  {ticket.assignedToUserId ?? 'Non assigné'}
+                                </td>
+                                <td>
+                                  {categoriesById.get(ticket.categoryId)
+                                    ?.name ?? 'Non définie'}
+                                </td>
+                                <td>
+                                  {prioritiesById.get(ticket.priorityId)
+                                    ?.resolutionHours !== null &&
+                                  prioritiesById.get(ticket.priorityId)
+                                    ?.resolutionHours !== undefined
+                                    ? `${prioritiesById.get(ticket.priorityId)!.resolutionHours} h`
+                                    : '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
 
-                <div className="ticket-list-meta">
-                  <span>Resultats</span>
+                    <div className="ticket-pagination">
+                      <p className="ticket-form-helper">
+                        Page {ticketPage} sur {totalTicketPages} -{' '}
+                        {tickets.length} tickets
+                      </p>
 
-                  <strong>{tickets.length}</strong>
-                </div>
-              </div>
-
-              <div className="ticket-list-filters">
-                <label className="field ticket-filter-search">
-                  <span>Recherche</span>
-
-                  <input
-                    onChange={(event) =>
-                      handleSearchFilterChange('q', event.target.value)
-                    }
-                    placeholder="Numero, titre ou description"
-                    value={searchFilters.q}
-                  />
-                </label>
-
-                <label className="field">
-                  <span>Type</span>
-
-                  <select
-                    onChange={(event) =>
-                      handleSearchFilterChange('type', event.target.value)
-                    }
-                    value={searchFilters.type}
-                  >
-                    <option value="">Tous</option>
-
-                    <option value="INCIDENT">Incident</option>
-
-                    <option value="REQUEST">Demande</option>
-                  </select>
-                </label>
-
-                <label className="field">
-                  <span>Statut</span>
-
-                  <select
-                    onChange={(event) =>
-                      handleSearchFilterChange('status', event.target.value)
-                    }
-                    value={searchFilters.status}
-                  >
-                    <option value="">Tous</option>
-
-                    <option value="OPEN">Ouvert</option>
-
-                    <option value="IN_PROGRESS">En cours</option>
-
-                    <option value="RESOLVED">Resolu</option>
-
-                    <option value="CLOSED">Clos</option>
-                  </select>
-                </label>
-
-                <label className="field">
-                  <span>Categorie</span>
-
-                  <select
-                    onChange={(event) =>
-                      handleSearchFilterChange('categoryId', event.target.value)
-                    }
-                    value={searchFilters.categoryId}
-                  >
-                    <option value="">Toutes</option>
-
-                    {catalog.categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="field">
-                  <span>Priorite</span>
-
-                  <select
-                    onChange={(event) =>
-                      handleSearchFilterChange('priorityId', event.target.value)
-                    }
-                    value={searchFilters.priorityId}
-                  >
-                    <option value="">Toutes</option>
-
-                    {catalog.priorities.map((priority) => (
-                      <option key={priority.id} value={priority.id}>
-                        {translatePriority(priority.name)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              {isLoadingTickets ? (
-                <p className="ticket-form-message">Chargement des tickets...</p>
-              ) : loadTicketsErrorMessage ? (
-                <p className="ticket-form-error">{loadTicketsErrorMessage}</p>
-              ) : tickets.length === 0 ? (
-                <p className="ticket-form-message">
-                  Aucun ticket ne correspond aux filtres actuels.
-                </p>
-              ) : (
-                <>
-                  <div className="ticket-results">
-                    {paginatedTickets.map((ticket) => (
-                      <article className="ticket-result-card" key={ticket.id}>
+                      <div className="ticket-pagination-actions">
                         <button
-                          className={
-                            selectedTicketId === ticket.id
-                              ? 'ticket-result-overlay is-selected'
-                              : 'ticket-result-overlay'
+                          className="secondary-button"
+                          disabled={ticketPage <= 1}
+                          onClick={() =>
+                            setTicketPage((currentPage) => currentPage - 1)
                           }
-                          onClick={() => setSelectedTicketId(ticket.id)}
                           type="button"
                         >
-                          Ouvrir le detail du ticket {ticket.number}
+                          Precedent
                         </button>
 
-                        <div className="ticket-result-header">
-                          <div>
-                            <span className="ticket-result-number">
-                              {ticket.number}
-                            </span>
+                        <div className="ticket-pagination-pages">
+                          {Array.from(
+                            { length: totalTicketPages },
+                            (_, index) => {
+                              const pageNumber = index + 1;
 
-                            <h4>{ticket.title}</h4>
+                              return (
+                                <button
+                                  className={
+                                    pageNumber === ticketPage
+                                      ? 'ticket-workspace-view-button is-active'
+                                      : 'ticket-workspace-view-button'
+                                  }
+                                  key={pageNumber}
+                                  onClick={() => setTicketPage(pageNumber)}
+                                  type="button"
+                                >
+                                  {pageNumber}
+                                </button>
+                              );
+                            },
+                          )}
+                        </div>
+
+                        <button
+                          className="secondary-button"
+                          disabled={ticketPage >= totalTicketPages}
+                          onClick={() =>
+                            setTicketPage((currentPage) => currentPage + 1)
+                          }
+                          type="button"
+                        >
+                          Suivant
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </section>
+            ) : null}
+
+            {showDetailPanel ? (
+              <aside className="ticket-detail-card ticket-detail-card--page">
+                <div className="ticket-detail-header">
+                  <div>
+                    <h3>Detail du ticket</h3>
+
+                    <p>
+                      Lecture detaillee et actions agent pour l assignation et
+                      le workflow.
+                    </p>
+                  </div>
+
+                  <div className="ticket-detail-header-actions">
+                    {selectedTicketDetail ? (
+                      <span className="ticket-result-badge">
+                        {selectedTicketDetail.ticket.number}
+                      </span>
+                    ) : null}
+                    <button
+                      className="secondary-button"
+                      onClick={() => navigateTo('/agent/tickets')}
+                      type="button"
+                    >
+                      Retour à la liste
+                    </button>
+                  </div>
+                </div>
+
+                {!selectedTicketId ? (
+                  <p className="ticket-form-message">
+                    Selectionne un ticket dans la liste pour afficher son
+                    detail.
+                  </p>
+                ) : isLoadingDetail ? (
+                  <p className="ticket-form-message">Chargement du detail...</p>
+                ) : loadDetailErrorMessage ? (
+                  <p className="ticket-form-error">{loadDetailErrorMessage}</p>
+                ) : !selectedTicketDetail ? (
+                  <p className="ticket-form-message">
+                    Aucun detail ticket disponible.
+                  </p>
+                ) : (
+                  <>
+                    <div className="ticket-detail-summary">
+                      <article>
+                        <span>Type</span>
+
+                        <strong>
+                          {translateTicketType(
+                            selectedTicketDetail.ticket.type,
+                          )}
+                        </strong>
+                      </article>
+
+                      <article>
+                        <span>Statut</span>
+
+                        <strong>
+                          {translateTicketStatus(
+                            selectedTicketDetail.ticket.status,
+                          )}
+                        </strong>
+                      </article>
+
+                      <article>
+                        <span>Priorite</span>
+
+                        <strong>
+                          {selectedTicketDetail.priorityName
+                            ? translatePriority(
+                                selectedTicketDetail.priorityName,
+                              )
+                            : prioritiesById.get(
+                                  selectedTicketDetail.ticket.priorityId,
+                                )
+                              ? translatePriority(
+                                  prioritiesById.get(
+                                    selectedTicketDetail.ticket.priorityId,
+                                  )!.name,
+                                )
+                              : 'Non definie'}
+                        </strong>
+                      </article>
+
+                      <article>
+                        <span>Cree le</span>
+
+                        <strong>
+                          {formatTicketDate(
+                            selectedTicketDetail.ticket.createdAt,
+                          )}
+                        </strong>
+                      </article>
+                    </div>
+
+                    <div className="ticket-detail-block">
+                      <h4>{selectedTicketDetail.ticket.title}</h4>
+
+                      <p>{selectedTicketDetail.ticket.description}</p>
+                    </div>
+
+                    <dl className="status-grid ticket-detail-grid">
+                      <div>
+                        <dt>Categorie</dt>
+
+                        <dd>
+                          {categoriesById.get(
+                            selectedTicketDetail.ticket.categoryId,
+                          )?.name ?? 'Non definie'}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>Canal</dt>
+
+                        <dd>
+                          {selectedTicketDetail.ticket.channelId
+                            ? translateChannel(
+                                channelsById.get(
+                                  selectedTicketDetail.ticket.channelId,
+                                )?.name ??
+                                  selectedTicketDetail.ticket.channelId,
+                              )
+                            : 'Non renseigne'}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>Service</dt>
+
+                        <dd>
+                          {selectedTicketDetail.ticket.serviceId
+                            ? (servicesById.get(
+                                selectedTicketDetail.ticket.serviceId,
+                              )?.name ?? selectedTicketDetail.ticket.serviceId)
+                            : 'Non renseigne'}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>Equipement concerne</dt>
+
+                        <dd>
+                          {selectedTicketDetail.ticket.ciId
+                            ? (cisById.get(selectedTicketDetail.ticket.ciId)
+                                ?.name ?? selectedTicketDetail.ticket.ciId)
+                            : 'Non renseigne'}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>Groupe d affectation</dt>
+
+                        <dd>
+                          {selectedTicketDetail.ticket.assignmentGroupId
+                            ? (groupsById.get(
+                                selectedTicketDetail.ticket.assignmentGroupId,
+                              )?.name ??
+                              selectedTicketDetail.ticket.assignmentGroupId)
+                            : 'Non affecte'}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>Agent assigne</dt>
+
+                        <dd>
+                          {selectedTicketDetail.ticket.assignedToUserId ??
+                            'Non assigne'}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    {selectedTicketDetail.incident ? (
+                      <dl className="status-grid ticket-detail-grid">
+                        <div>
+                          <dt>Impact</dt>
+
+                          <dd>
+                            {translateIncidentSeverity(
+                              selectedTicketDetail.incident.impact,
+                            )}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt>Urgence</dt>
+
+                          <dd>
+                            {translateIncidentSeverity(
+                              selectedTicketDetail.incident.urgency,
+                            )}
+                          </dd>
+                        </div>
+                      </dl>
+                    ) : null}
+
+                    {selectedTicketDetail.request ? (
+                      <dl className="status-grid ticket-detail-grid">
+                        <div>
+                          <dt>Type de demande</dt>
+
+                          <dd>
+                            {translateRequestType(
+                              selectedTicketDetail.request.requestType,
+                            )}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt>Approbation</dt>
+
+                          <dd>
+                            {selectedTicketDetail.request.approvalStatus ??
+                              'Non definie'}
+                          </dd>
+                        </div>
+                      </dl>
+                    ) : null}
+
+                    <div className="ticket-detail-tabbar">
+                      <button
+                        className={
+                          detailWorkspaceTab === 'COMMENTS'
+                            ? 'ticket-workspace-view-button is-active'
+                            : 'ticket-workspace-view-button'
+                        }
+                        onClick={() => setDetailWorkspaceTab('COMMENTS')}
+                        type="button"
+                      >
+                        Conversation
+                      </button>
+
+                      <button
+                        className={
+                          detailWorkspaceTab === 'ATTACHMENTS'
+                            ? 'ticket-workspace-view-button is-active'
+                            : 'ticket-workspace-view-button'
+                        }
+                        onClick={() => setDetailWorkspaceTab('ATTACHMENTS')}
+                        type="button"
+                      >
+                        Pieces jointes
+                      </button>
+                    </div>
+
+                    {detailWorkspaceTab === 'ATTACHMENTS' ? (
+                      <section className="ticket-comments-card">
+                        <div className="ticket-comments-header">
+                          <div>
+                            <h4>Pieces jointes</h4>
+
+                            <p>
+                              Liste des fichiers rattaches au ticket et ajout de
+                              nouveaux documents.
+                            </p>
                           </div>
 
                           <span className="ticket-result-badge">
-                            {translateTicketType(ticket.type)}
+                            {selectedTicketAttachments.length}
                           </span>
                         </div>
 
-                        <dl className="ticket-result-grid">
-                          <div>
-                            <dt>Statut</dt>
-
-                            <dd>{translateTicketStatus(ticket.status)}</dd>
-                          </div>
-
-                          <div>
-                            <dt>Priorite</dt>
-
-                            <dd>
-                              {ticket.priorityName
-                                ? translatePriority(ticket.priorityName)
-                                : prioritiesById.get(ticket.priorityId)
-                                  ? translatePriority(
-                                      prioritiesById.get(ticket.priorityId)!
-                                        .name,
-                                    )
-                                  : 'Non definie'}
-                            </dd>
-                          </div>
-
-                          <div>
-                            <dt>Categorie</dt>
-
-                            <dd>
-                              {categoriesById.get(ticket.categoryId)?.name ??
-                                'Non definie'}
-                            </dd>
-                          </div>
-
-                          <div>
-                            <dt>Cree le</dt>
-
-                            <dd>{formatTicketDate(ticket.createdAt)}</dd>
-                          </div>
-                        </dl>
-                      </article>
-                    ))}
-                  </div>
-
-                  <div className="ticket-pagination">
-                    <p className="ticket-form-helper">
-                      Page {ticketPage} sur {totalTicketPages} -{' '}
-                      {tickets.length} tickets
-                    </p>
-
-                    <div className="ticket-pagination-actions">
-                      <button
-                        className="secondary-button"
-                        disabled={ticketPage <= 1}
-                        onClick={() =>
-                          setTicketPage((currentPage) => currentPage - 1)
-                        }
-                        type="button"
-                      >
-                        Precedent
-                      </button>
-
-                      <div className="ticket-pagination-pages">
-                        {Array.from(
-                          { length: totalTicketPages },
-                          (_, index) => {
-                            const pageNumber = index + 1;
-
-                            return (
-                              <button
-                                className={
-                                  pageNumber === ticketPage
-                                    ? 'ticket-workspace-view-button is-active'
-                                    : 'ticket-workspace-view-button'
-                                }
-                                key={pageNumber}
-                                onClick={() => setTicketPage(pageNumber)}
-                                type="button"
-                              >
-                                {pageNumber}
-                              </button>
-                            );
-                          },
-                        )}
-                      </div>
-
-                      <button
-                        className="secondary-button"
-                        disabled={ticketPage >= totalTicketPages}
-                        onClick={() =>
-                          setTicketPage((currentPage) => currentPage + 1)
-                        }
-                        type="button"
-                      >
-                        Suivant
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </section>
-
-            <aside className="ticket-detail-card">
-              <div className="ticket-detail-header">
-                <div>
-                  <h3>Detail du ticket</h3>
-
-                  <p>
-                    Lecture detaillee et actions agent pour l assignation et le
-                    workflow.
-                  </p>
-                </div>
-
-                {selectedTicketDetail ? (
-                  <span className="ticket-result-badge">
-                    {selectedTicketDetail.ticket.number}
-                  </span>
-                ) : null}
-              </div>
-
-              {!selectedTicketId ? (
-                <p className="ticket-form-message">
-                  Selectionne un ticket dans la liste pour afficher son detail.
-                </p>
-              ) : isLoadingDetail ? (
-                <p className="ticket-form-message">Chargement du detail...</p>
-              ) : loadDetailErrorMessage ? (
-                <p className="ticket-form-error">{loadDetailErrorMessage}</p>
-              ) : !selectedTicketDetail ? (
-                <p className="ticket-form-message">
-                  Aucun detail ticket disponible.
-                </p>
-              ) : (
-                <>
-                  <div className="ticket-detail-summary">
-                    <article>
-                      <span>Type</span>
-
-                      <strong>
-                        {translateTicketType(selectedTicketDetail.ticket.type)}
-                      </strong>
-                    </article>
-
-                    <article>
-                      <span>Statut</span>
-
-                      <strong>
-                        {translateTicketStatus(
-                          selectedTicketDetail.ticket.status,
-                        )}
-                      </strong>
-                    </article>
-
-                    <article>
-                      <span>Priorite</span>
-
-                      <strong>
-                        {selectedTicketDetail.priorityName
-                          ? translatePriority(selectedTicketDetail.priorityName)
-                          : prioritiesById.get(
-                                selectedTicketDetail.ticket.priorityId,
-                              )
-                            ? translatePriority(
-                                prioritiesById.get(
-                                  selectedTicketDetail.ticket.priorityId,
-                                )!.name,
-                              )
-                            : 'Non definie'}
-                      </strong>
-                    </article>
-
-                    <article>
-                      <span>Cree le</span>
-
-                      <strong>
-                        {formatTicketDate(
-                          selectedTicketDetail.ticket.createdAt,
-                        )}
-                      </strong>
-                    </article>
-                  </div>
-
-                  <div className="ticket-detail-block">
-                    <h4>{selectedTicketDetail.ticket.title}</h4>
-
-                    <p>{selectedTicketDetail.ticket.description}</p>
-                  </div>
-
-                  <dl className="status-grid ticket-detail-grid">
-                    <div>
-                      <dt>Categorie</dt>
-
-                      <dd>
-                        {categoriesById.get(
-                          selectedTicketDetail.ticket.categoryId,
-                        )?.name ?? 'Non definie'}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt>Canal</dt>
-
-                      <dd>
-                        {selectedTicketDetail.ticket.channelId
-                          ? translateChannel(
-                              channelsById.get(
-                                selectedTicketDetail.ticket.channelId,
-                              )?.name ?? selectedTicketDetail.ticket.channelId,
-                            )
-                          : 'Non renseigne'}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt>Service</dt>
-
-                      <dd>
-                        {selectedTicketDetail.ticket.serviceId
-                          ? (servicesById.get(
-                              selectedTicketDetail.ticket.serviceId,
-                            )?.name ?? selectedTicketDetail.ticket.serviceId)
-                          : 'Non renseigne'}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt>Equipement concerne</dt>
-
-                      <dd>
-                        {selectedTicketDetail.ticket.ciId
-                          ? (cisById.get(selectedTicketDetail.ticket.ciId)
-                              ?.name ?? selectedTicketDetail.ticket.ciId)
-                          : 'Non renseigne'}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt>Groupe d affectation</dt>
-
-                      <dd>
-                        {selectedTicketDetail.ticket.assignmentGroupId
-                          ? (groupsById.get(
-                              selectedTicketDetail.ticket.assignmentGroupId,
-                            )?.name ??
-                            selectedTicketDetail.ticket.assignmentGroupId)
-                          : 'Non affecte'}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt>Agent assigne</dt>
-
-                      <dd>
-                        {selectedTicketDetail.ticket.assignedToUserId ??
-                          'Non assigne'}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  {selectedTicketDetail.incident ? (
-                    <dl className="status-grid ticket-detail-grid">
-                      <div>
-                        <dt>Impact</dt>
-
-                        <dd>
-                          {translateIncidentSeverity(
-                            selectedTicketDetail.incident.impact,
-                          )}
-                        </dd>
-                      </div>
-
-                      <div>
-                        <dt>Urgence</dt>
-
-                        <dd>
-                          {translateIncidentSeverity(
-                            selectedTicketDetail.incident.urgency,
-                          )}
-                        </dd>
-                      </div>
-                    </dl>
-                  ) : null}
-
-                  {selectedTicketDetail.request ? (
-                    <dl className="status-grid ticket-detail-grid">
-                      <div>
-                        <dt>Type de demande</dt>
-
-                        <dd>
-                          {translateRequestType(
-                            selectedTicketDetail.request.requestType,
-                          )}
-                        </dd>
-                      </div>
-
-                      <div>
-                        <dt>Approbation</dt>
-
-                        <dd>
-                          {selectedTicketDetail.request.approvalStatus ??
-                            'Non definie'}
-                        </dd>
-                      </div>
-                    </dl>
-                  ) : null}
-
-                  <div className="ticket-detail-tabbar">
-                    <button
-                      className={
-                        detailWorkspaceTab === 'COMMENTS'
-                          ? 'ticket-workspace-view-button is-active'
-                          : 'ticket-workspace-view-button'
-                      }
-                      onClick={() => setDetailWorkspaceTab('COMMENTS')}
-                      type="button"
-                    >
-                      Conversation
-                    </button>
-
-                    <button
-                      className={
-                        detailWorkspaceTab === 'ATTACHMENTS'
-                          ? 'ticket-workspace-view-button is-active'
-                          : 'ticket-workspace-view-button'
-                      }
-                      onClick={() => setDetailWorkspaceTab('ATTACHMENTS')}
-                      type="button"
-                    >
-                      Pieces jointes
-                    </button>
-                  </div>
-
-                  {detailWorkspaceTab === 'ATTACHMENTS' ? (
-                    <section className="ticket-comments-card">
-                      <div className="ticket-comments-header">
-                        <div>
-                          <h4>Pieces jointes</h4>
-
-                          <p>
-                            Liste des fichiers rattaches au ticket et ajout de
-                            nouveaux documents.
+                        {isLoadingAttachments ? (
+                          <p className="ticket-form-message">
+                            Chargement des pieces jointes...
                           </p>
-                        </div>
+                        ) : loadAttachmentsErrorMessage ? (
+                          <p className="ticket-form-error">
+                            {loadAttachmentsErrorMessage}
+                          </p>
+                        ) : selectedTicketAttachments.length === 0 ? (
+                          <p className="ticket-form-message">
+                            Aucune piece jointe pour ce ticket.
+                          </p>
+                        ) : (
+                          <div className="ticket-attachments-list">
+                            {selectedTicketAttachments.map((attachment) => (
+                              <article
+                                className="ticket-attachment-card"
+                                key={attachment.id}
+                              >
+                                <div className="ticket-attachment-meta">
+                                  <div>
+                                    <strong>{attachment.fileName}</strong>
+                                    <span>
+                                      Ajoute par {attachment.uploadedByUserId}{' '}
+                                      le{' '}
+                                      {formatTicketDate(attachment.createdAt)}
+                                    </span>
+                                  </div>
 
-                        <span className="ticket-result-badge">
-                          {selectedTicketAttachments.length}
-                        </span>
-                      </div>
-
-                      {isLoadingAttachments ? (
-                        <p className="ticket-form-message">
-                          Chargement des pieces jointes...
-                        </p>
-                      ) : loadAttachmentsErrorMessage ? (
-                        <p className="ticket-form-error">
-                          {loadAttachmentsErrorMessage}
-                        </p>
-                      ) : selectedTicketAttachments.length === 0 ? (
-                        <p className="ticket-form-message">
-                          Aucune piece jointe pour ce ticket.
-                        </p>
-                      ) : (
-                        <div className="ticket-attachments-list">
-                          {selectedTicketAttachments.map((attachment) => (
-                            <article
-                              className="ticket-attachment-card"
-                              key={attachment.id}
-                            >
-                              <div className="ticket-attachment-meta">
-                                <div>
-                                  <strong>{attachment.fileName}</strong>
-                                  <span>
-                                    Ajoute par {attachment.uploadedByUserId} le{' '}
-                                    {formatTicketDate(attachment.createdAt)}
+                                  <span className="ticket-comment-badge">
+                                    {formatFileSize(attachment.sizeBytes)}
                                   </span>
                                 </div>
 
-                                <span className="ticket-comment-badge">
-                                  {formatFileSize(attachment.sizeBytes)}
-                                </span>
-                              </div>
+                                <div className="ticket-attachment-actions">
+                                  <button
+                                    className="secondary-button"
+                                    onClick={() =>
+                                      void handleDownloadAttachment(attachment)
+                                    }
+                                    type="button"
+                                  >
+                                    Telecharger
+                                  </button>
 
-                              <div className="ticket-attachment-actions">
-                                <button
-                                  className="secondary-button"
-                                  onClick={() =>
-                                    void handleDownloadAttachment(attachment)
-                                  }
-                                  type="button"
-                                >
-                                  Telecharger
-                                </button>
-
-                                <button
-                                  className="ticket-comment-delete-button"
-                                  disabled={
-                                    deletingAttachmentId === attachment.id
-                                  }
-                                  onClick={() =>
-                                    void handleDeleteAttachment(attachment)
-                                  }
-                                  type="button"
-                                >
-                                  {deletingAttachmentId === attachment.id
-                                    ? 'Suppression...'
-                                    : 'Supprimer'}
-                                </button>
-                              </div>
-
-                              {attachment.mimeType?.startsWith('image/') &&
-                              attachmentPreviewUrls[attachment.id] ? (
-                                <img
-                                  alt={attachment.fileName}
-                                  className="ticket-attachment-preview"
-                                  src={attachmentPreviewUrls[attachment.id]}
-                                />
-                              ) : null}
-
-                              <dl className="ticket-attachment-grid">
-                                <div>
-                                  <dt>Type MIME</dt>
-                                  <dd>
-                                    {attachment.mimeType ?? 'Non renseigne'}
-                                  </dd>
+                                  <button
+                                    className="ticket-comment-delete-button"
+                                    disabled={
+                                      deletingAttachmentId === attachment.id
+                                    }
+                                    onClick={() =>
+                                      void handleDeleteAttachment(attachment)
+                                    }
+                                    type="button"
+                                  >
+                                    {deletingAttachmentId === attachment.id
+                                      ? 'Suppression...'
+                                      : 'Supprimer'}
+                                  </button>
                                 </div>
 
-                                <div>
-                                  <dt>Bucket</dt>
-                                  <dd>{attachment.bucketId}</dd>
-                                </div>
+                                {attachment.mimeType?.startsWith('image/') &&
+                                attachmentPreviewUrls[attachment.id] ? (
+                                  <img
+                                    alt={attachment.fileName}
+                                    className="ticket-attachment-preview"
+                                    src={attachmentPreviewUrls[attachment.id]}
+                                  />
+                                ) : null}
 
-                                <div className="ticket-attachment-path">
-                                  <dt>Chemin de stockage</dt>
-                                  <dd>{attachment.storagePath}</dd>
-                                </div>
-                              </dl>
-                            </article>
-                          ))}
-                        </div>
-                      )}
-
-                      <form
-                        className="ticket-comment-form"
-                        onSubmit={handleAttachmentSubmit}
-                      >
-                        <label className="field">
-                          <span>Nouvelle piece jointe</span>
-
-                          <input
-                            accept="*/*"
-                            key={attachmentInputKey}
-                            onChange={(event) =>
-                              handleAttachmentSelection(
-                                event.target.files?.[0] ?? null,
-                              )
-                            }
-                            type="file"
-                          />
-                        </label>
-
-                        <div className="ticket-comment-actions">
-                          <button
-                            className="secondary-button"
-                            disabled={isSubmittingAttachment}
-                          >
-                            {isSubmittingAttachment
-                              ? 'Envoi...'
-                              : 'Ajouter la piece jointe'}
-                          </button>
-
-                          <span className="ticket-form-helper">
-                            {attachmentDraft.file
-                              ? `${attachmentDraft.file.name} (${formatFileSize(attachmentDraft.file.size)})`
-                              : 'Selectionne un fichier local a rattacher au ticket.'}
-                          </span>
-                        </div>
-                      </form>
-
-                      {attachmentErrorMessage ? (
-                        <p className="ticket-form-error">
-                          {attachmentErrorMessage}
-                        </p>
-                      ) : null}
-
-                      {attachmentSuccessMessage ? (
-                        <p className="ticket-form-message">
-                          {attachmentSuccessMessage}
-                        </p>
-                      ) : null}
-                    </section>
-                  ) : null}
-
-                  {detailWorkspaceTab === 'COMMENTS' ? (
-                    <section className="ticket-comments-card">
-                      <div className="ticket-comments-header">
-                        <div>
-                          <h4>Commentaires</h4>
-
-                          <p>
-                            Historique de discussion du ticket et ajout de
-                            nouveaux commentaires.
-                          </p>
-                        </div>
-
-                        <span className="ticket-result-badge">
-                          {selectedTicketComments.length}
-                        </span>
-                      </div>
-
-                      {isLoadingComments ? (
-                        <p className="ticket-form-message">
-                          Chargement des commentaires...
-                        </p>
-                      ) : loadCommentsErrorMessage ? (
-                        <p className="ticket-form-error">
-                          {loadCommentsErrorMessage}
-                        </p>
-                      ) : selectedTicketComments.length === 0 ? (
-                        <p className="ticket-form-message">
-                          Aucun commentaire pour ce ticket.
-                        </p>
-                      ) : (
-                        <div className="ticket-comments-list">
-                          {selectedTicketComments.map((comment) => {
-                            const canDeleteComment = canDeleteTicketComment(
-                              session.user.role,
-                              session.user.id,
-                              comment.authorUserId,
-                            );
-
-                            return (
-                              <article
-                                className={
-                                  comment.isInternal
-                                    ? 'ticket-comment-card is-internal'
-                                    : 'ticket-comment-card'
-                                }
-                                key={comment.id}
-                              >
-                                <div className="ticket-comment-meta">
-                                  <div className="ticket-comment-author">
-                                    <strong>{comment.authorUserId}</strong>
-
-                                    <span>
-                                      {formatTicketDate(comment.createdAt)}
-                                    </span>
+                                <dl className="ticket-attachment-grid">
+                                  <div>
+                                    <dt>Type MIME</dt>
+                                    <dd>
+                                      {attachment.mimeType ?? 'Non renseigne'}
+                                    </dd>
                                   </div>
 
-                                  <div className="ticket-comment-meta-actions">
-                                    <span
-                                      className={
-                                        comment.isInternal
-                                          ? 'ticket-comment-badge is-internal'
-                                          : 'ticket-comment-badge'
-                                      }
-                                    >
-                                      {comment.isInternal
-                                        ? 'Interne'
-                                        : 'Public'}
-                                    </span>
-
-                                    {canDeleteComment ? (
-                                      <button
-                                        className="ticket-comment-delete-button"
-                                        disabled={
-                                          deletingCommentId === comment.id
-                                        }
-                                        onClick={() =>
-                                          void handleDeleteComment(comment.id)
-                                        }
-                                        type="button"
-                                      >
-                                        {deletingCommentId === comment.id
-                                          ? 'Suppression...'
-                                          : 'Supprimer'}
-                                      </button>
-                                    ) : null}
+                                  <div>
+                                    <dt>Bucket</dt>
+                                    <dd>{attachment.bucketId}</dd>
                                   </div>
-                                </div>
 
-                                <p>{comment.body}</p>
+                                  <div className="ticket-attachment-path">
+                                    <dt>Chemin de stockage</dt>
+                                    <dd>{attachment.storagePath}</dd>
+                                  </div>
+                                </dl>
                               </article>
-                            );
-                          })}
-                        </div>
-                      )}
+                            ))}
+                          </div>
+                        )}
 
-                      <form
-                        className="ticket-comment-form"
-                        onSubmit={handleCommentSubmit}
-                      >
-                        <label className="field">
-                          <span>Nouveau commentaire</span>
-
-                          <textarea
-                            className="ticket-comment-textarea"
-                            onChange={(event) =>
-                              handleCommentBodyChange(event.target.value)
-                            }
-                            placeholder="Ajouter un commentaire utile pour ce ticket"
-                            rows={4}
-                            value={commentDraft.body}
-                          />
-                        </label>
-
-                        {canCreateInternalComments ? (
-                          <label className="ticket-comment-toggle">
-                            <span>Commentaire interne</span>
+                        <form
+                          className="ticket-comment-form"
+                          onSubmit={handleAttachmentSubmit}
+                        >
+                          <label className="field">
+                            <span>Nouvelle piece jointe</span>
 
                             <input
-                              checked={commentDraft.isInternal}
+                              accept="*/*"
+                              key={attachmentInputKey}
                               onChange={(event) =>
-                                handleCommentInternalToggle(
-                                  event.target.checked,
+                                handleAttachmentSelection(
+                                  event.target.files?.[0] ?? null,
                                 )
                               }
-                              type="checkbox"
+                              type="file"
                             />
                           </label>
+
+                          <div className="ticket-comment-actions">
+                            <button
+                              className="secondary-button"
+                              disabled={isSubmittingAttachment}
+                            >
+                              {isSubmittingAttachment
+                                ? 'Envoi...'
+                                : 'Ajouter la piece jointe'}
+                            </button>
+
+                            <span className="ticket-form-helper">
+                              {attachmentDraft.file
+                                ? `${attachmentDraft.file.name} (${formatFileSize(attachmentDraft.file.size)})`
+                                : 'Selectionne un fichier local a rattacher au ticket.'}
+                            </span>
+                          </div>
+                        </form>
+
+                        {attachmentErrorMessage ? (
+                          <p className="ticket-form-error">
+                            {attachmentErrorMessage}
+                          </p>
                         ) : null}
 
-                        <div className="ticket-comment-actions">
-                          <button
-                            className="secondary-button"
-                            disabled={isSubmittingComment}
-                          >
-                            {isSubmittingComment
-                              ? 'Envoi...'
-                              : 'Ajouter le commentaire'}
-                          </button>
+                        {attachmentSuccessMessage ? (
+                          <p className="ticket-form-message">
+                            {attachmentSuccessMessage}
+                          </p>
+                        ) : null}
+                      </section>
+                    ) : null}
 
-                          <span className="ticket-form-helper">
-                            {canCreateInternalComments
-                              ? 'Les agents et admins peuvent publier des notes internes.'
-                              : 'Les commentaires internes restent reserves aux agents et admins.'}
+                    {detailWorkspaceTab === 'COMMENTS' ? (
+                      <section className="ticket-comments-card">
+                        <div className="ticket-comments-header">
+                          <div>
+                            <h4>Commentaires</h4>
+
+                            <p>
+                              Historique de discussion du ticket et ajout de
+                              nouveaux commentaires.
+                            </p>
+                          </div>
+
+                          <span className="ticket-result-badge">
+                            {selectedTicketComments.length}
                           </span>
                         </div>
-                      </form>
 
-                      {commentErrorMessage ? (
-                        <p className="ticket-form-error">
-                          {commentErrorMessage}
-                        </p>
-                      ) : null}
+                        {isLoadingComments ? (
+                          <p className="ticket-form-message">
+                            Chargement des commentaires...
+                          </p>
+                        ) : loadCommentsErrorMessage ? (
+                          <p className="ticket-form-error">
+                            {loadCommentsErrorMessage}
+                          </p>
+                        ) : selectedTicketComments.length === 0 ? (
+                          <p className="ticket-form-message">
+                            Aucun commentaire pour ce ticket.
+                          </p>
+                        ) : (
+                          <div className="ticket-comments-list">
+                            {selectedTicketComments.map((comment) => {
+                              const canDeleteComment = canDeleteTicketComment(
+                                session.user.role,
+                                session.user.id,
+                                comment.authorUserId,
+                              );
 
-                      {commentSuccessMessage ? (
-                        <p className="ticket-form-message">
-                          {commentSuccessMessage}
-                        </p>
-                      ) : null}
-                    </section>
-                  ) : null}
+                              return (
+                                <article
+                                  className={
+                                    comment.isInternal
+                                      ? 'ticket-comment-card is-internal'
+                                      : 'ticket-comment-card'
+                                  }
+                                  key={comment.id}
+                                >
+                                  <div className="ticket-comment-meta">
+                                    <div className="ticket-comment-author">
+                                      <strong>{comment.authorUserId}</strong>
 
-                  {canManageTicket ? (
-                    <div className="ticket-detail-actions">
-                      <form
-                        className="ticket-detail-action-card"
-                        onSubmit={handleAssignmentSubmit}
-                      >
-                        <h4>Assignation</h4>
+                                      <span>
+                                        {formatTicketDate(comment.createdAt)}
+                                      </span>
+                                    </div>
 
-                        <label className="field">
-                          <span>Groupe</span>
+                                    <div className="ticket-comment-meta-actions">
+                                      <span
+                                        className={
+                                          comment.isInternal
+                                            ? 'ticket-comment-badge is-internal'
+                                            : 'ticket-comment-badge'
+                                        }
+                                      >
+                                        {comment.isInternal
+                                          ? 'Interne'
+                                          : 'Public'}
+                                      </span>
 
-                          <select
-                            onChange={(event) =>
-                              handleAssignmentFieldChange(
-                                'assignmentGroupId',
+                                      {canDeleteComment ? (
+                                        <button
+                                          className="ticket-comment-delete-button"
+                                          disabled={
+                                            deletingCommentId === comment.id
+                                          }
+                                          onClick={() =>
+                                            void handleDeleteComment(comment.id)
+                                          }
+                                          type="button"
+                                        >
+                                          {deletingCommentId === comment.id
+                                            ? 'Suppression...'
+                                            : 'Supprimer'}
+                                        </button>
+                                      ) : null}
+                                    </div>
+                                  </div>
 
-                                event.target.value,
-                              )
-                            }
-                            value={assignmentDraft.assignmentGroupId}
-                          >
-                            <option value="">Aucun groupe</option>
+                                  <p>{comment.body}</p>
+                                </article>
+                              );
+                            })}
+                          </div>
+                        )}
 
-                            {catalog.groups.map((group) => (
-                              <option key={group.id} value={group.id}>
-                                {group.name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-
-                        <label className="field">
-                          <span>Id agent</span>
-
-                          <input
-                            onChange={(event) =>
-                              handleAssignmentFieldChange(
-                                'assignedToUserId',
-
-                                event.target.value,
-                              )
-                            }
-                            placeholder="Optionnel"
-                            value={assignmentDraft.assignedToUserId}
-                          />
-                        </label>
-
-                        <button
-                          className="secondary-button"
-                          disabled={isSubmittingAssignment}
+                        <form
+                          className="ticket-comment-form"
+                          onSubmit={handleCommentSubmit}
                         >
-                          {isSubmittingAssignment
-                            ? 'Mise a jour...'
-                            : 'Mettre a jour l assignation'}
-                        </button>
-                      </form>
+                          <label className="field">
+                            <span>Nouveau commentaire</span>
 
-                      <form
-                        className="ticket-detail-action-card"
-                        onSubmit={handleStatusSubmit}
-                      >
-                        <h4>Workflow</h4>
+                            <textarea
+                              className="ticket-comment-textarea"
+                              onChange={(event) =>
+                                handleCommentBodyChange(event.target.value)
+                              }
+                              placeholder="Ajouter un commentaire utile pour ce ticket"
+                              rows={4}
+                              value={commentDraft.body}
+                            />
+                          </label>
 
-                        <label className="field">
-                          <span>Nouveau statut</span>
+                          {canCreateInternalComments ? (
+                            <label className="ticket-comment-toggle">
+                              <span>Commentaire interne</span>
 
-                          <select
-                            onChange={(event) =>
-                              setStatusDraft(
-                                asTicketStatus(event.target.value) ?? 'OPEN',
-                              )
-                            }
-                            value={statusDraft}
-                          >
-                            <option value="OPEN">Ouvert</option>
+                              <input
+                                checked={commentDraft.isInternal}
+                                onChange={(event) =>
+                                  handleCommentInternalToggle(
+                                    event.target.checked,
+                                  )
+                                }
+                                type="checkbox"
+                              />
+                            </label>
+                          ) : null}
 
-                            <option value="IN_PROGRESS">En cours</option>
+                          <div className="ticket-comment-actions">
+                            <button
+                              className="secondary-button"
+                              disabled={isSubmittingComment}
+                            >
+                              {isSubmittingComment
+                                ? 'Envoi...'
+                                : 'Ajouter le commentaire'}
+                            </button>
 
-                            <option value="RESOLVED">Resolu</option>
+                            <span className="ticket-form-helper">
+                              {canCreateInternalComments
+                                ? 'Les agents et admins peuvent publier des notes internes.'
+                                : 'Les commentaires internes restent reserves aux agents et admins.'}
+                            </span>
+                          </div>
+                        </form>
 
-                            <option value="CLOSED">Clos</option>
-                          </select>
-                        </label>
+                        {commentErrorMessage ? (
+                          <p className="ticket-form-error">
+                            {commentErrorMessage}
+                          </p>
+                        ) : null}
 
-                        <button
-                          className="secondary-button"
-                          disabled={isSubmittingStatus}
+                        {commentSuccessMessage ? (
+                          <p className="ticket-form-message">
+                            {commentSuccessMessage}
+                          </p>
+                        ) : null}
+                      </section>
+                    ) : null}
+
+                    {canManageTicket ? (
+                      <div className="ticket-detail-actions">
+                        <form
+                          className="ticket-detail-action-card"
+                          onSubmit={handleAssignmentSubmit}
                         >
-                          {isSubmittingStatus
-                            ? 'Mise a jour...'
-                            : 'Changer le statut'}
-                        </button>
-                      </form>
-                    </div>
-                  ) : (
-                    <p className="ticket-form-message">
-                      Les actions agent sont masquees pour le role demandeur.
-                    </p>
-                  )}
+                          <h4>Assignation</h4>
 
-                  {detailActionErrorMessage ? (
-                    <p className="ticket-form-error">
-                      {detailActionErrorMessage}
-                    </p>
-                  ) : null}
+                          <label className="field">
+                            <span>Groupe</span>
 
-                  {detailActionSuccessMessage ? (
-                    <p className="ticket-form-message">
-                      {detailActionSuccessMessage}
-                    </p>
-                  ) : null}
-                </>
-              )}
-            </aside>
+                            <select
+                              onChange={(event) =>
+                                handleAssignmentFieldChange(
+                                  'assignmentGroupId',
+
+                                  event.target.value,
+                                )
+                              }
+                              value={assignmentDraft.assignmentGroupId}
+                            >
+                              <option value="">Aucun groupe</option>
+
+                              {catalog.groups.map((group) => (
+                                <option key={group.id} value={group.id}>
+                                  {group.name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+
+                          <label className="field">
+                            <span>Id agent</span>
+
+                            <input
+                              onChange={(event) =>
+                                handleAssignmentFieldChange(
+                                  'assignedToUserId',
+
+                                  event.target.value,
+                                )
+                              }
+                              placeholder="Optionnel"
+                              value={assignmentDraft.assignedToUserId}
+                            />
+                          </label>
+
+                          <button
+                            className="secondary-button"
+                            disabled={isSubmittingAssignment}
+                          >
+                            {isSubmittingAssignment
+                              ? 'Mise a jour...'
+                              : 'Mettre a jour l assignation'}
+                          </button>
+                        </form>
+
+                        <form
+                          className="ticket-detail-action-card"
+                          onSubmit={handleStatusSubmit}
+                        >
+                          <h4>Workflow</h4>
+
+                          <label className="field">
+                            <span>Nouveau statut</span>
+
+                            <select
+                              onChange={(event) =>
+                                setStatusDraft(
+                                  asTicketStatus(event.target.value) ?? 'OPEN',
+                                )
+                              }
+                              value={statusDraft}
+                            >
+                              <option value="OPEN">Ouvert</option>
+
+                              <option value="IN_PROGRESS">En cours</option>
+
+                              <option value="RESOLVED">Resolu</option>
+
+                              <option value="CLOSED">Clos</option>
+                            </select>
+                          </label>
+
+                          <button
+                            className="secondary-button"
+                            disabled={isSubmittingStatus}
+                          >
+                            {isSubmittingStatus
+                              ? 'Mise a jour...'
+                              : 'Changer le statut'}
+                          </button>
+                        </form>
+                      </div>
+                    ) : (
+                      <p className="ticket-form-message">
+                        Les actions agent sont masquees pour le role demandeur.
+                      </p>
+                    )}
+
+                    {detailActionErrorMessage ? (
+                      <p className="ticket-form-error">
+                        {detailActionErrorMessage}
+                      </p>
+                    ) : null}
+
+                    {detailActionSuccessMessage ? (
+                      <p className="ticket-form-message">
+                        {detailActionSuccessMessage}
+                      </p>
+                    ) : null}
+                  </>
+                )}
+              </aside>
+            ) : null}
           </section>
         ) : null}
       </section>

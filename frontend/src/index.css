@@ -1368,6 +1368,14 @@ a {
   gap: 18px;
 }
 
+.ticket-detail-layout--detail-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ticket-detail-layout--list-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .ticket-list-header {
   display: flex;
   justify-content: space-between;
@@ -1416,6 +1424,68 @@ a {
 .ticket-results {
   display: grid;
   gap: 12px;
+}
+
+.ticket-table-scroll {
+  overflow-x: auto;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.ticket-table {
+  width: 100%;
+  min-width: 1340px;
+  border-collapse: collapse;
+}
+
+.ticket-table th,
+.ticket-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(207, 216, 234, 0.76);
+  text-align: left;
+  vertical-align: top;
+  color: #24406c;
+}
+
+.ticket-table th {
+  position: sticky;
+  top: 0;
+  background: rgba(245, 248, 255, 0.96);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.ticket-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.ticket-table-row {
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+
+.ticket-table-row:hover {
+  background: rgba(239, 245, 255, 0.88);
+}
+
+.ticket-table-primary {
+  display: grid;
+  gap: 4px;
+}
+
+.ticket-table-primary strong {
+  color: #17335f;
+}
+
+.ticket-table-primary span {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  word-break: break-word;
 }
 
 .ticket-pagination {
@@ -1542,6 +1612,14 @@ a {
   align-items: flex-start;
 }
 
+.ticket-detail-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .ticket-detail-header h3,
 .ticket-detail-action-card h4,
 .ticket-detail-block h4 {
@@ -1567,6 +1645,10 @@ a {
   border: 1px solid rgba(207, 216, 234, 0.9);
   border-radius: 18px;
   background: rgba(245, 248, 255, 0.86);
+}
+
+.ticket-detail-card--page {
+  min-height: 100%;
 }
 
 .ticket-detail-summary span {

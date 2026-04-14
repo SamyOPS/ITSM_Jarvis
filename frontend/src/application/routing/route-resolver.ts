@@ -5,6 +5,10 @@ const routeMap = new Map<RouteDefinition['path'], RouteDefinition>(
 );
 
 export function resolveRoute(pathname: string): RouteDefinition | null {
+  if (pathname.startsWith('/agent/tickets/')) {
+    return routeMap.get('/agent/tickets') ?? null;
+  }
+
   if (
     pathname === '/' ||
     pathname === '/admin' ||
