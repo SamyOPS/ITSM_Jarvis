@@ -79,6 +79,11 @@ a {
   padding: 40px 0 56px;
 }
 
+.app-shell--login {
+  width: 100%;
+  min-height: 100vh;
+}
+
 .app-shell--workspace {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
@@ -316,6 +321,44 @@ a {
   border-color: rgba(25, 86, 179, 0.18);
 }
 
+.workspace-ticket-menu {
+  position: relative;
+}
+
+.workspace-ticket-menu-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 6px;
+  min-width: 260px;
+  padding: 10px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 36px rgba(26, 44, 78, 0.16);
+}
+
+.workspace-ticket-menu-item {
+  padding: 12px 14px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #17335f;
+  text-align: left;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.workspace-ticket-menu-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(25, 86, 179, 0.3);
+  background: var(--primary-soft);
+}
+
 .app-nav {
   display: flex;
   gap: 10px;
@@ -364,6 +407,189 @@ a {
 
 .app-main--workspace {
   padding: 28px;
+}
+
+.login-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.05fr) minmax(420px, 0.95fr);
+  width: 100%;
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      circle at bottom left,
+      rgba(255, 122, 28, 0.45) 0%,
+      transparent 28%
+    ),
+    linear-gradient(180deg, #eef3fb 0%, #e2eaf7 100%);
+}
+
+.login-showcase {
+  position: relative;
+  display: grid;
+  align-items: end;
+  overflow: hidden;
+  padding: 56px;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.04) 0 1px,
+      transparent 1px 64px
+    ),
+    linear-gradient(180deg, #040507 0%, #0c0f15 100%);
+  color: #f7f8fb;
+}
+
+.login-showcase-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.02) 0%,
+    transparent 100%
+  );
+}
+
+.login-showcase-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 18px;
+  max-width: 28rem;
+}
+
+.login-showcase-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.login-showcase-copy h1 {
+  margin: 0;
+  font-size: clamp(3rem, 9vw, 5.4rem);
+  letter-spacing: -0.06em;
+  line-height: 0.9;
+}
+
+.login-showcase-copy p {
+  margin: 0;
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.login-showcase-glow {
+  position: absolute;
+  left: -8%;
+  bottom: -14%;
+  width: 72%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 163, 82, 0.8) 28%,
+    rgba(255, 110, 12, 0.45) 50%,
+    transparent 72%
+  );
+  filter: blur(18px);
+  opacity: 0.92;
+}
+
+.login-panel {
+  display: grid;
+  align-content: center;
+  gap: 28px;
+  padding: 56px 64px;
+}
+
+.login-panel-header {
+  display: grid;
+  gap: 12px;
+}
+
+.login-panel-header h2 {
+  margin: 0;
+  font-size: clamp(2.1rem, 4vw, 3rem);
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+}
+
+.login-panel-header p,
+.login-demo-heading p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.login-form {
+  display: grid;
+  gap: 16px;
+}
+
+.login-submit-button {
+  border: 1px solid rgba(255, 122, 28, 0.18);
+  border-radius: 18px;
+  padding: 14px 18px;
+  background: linear-gradient(180deg, #ff8f34 0%, #ff6b00 100%);
+  color: #fff;
+  font-weight: 700;
+}
+
+.login-demo-section {
+  display: grid;
+  gap: 16px;
+}
+
+.login-demo-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.login-demo-heading h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.login-demo-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.login-demo-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.86);
+  text-align: left;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.login-demo-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 122, 28, 0.35);
+  box-shadow: 0 16px 28px rgba(26, 44, 78, 0.08);
+}
+
+.login-demo-card span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ff6b00;
+}
+
+.login-demo-card strong {
+  color: #17335f;
+}
+
+.login-demo-card code {
+  color: #4a5d7d;
+  font-size: 0.95rem;
 }
 
 .panel {
@@ -569,6 +795,7 @@ a {
 }
 
 .referentials-summary article,
+.admin-users-card,
 .referentials-catalog-card,
 .referentials-form-card {
   padding: 18px;
@@ -685,6 +912,86 @@ a {
 
 .referentials-error {
   color: #9b2e3d;
+}
+
+.admin-users-card {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-users-count {
+  color: #17335f;
+  white-space: nowrap;
+}
+
+.admin-users-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.admin-user-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.admin-user-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.admin-user-card-header strong {
+  color: #17335f;
+}
+
+.admin-user-status {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-user-status.is-active {
+  background: rgba(36, 121, 75, 0.12);
+  color: #24794b;
+}
+
+.admin-user-status.is-inactive {
+  background: rgba(155, 46, 61, 0.12);
+  color: #9b2e3d;
+}
+
+.admin-user-meta {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.admin-user-meta div {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-user-meta dt {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.admin-user-meta dd {
+  margin: 0;
+  color: #17335f;
+  word-break: break-word;
 }
 
 .ticket-workspace-shell {
@@ -1486,6 +1793,15 @@ a {
 
   .app-shell--workspace {
     grid-template-columns: 1fr;
+  }
+
+  .login-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .login-showcase,
+  .login-panel {
+    padding: 28px 20px;
   }
 
   .workspace-sidebar {

@@ -1,4 +1,11 @@
-﻿import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type {
   ReferentialCatalogSnapshot,
@@ -17,6 +24,7 @@ import {
   fetchReferentialCatalog,
   updateAdminReferential,
 } from '../../infrastructure/api/referentials-api';
+import { fetchAdminUsers } from '../../infrastructure/api/auth-api';
 import {
   translateCiStatus,
   translatePriority,
@@ -110,6 +118,7 @@ const CI_STATUSES = ['IN_SERVICE', 'MAINTENANCE', 'OUT_OF_SERVICE'] as const;
 export function AdminPage({ session }: AdminPageProps) {
   const [activeKind, setActiveKind] =
     useState<AdminReferentialKind>('categories');
+  const [adminUsers, setAdminUsers] = useState<AdminUserSummary[]>([]);
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
@@ -123,24 +132,17 @@ export function AdminPage({ session }: AdminPageProps) {
     () => getItemsForKind(activeKind, catalog),
     [activeKind, catalog],
   );
-
-  useEffect(() => {
-    void loadCatalog();
-  }, []);
-
-  useEffect(() => {
-    setSelectedId(null);
-    setFormState(createEmptyFormState());
-    setFeedbackMessage(null);
-  }, [activeKind]);
-
-  async function loadCatalog(): Promise<void> {
+  const loadCatalog = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setLoadErrorMessage(null);
 
     try {
-      const nextCatalog = await fetchReferentialCatalog();
+      const [nextCatalog, nextUsers] = await Promise.all([
+        fetchReferentialCatalog(),
+        fetchAdminUsers(session.accessToken),
+      ]);
       setCatalog(nextCatalog);
+      setAdminUsers(nextUsers);
     } catch (error) {
       setLoadErrorMessage(
         error instanceof Error
@@ -150,7 +152,17 @@ export function AdminPage({ session }: AdminPageProps) {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [session.accessToken]);
+
+  useEffect(() => {
+    void loadCatalog();
+  }, [loadCatalog]);
+
+  useEffect(() => {
+    setSelectedId(null);
+    setFormState(createEmptyFormState());
+    setFeedbackMessage(null);
+  }, [activeKind]);
 
   function handleSelectItem(item: ReferentialListItem): void {
     setSelectedId(item.id);
@@ -269,6 +281,64 @@ export function AdminPage({ session }: AdminPageProps) {
           <strong>{currentItems.length}</strong>
         </article>
       </div>
+
+      <section className="admin-users-card">
+        <header className="referentials-card-header">
+          <div>
+            <h3>Utilisateurs</h3>
+            <p>Liste des utilisateurs de la plateforme et de leurs rôles.</p>
+          </div>
+          <strong className="admin-users-count">
+            {adminUsers.length} utilisateur{adminUsers.length > 1 ? 's' : ''}
+          </strong>
+        </header>
+
+        {isLoading ? (
+          <p className="referentials-empty-state">
+            Chargement des utilisateurs...
+          </p>
+        ) : loadErrorMessage ? (
+          <p className="referentials-error">{loadErrorMessage}</p>
+        ) : adminUsers.length === 0 ? (
+          <p className="referentials-empty-state">
+            Aucun utilisateur disponible.
+          </p>
+        ) : (
+          <div className="admin-users-grid">
+            {adminUsers.map((user) => (
+              <article className="admin-user-card" key={user.id}>
+                <div className="admin-user-card-header">
+                  <strong>{user.displayName ?? user.id}</strong>
+                  <span
+                    className={
+                      user.isActive
+                        ? 'admin-user-status is-active'
+                        : 'admin-user-status is-inactive'
+                    }
+                  >
+                    {user.isActive ? 'Actif' : 'Inactif'}
+                  </span>
+                </div>
+
+                <dl className="admin-user-meta">
+                  <div>
+                    <dt>Rôle</dt>
+                    <dd>{translateUserRole(user.role)}</dd>
+                  </div>
+                  <div>
+                    <dt>Groupe</dt>
+                    <dd>{user.groupId ?? 'Aucun groupe'}</dd>
+                  </div>
+                  <div>
+                    <dt>Identifiant</dt>
+                    <dd>{user.id}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <div className="referentials-layout">
         <aside className="referentials-sidebar">

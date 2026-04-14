@@ -12,7 +12,10 @@ import {
 import { canAccessRoute } from '../../application/auth/access-control';
 import { resolveRoute } from '../../application/routing/route-resolver';
 import { type RoutePath } from '../../domain/navigation/route';
-import { useBrowserPath } from '../../infrastructure/routing/browser-router';
+import {
+  navigateTo,
+  useBrowserPath,
+} from '../../infrastructure/routing/browser-router';
 import { AccessDeniedPage } from '../pages/access-denied-page';
 import { AdminPage } from '../pages/admin-page';
 import { AgentPage } from '../pages/agent-page';
@@ -178,6 +181,18 @@ export function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (pathname === '/login' && sessionState === 'authenticated' && session) {
+      navigateTo('/agent/tickets');
+    }
+  }, [pathname, session, sessionState]);
+
+  useEffect(() => {
+    if (sessionState === 'anonymous' && !isLoggingIn && pathname !== '/login') {
+      navigateTo('/login');
+    }
+  }, [isLoggingIn, pathname, sessionState]);
+
   async function handleLogin(email: string, password: string): Promise<void> {
     setIsLoggingIn(true);
     setAuthErrorMessage(null);
@@ -204,6 +219,7 @@ export function App() {
     setAuthErrorMessage(null);
     setSession(null);
     setSessionState('anonymous');
+    navigateTo('/login');
   }
 
   return (
