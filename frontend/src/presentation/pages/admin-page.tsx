@@ -132,6 +132,7 @@ export function AdminPage({ session }: AdminPageProps) {
     () => getItemsForKind(activeKind, catalog),
     [activeKind, catalog],
   );
+
   const loadCatalog = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setLoadErrorMessage(null);

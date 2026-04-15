@@ -1,6 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  FileText,
+  House,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Plus,
+  Search,
+  Shield,
+  Ticket,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import { getVisibleRoutes } from '../../application/auth/access-control';
+import type { RoutePath } from '../../domain/navigation/route';
 import { ROUTES } from '../../domain/navigation/route';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 
@@ -12,6 +26,29 @@ interface AppShellProps {
   session: AuthSessionSnapshot | null;
 }
 
+const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
+  '/': LayoutDashboard,
+  '/admin': Shield,
+  '/agent': LayoutDashboard,
+  '/agent/incidents/new': AlertTriangle,
+  '/agent/requests/new': FileText,
+  '/agent/tickets': Ticket,
+};
+
+function isRouteActive(routePath: RoutePath, pathname: string): boolean {
+  if (routePath === '/agent/tickets') {
+    return (
+      pathname === '/agent/tickets' || pathname.startsWith('/agent/tickets/')
+    );
+  }
+
+  if (routePath === '/agent') {
+    return pathname === '/agent';
+  }
+
+  return pathname === routePath;
+}
+
 export function AppShell({
   children,
   isAuthenticated,
@@ -19,15 +56,16 @@ export function AppShell({
   pathname,
   session,
 }: AppShellProps) {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isTicketMenuOpen, setIsTicketMenuOpen] = useState(false);
   const ticketMenuRef = useRef<HTMLDivElement | null>(null);
   const visibleRoutePaths = getVisibleRoutes(session);
   const visibleRoutes = ROUTES.filter((route) =>
     visibleRoutePaths.includes(route.path),
   );
-  const activeRoute = ROUTES.find((route) => route.path === pathname) ?? null;
   const isWorkspaceShell = isAuthenticated;
   const isLoginShell = pathname === '/login';
+  const isHomeRoute = pathname === '/';
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent): void {
@@ -66,38 +104,73 @@ export function AppShell({
 
   return (
     <div className="app-shell app-shell--workspace">
-      <aside className="workspace-sidebar">
-        <div className="workspace-sidebar-brand">
-          <div>
-            <p className="workspace-sidebar-eyebrow">Jarvis Connect</p>
-            <strong>Vision</strong>
+      <aside
+        className={
+          isSidebarCollapsed
+            ? 'workspace-sidebar is-collapsed'
+            : 'workspace-sidebar'
+        }
+      >
+        <div className="workspace-sidebar-header">
+          <div className="workspace-sidebar-brand">
+            <div className="workspace-sidebar-brand-copy">
+              <strong>Vision</strong>
+              <span>By JarvisConnect</span>
+            </div>
           </div>
-          <span>Plateforme interne</span>
+
+          <button
+            aria-label={
+              isSidebarCollapsed
+                ? 'Ouvrir la navigation'
+                : 'Replier la navigation'
+            }
+            className="workspace-sidebar-toggle"
+            onClick={() => setIsSidebarCollapsed((current) => !current)}
+            type="button"
+          >
+            <Menu size={18} />
+          </button>
         </div>
 
         <label className="workspace-sidebar-search">
-          <span>Recherche rapide</span>
-          <input placeholder="Chercher dans le menu..." type="search" />
+          <span className="workspace-sidebar-search-shell">
+            <Search size={16} />
+            <input placeholder="Chercher dans le menu..." type="search" />
+          </span>
         </label>
+
+        <div className="workspace-sidebar-section-label">Navigation</div>
 
         <nav
           aria-label="Navigation principale"
           className="workspace-sidebar-nav"
         >
-          {visibleRoutes.map((route) => (
-            <button
-              className={
-                route.path === pathname
-                  ? 'workspace-nav-link is-active'
-                  : 'workspace-nav-link'
-              }
-              key={route.path}
-              onClick={() => navigateTo(route.path)}
-              type="button"
-            >
-              <strong>{route.title}</strong>
-            </button>
-          ))}
+          {visibleRoutes.map((route) => {
+            const Icon = routeIcons[route.path] ?? Ticket;
+            const isActive = isRouteActive(route.path, pathname);
+
+            return (
+              <button
+                className={
+                  isActive
+                    ? 'workspace-nav-link is-active'
+                    : 'workspace-nav-link'
+                }
+                key={route.path}
+                onClick={() => navigateTo(route.path)}
+                title={route.title}
+                type="button"
+              >
+                <span className="workspace-nav-link-icon" aria-hidden="true">
+                  <Icon size={18} strokeWidth={2} />
+                </span>
+                <strong className="workspace-nav-link-label">
+                  {route.title}
+                </strong>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="workspace-sidebar-footer">
@@ -109,26 +182,48 @@ export function AppShell({
       <div className="workspace-main">
         <header className="workspace-topbar">
           <div className="workspace-topbar-copy">
-            <span>{activeRoute?.title ?? 'Workspace'}</span>
-            <h1>{activeRoute?.description ?? 'Portail de travail Jarvis.'}</h1>
+            <button
+              className={
+                isHomeRoute
+                  ? 'workspace-home-link is-active'
+                  : 'workspace-home-link'
+              }
+              onClick={() => navigateTo('/')}
+              type="button"
+            >
+              <House
+                className="workspace-home-link-icon"
+                size={15}
+                strokeWidth={2.1}
+              />
+              <span>Accueil</span>
+            </button>
           </div>
 
-          <div className="workspace-topbar-actions">
+          <div className="workspace-topbar-search-shell">
             <label className="workspace-topbar-search">
+              <Search
+                className="workspace-topbar-search-icon"
+                size={17}
+                strokeWidth={2}
+              />
               <input
                 placeholder="Rechercher (tickets, assets, utilisateurs)..."
                 type="search"
               />
               <span>Ctrl K</span>
             </label>
+          </div>
 
+          <div className="workspace-topbar-actions">
             <div className="workspace-ticket-menu" ref={ticketMenuRef}>
               <button
                 className="primary-button workspace-cta-button"
                 onClick={() => setIsTicketMenuOpen((current) => !current)}
                 type="button"
               >
-                Nouveau ticket
+                <Plus size={16} strokeWidth={2.2} />
+                <span>Nouveau ticket</span>
               </button>
 
               {isTicketMenuOpen ? (
@@ -138,7 +233,7 @@ export function AppShell({
                     onClick={handleCreateIncidentClick}
                     type="button"
                   >
-                    Créer un ticket d'incident
+                    Creer un ticket d'incident
                   </button>
 
                   <button
@@ -146,7 +241,7 @@ export function AppShell({
                     onClick={handleCreateRequestClick}
                     type="button"
                   >
-                    Créer un ticket de demande
+                    Creer un ticket de demande
                   </button>
                 </div>
               ) : null}
@@ -157,7 +252,8 @@ export function AppShell({
               onClick={onLogout}
               type="button"
             >
-              Fermer la session
+              <LogOut size={16} strokeWidth={2} />
+              <span>Fermer la session</span>
             </button>
           </div>
         </header>

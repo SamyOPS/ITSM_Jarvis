@@ -16,9 +16,7 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
     pathname === '/agent/incidents/new' ||
     pathname === '/agent/requests/new' ||
     pathname === '/agent/tickets' ||
-    pathname === '/auth' ||
-    pathname === '/login' ||
-    pathname === '/status'
+    pathname === '/login'
   ) {
     return routeMap.get(pathname) ?? null;
   }
