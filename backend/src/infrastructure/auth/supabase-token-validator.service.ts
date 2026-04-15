@@ -9,7 +9,15 @@ import { UserRole } from '../../domain/auth/user-role';
 import { getBackendRuntimeConfig } from '../config/app-config';
 
 type SupabaseUserProfileRow = {
+  first_name: string | null;
+  last_name: string | null;
   role: string;
+};
+
+type SupabaseResolvedProfile = {
+  firstName: string | null;
+  lastName: string | null;
+  role: UserRole | null;
 };
 
 @Injectable()
@@ -50,33 +58,29 @@ export class SupabaseTokenValidatorService {
       throw new UnauthorizedException('Supabase user payload is incomplete.');
     }
 
+    const profile = await this.fetchProfile(accessToken, payload.id);
+
     return {
       accessToken,
       email: payload.email,
+      firstName: profile.firstName,
       id: payload.id,
-      role: await this.resolveRole(accessToken, payload),
+      lastName: profile.lastName,
+      role:
+        profile.role ?? this.resolveRoleFallback(payload.app_metadata?.role),
     };
   }
 
-  private async resolveRole(
-    accessToken: string,
-    payload: SupabaseUserPayload,
-  ): Promise<UserRole> {
-    const profileRole = await this.fetchProfileRole(accessToken, payload.id);
-
-    if (profileRole) {
-      return profileRole;
-    }
-
-    return this.resolveRoleFallback(payload.app_metadata?.role);
-  }
-
-  private async fetchProfileRole(
+  private async fetchProfile(
     accessToken: string,
     userId: string | undefined,
-  ): Promise<UserRole | null> {
+  ): Promise<SupabaseResolvedProfile> {
     if (!userId) {
-      return null;
+      return {
+        firstName: null,
+        lastName: null,
+        role: null,
+      };
     }
 
     const config = getBackendRuntimeConfig();
@@ -84,11 +88,15 @@ export class SupabaseTokenValidatorService {
       config.supabaseAnonKey || config.supabaseServiceRoleKey;
 
     if (!config.supabaseUrl || !supabaseApiKey) {
-      return null;
+      return {
+        firstName: null,
+        lastName: null,
+        role: null,
+      };
     }
 
     const url = new URL(`${config.supabaseUrl}/rest/v1/users`);
-    url.searchParams.set('select', 'role');
+    url.searchParams.set('select', 'role,first_name,last_name');
     url.searchParams.set('id', `eq.${userId}`);
     url.searchParams.set('limit', '1');
 
@@ -115,9 +123,21 @@ export class SupabaseTokenValidatorService {
     }
 
     const rows = (await response.json()) as SupabaseUserProfileRow[];
-    const role = rows[0]?.role;
+    const row = rows[0];
 
-    return role ? this.resolveRoleFallback(role) : null;
+    if (!row) {
+      return {
+        firstName: null,
+        lastName: null,
+        role: null,
+      };
+    }
+
+    return {
+      firstName: row.first_name,
+      lastName: row.last_name,
+      role: row.role ? this.resolveRoleFallback(row.role) : null,
+    };
   }
 
   private resolveRoleFallback(role: string | undefined): UserRole {

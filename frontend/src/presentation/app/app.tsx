@@ -43,6 +43,13 @@ function renderPage({
   session,
   sessionState,
 }: RenderPageParams) {
+  if (
+    (sessionState === 'loading' || sessionState === 'restoring') &&
+    pathname !== '/login'
+  ) {
+    return <div className="app-loading-screen" />;
+  }
+
   const route = resolveRoute(pathname);
 
   if (!route) {

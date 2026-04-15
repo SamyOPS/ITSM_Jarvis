@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 
+import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 
 import type { UserRole } from '../../domain/auth/user-role';
@@ -36,6 +37,7 @@ import {
 import type { TicketSummarySnapshot } from '../../domain/ticketing/ticket-summary';
 
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
+import { fetchUserDirectory } from '../../infrastructure/api/auth-api';
 
 import {
   addTicketComment,
@@ -358,6 +360,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   const [tickets, setTickets] = useState<TicketSummarySnapshot[]>([]);
   const [ticketPage, setTicketPage] = useState(1);
+  const [userDirectory, setUserDirectory] = useState<AdminUserSummary[]>([]);
 
   const [incidentValidationErrors, setIncidentValidationErrors] =
     useState<IncidentValidationErrors>({});
@@ -390,7 +393,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   useEffect(() => {
     if (isDetailPage) {
       setSelectedTicketId(ticketId ?? null);
+      return;
     }
+
+    setSelectedTicketId(null);
   }, [isDetailPage, ticketId]);
 
   useEffect(() => {
@@ -463,6 +469,30 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadUserDirectory(): Promise<void> {
+      try {
+        const users = await fetchUserDirectory(session.accessToken);
+
+        if (!cancelled) {
+          setUserDirectory(users);
+        }
+      } catch {
+        if (!cancelled) {
+          setUserDirectory([]);
+        }
+      }
+    }
+
+    void loadUserDirectory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session.accessToken]);
 
   useEffect(() => {
     setTicketPage(1);
@@ -874,6 +904,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     () => new Map(catalog.groups.map((group) => [group.id, group])),
 
     [catalog.groups],
+  );
+
+  const usersById = useMemo(
+    () => new Map(userDirectory.map((user) => [user.id, user])),
+    [userDirectory],
   );
 
   function handleIncidentFieldChange(
@@ -2114,11 +2149,22 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                       : 'Non définie'}
                                 </td>
                                 <td>
-                                  {ticket.requestedForUserId ??
-                                    ticket.createdByUserId}
+                                  {formatKnownUserName(
+                                    usersById.get(
+                                      ticket.requestedForUserId ??
+                                        ticket.createdByUserId,
+                                    ),
+                                    ticket.requestedForUserId ??
+                                      ticket.createdByUserId,
+                                  )}
                                 </td>
                                 <td>
-                                  {ticket.assignedToUserId ?? 'Non assigné'}
+                                  {ticket.assignedToUserId
+                                    ? formatKnownUserName(
+                                        usersById.get(ticket.assignedToUserId),
+                                        ticket.assignedToUserId,
+                                      )
+                                    : 'Non assigné'}
                                 </td>
                                 <td>
                                   {categoriesById.get(ticket.categoryId)
@@ -3018,4 +3064,20 @@ function canDeleteTicketComment(
   }
 
   return role === 'DEMANDEUR' && currentUserId === authorUserId;
+}
+
+function formatKnownUserName(
+  user: AdminUserSummary | undefined,
+  fallback: string,
+): string {
+  if (!user) {
+    return fallback;
+  }
+
+  const fullName = [user.firstName, user.lastName]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+
+  return fullName || user.displayName || fallback;
 }
