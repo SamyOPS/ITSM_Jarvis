@@ -11,7 +11,6 @@ import {
   translateRequestType,
   translateTicketStatus,
   translateTicketType,
-  translateUserRole,
 } from '../../domain/i18n/ticketing-labels';
 
 import type { ReferentialCatalogSnapshot } from '../../domain/referentials/referential-catalog';
@@ -839,49 +838,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     };
   }, [selectedTicketId, session.accessToken]);
 
-  const selectedCategory = useMemo(() => {
-    const categoryId =
-      mode === 'INCIDENT' ? incidentDraft.categoryId : requestDraft.categoryId;
-
-    return catalog.categories.find((item) => item.id === categoryId) ?? null;
-  }, [
-    catalog.categories,
-
-    incidentDraft.categoryId,
-
-    mode,
-
-    requestDraft.categoryId,
-  ]);
-
-  const selectedChannel = useMemo(() => {
-    const channelId =
-      mode === 'INCIDENT' ? incidentDraft.channelId : requestDraft.channelId;
-
-    return catalog.channels.find((item) => item.id === channelId) ?? null;
-  }, [catalog.channels, incidentDraft.channelId, mode, requestDraft.channelId]);
-
-  const selectedCi = useMemo(() => {
-    const ciId = mode === 'INCIDENT' ? incidentDraft.ciId : requestDraft.ciId;
-
-    return catalog.cis.find((item) => item.id === ciId) ?? null;
-  }, [catalog.cis, incidentDraft.ciId, mode, requestDraft.ciId]);
-
-  const selectedService = useMemo(() => {
-    const serviceId =
-      mode === 'INCIDENT' ? incidentDraft.serviceId : requestDraft.serviceId;
-
-    return catalog.services.find((item) => item.id === serviceId) ?? null;
-  }, [catalog.services, incidentDraft.serviceId, mode, requestDraft.serviceId]);
-
-  const selectedPriority = useMemo(
-    () =>
-      catalog.priorities.find((item) => item.id === requestDraft.priorityId) ??
-      null,
-
-    [catalog.priorities, requestDraft.priorityId],
-  );
-
   const categoriesById = useMemo(
     () =>
       new Map(catalog.categories.map((category) => [category.id, category])),
@@ -1564,53 +1520,17 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       <section className="ticket-workspace-stage">
         {showCreationPanel ? (
           <section className="panel ticket-form-panel ticket-creation-panel">
-            <div className="ticket-workspace-section-heading">
-              <div>
-                <span className="panel-tag">Creation</span>
-
-                <h3>
-                  {mode === 'INCIDENT'
-                    ? 'Creer un incident'
-                    : 'Creer une demande'}
-                </h3>
-
-                <p>
-                  Utilise les formulaires existants dans une presentation plus
-                  orientee poste de travail.
-                </p>
-              </div>
-            </div>
-
-            <div className="ticket-form-summary ticket-workspace-kpis">
-              <article>
-                <span>Utilisateur connecte</span>
-
-                <strong>{session.user.email}</strong>
-              </article>
-
-              <article>
-                <span>Role</span>
-
-                <strong>{translateUserRole(session.user.role)}</strong>
-              </article>
-
-              <article>
-                <span>Mode actif</span>
-
-                <strong>{translateTicketType(mode)}</strong>
-              </article>
-
-              <article>
-                <span>Referentiels charges</span>
-
-                <strong>
-                  {catalog.categories.length +
-                    catalog.channels.length +
-                    catalog.cis.length +
-                    catalog.priorities.length +
-                    catalog.services.length}
-                </strong>
-              </article>
+            <div className="ticket-page-intro">
+              <h2>
+                {mode === 'INCIDENT'
+                  ? 'Creer un incident'
+                  : 'Creer une demande'}
+              </h2>
+              <p>
+                {mode === 'INCIDENT'
+                  ? 'Declare rapidement un incident avec les informations utiles au support.'
+                  : 'Saisis une demande claire avec les informations essentielles pour traitement.'}
+              </p>
             </div>
 
             {isLoading ? (
@@ -1620,7 +1540,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
             ) : loadErrorMessage ? (
               <p className="ticket-form-error">{loadErrorMessage}</p>
             ) : (
-              <div className="ticket-form-layout">
+              <div className="ticket-form-layout ticket-form-layout--single">
                 <form className="ticket-form-grid" onSubmit={handleSubmit}>
                   <label className="field ticket-form-span-2">
                     <span>Titre</span>
@@ -1940,90 +1860,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     </p>
                   ) : null}
                 </form>
-
-                <aside className="ticket-preview-card">
-                  <h3>
-                    {mode === 'INCIDENT'
-                      ? 'Preparation incident'
-                      : 'Preparation demande'}
-                  </h3>
-
-                  <p>
-                    {mode === 'INCIDENT'
-                      ? 'Le backend transformera impact et urgence en priorite metier.'
-                      : 'La demande utilise une priorite manuelle et un type de demande explicite.'}
-                  </p>
-
-                  <dl className="status-grid ticket-preview-grid">
-                    <div>
-                      <dt>Categorie</dt>
-
-                      <dd>{selectedCategory?.name ?? 'Non selectionnee'}</dd>
-                    </div>
-
-                    <div>
-                      <dt>Canal</dt>
-
-                      <dd>
-                        {selectedChannel
-                          ? translateChannel(selectedChannel.name)
-                          : 'Non selectionne'}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt>Service</dt>
-
-                      <dd>{selectedService?.name ?? 'Non selectionne'}</dd>
-                    </div>
-
-                    <div>
-                      <dt>Equipement concerne</dt>
-
-                      <dd>{selectedCi?.name ?? 'Non selectionne'}</dd>
-                    </div>
-
-                    {mode === 'INCIDENT' ? (
-                      <>
-                        <div>
-                          <dt>Impact</dt>
-
-                          <dd>
-                            {translateIncidentSeverity(incidentDraft.impact)}
-                          </dd>
-                        </div>
-
-                        <div>
-                          <dt>Urgence</dt>
-
-                          <dd>
-                            {translateIncidentSeverity(incidentDraft.urgency)}
-                          </dd>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div>
-                          <dt>Priorite</dt>
-
-                          <dd>
-                            {selectedPriority
-                              ? translatePriority(selectedPriority.name)
-                              : 'Non selectionnee'}
-                          </dd>
-                        </div>
-
-                        <div>
-                          <dt>Type de demande</dt>
-
-                          <dd>
-                            {translateRequestType(requestDraft.requestType)}
-                          </dd>
-                        </div>
-                      </>
-                    )}
-                  </dl>
-
+                <div className="ticket-created-stack">
                   {createdIncident ? (
                     <article className="ticket-created-card">
                       <span>Incident cree</span>
@@ -2075,7 +1912,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       </dl>
                     </article>
                   ) : null}
-                </aside>
+                </div>
               </div>
             )}
           </section>
