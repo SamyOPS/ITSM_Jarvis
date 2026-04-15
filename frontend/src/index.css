@@ -260,14 +260,29 @@ a {
   backdrop-filter: blur(16px);
 }
 
-.workspace-topbar-copy span {
-  display: inline-block;
-  margin-bottom: 6px;
-  font-size: 12px;
+.workspace-home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 0.84rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.workspace-home-link:hover,
+.workspace-home-link.is-active {
   color: var(--primary);
+}
+
+.workspace-home-link-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
 }
 
 .workspace-topbar-copy h1 {

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import {
   fetchCurrentUser,
@@ -20,11 +20,9 @@ import { AccessDeniedPage } from '../pages/access-denied-page';
 import { AdminPage } from '../pages/admin-page';
 import { AgentPage } from '../pages/agent-page';
 import { AppShell } from './app-shell';
-import { AuthPage } from '../pages/auth-page';
 import { HomePage } from '../pages/home-page';
 import { LoginPage } from '../pages/login-page';
 import { NotFoundPage } from '../pages/not-found-page';
-import { StatusPage } from '../pages/status-page';
 
 type SessionState = 'anonymous' | 'authenticated' | 'loading' | 'restoring';
 
@@ -32,7 +30,6 @@ type RenderPageParams = {
   authErrorMessage: string | null;
   isLoggingIn: boolean;
   onLogin: (email: string, password: string) => Promise<void>;
-  onLogout: () => void;
   pathname: string;
   session: AuthSessionSnapshot | null;
   sessionState: SessionState;
@@ -42,7 +39,6 @@ function renderPage({
   authErrorMessage,
   isLoggingIn,
   onLogin,
-  onLogout,
   pathname,
   session,
   sessionState,
@@ -108,14 +104,6 @@ function renderPage({
       ) : (
         <NotFoundPage />
       );
-    case '/auth':
-      return (
-        <AuthPage
-          onLogout={onLogout}
-          session={session}
-          sessionState={sessionState === 'loading' ? 'restoring' : sessionState}
-        />
-      );
     case '/login':
       return (
         <LoginPage
@@ -124,8 +112,6 @@ function renderPage({
           onSubmit={onLogin}
         />
       );
-    case '/status':
-      return <StatusPage />;
     default:
       return <NotFoundPage />;
   }
@@ -193,7 +179,7 @@ export function App() {
 
   useEffect(() => {
     if (pathname === '/login' && sessionState === 'authenticated' && session) {
-      navigateTo('/agent/tickets');
+      navigateTo('/');
     }
   }, [pathname, session, sessionState]);
 
@@ -213,6 +199,7 @@ export function App() {
       storeAuthSession(nextSession);
       setSession(nextSession);
       setSessionState('authenticated');
+      navigateTo('/');
     } catch (error) {
       setSession(null);
       setSessionState('anonymous');
@@ -243,7 +230,6 @@ export function App() {
         authErrorMessage,
         isLoggingIn,
         onLogin: handleLogin,
-        onLogout: handleLogout,
         pathname,
         session,
         sessionState,

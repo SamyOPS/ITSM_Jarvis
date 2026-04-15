@@ -5,9 +5,7 @@ export type RoutePath =
   | '/agent/incidents/new'
   | '/agent/requests/new'
   | '/agent/tickets'
-  | '/auth'
-  | '/login'
-  | '/status';
+  | '/login';
 
 export interface RouteDefinition {
   description: string;
@@ -17,50 +15,39 @@ export interface RouteDefinition {
 
 export const ROUTES: RouteDefinition[] = [
   {
-    description: 'Vue d’ensemble du socle frontend et de la session active.',
+    description: 'Vue d ensemble du socle frontend et de la session active.',
     path: '/',
     title: 'Accueil',
   },
   {
     description:
-      'Contrôle de l’authentification Supabase et des rôles applicatifs.',
-    path: '/auth',
-    title: 'Sécurité',
-  },
-  {
-    description:
-      'Espace de travail ticketing réservé aux utilisateurs authentifiés.',
+      'Espace de travail ticketing reserve aux utilisateurs authentifies.',
     path: '/agent',
     title: 'Tickets',
   },
   {
-    description: 'Création d’un ticket de type incident.',
+    description: 'Creation d un ticket de type incident.',
     path: '/agent/incidents/new',
-    title: 'Créer un incident',
+    title: 'Creer un incident',
   },
   {
-    description: 'Création d’un ticket de type demande.',
+    description: 'Creation d un ticket de type demande.',
     path: '/agent/requests/new',
-    title: 'Créer une demande',
+    title: 'Creer une demande',
   },
   {
-    description: 'Liste, recherche et détail des tickets existants.',
+    description: 'Liste, recherche et detail des tickets existants.',
     path: '/agent/tickets',
     title: 'Liste des tickets',
   },
   {
-    description: 'Administration des référentiels et des paramètres métier.',
+    description: 'Administration des referentiels et des parametres metier.',
     path: '/admin',
     title: 'Administration',
   },
   {
-    description: 'Connexion, déconnexion et restauration de session.',
+    description: 'Connexion a la plateforme.',
     path: '/login',
     title: 'Connexion',
-  },
-  {
-    description: 'Vérification technique du lien entre frontend et backend.',
-    path: '/status',
-    title: 'Supervision',
   },
 ];

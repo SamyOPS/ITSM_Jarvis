@@ -28,6 +28,7 @@ export function AppShell({
   const activeRoute = ROUTES.find((route) => route.path === pathname) ?? null;
   const isWorkspaceShell = isAuthenticated;
   const isLoginShell = pathname === '/login';
+  const isHomeRoute = pathname === '/';
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent): void {
@@ -69,7 +70,7 @@ export function AppShell({
             <h1>Portail de ticketing ITSM</h1>
             <p className="lead">
               Centre de support PME pour incidents, demandes et supervision des
-              accès. Interface de travail unifiée pour demandeurs, agents et
+              acces. Interface de travail unifiee pour demandeurs, agents et
               administrateurs.
             </p>
           </div>
@@ -145,7 +146,27 @@ export function AppShell({
       <div className="workspace-main">
         <header className="workspace-topbar">
           <div className="workspace-topbar-copy">
-            <span>{activeRoute?.title ?? 'Workspace'}</span>
+            <button
+              className={
+                isHomeRoute
+                  ? 'workspace-home-link is-active'
+                  : 'workspace-home-link'
+              }
+              onClick={() => navigateTo('/')}
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                className="workspace-home-link-icon"
+                viewBox="0 0 16 16"
+              >
+                <path
+                  d="M2.5 7.1 8 2.75l5.5 4.35v5.4a.75.75 0 0 1-.75.75h-3.5v-3.1a1.25 1.25 0 0 0-2.5 0v3.1h-3.5a.75.75 0 0 1-.75-.75z"
+                  fill="currentColor"
+                />
+              </svg>
+              <span>Accueil</span>
+            </button>
             <h1>{activeRoute?.description ?? 'Portail de travail Jarvis.'}</h1>
           </div>
 
@@ -174,7 +195,7 @@ export function AppShell({
                     onClick={handleCreateIncidentClick}
                     type="button"
                   >
-                    Créer un ticket d'incident
+                    Creer un ticket d'incident
                   </button>
 
                   <button
@@ -182,7 +203,7 @@ export function AppShell({
                     onClick={handleCreateRequestClick}
                     type="button"
                   >
-                    Créer un ticket de demande
+                    Creer un ticket de demande
                   </button>
                 </div>
               ) : null}

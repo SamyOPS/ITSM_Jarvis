@@ -1559,53 +1559,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     }
   }
 
-  const pageTitle = isIncidentCreatePage
-    ? 'Créer un incident'
-    : isRequestCreatePage
-      ? 'Créer une demande'
-      : 'Liste des tickets';
-
-  const pageDescription = isIncidentCreatePage
-    ? 'Déclare un incident avec qualification métier, impact, urgence et rattachement aux référentiels existants.'
-    : isRequestCreatePage
-      ? 'Enregistre une demande avec priorité manuelle, type de demande et rattachement au catalogue existant.'
-      : 'Recherche, filtre, consulte et traite les tickets existants dans une vue dédiée.';
-
-  const heroActionLabel = isListPage ? 'Créer un incident' : 'Voir la liste';
-
-  function handleHeroAction(): void {
-    if (isListPage) {
-      navigateTo('/agent/incidents/new');
-      return;
-    }
-
-    navigateTo('/agent/tickets');
-  }
-
   return (
     <section className="ticket-page-shell">
-      {!showListPanel ? (
-        <section className="ticket-workspace-topbar ticket-page-hero">
-          <div className="ticket-workspace-topbar-copy">
-            <span className="panel-tag">Workspace ticketing</span>
-
-            <h2>{pageTitle}</h2>
-
-            <p>{pageDescription}</p>
-          </div>
-
-          <div className="ticket-workspace-topbar-actions">
-            <button
-              className="primary-button ticket-workspace-create-button"
-              onClick={handleHeroAction}
-              type="button"
-            >
-              {heroActionLabel}
-            </button>
-          </div>
-        </section>
-      ) : null}
-
       <section className="ticket-workspace-stage">
         {showCreationPanel ? (
           <section className="panel ticket-form-panel ticket-creation-panel">
