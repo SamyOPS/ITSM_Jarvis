@@ -12,6 +12,7 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
   if (
     pathname === '/' ||
     pathname === '/admin' ||
+    pathname === '/admin/users' ||
     pathname === '/agent' ||
     pathname === '/agent/incidents/new' ||
     pathname === '/agent/requests/new' ||

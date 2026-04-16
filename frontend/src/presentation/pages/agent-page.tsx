@@ -911,6 +911,27 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     [userDirectory],
   );
 
+  const technicians = useMemo(
+    () =>
+      userDirectory.filter(
+        (user) =>
+          user.isActive &&
+          Boolean(user.groupId) &&
+          (user.role === 'AGENT' || user.role === 'ADMIN'),
+      ),
+    [userDirectory],
+  );
+
+  const assignableTechnicians = useMemo(
+    () =>
+      technicians.filter(
+        (technician) =>
+          !assignmentDraft.assignmentGroupId ||
+          technician.groupId === assignmentDraft.assignmentGroupId,
+      ),
+    [assignmentDraft.assignmentGroupId, technicians],
+  );
+
   function handleIncidentFieldChange(
     field: keyof IncidentDraftState,
 
@@ -968,11 +989,41 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     value: string,
   ): void {
-    setAssignmentDraft((currentDraft) => ({
-      ...currentDraft,
+    setAssignmentDraft((currentDraft) => {
+      if (field === 'assignedToUserId') {
+        const selectedTechnician = usersById.get(value);
 
-      [field]: value,
-    }));
+        return {
+          ...currentDraft,
+
+          assignedToUserId: value,
+
+          assignmentGroupId:
+            selectedTechnician?.groupId ?? currentDraft.assignmentGroupId,
+        };
+      }
+
+      if (field === 'assignmentGroupId') {
+        const selectedTechnician = usersById.get(currentDraft.assignedToUserId);
+
+        return {
+          ...currentDraft,
+
+          assignedToUserId:
+            selectedTechnician?.groupId === value
+              ? currentDraft.assignedToUserId
+              : '',
+
+          assignmentGroupId: value,
+        };
+      }
+
+      return {
+        ...currentDraft,
+
+        [field]: value,
+      };
+    });
 
     setDetailActionErrorMessage(null);
 
@@ -2844,9 +2895,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           </label>
 
                           <label className="field">
-                            <span>Id agent</span>
+                            <span>Technicien</span>
 
-                            <input
+                            <select
                               onChange={(event) =>
                                 handleAssignmentFieldChange(
                                   'assignedToUserId',
@@ -2854,9 +2905,22 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   event.target.value,
                                 )
                               }
-                              placeholder="Optionnel"
                               value={assignmentDraft.assignedToUserId}
-                            />
+                            >
+                              <option value="">Aucun technicien</option>
+
+                              {assignableTechnicians.map((technician) => (
+                                <option
+                                  key={technician.id}
+                                  value={technician.id}
+                                >
+                                  {formatKnownUserName(
+                                    technician,
+                                    technician.id,
+                                  )}
+                                </option>
+                              ))}
+                            </select>
                           </label>
 
                           <button

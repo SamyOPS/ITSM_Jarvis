@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CreateAdminUserUseCase } from '../../../application/auth/use-cases/create-admin-user.use-case';
 import { GetAuthenticatedUserUseCase } from '../../../application/auth/use-cases/get-authenticated-user.use-case';
 import { GetAuthSetupUseCase } from '../../../application/auth/use-cases/get-auth-setup.use-case';
 import { ListAdminUsersUseCase } from '../../../application/auth/use-cases/list-admin-users.use-case';
+import { UpdateAdminUserUseCase } from '../../../application/auth/use-cases/update-admin-user.use-case';
 import { UserRole } from '../../../domain/auth/user-role';
 import { AuthController } from './auth.controller';
 
@@ -14,6 +16,12 @@ describe('AuthController', () => {
       providers: [
         GetAuthSetupUseCase,
         {
+          provide: CreateAdminUserUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
           provide: GetAuthenticatedUserUseCase,
           useValue: {
             execute: jest.fn(),
@@ -21,6 +29,12 @@ describe('AuthController', () => {
         },
         {
           provide: ListAdminUsersUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
+          provide: UpdateAdminUserUseCase,
           useValue: {
             execute: jest.fn(),
           },
@@ -90,6 +104,7 @@ describe('AuthController', () => {
     const users = [
       {
         displayName: 'Alice Martin',
+        email: 'alice@example.com',
         firstName: 'Alice',
         groupId: 'group-1',
         id: 'user-1',
@@ -103,11 +118,17 @@ describe('AuthController', () => {
     } as unknown as ListAdminUsersUseCase;
 
     controller = new AuthController(
+      {
+        execute: jest.fn(),
+      } as unknown as CreateAdminUserUseCase,
       new GetAuthSetupUseCase(),
       {
         execute: jest.fn(),
       } as unknown as GetAuthenticatedUserUseCase,
       useCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserUseCase,
     );
 
     await expect(controller.listAdminUsers()).resolves.toEqual(users);
@@ -117,6 +138,7 @@ describe('AuthController', () => {
     const users = [
       {
         displayName: 'Alice Martin',
+        email: 'alice@example.com',
         firstName: 'Alice',
         groupId: 'group-1',
         id: 'user-1',
@@ -130,11 +152,17 @@ describe('AuthController', () => {
     } as unknown as ListAdminUsersUseCase;
 
     controller = new AuthController(
+      {
+        execute: jest.fn(),
+      } as unknown as CreateAdminUserUseCase,
       new GetAuthSetupUseCase(),
       {
         execute: jest.fn(),
       } as unknown as GetAuthenticatedUserUseCase,
       useCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserUseCase,
     );
 
     await expect(controller.listUsers()).resolves.toEqual(users);
