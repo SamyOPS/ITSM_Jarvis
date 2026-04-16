@@ -2190,14 +2190,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 <td>{formatTicketDate(ticket.createdAt)}</td>
                                 <td>{formatTicketDate(ticket.createdAt)}</td>
                                 <td>
-                                  {ticket.priorityName
-                                    ? translatePriority(ticket.priorityName)
-                                    : prioritiesById.get(ticket.priorityId)
-                                      ? translatePriority(
-                                          prioritiesById.get(ticket.priorityId)!
-                                            .name,
-                                        )
-                                      : 'Non définie'}
+                                  {renderPriorityBadge(ticket, prioritiesById)}
                                 </td>
                                 <td>
                                   {formatKnownUserName(
@@ -3144,4 +3137,24 @@ function formatKnownUserName(
     .trim();
 
   return fullName || user.displayName || fallback;
+}
+
+function renderPriorityBadge(
+  ticket: TicketSummarySnapshot,
+  prioritiesById: Map<string, { name: string }>,
+) {
+  const priorityName =
+    ticket.priorityName ?? prioritiesById.get(ticket.priorityId)?.name ?? null;
+
+  if (!priorityName) {
+    return <span className="ticket-priority-badge">Non definie</span>;
+  }
+
+  return (
+    <span
+      className={`ticket-priority-badge ticket-priority-badge--${priorityName.toLowerCase()}`}
+    >
+      {translatePriority(priorityName)}
+    </span>
+  );
 }

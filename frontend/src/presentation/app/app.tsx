@@ -23,6 +23,7 @@ import { AppShell } from './app-shell';
 import { HomePage } from '../pages/home-page';
 import { LoginPage } from '../pages/login-page';
 import { NotFoundPage } from '../pages/not-found-page';
+import { ReportsPage } from '../pages/reports-page';
 import { UsersPage } from '../pages/users-page';
 
 type SessionState = 'anonymous' | 'authenticated' | 'loading' | 'restoring';
@@ -114,6 +115,8 @@ function renderPage({
       ) : (
         <NotFoundPage />
       );
+    case '/reports':
+      return session ? <ReportsPage session={session} /> : <NotFoundPage />;
     case '/login':
       return (
         <LoginPage

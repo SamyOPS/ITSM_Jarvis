@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
+  BarChart3,
   FileText,
   House,
   LayoutDashboard,
@@ -35,6 +36,7 @@ const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/agent/incidents/new': AlertTriangle,
   '/agent/requests/new': FileText,
   '/agent/tickets': Ticket,
+  '/reports': BarChart3,
 };
 
 function isRouteActive(routePath: RoutePath, pathname: string): boolean {

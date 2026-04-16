@@ -7,6 +7,7 @@ import { RolesGuard } from './http/auth/roles.guard';
 import { HealthController } from './http/health/health.controller';
 import { AdminReferentialsController } from './http/referentials/admin-referentials.controller';
 import { ReferentialsController } from './http/referentials/referentials.controller';
+import { ReportsController } from './http/reports/reports.controller';
 import { TicketsController } from './http/tickets/tickets.controller';
 
 @Module({
@@ -16,6 +17,7 @@ import { TicketsController } from './http/tickets/tickets.controller';
     AuthController,
     ReferentialsController,
     AdminReferentialsController,
+    ReportsController,
     TicketsController,
   ],
   providers: [BearerAuthGuard, RolesGuard, Reflector],
