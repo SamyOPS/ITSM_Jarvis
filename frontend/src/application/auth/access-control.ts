@@ -9,6 +9,7 @@ const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
   '/agent/incidents/new': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/agent/requests/new': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/agent/tickets': ['DEMANDEUR', 'AGENT', 'ADMIN'],
+  '/reports': ['AGENT', 'ADMIN'],
 };
 
 export function canAccessRoute(
@@ -36,6 +37,7 @@ export function getVisibleRoutes(
       '/agent/incidents/new',
       '/agent/requests/new',
       '/agent/tickets',
+      '/reports',
       '/admin',
       '/admin/users',
       '/login',

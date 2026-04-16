@@ -19,6 +19,7 @@ import {
   CreateTicketCommentRecord,
   TicketCommentWriteRepository,
 } from '../../application/ticketing/repositories/ticket-comment-write.repository';
+import { TicketHistoryReadRepository } from '../../application/ticketing/repositories/ticket-history-read.repository';
 import {
   SearchTicketsFilters,
   TicketReadRepository,
@@ -42,6 +43,8 @@ import { RequestType } from '../../domain/ticketing/request-type';
 import { TicketComment } from '../../domain/ticketing/ticket-comment';
 import { Ticket } from '../../domain/ticketing/ticket';
 import { TicketDetail } from '../../domain/ticketing/ticket-detail';
+import { TicketHistoryEntry } from '../../domain/ticketing/ticket-history-entry';
+import { TicketHistoryEventType } from '../../domain/ticketing/ticket-history-event-type';
 import { TicketStatus } from '../../domain/ticketing/ticket-status';
 import { TicketSummary } from '../../domain/ticketing/ticket-summary';
 import { TicketType } from '../../domain/ticketing/ticket-type';
@@ -104,6 +107,15 @@ type SupabaseTicketAttachmentRow = {
   uploaded_by_user_id: string;
 };
 
+type SupabaseTicketHistoryRow = {
+  actor_user_id: string;
+  created_at: string;
+  event_type: TicketHistoryEventType;
+  id: string;
+  payload: Record<string, unknown> | null;
+  ticket_id: string;
+};
+
 type SupabasePriorityRow = {
   id: string;
   name: PriorityName;
@@ -122,7 +134,8 @@ export class SupabaseTicketWriteRepository
     TicketCommentReadRepository,
     TicketCommentWriteRepository,
     TicketAttachmentReadRepository,
-    TicketAttachmentWriteRepository
+    TicketAttachmentWriteRepository,
+    TicketHistoryReadRepository
 {
   async getTicketAttachmentById(
     ticketId: string,
@@ -558,6 +571,43 @@ export class SupabaseTicketWriteRepository
         ticket_id: record.ticketId,
       },
       false,
+    );
+  }
+
+  async listTicketHistoryEntries({
+    ticketIds,
+  }: {
+    ticketIds: string[];
+  }): Promise<TicketHistoryEntry[]> {
+    if (ticketIds.length === 0) {
+      return [];
+    }
+
+    const query = new URLSearchParams({
+      order: 'created_at.asc',
+      select: 'id,ticket_id,actor_user_id,event_type,payload,created_at',
+      ticket_id: `in.(${ticketIds.join(',')})`,
+    });
+
+    const response = await this.send(
+      `ticket_history?${query.toString()}`,
+      'GET',
+    );
+    const body = (await response.json()) as
+      | SupabaseTicketHistoryRow[]
+      | SupabaseTicketHistoryRow
+      | null;
+
+    return normalizeRows(body).map(
+      (entry) =>
+        new TicketHistoryEntry(
+          entry.id,
+          entry.ticket_id,
+          entry.actor_user_id,
+          entry.event_type,
+          entry.payload,
+          entry.created_at,
+        ),
     );
   }
 
