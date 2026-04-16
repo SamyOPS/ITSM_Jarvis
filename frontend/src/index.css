@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
+
 :root {
   font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -2426,3 +2428,301 @@ a {
   margin: 0;
   font-size: 0.95rem;
 }
+
+.referentials-panel {
+  gap: 18px;
+}
+
+.referentials-intro {
+  display: grid;
+  gap: 3px;
+}
+
+.referentials-intro h2 {
+  margin: 0 0 3px;
+  font-size: 1.08rem;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.referentials-intro p {
+  margin: 0;
+  max-width: 62rem;
+  font-size: 0.93rem;
+  color: var(--text-muted);
+}
+
+.referentials-summary {
+  display: none;
+}
+
+.referentials-intro h2 {
+  margin: 0 0 4px;
+  font-size: 1.16rem;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.referentials-intro p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+/* Sidebar refinement: reference-aligned */
+.app-shell--workspace .workspace-sidebar {
+  width: 312px;
+  gap: 0;
+  padding: 22px 16px 22px;
+  background: linear-gradient(180deg, #112233 0%, #16283d 100%);
+  color: #e7edf6;
+  font-family: 'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.app-shell--workspace .workspace-sidebar.is-collapsed {
+  width: 72px;
+  padding: 14px 8px 18px;
+}
+
+.workspace-sidebar-header {
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.workspace-sidebar-brand-copy {
+  gap: 3px;
+}
+
+.workspace-sidebar-brand-copy strong,
+.workspace-sidebar-brand-copy span,
+.workspace-sidebar-section-label,
+.workspace-nav-link,
+.workspace-sidebar-footer {
+  font-family: 'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.workspace-sidebar-brand-copy strong {
+  font-size: 1.68rem;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 0.97;
+}
+
+.workspace-sidebar-brand-copy span {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(231, 237, 246, 0.72);
+}
+
+.workspace-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e7edf6;
+  transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.workspace-sidebar-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.workspace-sidebar-toggle:hover {
+  color: #9ecbff;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(158, 203, 255, 0.35);
+}
+
+.workspace-sidebar-search {
+  margin: 0 8px 18px;
+}
+
+.workspace-sidebar-search-shell {
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(231, 237, 246, 0.68);
+}
+
+.workspace-sidebar-search-shell svg {
+  width: 18px;
+  height: 18px;
+}
+
+.workspace-sidebar-search-shell input {
+  font-size: 13px;
+}
+
+.workspace-sidebar-search-shell input::placeholder {
+  color: rgba(230, 238, 248, 0.55);
+}
+
+.workspace-sidebar-section-label {
+  margin: 0 8px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(230, 238, 248, 0.55);
+}
+
+.workspace-sidebar-nav {
+  gap: 8px;
+  padding: 0 6px 12px;
+}
+
+.workspace-nav-link {
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 11px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #e7edf6;
+  transition: color 180ms ease, border-color 180ms ease, background-color 180ms ease;
+}
+
+.workspace-nav-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #9ecbff;
+}
+
+.workspace-nav-link.is-active {
+  background: rgba(46, 125, 233, 0.22);
+  border-color: rgba(46, 125, 233, 0.35);
+  border-radius: 14px;
+  color: #ffffff;
+}
+
+.workspace-nav-link-icon {
+  width: 22px;
+  height: 22px;
+  color: currentColor;
+}
+
+.workspace-nav-link-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.workspace-nav-link-label {
+  font-size: 0.99rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: currentColor;
+}
+
+.workspace-sidebar-footer {
+  margin-top: 18px;
+  padding: 14px 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.workspace-sidebar-footer strong {
+  font-size: 0.94rem;
+}
+
+.workspace-sidebar-footer span {
+  font-size: 0.85rem;
+  color: rgba(231, 237, 246, 0.72);
+}
+
+.workspace-home-link {
+  gap: 8px;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.workspace-home-link-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.workspace-sidebar.is-collapsed .workspace-sidebar-header {
+  display: grid;
+  justify-items: center;
+  width: 44px;
+  margin: 0 auto 14px;
+}
+
+.workspace-sidebar.is-collapsed .workspace-sidebar-toggle {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  margin: 0;
+}
+
+.workspace-sidebar.is-collapsed .workspace-sidebar-nav {
+  width: 44px;
+  margin: 0 auto;
+  padding: 0 0 10px;
+  align-items: center;
+}
+
+.workspace-sidebar.is-collapsed .workspace-nav-link {
+  width: 44px;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  padding: 10px 8px;
+}
+
+.workspace-sidebar.is-collapsed .workspace-nav-link-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.workspace-sidebar.is-collapsed .workspace-nav-link-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+/* Hover polish: blue text and icon states */
+.workspace-nav-link,
+.workspace-nav-link-icon,
+.workspace-nav-link-label,
+.workspace-home-link,
+.workspace-home-link-icon,
+.workspace-cta-button,
+.workspace-logout-button,
+.workspace-ticket-menu-item {
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.workspace-nav-link:hover .workspace-nav-link-icon,
+.workspace-nav-link:hover .workspace-nav-link-label,
+.workspace-home-link:hover .workspace-home-link-icon,
+.workspace-home-link:hover span,
+.workspace-home-link.is-active .workspace-home-link-icon,
+.workspace-home-link.is-active span {
+  color: #9ecbff;
+}
+
+.workspace-cta-button:hover,
+.workspace-cta-button:hover span,
+.workspace-cta-button:hover svg,
+.workspace-logout-button:hover,
+.workspace-logout-button:hover span,
+.workspace-logout-button:hover svg,
+.workspace-ticket-menu-item:hover {
+  color: #2b6de9;
+}
+
+.workspace-ticket-menu-item:hover {
+  background: #f2f7ff;
+  border-color: rgba(158, 203, 255, 0.45);
+}
+
