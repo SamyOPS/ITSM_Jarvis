@@ -2726,3 +2726,278 @@ a {
   border-color: rgba(158, 203, 255, 0.45);
 }
 
+
+
+/* Shell refinements: compact sidebar and profile menu */
+.app-shell--workspace .workspace-sidebar {
+  width: 286px;
+  padding: 18px 14px 20px;
+}
+
+.app-shell--workspace .workspace-sidebar.is-collapsed {
+  width: 74px;
+  padding: 14px 8px 18px;
+}
+
+.workspace-sidebar-header {
+  margin-bottom: 12px;
+}
+
+.workspace-sidebar-divider {
+  height: 1px;
+  margin: 0 8px 16px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.workspace-sidebar-search {
+  margin: 0 8px 18px;
+}
+
+.workspace-sidebar-nav {
+  padding: 0 6px 14px;
+}
+
+.workspace-sidebar.is-collapsed .workspace-sidebar-divider {
+  width: 44px;
+  margin: 0 auto 14px;
+}
+
+.workspace-topbar-actions {
+  gap: 12px;
+}
+
+.workspace-profile-menu {
+  position: relative;
+}
+
+.workspace-profile-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px 5px 5px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #17335f;
+  box-shadow: 0 12px 28px rgba(26, 44, 78, 0.08);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.workspace-profile-trigger:hover {
+  transform: translateY(-1px);
+  border-color: rgba(25, 86, 179, 0.24);
+  box-shadow: 0 16px 34px rgba(26, 44, 78, 0.12);
+}
+
+.workspace-profile-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2da3d8 0%, #1e83c0 100%);
+  color: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  flex: none;
+}
+
+.workspace-profile-avatar.is-large {
+  width: 42px;
+  height: 42px;
+}
+
+.workspace-profile-copy {
+  display: grid;
+  gap: 1px;
+  text-align: left;
+}
+
+.workspace-profile-copy strong {
+  font-size: 0.92rem;
+  line-height: 1.1;
+}
+
+.workspace-profile-copy span {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.workspace-profile-trigger svg:last-child {
+  color: #7a8da9;
+  transition: transform 160ms ease;
+}
+
+.workspace-profile-trigger svg.is-open {
+  transform: rotate(180deg);
+}
+
+.workspace-profile-menu-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 14px;
+  width: 280px;
+  padding: 14px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 20px 42px rgba(26, 44, 78, 0.16);
+}
+
+.workspace-profile-menu-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.workspace-profile-menu-header div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workspace-profile-menu-header strong {
+  color: #17335f;
+  font-size: 0.96rem;
+}
+
+.workspace-profile-menu-header span:last-child {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  word-break: break-word;
+}
+
+.workspace-profile-menu-list {
+  display: grid;
+  gap: 8px;
+}
+
+.workspace-profile-menu-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 12px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: #17335f;
+  text-align: left;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+.workspace-profile-menu-item:hover {
+  color: #2b6de9;
+  background: #f4f8ff;
+  border-color: rgba(43, 109, 233, 0.14);
+}
+
+.workspace-profile-menu-item svg {
+  flex: none;
+}
+
+.workspace-profile-menu-divider {
+  height: 1px;
+  margin: 2px 0;
+  background: rgba(207, 216, 234, 0.9);
+}
+
+.workspace-profile-menu-item.is-danger {
+  color: #d92d20;
+}
+
+.workspace-profile-menu-item.is-danger:hover {
+  color: #c01c11;
+  background: #fff1f1;
+  border-color: rgba(217, 45, 32, 0.14);
+}
+
+@media (max-width: 1080px) {
+  .workspace-profile-copy {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace-profile-menu-popover {
+    width: min(100vw - 32px, 280px);
+  }
+}
+
+
+/* Profile menu expansion and hover color alignment */
+.workspace-cta-button:hover,
+.workspace-cta-button:hover span,
+.workspace-cta-button:hover svg,
+.workspace-profile-menu-item:hover,
+.workspace-profile-menu-item:hover span,
+.workspace-profile-menu-item:hover svg {
+  color: #2b6de9;
+}
+
+.workspace-profile-menu-item.is-danger:hover,
+.workspace-profile-menu-item.is-danger:hover span,
+.workspace-profile-menu-item.is-danger:hover svg {
+  color: #c01c11;
+}
+
+.workspace-cta-button:hover,
+.workspace-profile-menu-item:hover {
+  background: #f2f7ff;
+  border-color: rgba(158, 203, 255, 0.45);
+}
+
+.workspace-profile-menu-item svg,
+.workspace-profile-menu-item span {
+  color: currentColor;
+}
+
+.workspace-profile-menu-item--switch {
+  justify-content: space-between;
+}
+
+.workspace-profile-menu-item-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.workspace-profile-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 34px;
+  height: 20px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(122, 141, 169, 0.28);
+  transition: background-color 160ms ease;
+}
+
+.workspace-profile-switch-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #7a8da9;
+  box-shadow: 0 1px 2px rgba(15, 35, 62, 0.18);
+}
+
+.workspace-profile-menu-item:hover .workspace-profile-switch {
+  background: rgba(158, 203, 255, 0.28);
+}
+
+.workspace-profile-menu-item:hover .workspace-profile-switch-thumb {
+  background: #9ecbff;
+}

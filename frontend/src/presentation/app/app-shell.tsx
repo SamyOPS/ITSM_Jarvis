@@ -1,15 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
+  ChevronDown,
   FileText,
   House,
   LayoutDashboard,
   LogOut,
   Menu,
+  Moon,
   Plus,
   Search,
+  Settings,
   Shield,
+  SlidersHorizontal,
   Ticket,
+  User,
   Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -51,6 +56,36 @@ function isRouteActive(routePath: RoutePath, pathname: string): boolean {
   return pathname === routePath;
 }
 
+function getUserInitials(session: AuthSessionSnapshot | null): string {
+  if (!session) {
+    return 'VI';
+  }
+
+  const initials = [session.user.firstName, session.user.lastName]
+    .filter(Boolean)
+    .map((value) => value!.trim().charAt(0).toUpperCase())
+    .join('');
+
+  if (initials) {
+    return initials.slice(0, 2);
+  }
+
+  return session.user.email.slice(0, 2).toUpperCase();
+}
+
+function getUserDisplayName(session: AuthSessionSnapshot | null): string {
+  if (!session) {
+    return 'Session locale';
+  }
+
+  const fullName = [session.user.firstName, session.user.lastName]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+
+  return fullName || session.user.email;
+}
+
 export function AppShell({
   children,
   isAuthenticated,
@@ -60,7 +95,9 @@ export function AppShell({
 }: AppShellProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isTicketMenuOpen, setIsTicketMenuOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const ticketMenuRef = useRef<HTMLDivElement | null>(null);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const visibleRoutePaths = getVisibleRoutes(session);
   const visibleRoutes = ROUTES.filter((route) =>
     visibleRoutePaths.includes(route.path),
@@ -68,14 +105,19 @@ export function AppShell({
   const isWorkspaceShell = isAuthenticated;
   const isLoginShell = pathname === '/login';
   const isHomeRoute = pathname === '/';
+  const userInitials = useMemo(() => getUserInitials(session), [session]);
+  const userDisplayName = useMemo(() => getUserDisplayName(session), [session]);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent): void {
-      if (
-        ticketMenuRef.current &&
-        !ticketMenuRef.current.contains(event.target as Node)
-      ) {
+      const target = event.target as Node;
+
+      if (ticketMenuRef.current && !ticketMenuRef.current.contains(target)) {
         setIsTicketMenuOpen(false);
+      }
+
+      if (profileMenuRef.current && !profileMenuRef.current.contains(target)) {
+        setIsProfileMenuOpen(false);
       }
     }
 
@@ -94,6 +136,11 @@ export function AppShell({
   function handleCreateRequestClick(): void {
     setIsTicketMenuOpen(false);
     navigateTo('/agent/requests/new');
+  }
+
+  function handleLogoutClick(): void {
+    setIsProfileMenuOpen(false);
+    onLogout();
   }
 
   if (isLoginShell) {
@@ -134,6 +181,8 @@ export function AppShell({
             <Menu size={18} />
           </button>
         </div>
+
+        <div className="workspace-sidebar-divider" />
 
         <label className="workspace-sidebar-search">
           <span className="workspace-sidebar-search-shell">
@@ -249,14 +298,94 @@ export function AppShell({
               ) : null}
             </div>
 
-            <button
-              className="secondary-button workspace-logout-button"
-              onClick={onLogout}
-              type="button"
-            >
-              <LogOut size={16} strokeWidth={2} />
-              <span>Fermer la session</span>
-            </button>
+            <div className="workspace-profile-menu" ref={profileMenuRef}>
+              <button
+                aria-label="Ouvrir le menu profil"
+                className="workspace-profile-trigger"
+                onClick={() => setIsProfileMenuOpen((current) => !current)}
+                type="button"
+              >
+                <span className="workspace-profile-avatar">{userInitials}</span>
+                <span className="workspace-profile-copy">
+                  <strong>{userDisplayName}</strong>
+                  <span>{session?.user.role ?? 'Utilisateur'}</span>
+                </span>
+                <ChevronDown
+                  className={isProfileMenuOpen ? 'is-open' : ''}
+                  size={16}
+                  strokeWidth={2}
+                />
+              </button>
+
+              {isProfileMenuOpen ? (
+                <div className="workspace-profile-menu-popover">
+                  <div className="workspace-profile-menu-header">
+                    <span className="workspace-profile-avatar is-large">
+                      {userInitials}
+                    </span>
+                    <div>
+                      <strong>{userDisplayName}</strong>
+                      <span>
+                        {session?.user.email ?? 'vision@jarvis.local'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="workspace-profile-menu-list">
+                    <button
+                      className="workspace-profile-menu-item"
+                      type="button"
+                    >
+                      <User size={16} strokeWidth={2} />
+                      <span>Profil</span>
+                    </button>
+
+                    <button
+                      className="workspace-profile-menu-item"
+                      type="button"
+                    >
+                      <Settings size={16} strokeWidth={2} />
+                      <span>Parametres</span>
+                    </button>
+
+                    <button
+                      className="workspace-profile-menu-item"
+                      type="button"
+                    >
+                      <SlidersHorizontal size={16} strokeWidth={2} />
+                      <span>Preferences</span>
+                    </button>
+
+                    <button
+                      className="workspace-profile-menu-item workspace-profile-menu-item--switch"
+                      type="button"
+                    >
+                      <span className="workspace-profile-menu-item-copy">
+                        <Moon size={16} strokeWidth={2} />
+                        <span>Mode nuit</span>
+                      </span>
+                      <span
+                        className="workspace-profile-switch"
+                        aria-hidden="true"
+                      >
+                        <span className="workspace-profile-switch-thumb" />
+                      </span>
+                    </button>
+
+                    <div className="workspace-profile-menu-divider" />
+
+                    <button
+                      className="workspace-profile-menu-item is-danger"
+                      onClick={handleLogoutClick}
+                      type="button"
+                    >
+                      <LogOut size={16} strokeWidth={2} />
+                      <span>Fermer la session</span>
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </header>
 
