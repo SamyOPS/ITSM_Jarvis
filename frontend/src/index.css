@@ -2474,7 +2474,7 @@ a {
   width: 312px;
   gap: 0;
   padding: 22px 16px 22px;
-  background: linear-gradient(180deg, #0f1f2e 0%, #14263a 100%);
+  background: linear-gradient(180deg, #112233 0%, #16283d 100%);
   color: #e7edf6;
   font-family: 'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
@@ -2503,10 +2503,10 @@ a {
 }
 
 .workspace-sidebar-brand-copy strong {
-  font-size: 1.78rem;
+  font-size: 1.68rem;
   font-weight: 700;
-  letter-spacing: -0.05em;
-  line-height: 0.96;
+  letter-spacing: -0.045em;
+  line-height: 0.97;
 }
 
 .workspace-sidebar-brand-copy span {
@@ -2600,6 +2600,7 @@ a {
 .workspace-nav-link.is-active {
   background: rgba(46, 125, 233, 0.22);
   border-color: rgba(46, 125, 233, 0.35);
+  border-radius: 14px;
   color: #ffffff;
 }
 
