@@ -1,6 +1,7 @@
 export type RoutePath =
   | '/'
   | '/admin'
+  | '/admin/users'
   | '/agent'
   | '/agent/incidents/new'
   | '/agent/requests/new'
@@ -44,6 +45,11 @@ export const ROUTES: RouteDefinition[] = [
     description: 'Administration des referentiels et des parametres metier.',
     path: '/admin',
     title: 'Administration',
+  },
+  {
+    description: 'Liste des utilisateurs et de leurs roles.',
+    path: '/admin/users',
+    title: 'Utilisateurs',
   },
   {
     description: 'Connexion a la plateforme.',

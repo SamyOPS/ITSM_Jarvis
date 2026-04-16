@@ -23,6 +23,7 @@ import { AppShell } from './app-shell';
 import { HomePage } from '../pages/home-page';
 import { LoginPage } from '../pages/login-page';
 import { NotFoundPage } from '../pages/not-found-page';
+import { UsersPage } from '../pages/users-page';
 
 type SessionState = 'anonymous' | 'authenticated' | 'loading' | 'restoring';
 
@@ -77,6 +78,8 @@ function renderPage({
       return <HomePage />;
     case '/admin':
       return session ? <AdminPage session={session} /> : <NotFoundPage />;
+    case '/admin/users':
+      return session ? <UsersPage session={session} /> : <NotFoundPage />;
     case '/agent':
       return session ? (
         <AgentPage section="LIST" session={session} />

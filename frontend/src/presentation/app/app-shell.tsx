@@ -10,6 +10,7 @@ import {
   Search,
   Shield,
   Ticket,
+  Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
@@ -29,6 +30,7 @@ interface AppShellProps {
 const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/': LayoutDashboard,
   '/admin': Shield,
+  '/admin/users': Users,
   '/agent': LayoutDashboard,
   '/agent/incidents/new': AlertTriangle,
   '/agent/requests/new': FileText,

@@ -4,6 +4,7 @@ import type { RoutePath } from '../../domain/navigation/route';
 
 const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
   '/admin': ['ADMIN'],
+  '/admin/users': ['ADMIN'],
   '/agent': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/agent/incidents/new': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/agent/requests/new': ['DEMANDEUR', 'AGENT', 'ADMIN'],
@@ -36,6 +37,7 @@ export function getVisibleRoutes(
       '/agent/requests/new',
       '/agent/tickets',
       '/admin',
+      '/admin/users',
       '/login',
     ] as const
   )

@@ -14,6 +14,13 @@ type SupabaseAdminUserRow = {
   role: string;
 };
 
+type SupabaseAuthUsersPayload = {
+  users?: Array<{
+    email?: string | null;
+    id?: string;
+  }>;
+};
+
 @Injectable()
 export class SupabaseAdminUserReadRepository implements AdminUserReadRepository {
   async listUsers(): Promise<AdminUserSummary[]> {
@@ -59,8 +66,14 @@ export class SupabaseAdminUserReadRepository implements AdminUserReadRepository 
 
     const rows = (await response.json()) as SupabaseAdminUserRow[];
 
+    const emailsByUserId = await listAuthEmailsByUserId(
+      config.supabaseUrl,
+      supabaseApiKey,
+    );
+
     return rows.map((row) => ({
       displayName: row.display_name,
+      email: emailsByUserId.get(row.id) ?? null,
       firstName: row.first_name,
       groupId: row.group_id,
       id: row.id,
@@ -69,6 +82,40 @@ export class SupabaseAdminUserReadRepository implements AdminUserReadRepository 
       role: resolveUserRole(row.role),
     }));
   }
+}
+
+async function listAuthEmailsByUserId(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+): Promise<Map<string, string>> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+      headers: {
+        apikey: supabaseApiKey,
+        Authorization: `Bearer ${supabaseApiKey}`,
+        Accept: 'application/json',
+      },
+    });
+  } catch {
+    return new Map();
+  }
+
+  if (!response.ok) {
+    return new Map();
+  }
+
+  const payload = (await response.json()) as SupabaseAuthUsersPayload;
+  const emailsByUserId = new Map<string, string>();
+
+  for (const user of payload.users ?? []) {
+    if (user.id && user.email) {
+      emailsByUserId.set(user.id, user.email);
+    }
+  }
+
+  return emailsByUserId;
 }
 
 function resolveUserRole(role: string): UserRole {
