@@ -182,6 +182,28 @@ export async function getTicketById(
   return (await response.json()) as TicketDetailSnapshot;
 }
 
+export async function deleteTicket(
+  accessToken: string,
+  ticketId: string,
+): Promise<void> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/tickets/${ticketId}`, {
+    method: 'DELETE',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      message ||
+        `La suppression du ticket a echoue avec le statut ${response.status}`,
+    );
+  }
+}
+
 export async function getTicketComments(
   accessToken: string,
   ticketId: string,

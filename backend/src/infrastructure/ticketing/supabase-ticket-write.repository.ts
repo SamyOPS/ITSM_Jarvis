@@ -257,6 +257,11 @@ export class SupabaseTicketWriteRepository
     );
   }
 
+  async deleteTicket(ticketId: string): Promise<void> {
+    await this.deleteTicketRelatedRows(ticketId);
+    await this.send(`tickets?id=eq.${ticketId}`, 'DELETE', undefined, false);
+  }
+
   async searchTickets(filters: SearchTicketsFilters): Promise<TicketSummary[]> {
     const query = new URLSearchParams({
       order: 'created_at.desc',
@@ -896,10 +901,20 @@ export class SupabaseTicketWriteRepository
 
   private async deleteTicketSilently(ticketId: string): Promise<void> {
     try {
-      await this.send(`tickets?id=eq.${ticketId}`, 'DELETE', undefined, false);
+      await this.deleteTicket(ticketId);
     } catch {
       // Keep the original error, cleanup is best-effort only.
     }
+  }
+
+  private async deleteTicketRelatedRows(ticketId: string): Promise<void> {
+    const query = `ticket_id=eq.${ticketId}`;
+
+    await this.send(`ticket_attachments?${query}`, 'DELETE', undefined, false);
+    await this.send(`ticket_comments?${query}`, 'DELETE', undefined, false);
+    await this.send(`ticket_history?${query}`, 'DELETE', undefined, false);
+    await this.send(`incidents?${query}`, 'DELETE', undefined, false);
+    await this.send(`requests?${query}`, 'DELETE', undefined, false);
   }
 
   private async send(
