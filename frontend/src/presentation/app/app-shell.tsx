@@ -20,7 +20,10 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
-import { getVisibleRoutes } from '../../application/auth/access-control';
+import {
+  getHomeRoute,
+  getVisibleRoutes,
+} from '../../application/auth/access-control';
 import type { RoutePath } from '../../domain/navigation/route';
 import { ROUTES } from '../../domain/navigation/route';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
@@ -101,12 +104,13 @@ export function AppShell({
   const ticketMenuRef = useRef<HTMLDivElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const visibleRoutePaths = getVisibleRoutes(session);
-  const visibleRoutes = ROUTES.filter((route) =>
-    visibleRoutePaths.includes(route.path),
-  );
+  const visibleRoutes = visibleRoutePaths
+    .map((path) => ROUTES.find((route) => route.path === path) ?? null)
+    .filter((route) => route !== null);
   const isWorkspaceShell = isAuthenticated;
   const isLoginShell = pathname === '/login';
-  const isHomeRoute = pathname === '/';
+  const homeRoute = getHomeRoute(session);
+  const isHomeRoute = pathname === homeRoute;
   const userInitials = useMemo(() => getUserInitials(session), [session]);
   const userDisplayName = useMemo(() => getUserDisplayName(session), [session]);
 
@@ -241,7 +245,7 @@ export function AppShell({
                   ? 'workspace-home-link is-active'
                   : 'workspace-home-link'
               }
-              onClick={() => navigateTo('/')}
+              onClick={() => navigateTo(homeRoute)}
               type="button"
             >
               <House
