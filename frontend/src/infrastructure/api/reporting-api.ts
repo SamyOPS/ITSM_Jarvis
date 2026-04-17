@@ -55,6 +55,20 @@ export type ReportingBreakdown = {
   ticketsByStatus: ReportingBreakdownItem[];
 };
 
+export type AgentPerformanceItem = {
+  agentId: string;
+  agentName: string;
+  averageResolutionTimeMinutes: number | null;
+  ticketsAssigned: number;
+  ticketsOverdue: number;
+  ticketsResolved: number;
+};
+
+export type AgentPerformanceReport = {
+  agents: AgentPerformanceItem[];
+  filters: ReportingOverview['filters'];
+};
+
 export async function fetchReportingOverview(
   accessToken: string,
   filters: ReportingFilters,
@@ -69,8 +83,19 @@ export async function fetchReportingBreakdown(
   return fetchReporting<ReportingBreakdown>('breakdown', accessToken, filters);
 }
 
+export async function fetchAgentPerformanceReport(
+  accessToken: string,
+  filters: ReportingFilters,
+): Promise<AgentPerformanceReport> {
+  return fetchReporting<AgentPerformanceReport>(
+    'agent-performance',
+    accessToken,
+    filters,
+  );
+}
+
 async function fetchReporting<T>(
-  endpoint: 'breakdown' | 'overview',
+  endpoint: 'agent-performance' | 'breakdown' | 'overview',
   accessToken: string,
   filters: ReportingFilters,
 ): Promise<T> {

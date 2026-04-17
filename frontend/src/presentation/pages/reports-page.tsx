@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type FormEvent,
   useCallback,
   useEffect,
@@ -15,8 +16,10 @@ import {
 import { fetchUserDirectory } from '../../infrastructure/api/auth-api';
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
 import {
+  fetchAgentPerformanceReport,
   fetchReportingBreakdown,
   fetchReportingOverview,
+  type AgentPerformanceReport,
   type ReportingBreakdown,
   type ReportingFilters,
   type ReportingOverview,
@@ -57,6 +60,8 @@ const INITIAL_FILTERS: ReportsFilterState = {
 };
 
 export function ReportsPage({ session }: ReportsPageProps) {
+  const [agentPerformance, setAgentPerformance] =
+    useState<AgentPerformanceReport | null>(null);
   const [breakdown, setBreakdown] = useState<ReportingBreakdown | null>(null);
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
@@ -74,6 +79,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
       ),
     [users],
   );
+  const isPersonalAgentReporting = session.user.role === 'AGENT';
 
   const loadReports = useCallback(
     async (nextFilters: ReportsFilterState): Promise<void> => {
@@ -81,17 +87,24 @@ export function ReportsPage({ session }: ReportsPageProps) {
       setErrorMessage(null);
 
       try {
-        const payload = toReportingFilters(nextFilters);
-        const [nextOverview, nextBreakdown, nextCatalog, nextUsers] =
-          await Promise.all([
-            fetchReportingOverview(session.accessToken, payload),
-            fetchReportingBreakdown(session.accessToken, payload),
-            fetchReferentialCatalog(),
-            fetchUserDirectory(session.accessToken),
-          ]);
+        const payload = toReportingFilters(nextFilters, session);
+        const [
+          nextOverview,
+          nextBreakdown,
+          nextAgentPerformance,
+          nextCatalog,
+          nextUsers,
+        ] = await Promise.all([
+          fetchReportingOverview(session.accessToken, payload),
+          fetchReportingBreakdown(session.accessToken, payload),
+          fetchAgentPerformanceReport(session.accessToken, payload),
+          fetchReferentialCatalog(),
+          fetchUserDirectory(session.accessToken),
+        ]);
 
         setOverview(nextOverview);
         setBreakdown(nextBreakdown);
+        setAgentPerformance(nextAgentPerformance);
         setCatalog(nextCatalog);
         setUsers(nextUsers);
       } catch (error) {
@@ -104,7 +117,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
         setIsLoading(false);
       }
     },
-    [session.accessToken],
+    [session],
   );
 
   useEffect(() => {
@@ -134,6 +147,20 @@ export function ReportsPage({ session }: ReportsPageProps) {
     (overview?.totals.responseOverdue ?? 0) +
     (overview?.totals.resolutionOverdue ?? 0);
   const resolutionRate = getResolutionRate(overview);
+  const statusChartItems =
+    breakdown?.ticketsByStatus.map((item) => ({
+      count: item.count,
+      id: item.id,
+      name: translateTicketStatus(item.name),
+    })) ?? [];
+  const priorityChartItems = breakdown?.ticketsByPriority ?? [];
+  const categoryChartItems = breakdown?.ticketsByCategory ?? [];
+  const dayChartItems =
+    breakdown?.ticketsByDay.map((item) => ({
+      count: item.count,
+      id: item.date,
+      name: formatChartDate(item.date),
+    })) ?? [];
 
   return (
     <section className="reports-page">
@@ -199,12 +226,15 @@ export function ReportsPage({ session }: ReportsPageProps) {
         <label className="field">
           <span>Agent</span>
           <select
+            disabled={isPersonalAgentReporting}
             onChange={(event) =>
               handleFilterChange('assignedToUserId', event.target.value)
             }
             value={filters.assignedToUserId}
           >
-            <option value="">Tous</option>
+            <option value="">
+              {isPersonalAgentReporting ? 'Moi uniquement' : 'Tous'}
+            </option>
             {technicians.map((user) => (
               <option key={user.id} value={user.id}>
                 {formatUserName(user)}
@@ -276,6 +306,69 @@ export function ReportsPage({ session }: ReportsPageProps) {
         />
       </section>
 
+      <section className="reports-charts-grid">
+        <ChartCard title="Tickets par statut">
+          <HorizontalChart items={statusChartItems} />
+        </ChartCard>
+
+        <ChartCard title="Tickets par priorite">
+          <HorizontalChart items={priorityChartItems} />
+        </ChartCard>
+
+        <ChartCard title="Tickets par categorie">
+          <HorizontalChart items={categoryChartItems} />
+        </ChartCard>
+
+        <ChartCard title="Evolution par jour">
+          <TrendChart items={dayChartItems} />
+        </ChartCard>
+      </section>
+
+      <section className="reports-agent-performance-card">
+        <header>
+          <div>
+            <h3>Performance agents</h3>
+            <p>
+              Compare les volumes assignes, les resolutions, les retards et le
+              temps moyen de resolution sur la periode filtree.
+            </p>
+          </div>
+        </header>
+
+        <div className="reports-agent-performance-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Agent</th>
+                <th>Tickets assignes</th>
+                <th>Tickets resolus</th>
+                <th>Tickets en retard</th>
+                <th>Temps moyen de resolution</th>
+              </tr>
+            </thead>
+            <tbody>
+              {agentPerformance?.agents.length ? (
+                agentPerformance.agents.map((agent) => (
+                  <tr key={agent.agentId}>
+                    <td>{agent.agentName}</td>
+                    <td>{agent.ticketsAssigned}</td>
+                    <td>{agent.ticketsResolved}</td>
+                    <td>{agent.ticketsOverdue}</td>
+                    <td>
+                      {formatDuration(agent.averageResolutionTimeMinutes)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5}>Aucune donnee agent.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section className="reports-breakdown-grid">
         <BreakdownCard
           items={breakdown?.ticketsByAgent ?? []}
@@ -310,6 +403,102 @@ export function ReportsPage({ session }: ReportsPageProps) {
         />
       </section>
     </section>
+  );
+}
+
+function ChartCard({
+  children,
+  title,
+}: {
+  children: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <article className="reports-chart-card">
+      <header>
+        <h3>{title}</h3>
+        <span>Graphique</span>
+      </header>
+      {children}
+    </article>
+  );
+}
+
+function HorizontalChart({
+  items,
+}: {
+  items: Array<{ count: number; id: string | null; name: string }>;
+}) {
+  const total = items.reduce((sum, item) => sum + item.count, 0);
+  const max = Math.max(...items.map((item) => item.count), 0);
+
+  if (items.length === 0) {
+    return <p className="reports-chart-empty">Aucune donnee.</p>;
+  }
+
+  return (
+    <div className="reports-horizontal-chart">
+      {items.slice(0, 8).map((item) => {
+        const percent = max > 0 ? (item.count / max) * 100 : 0;
+        const share = total > 0 ? Math.round((item.count / total) * 100) : 0;
+
+        return (
+          <div className="reports-chart-row" key={item.id ?? item.name}>
+            <div>
+              <span>{item.name}</span>
+              <strong>
+                {item.count} ticket{item.count > 1 ? 's' : ''} - {share} %
+              </strong>
+            </div>
+            <div className="reports-chart-track">
+              <span
+                style={
+                  {
+                    '--bar-value': `${Math.max(7, percent)}%`,
+                  } as CSSProperties
+                }
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TrendChart({
+  items,
+}: {
+  items: Array<{ count: number; id: string; name: string }>;
+}) {
+  const max = Math.max(...items.map((item) => item.count), 0);
+
+  if (items.length === 0) {
+    return <p className="reports-chart-empty">Aucune donnee.</p>;
+  }
+
+  return (
+    <div className="reports-trend-chart">
+      {items.slice(-10).map((item) => {
+        const percent = max > 0 ? (item.count / max) * 100 : 0;
+
+        return (
+          <div className="reports-trend-column" key={item.id}>
+            <div>
+              <span
+                style={
+                  {
+                    '--bar-value': `${Math.max(10, percent)}%`,
+                  } as CSSProperties
+                }
+              />
+            </div>
+            <strong>{item.count}</strong>
+            <span>{item.name}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -365,9 +554,15 @@ function BreakdownCard({
   );
 }
 
-function toReportingFilters(filters: ReportsFilterState): ReportingFilters {
+function toReportingFilters(
+  filters: ReportsFilterState,
+  session: AuthSessionSnapshot,
+): ReportingFilters {
   return {
-    assignedToUserId: normalizeOptionalText(filters.assignedToUserId),
+    assignedToUserId:
+      session.user.role === 'AGENT'
+        ? session.user.id
+        : normalizeOptionalText(filters.assignedToUserId),
     categoryId: normalizeOptionalText(filters.categoryId),
     from: normalizeOptionalText(filters.from),
     priorityId: normalizeOptionalText(filters.priorityId),
@@ -423,4 +618,17 @@ function formatDuration(minutes: number | null | undefined): string {
 
 function formatNumber(value: number | null | undefined): string {
   return value === null || value === undefined ? '-' : String(value);
+}
+
+function formatChartDate(value: string): string {
+  const date = new Date(`${value}T00:00:00.000Z`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+  }).format(date);
 }
