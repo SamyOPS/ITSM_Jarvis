@@ -2703,12 +2703,15 @@ a {
 }
 
 .workspace-nav-link:hover .workspace-nav-link-icon,
-.workspace-nav-link:hover .workspace-nav-link-label,
+.workspace-nav-link:hover .workspace-nav-link-label {
+  color: #9ecbff;
+}
+
 .workspace-home-link:hover .workspace-home-link-icon,
 .workspace-home-link:hover span,
 .workspace-home-link.is-active .workspace-home-link-icon,
 .workspace-home-link.is-active span {
-  color: #9ecbff;
+  color: #2b6de9;
 }
 
 .workspace-cta-button:hover,
@@ -3000,4 +3003,15 @@ a {
 
 .workspace-profile-menu-item:hover .workspace-profile-switch-thumb {
   background: #9ecbff;
+}
+
+
+/* Compact profile trigger */
+.workspace-profile-trigger.is-compact {
+  gap: 8px;
+  padding: 5px 7px 5px 5px;
+}
+
+.workspace-profile-trigger.is-compact .workspace-profile-copy {
+  display: none;
 }

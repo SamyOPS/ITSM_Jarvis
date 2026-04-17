@@ -301,15 +301,11 @@ export function AppShell({
             <div className="workspace-profile-menu" ref={profileMenuRef}>
               <button
                 aria-label="Ouvrir le menu profil"
-                className="workspace-profile-trigger"
+                className="workspace-profile-trigger is-compact"
                 onClick={() => setIsProfileMenuOpen((current) => !current)}
                 type="button"
               >
                 <span className="workspace-profile-avatar">{userInitials}</span>
-                <span className="workspace-profile-copy">
-                  <strong>{userDisplayName}</strong>
-                  <span>{session?.user.role ?? 'Utilisateur'}</span>
-                </span>
                 <ChevronDown
                   className={isProfileMenuOpen ? 'is-open' : ''}
                   size={16}
