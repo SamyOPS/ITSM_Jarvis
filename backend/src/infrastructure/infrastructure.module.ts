@@ -21,6 +21,7 @@ import { TicketAttachmentWriteRepository } from '../application/ticketing/reposi
 import { TicketCommentReadRepository } from '../application/ticketing/repositories/ticket-comment-read.repository';
 import { TicketCommentWriteRepository } from '../application/ticketing/repositories/ticket-comment-write.repository';
 import { TicketHistoryWriteRepository } from '../application/ticketing/repositories/ticket-history-write.repository';
+import { TicketHistoryReadRepository } from '../application/ticketing/repositories/ticket-history-read.repository';
 import { TicketReadRepository } from '../application/ticketing/repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../application/ticketing/repositories/ticket-write.repository';
 import { SupabaseAdminUserReadRepository } from './auth/supabase-admin-user-read.repository';
@@ -88,6 +89,10 @@ const referentialRepositoryBindings = [
       useExisting: SupabaseTicketWriteRepository,
     },
     {
+      provide: TicketHistoryReadRepository,
+      useExisting: SupabaseTicketWriteRepository,
+    },
+    {
       provide: AdminUserReadRepository,
       useExisting: SupabaseAdminUserReadRepository,
     },
@@ -113,6 +118,7 @@ const referentialRepositoryBindings = [
     TicketAttachmentReadRepository,
     TicketAttachmentWriteRepository,
     TicketHistoryWriteRepository,
+    TicketHistoryReadRepository,
   ],
 })
 export class InfrastructureModule {}

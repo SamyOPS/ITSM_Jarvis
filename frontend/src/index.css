@@ -1517,6 +1517,47 @@ a {
   word-break: break-word;
 }
 
+.ticket-priority-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  border-radius: 999px;
+  padding: 7px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ticket-priority-badge--low {
+  border-color: rgba(34, 197, 94, 0.34);
+  background: #dcfce7;
+  color: #166534;
+}
+
+.ticket-priority-badge--medium {
+  border-color: rgba(245, 158, 11, 0.36);
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.ticket-priority-badge--high {
+  border-color: rgba(249, 115, 22, 0.38);
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.ticket-priority-badge--critical {
+  border-color: rgba(239, 68, 68, 0.42);
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .ticket-pagination {
   display: flex;
   justify-content: space-between;
@@ -2476,7 +2517,12 @@ a {
   padding: 22px 16px 22px;
   background: linear-gradient(180deg, #112233 0%, #16283d 100%);
   color: #e7edf6;
-  font-family: 'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family:
+    'Manrope',
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 .app-shell--workspace .workspace-sidebar.is-collapsed {
@@ -2499,7 +2545,12 @@ a {
 .workspace-sidebar-section-label,
 .workspace-nav-link,
 .workspace-sidebar-footer {
-  font-family: 'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family:
+    'Manrope',
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 .workspace-sidebar-brand-copy strong {
@@ -2525,7 +2576,10 @@ a {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.06);
   color: #e7edf6;
-  transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
 }
 
 .workspace-sidebar-toggle svg {
@@ -2588,7 +2642,10 @@ a {
   border-radius: 12px;
   background: transparent;
   color: #e7edf6;
-  transition: color 180ms ease, border-color 180ms ease, background-color 180ms ease;
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
 }
 
 .workspace-nav-link:hover {
@@ -2728,8 +2785,6 @@ a {
   background: #f2f7ff;
   border-color: rgba(158, 203, 255, 0.45);
 }
-
-
 
 /* Shell refinements: compact sidebar and profile menu */
 .app-shell--workspace .workspace-sidebar {
@@ -2939,7 +2994,6 @@ a {
   }
 }
 
-
 /* Profile menu expansion and hover color alignment */
 .workspace-cta-button:hover,
 .workspace-cta-button:hover span,
@@ -3005,7 +3059,6 @@ a {
   background: #9ecbff;
 }
 
-
 /* Compact profile trigger */
 .workspace-profile-trigger.is-compact {
   gap: 8px;
@@ -3014,4 +3067,402 @@ a {
 
 .workspace-profile-trigger.is-compact .workspace-profile-copy {
   display: none;
+}
+
+.reports-page {
+  display: grid;
+  gap: 18px;
+}
+
+.reports-hero,
+.reports-filters,
+.reports-kpi-card,
+.reports-chart-card,
+.reports-agent-performance-card,
+.reports-breakdown-card {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.reports-hero {
+  border-radius: 26px;
+  padding: 28px;
+  background:
+    radial-gradient(
+      circle at 86% 18%,
+      rgba(14, 116, 144, 0.2),
+      transparent 32%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.95),
+      rgba(226, 236, 248, 0.86)
+    );
+}
+
+.reports-hero h2 {
+  margin: 10px 0 10px;
+  font-size: clamp(1.9rem, 3.8vw, 3.8rem);
+  line-height: 0.98;
+  letter-spacing: -0.07em;
+}
+
+.reports-hero p {
+  margin: 0;
+  max-width: 720px;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.reports-filters {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  border-radius: 22px;
+  padding: 18px;
+}
+
+.reports-filter-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.reports-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.reports-kpi-card {
+  display: grid;
+  gap: 10px;
+  overflow: hidden;
+  position: relative;
+  border-radius: 22px;
+  padding: 20px;
+}
+
+.reports-kpi-card::after {
+  content: '';
+  position: absolute;
+  right: -28px;
+  top: -34px;
+  width: 98px;
+  height: 98px;
+  border-radius: 999px;
+  opacity: 0.18;
+}
+
+.reports-kpi-card span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.reports-kpi-card strong {
+  color: var(--text);
+  font-size: clamp(1.35rem, 2.4vw, 2.35rem);
+  letter-spacing: -0.05em;
+}
+
+.reports-kpi-card--blue::after {
+  background: #2563eb;
+}
+
+.reports-kpi-card--red::after {
+  background: #ef4444;
+}
+
+.reports-kpi-card--green::after {
+  background: #16a34a;
+}
+
+.reports-kpi-card--orange::after {
+  background: #f97316;
+}
+
+.reports-kpi-card--purple::after {
+  background: #7c3aed;
+}
+
+.reports-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.reports-chart-card {
+  display: grid;
+  gap: 18px;
+  min-height: 310px;
+  border-radius: 22px;
+  padding: 20px;
+}
+
+.reports-chart-card header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.reports-chart-card h3 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.reports-chart-card header span {
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #174b86;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  padding: 7px 10px;
+  text-transform: uppercase;
+}
+
+.reports-chart-empty {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.reports-horizontal-chart {
+  display: grid;
+  gap: 16px;
+}
+
+.reports-chart-row {
+  display: grid;
+  gap: 8px;
+}
+
+.reports-chart-row > div:first-child {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reports-chart-row span {
+  overflow: hidden;
+  color: #17335f;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reports-chart-row strong {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.reports-chart-track {
+  height: 13px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(207, 216, 234, 0.76);
+}
+
+.reports-chart-track span {
+  display: block;
+  width: var(--bar-value);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #174b86, #2f80ed 58%, #35c0d2);
+  box-shadow: 0 8px 22px rgba(47, 128, 237, 0.26);
+}
+
+.reports-trend-chart {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+  min-height: 230px;
+}
+
+.reports-trend-column {
+  display: grid;
+  gap: 7px;
+  align-items: end;
+  min-width: 0;
+  text-align: center;
+}
+
+.reports-trend-column > div {
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  height: 160px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #edf4ff, #dbe8f8);
+}
+
+.reports-trend-column > div > span {
+  display: block;
+  width: 100%;
+  height: var(--bar-value);
+  min-height: 10px;
+  border-radius: 16px 16px 0 0;
+  background: linear-gradient(180deg, #35c0d2, #174b86);
+}
+
+.reports-trend-column strong {
+  color: var(--primary);
+  font-size: 0.85rem;
+}
+
+.reports-trend-column > span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reports-agent-performance-card {
+  display: grid;
+  gap: 18px;
+  overflow: hidden;
+  border-radius: 22px;
+  padding: 20px;
+}
+
+.reports-agent-performance-card header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.reports-agent-performance-card h3 {
+  margin: 0 0 8px;
+  font-size: 1.18rem;
+}
+
+.reports-agent-performance-card p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.reports-agent-performance-table {
+  overflow-x: auto;
+}
+
+.reports-agent-performance-table table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.reports-agent-performance-table th,
+.reports-agent-performance-table td {
+  border-bottom: 1px solid rgba(207, 216, 234, 0.72);
+  padding: 14px 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.reports-agent-performance-table th {
+  color: #174b86;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.reports-agent-performance-table td {
+  color: var(--text);
+  font-weight: 750;
+}
+
+.reports-agent-performance-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.reports-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.reports-breakdown-card {
+  display: grid;
+  gap: 14px;
+  border-radius: 22px;
+  padding: 20px;
+}
+
+.reports-breakdown-card h3 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.reports-breakdown-card p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.reports-breakdown-list {
+  display: grid;
+  gap: 13px;
+}
+
+.reports-breakdown-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 14px;
+  align-items: center;
+}
+
+.reports-breakdown-row > span {
+  overflow: hidden;
+  color: #17335f;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reports-breakdown-row > strong {
+  color: var(--primary);
+}
+
+.reports-breakdown-row > div {
+  grid-column: 1 / -1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(207, 216, 234, 0.72);
+}
+
+.reports-breakdown-row > div > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #174b86, #2f80ed);
+}
+
+@media (max-width: 1180px) {
+  .reports-filters,
+  .reports-kpi-grid,
+  .reports-charts-grid,
+  .reports-breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reports-filter-actions {
+    justify-content: flex-start;
+  }
 }

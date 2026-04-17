@@ -21,6 +21,9 @@ import { ManageGroupsUseCase } from './referentials/use-cases/manage-groups.use-
 import { ManagePrioritiesUseCase } from './referentials/use-cases/manage-priorities.use-case';
 import { ManageServicesUseCase } from './referentials/use-cases/manage-services.use-case';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
+import { GetAgentPerformanceReportUseCase } from './reporting/use-cases/get-agent-performance-report.use-case';
+import { GetTicketReportingBreakdownUseCase } from './reporting/use-cases/get-ticket-reporting-breakdown.use-case';
+import { GetTicketReportingOverviewUseCase } from './reporting/use-cases/get-ticket-reporting-overview.use-case';
 import { TicketAuditService } from './ticketing/ticket-audit.service';
 import { AddTicketAttachmentUseCase } from './ticketing/use-cases/add-ticket-attachment.use-case';
 import { AddTicketCommentUseCase } from './ticketing/use-cases/add-ticket-comment.use-case';
@@ -80,6 +83,9 @@ const ticketingUseCases = [
     CreateAdminUserUseCase,
     ListAdminUsersUseCase,
     UpdateAdminUserUseCase,
+    GetAgentPerformanceReportUseCase,
+    GetTicketReportingBreakdownUseCase,
+    GetTicketReportingOverviewUseCase,
     ...referentialUseCases,
     ...ticketingUseCases,
   ],
@@ -90,6 +96,9 @@ const ticketingUseCases = [
     CreateAdminUserUseCase,
     ListAdminUsersUseCase,
     UpdateAdminUserUseCase,
+    GetAgentPerformanceReportUseCase,
+    GetTicketReportingBreakdownUseCase,
+    GetTicketReportingOverviewUseCase,
     ...referentialUseCases,
     ...ticketingUseCases,
   ],
