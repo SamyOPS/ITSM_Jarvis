@@ -60,6 +60,8 @@ export abstract class TicketWriteRepository {
 
   abstract createRequest(record: CreateRequestRecord): Promise<CreatedRequest>;
 
+  abstract deleteTicket(ticketId: string): Promise<void>;
+
   abstract updateAssignment(
     ticketId: string,
     record: UpdateTicketAssignmentRecord,

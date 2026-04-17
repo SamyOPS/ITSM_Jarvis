@@ -7,6 +7,7 @@ import { CreateIncidentUseCase } from '../../../application/ticketing/use-cases/
 import { CreateRequestUseCase } from '../../../application/ticketing/use-cases/create-request.use-case';
 import { DeleteTicketAttachmentUseCase } from '../../../application/ticketing/use-cases/delete-ticket-attachment.use-case';
 import { DeleteTicketCommentUseCase } from '../../../application/ticketing/use-cases/delete-ticket-comment.use-case';
+import { DeleteTicketUseCase } from '../../../application/ticketing/use-cases/delete-ticket.use-case';
 import { GetTicketByIdUseCase } from '../../../application/ticketing/use-cases/get-ticket-by-id.use-case';
 import { ListTicketAttachmentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-attachments.use-case';
 import { ListTicketCommentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-comments.use-case';
@@ -71,6 +72,7 @@ describe('TicketsController', () => {
     ticketId: 'ticket-1',
   });
   const deleteComment = jest.fn().mockResolvedValue(undefined);
+  const deleteTicket = jest.fn().mockResolvedValue(undefined);
   const listAttachments = jest.fn().mockResolvedValue([
     {
       bucketId: 'ticket-attachments',
@@ -124,6 +126,7 @@ describe('TicketsController', () => {
     listComments.mockClear();
     addComment.mockClear();
     deleteComment.mockClear();
+    deleteTicket.mockClear();
     listAttachments.mockClear();
     addAttachment.mockClear();
     deleteAttachment.mockClear();
@@ -169,6 +172,9 @@ describe('TicketsController', () => {
       {
         execute: deleteAttachment,
       } as unknown as DeleteTicketAttachmentUseCase,
+      {
+        execute: deleteTicket,
+      } as unknown as DeleteTicketUseCase,
     );
   });
 
@@ -300,6 +306,23 @@ describe('TicketsController', () => {
     });
 
     expect(getTicketById).toHaveBeenCalledWith('ticket-1');
+  });
+
+  it('delegates ticket deletion with the authenticated admin', async () => {
+    await expect(
+      controller.deleteTicket('ticket-1', {
+        accessToken: 'token',
+        email: 'admin@jarvis.local',
+        id: 'admin-1',
+        role: UserRole.ADMIN,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(deleteTicket).toHaveBeenCalledWith({
+      actorRole: UserRole.ADMIN,
+      actorUserId: 'admin-1',
+      ticketId: 'ticket-1',
+    });
   });
 
   it('delegates ticket comment listing with the authenticated role', async () => {

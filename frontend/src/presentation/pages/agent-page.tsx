@@ -43,6 +43,7 @@ import {
   addTicketComment,
   addTicketAttachment,
   assignTicket,
+  deleteTicket,
   deleteTicketAttachment,
   deleteTicketAttachmentBinary,
   deleteTicketComment,
@@ -288,6 +289,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   const [isSubmittingStatus, setIsSubmittingStatus] = useState(false);
 
+  const [isDeletingTicket, setIsDeletingTicket] = useState(false);
+
   const [isLoadingComments, setIsLoadingComments] = useState(false);
 
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
@@ -369,6 +372,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     useState<RequestValidationErrors>({});
 
   const canManageTicket = canManageTicketActions(session.user.role);
+
+  const canDeleteTickets = session.user.role === 'ADMIN';
 
   const canCreateInternalComments = canCreateInternalTicketComments(
     session.user.role,
@@ -1245,6 +1250,47 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       );
     } finally {
       setIsSubmittingAssignment(false);
+    }
+  }
+
+  async function handleDeleteTicket(): Promise<void> {
+    if (!selectedTicketDetail || !canDeleteTickets) {
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      `Supprimer definitivement le ticket ${selectedTicketDetail.ticket.number} ?`,
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setIsDeletingTicket(true);
+    setDetailActionErrorMessage(null);
+    setDetailActionSuccessMessage(null);
+
+    try {
+      const deletedTicketId = selectedTicketDetail.ticket.id;
+
+      await deleteTicket(session.accessToken, deletedTicketId);
+
+      setTickets((currentTickets) =>
+        currentTickets.filter((ticket) => ticket.id !== deletedTicketId),
+      );
+      setSelectedTicketId(null);
+      setSelectedTicketDetail(null);
+      setSelectedTicketComments([]);
+      setSelectedTicketAttachments([]);
+      navigateTo('/agent/tickets');
+    } catch (error) {
+      setDetailActionErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Erreur inconnue lors de la suppression du ticket',
+      );
+    } finally {
+      setIsDeletingTicket(false);
     }
   }
 
@@ -2305,6 +2351,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       <span className="ticket-result-badge">
                         {selectedTicketDetail.ticket.number}
                       </span>
+                    ) : null}
+                    {selectedTicketDetail && canDeleteTickets ? (
+                      <button
+                        className="danger-button"
+                        disabled={isDeletingTicket}
+                        onClick={() => void handleDeleteTicket()}
+                        type="button"
+                      >
+                        {isDeletingTicket ? 'Suppression...' : 'Supprimer'}
+                      </button>
                     ) : null}
                     <button
                       className="secondary-button"

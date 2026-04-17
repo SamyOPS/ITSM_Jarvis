@@ -18,6 +18,7 @@ import { CreateIncidentUseCase } from '../../../application/ticketing/use-cases/
 import { CreateRequestUseCase } from '../../../application/ticketing/use-cases/create-request.use-case';
 import { DeleteTicketAttachmentUseCase } from '../../../application/ticketing/use-cases/delete-ticket-attachment.use-case';
 import { DeleteTicketCommentUseCase } from '../../../application/ticketing/use-cases/delete-ticket-comment.use-case';
+import { DeleteTicketUseCase } from '../../../application/ticketing/use-cases/delete-ticket.use-case';
 import { GetTicketByIdUseCase } from '../../../application/ticketing/use-cases/get-ticket-by-id.use-case';
 import { ListTicketAttachmentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-attachments.use-case';
 import { ListTicketCommentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-comments.use-case';
@@ -74,6 +75,7 @@ export class TicketsController {
     private readonly listTicketAttachmentsUseCase: ListTicketAttachmentsUseCase,
     private readonly addTicketAttachmentUseCase: AddTicketAttachmentUseCase,
     private readonly deleteTicketAttachmentUseCase: DeleteTicketAttachmentUseCase,
+    private readonly deleteTicketUseCase: DeleteTicketUseCase,
   ) {}
 
   @Get()
@@ -93,6 +95,20 @@ export class TicketsController {
   @UseGuards(BearerAuthGuard)
   getTicketById(@Param('id') id: string): Promise<TicketDetail> {
     return this.getTicketByIdUseCase.execute(id);
+  }
+
+  @Delete(':id')
+  @UseGuards(BearerAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async deleteTicket(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    await this.deleteTicketUseCase.execute({
+      actorRole: user.role,
+      actorUserId: user.id,
+      ticketId: id,
+    });
   }
 
   @Get(':id/comments')
