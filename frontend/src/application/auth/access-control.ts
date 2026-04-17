@@ -29,15 +29,23 @@ export function canAccessRoute(
   return allowedRoles.includes(session.user.role);
 }
 
+export function getHomeRoute(session: AuthSessionSnapshot | null): RoutePath {
+  if (session?.user.role === 'AGENT' || session?.user.role === 'ADMIN') {
+    return '/reports';
+  }
+
+  return '/';
+}
+
 export function getVisibleRoutes(
   session: AuthSessionSnapshot | null,
 ): readonly RoutePath[] {
   return (
     [
+      '/reports',
       '/agent/incidents/new',
       '/agent/requests/new',
       '/agent/tickets',
-      '/reports',
       '/admin',
       '/admin/users',
       '/login',

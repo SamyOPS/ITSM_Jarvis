@@ -9,7 +9,10 @@ import {
   readStoredAuthSession,
   storeAuthSession,
 } from '../../infrastructure/auth/session-storage';
-import { canAccessRoute } from '../../application/auth/access-control';
+import {
+  canAccessRoute,
+  getHomeRoute,
+} from '../../application/auth/access-control';
 import { resolveRoute } from '../../application/routing/route-resolver';
 import { type RoutePath } from '../../domain/navigation/route';
 import {
@@ -76,6 +79,10 @@ function renderPage({
 
   switch (route.path) {
     case '/':
+      if (session && getHomeRoute(session) === '/reports') {
+        return <ReportsPage session={session} />;
+      }
+
       return <HomePage />;
     case '/admin':
       return session ? <AdminPage session={session} /> : <NotFoundPage />;
@@ -192,7 +199,18 @@ export function App() {
 
   useEffect(() => {
     if (pathname === '/login' && sessionState === 'authenticated' && session) {
-      navigateTo('/');
+      navigateTo(getHomeRoute(session));
+    }
+  }, [pathname, session, sessionState]);
+
+  useEffect(() => {
+    if (
+      pathname === '/' &&
+      sessionState === 'authenticated' &&
+      session &&
+      getHomeRoute(session) !== '/'
+    ) {
+      navigateTo(getHomeRoute(session));
     }
   }, [pathname, session, sessionState]);
 
@@ -212,7 +230,7 @@ export function App() {
       storeAuthSession(nextSession);
       setSession(nextSession);
       setSessionState('authenticated');
-      navigateTo('/');
+      navigateTo(getHomeRoute(nextSession));
     } catch (error) {
       setSession(null);
       setSessionState('anonymous');

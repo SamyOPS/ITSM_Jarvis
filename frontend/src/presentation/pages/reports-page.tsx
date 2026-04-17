@@ -164,17 +164,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
   return (
     <section className="reports-page">
-      <section className="reports-hero">
-        <div>
-          <span className="panel-tag">Reporting</span>
-          <h2>Tableau de bord support</h2>
-          <p>
-            Suis les volumes de tickets, les retards SLA et la repartition de l
-            activite par agent, categorie, priorite, statut et periode.
-          </p>
-        </div>
-      </section>
-
       <form className="reports-filters" onSubmit={handleSubmit}>
         <label className="field">
           <span>Du</span>
