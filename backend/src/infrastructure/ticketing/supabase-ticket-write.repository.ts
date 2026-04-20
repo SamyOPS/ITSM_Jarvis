@@ -51,11 +51,13 @@ import { TicketType } from '../../domain/ticketing/ticket-type';
 import { getBackendRuntimeConfig } from '../config/app-config';
 
 type SupabaseTicketRow = {
+  archived_at: string | null;
   assigned_to_user_id: string | null;
   assignment_group_id: string | null;
   category_id: string;
   channel_id: string | null;
   ci_id: string | null;
+  closed_at: string | null;
   created_at: string;
   created_by_user_id: string;
   description: string;
@@ -231,6 +233,8 @@ export class SupabaseTicketWriteRepository
       `tickets?id=eq.${ticketId}`,
       'PATCH',
       {
+        closed_at:
+          status === TicketStatus.CLOSED ? new Date().toISOString() : null,
         status,
       },
       false,
@@ -262,11 +266,30 @@ export class SupabaseTicketWriteRepository
     await this.send(`tickets?id=eq.${ticketId}`, 'DELETE', undefined, false);
   }
 
+  async archiveClosedTicketsBefore(cutoffIso: string): Promise<number> {
+    const query = new URLSearchParams({
+      archived_at: 'is.null',
+      closed_at: `lt.${cutoffIso}`,
+      status: `eq.${TicketStatus.CLOSED}`,
+    });
+    const response = await this.send(
+      `tickets?${query.toString()}`,
+      'PATCH',
+      {
+        archived_at: new Date().toISOString(),
+      },
+      true,
+    );
+    const body = (await response.json()) as SupabaseTicketRow[] | null;
+
+    return normalizeRows(body).length;
+  }
+
   async searchTickets(filters: SearchTicketsFilters): Promise<TicketSummary[]> {
     const query = new URLSearchParams({
       order: 'created_at.desc',
       select:
-        'id,number,type,status,title,priority_id,category_id,created_by_user_id,requested_for_user_id,service_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,response_due_at,resolution_due_at',
+        'id,number,type,status,title,priority_id,category_id,created_by_user_id,requested_for_user_id,service_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,closed_at,response_due_at,resolution_due_at,archived_at',
     });
 
     applyOptionalFilter(query, 'assigned_to_user_id', filters.assignedToUserId);
@@ -328,6 +351,9 @@ export class SupabaseTicketWriteRepository
         ticket.created_at,
         ticket.response_due_at,
         ticket.resolution_due_at,
+        null,
+        null,
+        ticket.archived_at,
       );
       const slaStatus = calculateTicketSlaStatus(mappedTicket);
 
@@ -352,6 +378,7 @@ export class SupabaseTicketWriteRepository
         ticket.resolution_due_at,
         slaStatus.responseSlaStatus,
         slaStatus.resolutionSlaStatus,
+        ticket.archived_at,
       );
     });
   }
@@ -359,7 +386,7 @@ export class SupabaseTicketWriteRepository
   async getTicketById(ticketId: string): Promise<TicketDetail | null> {
     const query = new URLSearchParams({
       select:
-        'id,number,type,status,title,description,priority_id,category_id,created_by_user_id,requested_for_user_id,service_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,response_due_at,resolution_due_at,incidents(*),requests(*)',
+        'id,number,type,status,title,description,priority_id,category_id,created_by_user_id,requested_for_user_id,service_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,closed_at,response_due_at,resolution_due_at,archived_at,incidents(*),requests(*)',
       id: `eq.${ticketId}`,
       limit: '1',
     });
@@ -397,6 +424,9 @@ export class SupabaseTicketWriteRepository
       ticket.created_at,
       ticket.response_due_at,
       ticket.resolution_due_at,
+      null,
+      null,
+      ticket.archived_at,
     );
     const slaStatus = calculateTicketSlaStatus(mappedTicket);
 
@@ -422,6 +452,7 @@ export class SupabaseTicketWriteRepository
         mappedTicket.resolutionDueAt,
         slaStatus.responseSlaStatus,
         slaStatus.resolutionSlaStatus,
+        mappedTicket.archivedAt,
       ),
       priorityNames.get(ticket.priority_id) ?? null,
       incidentRow
@@ -713,6 +744,7 @@ export class SupabaseTicketWriteRepository
           ticket.resolution_due_at,
           null,
           null,
+          ticket.archived_at,
         ),
         new Incident(
           incident.ticket_id,
@@ -771,6 +803,7 @@ export class SupabaseTicketWriteRepository
           ticket.resolution_due_at,
           null,
           null,
+          ticket.archived_at,
         ),
         new RequestTicket(
           request.ticket_id,

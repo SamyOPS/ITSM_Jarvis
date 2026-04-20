@@ -62,6 +62,8 @@ export abstract class TicketWriteRepository {
 
   abstract deleteTicket(ticketId: string): Promise<void>;
 
+  abstract archiveClosedTicketsBefore(cutoffIso: string): Promise<number>;
+
   abstract updateAssignment(
     ticketId: string,
     record: UpdateTicketAssignmentRecord,

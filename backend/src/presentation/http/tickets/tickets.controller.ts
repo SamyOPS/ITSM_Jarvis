@@ -11,6 +11,10 @@ import {
 } from '@nestjs/common';
 import { AddTicketAttachmentUseCase } from '../../../application/ticketing/use-cases/add-ticket-attachment.use-case';
 import { AddTicketCommentUseCase } from '../../../application/ticketing/use-cases/add-ticket-comment.use-case';
+import {
+  ArchiveExpiredTicketsUseCase,
+  type ArchiveExpiredTicketsResult,
+} from '../../../application/ticketing/use-cases/archive-expired-tickets.use-case';
 import { AssignTicketUseCase } from '../../../application/ticketing/use-cases/assign-ticket.use-case';
 import { ChangeTicketPriorityUseCase } from '../../../application/ticketing/use-cases/change-ticket-priority.use-case';
 import { ChangeTicketStatusUseCase } from '../../../application/ticketing/use-cases/change-ticket-status.use-case';
@@ -51,6 +55,7 @@ type SearchTicketsQueryDto = {
   categoryId?: string;
   channelId?: string;
   createdByUserId?: string;
+  includeArchived?: string;
   priorityId?: string;
   q?: string;
   requestedForUserId?: string;
@@ -63,6 +68,7 @@ type SearchTicketsQueryDto = {
 export class TicketsController {
   constructor(
     private readonly assignTicketUseCase: AssignTicketUseCase,
+    private readonly archiveExpiredTicketsUseCase: ArchiveExpiredTicketsUseCase,
     private readonly changeTicketPriorityUseCase: ChangeTicketPriorityUseCase,
     private readonly changeTicketStatusUseCase: ChangeTicketStatusUseCase,
     private readonly createIncidentUseCase: CreateIncidentUseCase,
@@ -86,6 +92,8 @@ export class TicketsController {
   ): Promise<TicketSummary[]> {
     return this.searchTicketsUseCase.execute({
       ...query,
+      includeArchived:
+        user.role === UserRole.ADMIN && query.includeArchived === 'true',
       requesterUserId: user.id,
       requesterUserRole: user.role,
     });
@@ -95,6 +103,13 @@ export class TicketsController {
   @UseGuards(BearerAuthGuard)
   getTicketById(@Param('id') id: string): Promise<TicketDetail> {
     return this.getTicketByIdUseCase.execute(id);
+  }
+
+  @Post('archive-expired')
+  @UseGuards(BearerAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  archiveExpiredTickets(): Promise<ArchiveExpiredTicketsResult> {
+    return this.archiveExpiredTicketsUseCase.execute();
   }
 
   @Delete(':id')
@@ -203,6 +218,7 @@ export class TicketsController {
     @Body() body: AssignTicketDto,
   ): Promise<TicketDetail> {
     return this.assignTicketUseCase.execute({
+      actorRole: user.role,
       actorUserId: user.id,
       assignedToUserId: body.assignedToUserId ?? null,
       assignmentGroupId: body.assignmentGroupId ?? null,
@@ -219,6 +235,7 @@ export class TicketsController {
     @Body() body: ChangeTicketStatusDto,
   ): Promise<TicketDetail> {
     return this.changeTicketStatusUseCase.execute({
+      actorRole: user.role,
       actorUserId: user.id,
       status: body.status,
       ticketId: id,
@@ -234,6 +251,7 @@ export class TicketsController {
     @Body() body: ChangeTicketPriorityDto,
   ): Promise<TicketDetail> {
     return this.changeTicketPriorityUseCase.execute({
+      actorRole: user.role,
       actorUserId: user.id,
       priorityId: body.priorityId,
       ticketId: id,

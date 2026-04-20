@@ -119,6 +119,51 @@ describe('SearchTicketsUseCase', () => {
     });
   });
 
+  it('hides closed and archived tickets from agent searches', async () => {
+    const openTicket = createTicketSummary('ticket-1', TicketStatus.OPEN);
+    const closedTicket = createTicketSummary('ticket-2', TicketStatus.CLOSED);
+    const archivedTicket = createTicketSummary(
+      'ticket-3',
+      TicketStatus.OPEN,
+      '2026-04-17T10:00:00.000Z',
+    );
+    const searchTickets = jest
+      .fn()
+      .mockResolvedValue([openTicket, closedTicket, archivedTicket]);
+    const useCase = new SearchTicketsUseCase({
+      searchTickets,
+    } as unknown as TicketReadRepository);
+
+    await expect(
+      useCase.execute({
+        requesterUserId: 'agent-1',
+        requesterUserRole: UserRole.AGENT,
+      }),
+    ).resolves.toEqual([openTicket]);
+  });
+
+  it('keeps closed tickets visible to admins before archival', async () => {
+    const closedTicket = createTicketSummary('ticket-1', TicketStatus.CLOSED);
+    const archivedTicket = createTicketSummary(
+      'ticket-2',
+      TicketStatus.CLOSED,
+      '2026-04-17T10:00:00.000Z',
+    );
+    const searchTickets = jest
+      .fn()
+      .mockResolvedValue([closedTicket, archivedTicket]);
+    const useCase = new SearchTicketsUseCase({
+      searchTickets,
+    } as unknown as TicketReadRepository);
+
+    await expect(
+      useCase.execute({
+        requesterUserId: 'admin-1',
+        requesterUserRole: UserRole.ADMIN,
+      }),
+    ).resolves.toEqual([closedTicket]);
+  });
+
   it('rejects a search text shorter than two characters', async () => {
     const useCase = new SearchTicketsUseCase({
       searchTickets: jest.fn(),
@@ -133,3 +178,33 @@ describe('SearchTicketsUseCase', () => {
     ).rejects.toThrow('q must contain at least 2 characters.');
   });
 });
+
+function createTicketSummary(
+  id: string,
+  status: TicketStatus,
+  archivedAt: string | null = null,
+): TicketSummary {
+  return new TicketSummary(
+    id,
+    'TICK-000001',
+    TicketType.INCIDENT,
+    status,
+    'VPN KO',
+    'priority-1',
+    'HIGH',
+    'category-1',
+    'user-1',
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    '2026-04-02T10:00:00.000Z',
+    null,
+    null,
+    null,
+    null,
+    archivedAt,
+  );
+}

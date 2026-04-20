@@ -5,6 +5,10 @@ const routeMap = new Map<RouteDefinition['path'], RouteDefinition>(
 );
 
 export function resolveRoute(pathname: string): RouteDefinition | null {
+  if (pathname.startsWith('/agent/archives/')) {
+    return routeMap.get('/agent/archives') ?? null;
+  }
+
   if (pathname.startsWith('/agent/tickets/')) {
     return routeMap.get('/agent/tickets') ?? null;
   }
@@ -14,6 +18,7 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
     pathname === '/admin' ||
     pathname === '/admin/users' ||
     pathname === '/agent' ||
+    pathname === '/agent/archives' ||
     pathname === '/agent/incidents/new' ||
     pathname === '/agent/requests/new' ||
     pathname === '/agent/tickets' ||

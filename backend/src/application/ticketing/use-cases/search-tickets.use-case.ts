@@ -1,5 +1,6 @@
 ﻿import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { UserRole } from '../../../domain/auth/user-role';
+import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketSummary } from '../../../domain/ticketing/ticket-summary';
 import {
   SearchTicketsFilters,
@@ -7,6 +8,7 @@ import {
 } from '../repositories/ticket-read.repository';
 
 export type SearchTicketsQuery = SearchTicketsFilters & {
+  includeArchived?: boolean;
   requesterUserId: string;
   requesterUserRole: UserRole;
 };
@@ -34,8 +36,18 @@ export class SearchTicketsUseCase {
     };
     const requesterUserId = normalizeRequiredId(query.requesterUserId);
 
-    if (query.requesterUserRole !== UserRole.DEMANDEUR) {
-      return this.ticketReadRepository.searchTickets(normalizedFilters);
+    if (query.requesterUserRole === UserRole.ADMIN) {
+      const tickets =
+        await this.ticketReadRepository.searchTickets(normalizedFilters);
+
+      return query.includeArchived ? tickets : withoutArchivedTickets(tickets);
+    }
+
+    if (query.requesterUserRole === UserRole.AGENT) {
+      const tickets =
+        await this.ticketReadRepository.searchTickets(normalizedFilters);
+
+      return withoutClosedOrArchivedTickets(tickets);
     }
 
     const [createdTickets, requestedTickets] = await Promise.all([
@@ -51,7 +63,7 @@ export class SearchTicketsUseCase {
       }),
     ]);
 
-    return [
+    const tickets = [
       ...new Map(
         [...createdTickets, ...requestedTickets].map((ticket) => [
           ticket.id,
@@ -59,7 +71,21 @@ export class SearchTicketsUseCase {
         ]),
       ).values(),
     ].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+
+    return withoutArchivedTickets(tickets);
   }
+}
+
+function withoutArchivedTickets(tickets: TicketSummary[]): TicketSummary[] {
+  return tickets.filter((ticket) => !ticket.archivedAt);
+}
+
+function withoutClosedOrArchivedTickets(
+  tickets: TicketSummary[],
+): TicketSummary[] {
+  return tickets.filter(
+    (ticket) => !ticket.archivedAt && ticket.status !== TicketStatus.CLOSED,
+  );
 }
 
 function normalizeOptionalId(value: string | null | undefined): string | null {

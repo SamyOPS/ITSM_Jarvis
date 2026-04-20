@@ -1,6 +1,7 @@
 export type TicketSummarySnapshot = {
   assignedToUserId: string | null;
   assignmentGroupId: string | null;
+  archivedAt: string | null;
   categoryId: string;
   channelId: string | null;
   ciId: string | null;

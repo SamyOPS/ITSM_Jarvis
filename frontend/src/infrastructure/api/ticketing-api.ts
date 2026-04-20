@@ -33,6 +33,7 @@ export type CreateRequestPayload = {
 
 export type SearchTicketsFilters = {
   categoryId?: string | null;
+  includeArchived?: boolean;
   priorityId?: string | null;
   q?: string | null;
   status?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | null;
@@ -138,6 +139,10 @@ export async function searchTickets(
 
   if (filters.priorityId?.trim()) {
     query.set('priorityId', filters.priorityId.trim());
+  }
+
+  if (filters.includeArchived) {
+    query.set('includeArchived', 'true');
   }
 
   const suffix = query.toString() ? `?${query.toString()}` : '';

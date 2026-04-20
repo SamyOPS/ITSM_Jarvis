@@ -1,4 +1,5 @@
 ﻿import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { UserRole } from '../../../domain/auth/user-role';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
@@ -6,9 +7,13 @@ import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
 import { TicketAuditService } from '../ticket-audit.service';
-import { assertAllowedTicketStatusTransition } from '../ticketing-rules';
+import {
+  assertAllowedTicketStatusTransition,
+  assertTicketCanBeModifiedByRole,
+} from '../ticketing-rules';
 
 export type ChangeTicketStatusCommand = {
+  actorRole?: UserRole;
   actorUserId: string;
   status: TicketStatus;
   ticketId: string;
@@ -44,6 +49,11 @@ export class ChangeTicketStatusUseCase {
     }
 
     try {
+      assertTicketCanBeModifiedByRole(
+        existingTicket.ticket.status,
+        existingTicket.ticket.archivedAt,
+        command.actorRole,
+      );
       assertAllowedTicketStatusTransition(
         existingTicket.ticket.status,
         command.status,

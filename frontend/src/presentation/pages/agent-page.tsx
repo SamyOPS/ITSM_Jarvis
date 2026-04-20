@@ -60,7 +60,13 @@ import {
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 
 type AgentPageProps = {
-  section: 'INCIDENT_CREATE' | 'REQUEST_CREATE' | 'LIST' | 'DETAIL';
+  section:
+    | 'ARCHIVES'
+    | 'ARCHIVE_DETAIL'
+    | 'INCIDENT_CREATE'
+    | 'REQUEST_CREATE'
+    | 'LIST'
+    | 'DETAIL';
   session: AuthSessionSnapshot;
   ticketId?: string;
 };
@@ -380,12 +386,17 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   );
 
   const isIncidentCreatePage = section === 'INCIDENT_CREATE';
+  const isArchiveListPage = section === 'ARCHIVES';
+  const isArchiveDetailPage = section === 'ARCHIVE_DETAIL';
   const isRequestCreatePage = section === 'REQUEST_CREATE';
   const isListPage = section === 'LIST';
   const isDetailPage = section === 'DETAIL';
   const showCreationPanel = isIncidentCreatePage || isRequestCreatePage;
-  const showListPanel = isListPage;
-  const showDetailPanel = isDetailPage;
+  const showListPanel = isListPage || isArchiveListPage;
+  const showDetailPanel = isDetailPage || isArchiveDetailPage;
+  const detailBackPath = isArchiveDetailPage
+    ? '/agent/archives'
+    : '/agent/tickets';
   const totalTicketPages = Math.max(
     1,
     Math.ceil(tickets.length / TICKETS_PER_PAGE),
@@ -396,13 +407,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   }, [ticketPage, tickets]);
 
   useEffect(() => {
-    if (isDetailPage) {
+    if (showDetailPanel) {
       setSelectedTicketId(ticketId ?? null);
       return;
     }
 
     setSelectedTicketId(null);
-  }, [isDetailPage, ticketId]);
+  }, [showDetailPanel, ticketId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -510,17 +521,17 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   ]);
 
   useEffect(() => {
-    if (!isListPage) {
+    if (!showListPanel) {
       return;
     }
 
     if (ticketPage > totalTicketPages) {
       setTicketPage(totalTicketPages);
     }
-  }, [isListPage, ticketPage, totalTicketPages]);
+  }, [showListPanel, ticketPage, totalTicketPages]);
 
   useEffect(() => {
-    if (!isListPage) {
+    if (!showListPanel) {
       return;
     }
 
@@ -541,7 +552,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     if (nextPage !== ticketPage) {
       setTicketPage(nextPage);
     }
-  }, [isListPage, selectedTicketId, ticketPage, tickets]);
+  }, [showListPanel, selectedTicketId, ticketPage, tickets]);
 
   useEffect(() => {
     if (isIncidentCreatePage) {
@@ -555,7 +566,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   }, [isIncidentCreatePage, isRequestCreatePage]);
 
   useEffect(() => {
-    if (!isListPage) {
+    if (!showListPanel) {
       return;
     }
 
@@ -570,6 +581,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         const nextTickets = await searchTickets(session.accessToken, {
           categoryId: normalizeOptionalId(searchFilters.categoryId),
 
+          includeArchived: isArchiveListPage,
+
           priorityId: normalizeOptionalId(searchFilters.priorityId),
 
           q: normalizeOptionalSearch(searchFilters.q),
@@ -583,11 +596,15 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           return;
         }
 
-        setTickets(nextTickets);
+        const displayedTickets = isArchiveListPage
+          ? nextTickets.filter((ticket) => ticket.archivedAt)
+          : nextTickets.filter((ticket) => !ticket.archivedAt);
+
+        setTickets(displayedTickets);
 
         if (
           selectedTicketId &&
-          !nextTickets.some((ticket) => ticket.id === selectedTicketId)
+          !displayedTickets.some((ticket) => ticket.id === selectedTicketId)
         ) {
           setSelectedTicketId(null);
         }
@@ -612,7 +629,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       cancelled = true;
     };
   }, [
-    isListPage,
+    isArchiveListPage,
     searchFilters.categoryId,
 
     searchFilters.priorityId,
@@ -626,6 +643,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     selectedTicketId,
 
     session.accessToken,
+    showListPanel,
   ]);
 
   useEffect(() => {
@@ -2062,11 +2080,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
               <section className="ticket-list-card">
                 <div className="ticket-list-header">
                   <div>
-                    <h3>Liste des tickets</h3>
+                    <h3>
+                      {isArchiveListPage
+                        ? 'Liste des tickets archives'
+                        : 'Liste des tickets'}
+                    </h3>
 
                     <p>
-                      Vue compacte des tickets avec les colonnes principales de
-                      suivi.
+                      {isArchiveListPage
+                        ? 'Vue dediee aux tickets sortis de la liste active.'
+                        : 'Vue compacte des tickets avec les colonnes principales de suivi.'}
                     </p>
                   </div>
 
@@ -2181,7 +2204,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   <p className="ticket-form-error">{loadTicketsErrorMessage}</p>
                 ) : tickets.length === 0 ? (
                   <p className="ticket-form-message">
-                    Aucun ticket ne correspond aux filtres actuels.
+                    {isArchiveListPage
+                      ? 'Aucun ticket archive ne correspond aux filtres actuels.'
+                      : 'Aucun ticket ne correspond aux filtres actuels.'}
                   </p>
                 ) : (
                   <>
@@ -2209,7 +2234,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 className="ticket-table-row"
                                 key={ticket.id}
                                 onClick={() =>
-                                  navigateTo(`/agent/tickets/${ticket.id}`)
+                                  navigateTo(
+                                    isArchiveListPage
+                                      ? `/agent/archives/${ticket.id}`
+                                      : `/agent/tickets/${ticket.id}`,
+                                  )
                                 }
                               >
                                 <td>
@@ -2364,7 +2393,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     ) : null}
                     <button
                       className="secondary-button"
-                      onClick={() => navigateTo('/agent/tickets')}
+                      onClick={() => navigateTo(detailBackPath)}
                       type="button"
                     >
                       Retour à la liste
