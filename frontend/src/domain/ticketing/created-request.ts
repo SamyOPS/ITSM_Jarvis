@@ -22,6 +22,10 @@ export type CreatedRequestSnapshot = {
     number: string;
     priorityId: string;
     requestedForUserId: string | null;
+    resolutionDueAt: string | null;
+    resolutionSlaStatus: string | null;
+    responseDueAt: string | null;
+    responseSlaStatus: string | null;
     serviceId: string | null;
     status: string;
     title: string;

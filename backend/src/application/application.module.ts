@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { GetAuthSetupUseCase } from './auth/use-cases/get-auth-setup.use-case';
 import { GetAuthenticatedUserUseCase } from './auth/use-cases/get-authenticated-user.use-case';
 import { CreateAdminUserUseCase } from './auth/use-cases/create-admin-user.use-case';
@@ -25,6 +26,7 @@ import { GetAgentPerformanceReportUseCase } from './reporting/use-cases/get-agen
 import { GetTicketReportingBreakdownUseCase } from './reporting/use-cases/get-ticket-reporting-breakdown.use-case';
 import { GetTicketReportingOverviewUseCase } from './reporting/use-cases/get-ticket-reporting-overview.use-case';
 import { TicketAuditService } from './ticketing/ticket-audit.service';
+import { TicketArchiveSchedulerService } from './ticketing/ticket-archive-scheduler.service';
 import { AddTicketAttachmentUseCase } from './ticketing/use-cases/add-ticket-attachment.use-case';
 import { AddTicketCommentUseCase } from './ticketing/use-cases/add-ticket-comment.use-case';
 import { ArchiveExpiredTicketsUseCase } from './ticketing/use-cases/archive-expired-tickets.use-case';
@@ -61,6 +63,7 @@ const referentialUseCases = [
 
 const ticketingUseCases = [
   TicketAuditService,
+  TicketArchiveSchedulerService,
   ArchiveExpiredTicketsUseCase,
   CreateIncidentUseCase,
   CreateRequestUseCase,
@@ -79,7 +82,7 @@ const ticketingUseCases = [
 ];
 
 @Module({
-  imports: [InfrastructureModule],
+  imports: [ScheduleModule.forRoot(), InfrastructureModule],
   providers: [
     GetHealthUseCase,
     GetAuthSetupUseCase,

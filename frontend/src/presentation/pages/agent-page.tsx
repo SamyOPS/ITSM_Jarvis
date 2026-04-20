@@ -401,10 +401,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     1,
     Math.ceil(tickets.length / TICKETS_PER_PAGE),
   );
-  const paginatedTickets = useMemo(() => {
-    const startIndex = (ticketPage - 1) * TICKETS_PER_PAGE;
-    return tickets.slice(startIndex, startIndex + TICKETS_PER_PAGE);
-  }, [ticketPage, tickets]);
 
   useEffect(() => {
     if (showDetailPanel) {
@@ -904,6 +900,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     [catalog.priorities],
   );
+
+  const sortedTickets = useMemo(
+    () => sortTicketsByOperationalPriority(tickets, prioritiesById),
+    [prioritiesById, tickets],
+  );
+
+  const paginatedTickets = useMemo(() => {
+    const startIndex = (ticketPage - 1) * TICKETS_PER_PAGE;
+    return sortedTickets.slice(startIndex, startIndex + TICKETS_PER_PAGE);
+  }, [sortedTickets, ticketPage]);
 
   const channelsById = useMemo(
     () => new Map(catalog.channels.map((channel) => [channel.id, channel])),
@@ -3222,6 +3228,95 @@ function formatKnownUserName(
     .trim();
 
   return fullName || user.displayName || fallback;
+}
+
+function sortTicketsByOperationalPriority(
+  tickets: TicketSummarySnapshot[],
+  prioritiesById: Map<string, { level: number; name: string }>,
+): TicketSummarySnapshot[] {
+  return [...tickets].sort((left, right) => {
+    const leftScore = getTicketOperationalScore(left, prioritiesById);
+    const rightScore = getTicketOperationalScore(right, prioritiesById);
+
+    return (
+      leftScore.statusRank - rightScore.statusRank ||
+      leftScore.slaRank - rightScore.slaRank ||
+      leftScore.nextDueAt - rightScore.nextDueAt ||
+      rightScore.priorityLevel - leftScore.priorityLevel ||
+      leftScore.createdAt - rightScore.createdAt
+    );
+  });
+}
+
+function getTicketOperationalScore(
+  ticket: TicketSummarySnapshot,
+  prioritiesById: Map<string, { level: number; name: string }>,
+): {
+  createdAt: number;
+  nextDueAt: number;
+  priorityLevel: number;
+  slaRank: number;
+  statusRank: number;
+} {
+  return {
+    createdAt: toTimestamp(ticket.createdAt),
+    nextDueAt: getNextDueTimestamp(ticket),
+    priorityLevel: prioritiesById.get(ticket.priorityId)?.level ?? 0,
+    slaRank: getSlaRank(ticket),
+    statusRank: getStatusRank(ticket.status),
+  };
+}
+
+function getStatusRank(status: string): number {
+  if (status === 'IN_PROGRESS') {
+    return 0;
+  }
+
+  if (status === 'OPEN') {
+    return 1;
+  }
+
+  if (status === 'RESOLVED') {
+    return 2;
+  }
+
+  if (status === 'CLOSED') {
+    return 3;
+  }
+
+  return 4;
+}
+
+function getSlaRank(ticket: TicketSummarySnapshot): number {
+  if (
+    ticket.responseSlaStatus === 'OVERDUE' ||
+    ticket.resolutionSlaStatus === 'OVERDUE'
+  ) {
+    return 0;
+  }
+
+  if (
+    ticket.responseSlaStatus === 'AT_RISK' ||
+    ticket.resolutionSlaStatus === 'AT_RISK'
+  ) {
+    return 1;
+  }
+
+  return 2;
+}
+
+function getNextDueTimestamp(ticket: TicketSummarySnapshot): number {
+  const timestamps = [ticket.responseDueAt, ticket.resolutionDueAt]
+    .map((value) => (value ? toTimestamp(value) : Number.POSITIVE_INFINITY))
+    .filter((value) => Number.isFinite(value));
+
+  return Math.min(...timestamps, Number.POSITIVE_INFINITY);
+}
+
+function toTimestamp(value: string): number {
+  const timestamp = Date.parse(value);
+
+  return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
 }
 
 function renderPriorityBadge(
