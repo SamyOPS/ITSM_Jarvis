@@ -12,6 +12,10 @@ export type TicketSummarySnapshot = {
   priorityId: string;
   priorityName: string | null;
   requestedForUserId: string | null;
+  resolutionDueAt: string | null;
+  resolutionSlaStatus: string | null;
+  responseDueAt: string | null;
+  responseSlaStatus: string | null;
   serviceId: string | null;
   status: string;
   title: string;
