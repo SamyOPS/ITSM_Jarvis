@@ -69,7 +69,11 @@ export class GetTicketReportingOverviewUseCase {
       status: filters.status,
       type: filters.type,
     });
-    const scopedTickets = filterByPeriod(tickets, filters.from, filters.to);
+    const scopedTickets = filterByPeriod(
+      withoutArchivedTickets(tickets),
+      filters.from,
+      filters.to,
+    );
     const ticketHistoryEntries =
       await this.ticketHistoryReadRepository.listTicketHistoryEntries({
         ticketIds: scopedTickets.map((ticket) => ticket.id),
@@ -240,6 +244,10 @@ function filterByPeriod(
 
     return createdAtTime >= fromTime && createdAtTime <= toTime;
   });
+}
+
+function withoutArchivedTickets(tickets: TicketSummary[]): TicketSummary[] {
+  return tickets.filter((ticket) => !ticket.archivedAt);
 }
 
 function countByStatus(tickets: TicketSummary[], status: TicketStatus): number {

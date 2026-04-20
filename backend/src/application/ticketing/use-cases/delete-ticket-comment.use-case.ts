@@ -12,6 +12,8 @@ import { TicketCommentWriteRepository } from '../repositories/ticket-comment-wri
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketAuditService } from '../ticket-audit.service';
 import { assertTicketCommentAccess } from '../ticket-comment-access';
+import { assertTicketCanBeModifiedByRole } from '../ticketing-rules';
+import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 
 export type DeleteTicketCommentCommand = {
   actorRole: UserRole;
@@ -63,6 +65,20 @@ export class DeleteTicketCommentUseCase {
       userId: normalizedActorUserId,
       userRole: command.actorRole,
     });
+
+    try {
+      assertTicketCanBeModifiedByRole(
+        ticket.ticket.status,
+        ticket.ticket.archivedAt,
+        command.actorRole,
+      );
+    } catch (error) {
+      if (error instanceof TicketRuleError) {
+        throw new BadRequestException(error.message);
+      }
+
+      throw error;
+    }
 
     const comment = await this.ticketCommentReadRepository.getTicketCommentById(
       normalizedTicketId,

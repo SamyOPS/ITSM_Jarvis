@@ -3,6 +3,7 @@ import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { Ticket } from '../../../domain/ticketing/ticket';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
+import { UserRole } from '../../../domain/auth/user-role';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
 import { TicketAuditService } from '../ticket-audit.service';
@@ -122,6 +123,7 @@ describe('ChangeTicketStatusUseCase', () => {
 
     await expect(
       useCase.execute({
+        actorRole: UserRole.ADMIN,
         actorUserId: 'agent-1',
         status: TicketStatus.IN_PROGRESS,
         ticketId: 'ticket-1',

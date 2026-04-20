@@ -12,6 +12,8 @@ import { TicketAttachmentWriteRepository } from '../repositories/ticket-attachme
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { assertTicketAttachmentAccess } from '../ticket-attachment-access';
 import { TicketAuditService } from '../ticket-audit.service';
+import { assertTicketCanBeModifiedByRole } from '../ticketing-rules';
+import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 
 export type DeleteTicketAttachmentCommand = {
   actorRole: UserRole;
@@ -63,6 +65,20 @@ export class DeleteTicketAttachmentUseCase {
       userId: normalizedActorUserId,
       userRole: command.actorRole,
     });
+
+    try {
+      assertTicketCanBeModifiedByRole(
+        ticket.ticket.status,
+        ticket.ticket.archivedAt,
+        command.actorRole,
+      );
+    } catch (error) {
+      if (error instanceof TicketRuleError) {
+        throw new BadRequestException(error.message);
+      }
+
+      throw error;
+    }
 
     const attachment =
       await this.ticketAttachmentReadRepository.getTicketAttachmentById(

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
+  Archive,
   BarChart3,
   ChevronDown,
   FileText,
@@ -41,6 +42,7 @@ const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/admin': Shield,
   '/admin/users': Users,
   '/agent': LayoutDashboard,
+  '/agent/archives': Archive,
   '/agent/incidents/new': AlertTriangle,
   '/agent/requests/new': FileText,
   '/agent/tickets': Ticket,
@@ -51,6 +53,12 @@ function isRouteActive(routePath: RoutePath, pathname: string): boolean {
   if (routePath === '/agent/tickets') {
     return (
       pathname === '/agent/tickets' || pathname.startsWith('/agent/tickets/')
+    );
+  }
+
+  if (routePath === '/agent/archives') {
+    return (
+      pathname === '/agent/archives' || pathname.startsWith('/agent/archives/')
     );
   }
 

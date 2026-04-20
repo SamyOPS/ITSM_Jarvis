@@ -80,7 +80,11 @@ export class GetTicketReportingBreakdownUseCase {
       this.categoryReadRepository.listCategories(),
       this.priorityReadRepository.listPriorities(),
     ]);
-    const scopedTickets = filterByPeriod(tickets, filters.from, filters.to);
+    const scopedTickets = filterByPeriod(
+      withoutArchivedTickets(tickets),
+      filters.from,
+      filters.to,
+    );
     const usersById = new Map(users.map((user) => [user.id, user]));
     const categoriesById = new Map(
       categories.map((category) => [category.id, category]),
@@ -228,6 +232,10 @@ function filterByPeriod(
 
     return createdAtTime >= fromTime && createdAtTime <= toTime;
   });
+}
+
+function withoutArchivedTickets(tickets: TicketSummary[]): TicketSummary[] {
+  return tickets.filter((ticket) => !ticket.archivedAt);
 }
 
 function normalizeOptionalDate(

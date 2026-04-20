@@ -1,13 +1,17 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
+import { UserRole } from '../../../domain/auth/user-role';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
 import { TicketAuditService } from '../ticket-audit.service';
 import { calculateSlaTargets } from '../sla-targets';
+import { assertTicketCanBeModifiedByRole } from '../ticketing-rules';
+import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 
 export type ChangeTicketPriorityCommand = {
+  actorRole?: UserRole;
   actorUserId: string;
   priorityId: string;
   ticketId: string;
@@ -47,6 +51,20 @@ export class ChangeTicketPriorityUseCase {
 
     if (!existingTicket) {
       throw new BadRequestException(`Ticket ${ticketId} does not exist.`);
+    }
+
+    try {
+      assertTicketCanBeModifiedByRole(
+        existingTicket.ticket.status,
+        existingTicket.ticket.archivedAt,
+        command.actorRole,
+      );
+    } catch (error) {
+      if (error instanceof TicketRuleError) {
+        throw new BadRequestException(error.message);
+      }
+
+      throw error;
     }
 
     const priorities = await this.priorityRepository.listPriorities();

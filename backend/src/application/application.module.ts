@@ -27,6 +27,7 @@ import { GetTicketReportingOverviewUseCase } from './reporting/use-cases/get-tic
 import { TicketAuditService } from './ticketing/ticket-audit.service';
 import { AddTicketAttachmentUseCase } from './ticketing/use-cases/add-ticket-attachment.use-case';
 import { AddTicketCommentUseCase } from './ticketing/use-cases/add-ticket-comment.use-case';
+import { ArchiveExpiredTicketsUseCase } from './ticketing/use-cases/archive-expired-tickets.use-case';
 import { AssignTicketUseCase } from './ticketing/use-cases/assign-ticket.use-case';
 import { ChangeTicketPriorityUseCase } from './ticketing/use-cases/change-ticket-priority.use-case';
 import { ChangeTicketStatusUseCase } from './ticketing/use-cases/change-ticket-status.use-case';
@@ -60,6 +61,7 @@ const referentialUseCases = [
 
 const ticketingUseCases = [
   TicketAuditService,
+  ArchiveExpiredTicketsUseCase,
   CreateIncidentUseCase,
   CreateRequestUseCase,
   AssignTicketUseCase,

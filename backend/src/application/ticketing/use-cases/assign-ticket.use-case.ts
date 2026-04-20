@@ -1,14 +1,19 @@
 ﻿import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
+import { UserRole } from '../../../domain/auth/user-role';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
 import { TicketAuditService } from '../ticket-audit.service';
-import { assertValidAssignmentPolicy } from '../ticketing-rules';
+import {
+  assertTicketCanBeModifiedByRole,
+  assertValidAssignmentPolicy,
+} from '../ticketing-rules';
 
 export type AssignTicketCommand = {
+  actorRole?: UserRole;
   actorUserId: string;
   assignedToUserId?: string | null;
   assignmentGroupId?: string | null;
@@ -53,6 +58,11 @@ export class AssignTicketUseCase {
       : null;
 
     try {
+      assertTicketCanBeModifiedByRole(
+        existingTicket.ticket.status,
+        existingTicket.ticket.archivedAt,
+        command.actorRole,
+      );
       assertValidAssignmentPolicy({
         assignedToUserId,
         assignmentGroupId,

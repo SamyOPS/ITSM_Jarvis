@@ -106,6 +106,26 @@ function renderPage({
       ) : (
         <NotFoundPage />
       );
+    case '/agent/archives':
+      if (pathname.startsWith('/agent/archives/')) {
+        const ticketId = pathname.replace('/agent/archives/', '').trim();
+
+        return session && ticketId ? (
+          <AgentPage
+            section="ARCHIVE_DETAIL"
+            session={session}
+            ticketId={ticketId}
+          />
+        ) : (
+          <NotFoundPage />
+        );
+      }
+
+      return session ? (
+        <AgentPage section="ARCHIVES" session={session} />
+      ) : (
+        <NotFoundPage />
+      );
     case '/agent/tickets':
       if (pathname.startsWith('/agent/tickets/')) {
         const ticketId = pathname.replace('/agent/tickets/', '').trim();

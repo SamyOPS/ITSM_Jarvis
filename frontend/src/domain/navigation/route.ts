@@ -5,6 +5,7 @@ export type RoutePath =
   | '/agent'
   | '/agent/incidents/new'
   | '/agent/requests/new'
+  | '/agent/archives'
   | '/agent/tickets'
   | '/reports'
   | '/login';
@@ -41,6 +42,11 @@ export const ROUTES: RouteDefinition[] = [
     description: 'Liste, recherche et detail des tickets existants.',
     path: '/agent/tickets',
     title: 'Liste des tickets',
+  },
+  {
+    description: 'Liste des tickets archives.',
+    path: '/agent/archives',
+    title: 'Archives',
   },
   {
     description: 'Tableau de bord de suivi des tickets et KPI SLA.',

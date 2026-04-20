@@ -54,6 +54,26 @@ export function assertAllowedTicketStatusTransition(
   }
 }
 
+export function assertTicketCanBeModifiedByRole(
+  status: TicketStatus,
+  archivedAt: string | null,
+  userRole: UserRole | null | undefined,
+): void {
+  if (userRole === UserRole.ADMIN) {
+    return;
+  }
+
+  if (archivedAt) {
+    throw new TicketRuleError(
+      'Archived tickets can only be modified by admins.',
+    );
+  }
+
+  if (status === TicketStatus.CLOSED) {
+    throw new TicketRuleError('Closed tickets can only be modified by admins.');
+  }
+}
+
 export function assertValidAssignmentPolicy({
   assignedToUserId,
   assignmentGroupId,

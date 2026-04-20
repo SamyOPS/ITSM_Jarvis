@@ -1,5 +1,6 @@
 import { AddTicketAttachmentUseCase } from '../../../application/ticketing/use-cases/add-ticket-attachment.use-case';
 import { AddTicketCommentUseCase } from '../../../application/ticketing/use-cases/add-ticket-comment.use-case';
+import { ArchiveExpiredTicketsUseCase } from '../../../application/ticketing/use-cases/archive-expired-tickets.use-case';
 import { AssignTicketUseCase } from '../../../application/ticketing/use-cases/assign-ticket.use-case';
 import { ChangeTicketPriorityUseCase } from '../../../application/ticketing/use-cases/change-ticket-priority.use-case';
 import { ChangeTicketStatusUseCase } from '../../../application/ticketing/use-cases/change-ticket-status.use-case';
@@ -71,6 +72,10 @@ describe('TicketsController', () => {
     isInternal: false,
     ticketId: 'ticket-1',
   });
+  const archiveExpiredTickets = jest.fn().mockResolvedValue({
+    archivedCount: 1,
+    cutoff: '2026-02-16T10:00:00.000Z',
+  });
   const deleteComment = jest.fn().mockResolvedValue(undefined);
   const deleteTicket = jest.fn().mockResolvedValue(undefined);
   const listAttachments = jest.fn().mockResolvedValue([
@@ -125,6 +130,7 @@ describe('TicketsController', () => {
     getTicketById.mockClear();
     listComments.mockClear();
     addComment.mockClear();
+    archiveExpiredTickets.mockClear();
     deleteComment.mockClear();
     deleteTicket.mockClear();
     listAttachments.mockClear();
@@ -136,6 +142,9 @@ describe('TicketsController', () => {
       {
         execute: assignTicket,
       } as unknown as AssignTicketUseCase,
+      {
+        execute: archiveExpiredTickets,
+      } as unknown as ArchiveExpiredTicketsUseCase,
       {
         execute: changeTicketPriority,
       } as unknown as ChangeTicketPriorityUseCase,
@@ -202,6 +211,7 @@ describe('TicketsController', () => {
     });
 
     expect(assignTicket).toHaveBeenCalledWith({
+      actorRole: UserRole.AGENT,
       actorUserId: 'user-1',
       assignedToUserId: 'agent-1',
       assignmentGroupId: 'group-1',
@@ -231,6 +241,7 @@ describe('TicketsController', () => {
     });
 
     expect(changeTicketStatus).toHaveBeenCalledWith({
+      actorRole: UserRole.AGENT,
       actorUserId: 'user-1',
       status: TicketStatus.IN_PROGRESS,
       ticketId: 'ticket-1',
@@ -259,6 +270,7 @@ describe('TicketsController', () => {
     });
 
     expect(changeTicketPriority).toHaveBeenCalledWith({
+      actorRole: UserRole.AGENT,
       actorUserId: 'user-1',
       priorityId: 'priority-high',
       ticketId: 'ticket-1',
@@ -291,6 +303,7 @@ describe('TicketsController', () => {
     ]);
 
     expect(searchTickets).toHaveBeenCalledWith({
+      includeArchived: false,
       requesterUserId: 'user-1',
       requesterUserRole: UserRole.AGENT,
       q: 'vpn',

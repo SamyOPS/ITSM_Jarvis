@@ -8,10 +8,12 @@
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketComment } from '../../../domain/ticketing/ticket-comment';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
+import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 import { TicketCommentWriteRepository } from '../repositories/ticket-comment-write.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketAuditService } from '../ticket-audit.service';
 import { assertTicketCommentAccess } from '../ticket-comment-access';
+import { assertTicketCanBeModifiedByRole } from '../ticketing-rules';
 
 export type AddTicketCommentCommand = {
   authorRole: UserRole;
@@ -69,6 +71,20 @@ export class AddTicketCommentUseCase {
       userId: normalizedAuthorUserId,
       userRole: command.authorRole,
     });
+
+    try {
+      assertTicketCanBeModifiedByRole(
+        ticket.ticket.status,
+        ticket.ticket.archivedAt,
+        command.authorRole,
+      );
+    } catch (error) {
+      if (error instanceof TicketRuleError) {
+        throw new BadRequestException(error.message);
+      }
+
+      throw error;
+    }
 
     const comment = await this.ticketCommentWriteRepository.addTicketComment({
       authorUserId: normalizedAuthorUserId,

@@ -7,10 +7,12 @@
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketAttachment } from '../../../domain/ticketing/ticket-attachment';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
+import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 import { TicketAttachmentWriteRepository } from '../repositories/ticket-attachment-write.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { assertTicketAttachmentAccess } from '../ticket-attachment-access';
 import { TicketAuditService } from '../ticket-audit.service';
+import { assertTicketCanBeModifiedByRole } from '../ticketing-rules';
 
 export type AddTicketAttachmentCommand = {
   bucketId: string;
@@ -83,6 +85,20 @@ export class AddTicketAttachmentUseCase {
       userId: normalizedUploaderUserId,
       userRole: command.uploaderRole,
     });
+
+    try {
+      assertTicketCanBeModifiedByRole(
+        ticket.ticket.status,
+        ticket.ticket.archivedAt,
+        command.uploaderRole,
+      );
+    } catch (error) {
+      if (error instanceof TicketRuleError) {
+        throw new BadRequestException(error.message);
+      }
+
+      throw error;
+    }
 
     const attachment =
       await this.ticketAttachmentWriteRepository.addTicketAttachment({
