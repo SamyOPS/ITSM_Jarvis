@@ -2267,7 +2267,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                         ?.name ?? ticket.serviceId)
                                     : 'Service non défini'}
                                 </td>
-                                <td>{translateTicketStatus(ticket.status)}</td>
+                                <td>{renderStatusBadge(ticket.status)}</td>
                                 <td>{formatTicketDate(ticket.createdAt)}</td>
                                 <td>{formatTicketDate(ticket.createdAt)}</td>
                                 <td>
@@ -3335,6 +3335,17 @@ function renderPriorityBadge(
       className={`ticket-priority-badge ticket-priority-badge--${priorityName.toLowerCase()}`}
     >
       {translatePriority(priorityName)}
+    </span>
+  );
+}
+
+function renderStatusBadge(status: string) {
+  return (
+    <span
+      className={`ticket-status-badge ticket-status-badge--${status.toLowerCase()}`}
+    >
+      <span className="ticket-status-badge-icon" aria-hidden="true" />
+      {translateTicketStatus(status)}
     </span>
   );
 }

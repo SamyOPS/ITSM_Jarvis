@@ -3495,6 +3495,44 @@ a {
   box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.12);
 }
 
+.ticket-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #24406c;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ticket-status-badge-icon {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: #94a3b8;
+  box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.13);
+  flex: none;
+}
+
+.ticket-status-badge--open .ticket-status-badge-icon {
+  background: #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.14);
+}
+
+.ticket-status-badge--in_progress .ticket-status-badge-icon {
+  background: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.14);
+}
+
+.ticket-status-badge--resolved .ticket-status-badge-icon {
+  background: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
+}
+
+.ticket-status-badge--closed .ticket-status-badge-icon {
+  background: #64748b;
+  box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.13);
+}
+
 /* Sidebar compact recalibration from docs/htm */
 .app-shell--workspace .workspace-sidebar {
   width: 268px;
