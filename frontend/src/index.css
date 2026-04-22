@@ -1511,6 +1511,19 @@ a {
   color: #17335f;
 }
 
+.ticket-table-number {
+  display: inline-grid;
+  gap: 2px;
+  line-height: 1.25;
+  min-width: 62px;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+.ticket-table-number span {
+  word-break: keep-all;
+}
+
 .ticket-table-primary span {
   font-size: 0.85rem;
   color: var(--text-muted);
