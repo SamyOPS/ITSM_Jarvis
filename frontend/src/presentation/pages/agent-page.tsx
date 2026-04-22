@@ -228,7 +228,7 @@ const INITIAL_ATTACHMENT_DRAFT: AttachmentDraftState = {
 };
 
 const TICKET_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
-const TICKETS_PER_PAGE = 10;
+const TICKETS_PER_PAGE = 15;
 
 export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const [catalog, setCatalog] =
@@ -2249,16 +2249,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               >
                                 <td>
                                   <div className="ticket-table-primary">
-                                    <strong>{ticket.number}</strong>
-                                    <span>
-                                      {translateTicketType(ticket.type)}
-                                    </span>
+                                    {renderTicketDisplayNumber(ticket)}
                                   </div>
                                 </td>
                                 <td>
                                   <div className="ticket-table-primary">
                                     <strong>{ticket.title}</strong>
-                                    <span>{ticket.id}</span>
                                   </div>
                                 </td>
                                 <td>
@@ -2267,7 +2263,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                         ?.name ?? ticket.serviceId)
                                     : 'Service non défini'}
                                 </td>
-                                <td>{translateTicketStatus(ticket.status)}</td>
+                                <td>{renderStatusBadge(ticket.status)}</td>
                                 <td>{formatTicketDate(ticket.createdAt)}</td>
                                 <td>{formatTicketDate(ticket.createdAt)}</td>
                                 <td>
@@ -3319,6 +3315,36 @@ function toTimestamp(value: string): number {
   return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
 }
 
+function formatTicketDisplayNumber(ticket: TicketSummarySnapshot): string {
+  const numberSuffix = ticket.number.split('-').at(-1) ?? ticket.number;
+
+  if (ticket.type === 'INCIDENT') {
+    return `INC-${numberSuffix}`;
+  }
+
+  if (ticket.type === 'REQUEST') {
+    return `DEM-${numberSuffix}`;
+  }
+
+  return ticket.number;
+}
+
+function renderTicketDisplayNumber(ticket: TicketSummarySnapshot) {
+  const displayNumber = formatTicketDisplayNumber(ticket);
+  const [prefix, suffix] = displayNumber.split('-');
+
+  if (!prefix || !suffix) {
+    return <strong>{displayNumber}</strong>;
+  }
+
+  return (
+    <strong className="ticket-table-number">
+      <span>{prefix}-</span>
+      <span>{suffix}</span>
+    </strong>
+  );
+}
+
 function renderPriorityBadge(
   ticket: TicketSummarySnapshot,
   prioritiesById: Map<string, { name: string }>,
@@ -3335,6 +3361,17 @@ function renderPriorityBadge(
       className={`ticket-priority-badge ticket-priority-badge--${priorityName.toLowerCase()}`}
     >
       {translatePriority(priorityName)}
+    </span>
+  );
+}
+
+function renderStatusBadge(status: string) {
+  return (
+    <span
+      className={`ticket-status-badge ticket-status-badge--${status.toLowerCase()}`}
+    >
+      <span className="ticket-status-badge-icon" aria-hidden="true" />
+      {translateTicketStatus(status)}
     </span>
   );
 }
