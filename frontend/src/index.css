@@ -3599,10 +3599,17 @@ a {
 .app-shell--workspace .workspace-sidebar {
   width: 268px;
   padding: 18px 14px 20px;
+  overflow: hidden;
+  will-change: width, padding;
 }
 
 .workspace-sidebar-header {
   margin-bottom: 14px;
+}
+
+.workspace-sidebar-brand-copy {
+  min-width: 140px;
+  overflow: hidden;
 }
 
 .workspace-sidebar-brand-copy strong {
@@ -3612,7 +3619,11 @@ a {
 }
 
 .workspace-sidebar-brand-copy span {
+  display: block;
   font-size: 0.74rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace-sidebar-search {
@@ -3638,12 +3649,18 @@ a {
 
 .workspace-nav-link {
   gap: 10px;
+  min-height: 42px;
   padding: 10px 10px;
+  overflow: hidden;
 }
 
 .workspace-nav-link-label {
   font-size: 0.93rem;
   font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace-sidebar-footer strong {
