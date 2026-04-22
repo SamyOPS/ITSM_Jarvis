@@ -2779,6 +2779,66 @@ a {
   color: currentColor;
 }
 
+.workspace-nav-dropdown {
+  display: grid;
+  gap: 6px;
+}
+
+.workspace-nav-dropdown .workspace-nav-link {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+}
+
+.workspace-nav-dropdown-chevron {
+  color: rgba(231, 237, 246, 0.72);
+  transition: transform 160ms ease;
+}
+
+.workspace-nav-dropdown.is-open .workspace-nav-dropdown-chevron {
+  transform: rotate(180deg);
+}
+
+.workspace-nav-dropdown-list {
+  display: grid;
+  gap: 6px;
+  margin-left: 18px;
+  padding: 2px 0 2px 16px;
+  border-left: 1px dashed rgba(231, 237, 246, 0.18);
+}
+
+.workspace-nav-dropdown-item {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(231, 237, 246, 0.86);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: left;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.workspace-nav-dropdown-item::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 10px;
+  border-radius: 999px;
+  background: #9ecbff;
+  vertical-align: 1px;
+}
+
+.workspace-nav-dropdown-item:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.1);
+  color: #9ecbff;
+}
+
 .workspace-sidebar-footer {
   margin-top: 18px;
   padding: 14px 8px 0;

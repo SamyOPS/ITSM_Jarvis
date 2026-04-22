@@ -6,6 +6,9 @@ export type RoutePath =
   | '/agent/incidents/new'
   | '/agent/requests/new'
   | '/agent/archives'
+  | '/agent/assigned-to-me'
+  | '/agent/my-tickets'
+  | '/agent/unassigned-tickets'
   | '/agent/tickets'
   | '/reports'
   | '/login';
@@ -31,17 +34,32 @@ export const ROUTES: RouteDefinition[] = [
   {
     description: 'Creation d un ticket de type incident.',
     path: '/agent/incidents/new',
-    title: 'Creer un incident',
+    title: 'Créer un incident',
   },
   {
     description: 'Creation d un ticket de type demande.',
     path: '/agent/requests/new',
-    title: 'Creer une demande',
+    title: 'Créer une demande',
   },
   {
     description: 'Liste, recherche et detail des tickets existants.',
     path: '/agent/tickets',
     title: 'Liste des tickets',
+  },
+  {
+    description: 'Liste des tickets crees par l utilisateur connecte.',
+    path: '/agent/my-tickets',
+    title: 'Mes tickets',
+  },
+  {
+    description: 'Liste des tickets sans technicien assigne.',
+    path: '/agent/unassigned-tickets',
+    title: 'Non assignés',
+  },
+  {
+    description: 'Liste des tickets assignes a l utilisateur connecte.',
+    path: '/agent/assigned-to-me',
+    title: 'Assignés à moi',
   },
   {
     description: 'Liste des tickets archives.',
