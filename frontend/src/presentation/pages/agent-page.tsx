@@ -425,7 +425,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     1,
     Math.ceil(tickets.length / TICKETS_PER_PAGE),
   );
-  const ticketListTitle = getTicketListTitle(section);
+  const ticketListTitle = getTicketListTitle(section, session.user.role);
   const ticketListDescription = getTicketListDescription(section);
   const ticketListEmptyMessage = getTicketListEmptyMessage(section);
 
@@ -608,7 +608,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
           priorityId: normalizeOptionalId(searchFilters.priorityId),
 
-          q: normalizeOptionalSearch(searchFilters.q),
+          q: null,
 
           status: searchFilters.status || null,
 
@@ -643,6 +643,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
             (ticket) => !ticket.assignedToUserId,
           );
         }
+
+        displayedTickets = filterTicketsByListSearch(
+          displayedTickets,
+          searchFilters.q,
+          userDirectory,
+        );
 
         setTickets(displayedTickets);
 
@@ -694,6 +700,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     session.user.id,
     session.user.role,
     showListPanel,
+    userDirectory,
   ]);
 
   useEffect(() => {
@@ -2337,7 +2344,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       onChange={(event) =>
                         handleSearchFilterChange('q', event.target.value)
                       }
-                      placeholder="Numero, titre ou description"
+                      placeholder="Titre, demandeur ou technicien"
                       value={searchFilters.q}
                     />
                   </label>
@@ -3349,12 +3356,6 @@ function normalizeOptionalId(value: string): string | null {
   return normalized ? normalized : null;
 }
 
-function normalizeOptionalSearch(value: string): string | null {
-  const normalized = value.trim();
-
-  return normalized ? normalized : null;
-}
-
 function formatTicketDate(value: string): string {
   const parsed = new Date(value);
 
@@ -3429,13 +3430,16 @@ function asTicketStatus(value: string): TicketStatus | null {
   return null;
 }
 
-function getTicketListTitle(section: AgentPageProps['section']): string {
+function getTicketListTitle(
+  section: AgentPageProps['section'],
+  userRole: UserRole,
+): string {
   if (section === 'ARCHIVES') {
     return 'Liste des tickets archives';
   }
 
   if (section === 'ASSIGNED_TO_ME') {
-    return 'Tickets assign?s ? moi';
+    return 'Tickets assignés à moi';
   }
 
   if (section === 'MY_TICKETS') {
@@ -3443,7 +3447,11 @@ function getTicketListTitle(section: AgentPageProps['section']): string {
   }
 
   if (section === 'UNASSIGNED_TICKETS') {
-    return 'Tickets non assign?s';
+    return 'Tickets non assignés';
+  }
+
+  if (section === 'LIST' && userRole === 'DEMANDEUR') {
+    return 'Mes tickets';
   }
 
   return 'Liste des tickets';
@@ -3519,6 +3527,42 @@ function formatKnownUserName(
     .trim();
 
   return fullName || user.displayName || fallback;
+}
+
+function filterTicketsByListSearch(
+  tickets: TicketSummarySnapshot[],
+  searchText: string,
+  users: AdminUserSummary[],
+): TicketSummarySnapshot[] {
+  const normalizedSearch = normalizeSearchText(searchText);
+
+  if (!normalizedSearch) {
+    return tickets;
+  }
+
+  const usersById = new Map(users.map((user) => [user.id, user]));
+
+  return tickets.filter((ticket) => {
+    const requesterId = ticket.requestedForUserId ?? ticket.createdByUserId;
+    const requesterName = formatKnownUserName(
+      usersById.get(requesterId),
+      requesterId,
+    );
+    const technicianName = ticket.assignedToUserId
+      ? formatKnownUserName(
+          usersById.get(ticket.assignedToUserId),
+          ticket.assignedToUserId,
+        )
+      : '';
+
+    return [ticket.title, requesterName, technicianName].some((value) =>
+      normalizeSearchText(value).includes(normalizedSearch),
+    );
+  });
+}
+
+function normalizeSearchText(value: string): string {
+  return value.trim().toLocaleLowerCase('fr-FR');
 }
 
 function sortTicketsByOperationalPriority(

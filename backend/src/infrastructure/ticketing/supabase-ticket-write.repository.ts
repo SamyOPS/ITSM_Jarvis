@@ -318,10 +318,7 @@ export class SupabaseTicketWriteRepository
     }
 
     if (filters.q) {
-      query.set(
-        'or',
-        `(number.ilike.*${filters.q}*,title.ilike.*${filters.q}*,description.ilike.*${filters.q}*)`,
-      );
+      query.set('title', `ilike.*${filters.q}*`);
     }
 
     const response = await this.send(`tickets?${query.toString()}`, 'GET');

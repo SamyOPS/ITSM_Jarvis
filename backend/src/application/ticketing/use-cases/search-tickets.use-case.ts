@@ -117,9 +117,5 @@ function normalizeOptionalText(
     return null;
   }
 
-  if (normalized.length < 2) {
-    throw new BadRequestException('q must contain at least 2 characters.');
-  }
-
   return normalized;
 }
