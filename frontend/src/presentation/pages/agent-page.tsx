@@ -63,8 +63,11 @@ type AgentPageProps = {
   section:
     | 'ARCHIVES'
     | 'ARCHIVE_DETAIL'
+    | 'ASSIGNED_TO_ME'
     | 'INCIDENT_CREATE'
+    | 'MY_TICKETS'
     | 'REQUEST_CREATE'
+    | 'UNASSIGNED_TICKETS'
     | 'LIST'
     | 'DETAIL';
   session: AuthSessionSnapshot;
@@ -397,11 +400,19 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const isIncidentCreatePage = section === 'INCIDENT_CREATE';
   const isArchiveListPage = section === 'ARCHIVES';
   const isArchiveDetailPage = section === 'ARCHIVE_DETAIL';
+  const isAssignedToMePage = section === 'ASSIGNED_TO_ME';
+  const isMyTicketsPage = section === 'MY_TICKETS';
+  const isUnassignedTicketsPage = section === 'UNASSIGNED_TICKETS';
   const isRequestCreatePage = section === 'REQUEST_CREATE';
   const isListPage = section === 'LIST';
   const isDetailPage = section === 'DETAIL';
   const showCreationPanel = isIncidentCreatePage || isRequestCreatePage;
-  const showListPanel = isListPage || isArchiveListPage;
+  const showListPanel =
+    isListPage ||
+    isArchiveListPage ||
+    isAssignedToMePage ||
+    isMyTicketsPage ||
+    isUnassignedTicketsPage;
   const showDetailPanel = isDetailPage || isArchiveDetailPage;
   const creationAttachmentFiles =
     mode === 'INCIDENT'
@@ -414,6 +425,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     1,
     Math.ceil(tickets.length / TICKETS_PER_PAGE),
   );
+  const ticketListTitle = getTicketListTitle(section);
+  const ticketListDescription = getTicketListDescription(section);
+  const ticketListEmptyMessage = getTicketListEmptyMessage(section);
 
   useEffect(() => {
     if (showDetailPanel) {
@@ -605,9 +619,30 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           return;
         }
 
-        const displayedTickets = isArchiveListPage
+        const activeTickets = isArchiveListPage
           ? nextTickets.filter((ticket) => ticket.archivedAt)
           : nextTickets.filter((ticket) => !ticket.archivedAt);
+        let displayedTickets = activeTickets;
+
+        if (isMyTicketsPage) {
+          displayedTickets = activeTickets.filter(
+            (ticket) => ticket.createdByUserId === session.user.id,
+          );
+        } else if (isListPage && session.user.role === 'DEMANDEUR') {
+          displayedTickets = activeTickets.filter(
+            (ticket) =>
+              ticket.createdByUserId === session.user.id ||
+              ticket.requestedForUserId === session.user.id,
+          );
+        } else if (isAssignedToMePage) {
+          displayedTickets = activeTickets.filter(
+            (ticket) => ticket.assignedToUserId === session.user.id,
+          );
+        } else if (isUnassignedTicketsPage) {
+          displayedTickets = activeTickets.filter(
+            (ticket) => !ticket.assignedToUserId,
+          );
+        }
 
         setTickets(displayedTickets);
 
@@ -639,6 +674,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     };
   }, [
     isArchiveListPage,
+    isAssignedToMePage,
+    isListPage,
+    isMyTicketsPage,
+    isUnassignedTicketsPage,
     searchFilters.categoryId,
 
     searchFilters.priorityId,
@@ -652,6 +691,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     selectedTicketId,
 
     session.accessToken,
+    session.user.id,
+    session.user.role,
     showListPanel,
   ]);
 
@@ -2276,17 +2317,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
               <section className="ticket-list-card">
                 <div className="ticket-list-header">
                   <div>
-                    <h3>
-                      {isArchiveListPage
-                        ? 'Liste des tickets archives'
-                        : 'Liste des tickets'}
-                    </h3>
+                    <h3>{ticketListTitle}</h3>
 
-                    <p>
-                      {isArchiveListPage
-                        ? 'Vue dediee aux tickets sortis de la liste active.'
-                        : 'Vue compacte des tickets avec les colonnes principales de suivi.'}
-                    </p>
+                    <p>{ticketListDescription}</p>
                   </div>
 
                   <div className="ticket-list-meta">
@@ -2400,9 +2433,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   <p className="ticket-form-error">{loadTicketsErrorMessage}</p>
                 ) : tickets.length === 0 ? (
                   <p className="ticket-form-message">
-                    {isArchiveListPage
-                      ? 'Aucun ticket archive ne correspond aux filtres actuels.'
-                      : 'Aucun ticket ne correspond aux filtres actuels.'}
+                    {ticketListEmptyMessage}
                   </p>
                 ) : (
                   <>
@@ -3396,6 +3427,66 @@ function asTicketStatus(value: string): TicketStatus | null {
   }
 
   return null;
+}
+
+function getTicketListTitle(section: AgentPageProps['section']): string {
+  if (section === 'ARCHIVES') {
+    return 'Liste des tickets archives';
+  }
+
+  if (section === 'ASSIGNED_TO_ME') {
+    return 'Tickets assign?s ? moi';
+  }
+
+  if (section === 'MY_TICKETS') {
+    return 'Mes tickets';
+  }
+
+  if (section === 'UNASSIGNED_TICKETS') {
+    return 'Tickets non assign?s';
+  }
+
+  return 'Liste des tickets';
+}
+
+function getTicketListDescription(section: AgentPageProps['section']): string {
+  if (section === 'ARCHIVES') {
+    return 'Vue dediee aux tickets sortis de la liste active.';
+  }
+
+  if (section === 'ASSIGNED_TO_ME') {
+    return 'Tickets actifs dont vous etes le technicien assigne.';
+  }
+
+  if (section === 'MY_TICKETS') {
+    return 'Tickets crees par votre compte utilisateur.';
+  }
+
+  if (section === 'UNASSIGNED_TICKETS') {
+    return 'Tickets actifs sans technicien assigne.';
+  }
+
+  return 'Vue compacte des tickets avec les colonnes principales de suivi.';
+}
+
+function getTicketListEmptyMessage(section: AgentPageProps['section']): string {
+  if (section === 'ARCHIVES') {
+    return 'Aucun ticket archive ne correspond aux filtres actuels.';
+  }
+
+  if (section === 'ASSIGNED_TO_ME') {
+    return 'Aucun ticket assigne a votre compte ne correspond aux filtres actuels.';
+  }
+
+  if (section === 'MY_TICKETS') {
+    return 'Aucun ticket cree par votre compte ne correspond aux filtres actuels.';
+  }
+
+  if (section === 'UNASSIGNED_TICKETS') {
+    return 'Aucun ticket non assigne ne correspond aux filtres actuels.';
+  }
+
+  return 'Aucun ticket ne correspond aux filtres actuels.';
 }
 
 function canCreateInternalTicketComments(role: UserRole): boolean {

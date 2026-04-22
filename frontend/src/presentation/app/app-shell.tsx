@@ -52,7 +52,11 @@ const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
 function isRouteActive(routePath: RoutePath, pathname: string): boolean {
   if (routePath === '/agent/tickets') {
     return (
-      pathname === '/agent/tickets' || pathname.startsWith('/agent/tickets/')
+      pathname === '/agent/tickets' ||
+      pathname === '/agent/assigned-to-me' ||
+      pathname === '/agent/my-tickets' ||
+      pathname === '/agent/unassigned-tickets' ||
+      pathname.startsWith('/agent/tickets/')
     );
   }
 
@@ -108,6 +112,7 @@ export function AppShell({
 }: AppShellProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isTicketMenuOpen, setIsTicketMenuOpen] = useState(false);
+  const [isTicketListMenuOpen, setIsTicketListMenuOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const ticketMenuRef = useRef<HTMLDivElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
@@ -214,6 +219,84 @@ export function AppShell({
           {visibleRoutes.map((route) => {
             const Icon = routeIcons[route.path] ?? Ticket;
             const isActive = isRouteActive(route.path, pathname);
+            const shouldShowTicketDropdown =
+              route.path === '/agent/tickets' &&
+              session?.user.role !== 'DEMANDEUR';
+
+            if (shouldShowTicketDropdown) {
+              return (
+                <div
+                  className={
+                    isTicketListMenuOpen
+                      ? 'workspace-nav-dropdown is-open'
+                      : 'workspace-nav-dropdown'
+                  }
+                  key={route.path}
+                >
+                  <button
+                    aria-expanded={isTicketListMenuOpen}
+                    className={
+                      isActive
+                        ? 'workspace-nav-link is-active'
+                        : 'workspace-nav-link'
+                    }
+                    onClick={() =>
+                      setIsTicketListMenuOpen((current) => !current)
+                    }
+                    title={route.title}
+                    type="button"
+                  >
+                    <span
+                      className="workspace-nav-link-icon"
+                      aria-hidden="true"
+                    >
+                      <Icon size={18} strokeWidth={2} />
+                    </span>
+                    <strong className="workspace-nav-link-label">
+                      {route.title}
+                    </strong>
+                    <ChevronDown
+                      className="workspace-nav-dropdown-chevron"
+                      size={16}
+                      strokeWidth={2}
+                    />
+                  </button>
+
+                  {isTicketListMenuOpen ? (
+                    <div className="workspace-nav-dropdown-list">
+                      <button
+                        className="workspace-nav-dropdown-item"
+                        onClick={() => navigateTo('/agent/tickets')}
+                        type="button"
+                      >
+                        Tous les tickets
+                      </button>
+                      <button
+                        className="workspace-nav-dropdown-item"
+                        onClick={() => navigateTo('/agent/my-tickets')}
+                        type="button"
+                      >
+                        Mes tickets
+                      </button>
+                      <button
+                        className="workspace-nav-dropdown-item"
+                        onClick={() => navigateTo('/agent/unassigned-tickets')}
+                        type="button"
+                      >
+                        Non assignés
+                      </button>
+                      <button
+                        className="workspace-nav-dropdown-item"
+                        onClick={() => navigateTo('/agent/assigned-to-me')}
+                        type="button"
+                      >
+                        Assignés à moi
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            }
 
             return (
               <button

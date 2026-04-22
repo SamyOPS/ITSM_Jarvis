@@ -19,9 +19,12 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
     pathname === '/admin/users' ||
     pathname === '/agent' ||
     pathname === '/agent/archives' ||
+    pathname === '/agent/assigned-to-me' ||
     pathname === '/agent/incidents/new' ||
+    pathname === '/agent/my-tickets' ||
     pathname === '/agent/requests/new' ||
     pathname === '/agent/tickets' ||
+    pathname === '/agent/unassigned-tickets' ||
     pathname === '/reports' ||
     pathname === '/login'
   ) {
