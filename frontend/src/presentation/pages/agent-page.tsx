@@ -281,6 +281,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     INITIAL_ATTACHMENT_DRAFT,
   );
 
+  const [incidentCreationAttachmentFiles, setIncidentCreationAttachmentFiles] =
+    useState<File[]>([]);
+
+  const [requestCreationAttachmentFiles, setRequestCreationAttachmentFiles] =
+    useState<File[]>([]);
+
   const [statusDraft, setStatusDraft] = useState<TicketStatus>('OPEN');
 
   const [isLoading, setIsLoading] = useState(true);
@@ -360,6 +366,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   const [attachmentInputKey, setAttachmentInputKey] = useState(0);
 
+  const [creationAttachmentInputKey, setCreationAttachmentInputKey] =
+    useState(0);
+
   const [attachmentPreviewUrls, setAttachmentPreviewUrls] = useState<
     Record<string, string>
   >({});
@@ -394,6 +403,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const showCreationPanel = isIncidentCreatePage || isRequestCreatePage;
   const showListPanel = isListPage || isArchiveListPage;
   const showDetailPanel = isDetailPage || isArchiveDetailPage;
+  const creationAttachmentFiles =
+    mode === 'INCIDENT'
+      ? incidentCreationAttachmentFiles
+      : requestCreationAttachmentFiles;
   const detailBackPath = isArchiveDetailPage
     ? '/agent/archives'
     : '/agent/tickets';
@@ -1062,6 +1075,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    const selectedCreationAttachmentFiles = creationAttachmentFiles;
+
     setSubmitErrorMessage(null);
 
     setCreatedIncident(null);
@@ -1120,6 +1135,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           ...currentTickets.filter((ticket) => ticket.id !== result.ticket.id),
         ]);
 
+        const attachmentUploadErrorMessage =
+          await uploadCreationAttachmentsIfNeeded(
+            result.ticket.id,
+            selectedCreationAttachmentFiles,
+          );
+
         setIncidentDraft((currentDraft) => ({
           ...currentDraft,
 
@@ -1127,6 +1148,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
           title: '',
         }));
+
+        if (attachmentUploadErrorMessage) {
+          setSubmitErrorMessage(attachmentUploadErrorMessage);
+        } else {
+          resetCreationAttachmentSelection('INCIDENT');
+        }
       } catch (error) {
         setSubmitErrorMessage(
           error instanceof Error
@@ -1191,6 +1218,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         ...currentTickets.filter((ticket) => ticket.id !== result.ticket.id),
       ]);
 
+      const attachmentUploadErrorMessage =
+        await uploadCreationAttachmentsIfNeeded(
+          result.ticket.id,
+          selectedCreationAttachmentFiles,
+        );
+
       setRequestDraft((currentDraft) => ({
         ...currentDraft,
 
@@ -1198,6 +1231,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
         title: '',
       }));
+
+      if (attachmentUploadErrorMessage) {
+        setSubmitErrorMessage(attachmentUploadErrorMessage);
+      } else {
+        resetCreationAttachmentSelection('REQUEST');
+      }
     } catch (error) {
       setSubmitErrorMessage(
         error instanceof Error
@@ -1206,6 +1245,46 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function uploadCreationAttachmentsIfNeeded(
+    ticketId: string,
+    files: File[],
+  ): Promise<string | null> {
+    if (files.length === 0) {
+      return null;
+    }
+
+    try {
+      for (const file of files) {
+        const storagePath = buildTicketAttachmentStoragePath(
+          session.user.id,
+          ticketId,
+          file.name,
+        );
+
+        await uploadTicketAttachmentBinary(
+          session.accessToken,
+          TICKET_ATTACHMENTS_BUCKET_ID,
+          storagePath,
+          file,
+        );
+
+        await addTicketAttachment(session.accessToken, ticketId, {
+          bucketId: TICKET_ATTACHMENTS_BUCKET_ID,
+          fileName: file.name,
+          mimeType: file.type || null,
+          sizeBytes: file.size,
+          storagePath,
+        });
+      }
+
+      return null;
+    } catch (error) {
+      return error instanceof Error
+        ? `Ticket cree, mais l'ajout des pieces jointes a echoue : ${error.message}`
+        : "Ticket cree, mais l'ajout des pieces jointes a echoue.";
     }
   }
 
@@ -1404,6 +1483,61 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setAttachmentDraft({ file });
     setAttachmentErrorMessage(null);
     setAttachmentSuccessMessage(null);
+  }
+
+  function handleCreationAttachmentSelection(fileList: FileList | null): void {
+    const incomingFiles = Array.from(fileList ?? []);
+
+    if (incomingFiles.length === 0) {
+      return;
+    }
+
+    const setFiles =
+      mode === 'INCIDENT'
+        ? setIncidentCreationAttachmentFiles
+        : setRequestCreationAttachmentFiles;
+
+    setFiles((currentFiles) => {
+      const knownFileKeys = new Set(currentFiles.map(getLocalFileKey));
+      const nextFiles = [...currentFiles];
+
+      for (const file of incomingFiles) {
+        const fileKey = getLocalFileKey(file);
+
+        if (!knownFileKeys.has(fileKey)) {
+          knownFileKeys.add(fileKey);
+          nextFiles.push(file);
+        }
+      }
+
+      return nextFiles;
+    });
+
+    setCreationAttachmentInputKey((currentKey) => currentKey + 1);
+    setSubmitErrorMessage(null);
+  }
+
+  function handleRemoveCreationAttachment(fileKey: string): void {
+    const setFiles =
+      mode === 'INCIDENT'
+        ? setIncidentCreationAttachmentFiles
+        : setRequestCreationAttachmentFiles;
+
+    setFiles((currentFiles) =>
+      currentFiles.filter((file) => getLocalFileKey(file) !== fileKey),
+    );
+
+    setCreationAttachmentInputKey((currentKey) => currentKey + 1);
+  }
+
+  function resetCreationAttachmentSelection(targetMode: TicketMode): void {
+    const setFiles =
+      targetMode === 'INCIDENT'
+        ? setIncidentCreationAttachmentFiles
+        : setRequestCreationAttachmentFiles;
+
+    setFiles([]);
+    setCreationAttachmentInputKey((currentKey) => currentKey + 1);
   }
 
   async function handleDeleteComment(commentId: string): Promise<void> {
@@ -1993,6 +2127,62 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       </label>
                     </>
                   )}
+
+                  <div className="field ticket-form-span-2">
+                    <span>Pieces jointes</span>
+
+                    <div className="ticket-upload-zone">
+                      <div className="ticket-upload-actions">
+                        <label className="ticket-upload-button">
+                          Choisir des fichiers
+                          <input
+                            key={creationAttachmentInputKey}
+                            multiple
+                            onChange={(event) =>
+                              handleCreationAttachmentSelection(
+                                event.target.files,
+                              )
+                            }
+                            type="file"
+                          />
+                        </label>
+
+                        <span className="ticket-upload-note">
+                          {formatSelectedFilesLabel(
+                            creationAttachmentFiles.length,
+                          )}
+                        </span>
+                      </div>
+
+                      {creationAttachmentFiles.length > 0 ? (
+                        <div className="ticket-file-list">
+                          {creationAttachmentFiles.map((file) => {
+                            const fileKey = getLocalFileKey(file);
+
+                            return (
+                              <span className="ticket-file-chip" key={fileKey}>
+                                <span>{file.name}</span>
+                                <button
+                                  aria-label={`Retirer ${file.name}`}
+                                  onClick={() =>
+                                    handleRemoveCreationAttachment(fileKey)
+                                  }
+                                  type="button"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+
+                      <span className="ticket-upload-note">
+                        Formats acceptes: PDF, PNG, JPG, DOCX. 2 Mo max par
+                        fichier.
+                      </span>
+                    </div>
+                  </div>
 
                   <div className="ticket-form-actions ticket-form-span-2">
                     <button className="primary-button" disabled={isSubmitting}>
@@ -3164,6 +3354,20 @@ function formatFileSize(sizeBytes: number): string {
   }
 
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} Mo`;
+}
+
+function getLocalFileKey(file: File): string {
+  return `${file.name}-${file.size}-${file.lastModified}`;
+}
+
+function formatSelectedFilesLabel(fileCount: number): string {
+  if (fileCount === 0) {
+    return 'Aucun fichier selectionne';
+  }
+
+  const suffix = fileCount > 1 ? 's' : '';
+
+  return `${fileCount} fichier${suffix} selectionne${suffix}`;
 }
 
 function buildTicketAttachmentStoragePath(
