@@ -1575,6 +1575,7 @@ a {
   text-align: left;
   vertical-align: top;
   color: #24406c;
+  white-space: nowrap;
 }
 
 .ticket-table th {
@@ -1587,6 +1588,18 @@ a {
   text-transform: uppercase;
   color: var(--primary);
   white-space: nowrap;
+}
+
+.ticket-table th:nth-child(2),
+.ticket-table td:nth-child(2) {
+  min-width: 220px;
+}
+
+.ticket-table th:nth-child(3),
+.ticket-table td:nth-child(3),
+.ticket-table th:nth-child(9),
+.ticket-table td:nth-child(9) {
+  min-width: 140px;
 }
 
 .ticket-table tbody tr:last-child td {
@@ -1627,7 +1640,6 @@ a {
 .ticket-table-primary span {
   font-size: 0.85rem;
   color: var(--text-muted);
-  word-break: break-word;
 }
 
 .ticket-priority-badge {
