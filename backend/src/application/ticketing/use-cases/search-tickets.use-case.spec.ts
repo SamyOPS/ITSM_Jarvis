@@ -164,9 +164,10 @@ describe('SearchTicketsUseCase', () => {
     ).resolves.toEqual([closedTicket]);
   });
 
-  it('rejects a search text shorter than two characters', async () => {
+  it('accepts a single-character search text', async () => {
+    const searchTickets = jest.fn().mockResolvedValue([]);
     const useCase = new SearchTicketsUseCase({
-      searchTickets: jest.fn(),
+      searchTickets,
     } as unknown as TicketReadRepository);
 
     await expect(
@@ -175,7 +176,13 @@ describe('SearchTicketsUseCase', () => {
         requesterUserId: 'agent-1',
         requesterUserRole: UserRole.AGENT,
       }),
-    ).rejects.toThrow('q must contain at least 2 characters.');
+    ).resolves.toEqual([]);
+
+    expect(searchTickets).toHaveBeenCalledWith(
+      expect.objectContaining({
+        q: 'a',
+      }),
+    );
   });
 });
 

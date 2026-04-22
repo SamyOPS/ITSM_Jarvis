@@ -2782,6 +2782,7 @@ a {
 .workspace-nav-dropdown {
   display: grid;
   gap: 6px;
+  position: relative;
 }
 
 .workspace-nav-dropdown .workspace-nav-link {
@@ -2806,6 +2807,9 @@ a {
 }
 
 .workspace-nav-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   min-height: 36px;
   border: 1px solid transparent;
@@ -2822,21 +2826,59 @@ a {
     background-color 160ms ease;
 }
 
-.workspace-nav-dropdown-item::before {
-  content: "";
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 10px;
-  border-radius: 999px;
-  background: #9ecbff;
-  vertical-align: 1px;
+.workspace-nav-dropdown-item svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  color: currentColor;
 }
 
 .workspace-nav-dropdown-item:hover {
   border-color: rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.1);
   color: #9ecbff;
+}
+
+.workspace-nav-dropdown-item.is-active {
+  border-color: rgba(46, 125, 233, 0.35);
+  background: rgba(46, 125, 233, 0.22);
+  color: #ffffff;
+}
+
+.workspace-nav-flyout {
+  display: none;
+}
+
+.workspace-nav-flyout-title {
+  padding: 6px 10px 8px;
+  color: #1b2a40;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.workspace-nav-flyout-list {
+  display: grid;
+  gap: 6px;
+  padding: 2px;
+}
+
+.workspace-nav-flyout .workspace-nav-dropdown-item {
+  background: transparent;
+  color: #1b2f4a;
+}
+
+.workspace-nav-flyout .workspace-nav-dropdown-item:hover {
+  border-color: rgba(46, 125, 233, 0.24);
+  background: rgba(46, 125, 233, 0.12);
+  color: #174b86;
+}
+
+.workspace-nav-flyout .workspace-nav-dropdown-item.is-active {
+  border-color: rgba(46, 125, 233, 0.32);
+  background: rgba(46, 125, 233, 0.2);
+  color: #123e76;
 }
 
 .workspace-sidebar-footer {
@@ -2886,6 +2928,11 @@ a {
   align-items: center;
 }
 
+.workspace-sidebar.is-collapsed .workspace-nav-dropdown-list,
+.workspace-sidebar.is-collapsed .workspace-nav-dropdown-chevron {
+  display: none;
+}
+
 .workspace-sidebar.is-collapsed .workspace-nav-link {
   width: 44px;
   grid-template-columns: 1fr;
@@ -2901,6 +2948,65 @@ a {
 .workspace-sidebar.is-collapsed .workspace-nav-link-icon svg {
   width: 21px;
   height: 21px;
+}
+
+.workspace-sidebar.is-collapsed
+  .workspace-nav-dropdown:hover
+  .workspace-nav-flyout {
+  position: absolute;
+  top: -8px;
+  left: 58px;
+  z-index: 80;
+  display: grid;
+  min-width: 240px;
+  max-width: 320px;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid rgba(207, 216, 234, 0.88);
+  border-radius: 14px;
+  background: #f2f4f8;
+  box-shadow: 0 18px 38px rgba(2, 10, 28, 0.24);
+}
+
+.workspace-sidebar.is-collapsed .workspace-nav-flyout::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -14px;
+  width: 14px;
+  height: 100%;
+}
+
+.workspace-sidebar.is-collapsed
+  .workspace-nav-dropdown:hover
+  > .workspace-nav-link {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.1);
+  color: #9ecbff;
+}
+
+.workspace-sidebar.is-collapsed
+  .workspace-nav-flyout
+  .workspace-nav-dropdown-item {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.82);
+  color: #183354;
+}
+
+.workspace-sidebar.is-collapsed
+  .workspace-nav-flyout
+  .workspace-nav-dropdown-item:hover {
+  border-color: rgba(46, 125, 233, 0.28);
+  background: #dbeafe;
+  color: #123e76;
+}
+
+.workspace-sidebar.is-collapsed
+  .workspace-nav-flyout
+  .workspace-nav-dropdown-item.is-active {
+  border-color: rgba(46, 125, 233, 0.36);
+  background: #cfe2ff;
+  color: #102f5f;
 }
 
 /* Hover polish: blue text and icon states */
@@ -3724,6 +3830,10 @@ a {
   padding: 18px 14px 20px;
   overflow: hidden;
   will-change: width, padding;
+}
+
+.app-shell--workspace .workspace-sidebar.is-collapsed {
+  overflow: visible;
 }
 
 .workspace-sidebar-header {

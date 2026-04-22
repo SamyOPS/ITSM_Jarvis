@@ -44,12 +44,17 @@ export function getHomeRoute(session: AuthSessionSnapshot | null): RoutePath {
 export function getVisibleRoutes(
   session: AuthSessionSnapshot | null,
 ): readonly RoutePath[] {
+  if (session?.user.role === 'DEMANDEUR') {
+    return (['/agent/tickets', '/login'] as const)
+      .filter((pathname) => pathname !== '/login' || !session)
+      .filter((pathname) => canAccessRoute(pathname, session));
+  }
+
   return (
     [
       '/reports',
-      '/agent/incidents/new',
-      '/agent/requests/new',
       '/agent/tickets',
+      '/agent/my-tickets',
       '/agent/archives',
       '/admin',
       '/admin/users',

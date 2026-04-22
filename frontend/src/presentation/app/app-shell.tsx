@@ -7,6 +7,7 @@ import {
   FileText,
   House,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   Menu,
   Moon,
@@ -43,20 +44,19 @@ const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/admin/users': Users,
   '/agent': LayoutDashboard,
   '/agent/archives': Archive,
+  '/agent/assigned-to-me': User,
   '/agent/incidents/new': AlertTriangle,
+  '/agent/my-tickets': Ticket,
   '/agent/requests/new': FileText,
-  '/agent/tickets': Ticket,
+  '/agent/tickets': ListChecks,
+  '/agent/unassigned-tickets': Ticket,
   '/reports': BarChart3,
 };
 
 function isRouteActive(routePath: RoutePath, pathname: string): boolean {
   if (routePath === '/agent/tickets') {
     return (
-      pathname === '/agent/tickets' ||
-      pathname === '/agent/assigned-to-me' ||
-      pathname === '/agent/my-tickets' ||
-      pathname === '/agent/unassigned-tickets' ||
-      pathname.startsWith('/agent/tickets/')
+      pathname === '/agent/tickets' || pathname.startsWith('/agent/tickets/')
     );
   }
 
@@ -71,6 +71,18 @@ function isRouteActive(routePath: RoutePath, pathname: string): boolean {
   }
 
   return pathname === routePath;
+}
+
+function getRouteDisplayTitle(
+  routePath: RoutePath,
+  routeTitle: string,
+  session: AuthSessionSnapshot | null,
+): string {
+  if (routePath === '/agent/tickets' && session?.user.role === 'DEMANDEUR') {
+    return 'Mes tickets';
+  }
+
+  return routeTitle;
 }
 
 function getUserInitials(session: AuthSessionSnapshot | null): string {
@@ -111,8 +123,9 @@ export function AppShell({
   session,
 }: AppShellProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isTicketCreateMenuOpen, setIsTicketCreateMenuOpen] = useState(false);
   const [isTicketMenuOpen, setIsTicketMenuOpen] = useState(false);
-  const [isTicketListMenuOpen, setIsTicketListMenuOpen] = useState(true);
+  const [isTicketListMenuOpen, setIsTicketListMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const ticketMenuRef = useRef<HTMLDivElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
@@ -157,6 +170,12 @@ export function AppShell({
     navigateTo('/agent/requests/new');
   }
 
+  function handleSidebarToggle(): void {
+    setIsTicketCreateMenuOpen(false);
+    setIsTicketListMenuOpen(false);
+    setIsSidebarCollapsed((current) => !current);
+  }
+
   function handleLogoutClick(): void {
     setIsProfileMenuOpen(false);
     onLogout();
@@ -194,7 +213,7 @@ export function AppShell({
                 : 'Replier la navigation'
             }
             className="workspace-sidebar-toggle"
-            onClick={() => setIsSidebarCollapsed((current) => !current)}
+            onClick={handleSidebarToggle}
             type="button"
           >
             <Menu size={18} />
@@ -217,11 +236,151 @@ export function AppShell({
           className="workspace-sidebar-nav"
         >
           {visibleRoutes.map((route) => {
+            if (route.path !== '/reports') {
+              return null;
+            }
+
             const Icon = routeIcons[route.path] ?? Ticket;
             const isActive = isRouteActive(route.path, pathname);
+            const routeTitle = getRouteDisplayTitle(
+              route.path,
+              route.title,
+              session,
+            );
+
+            return (
+              <button
+                className={
+                  isActive
+                    ? 'workspace-nav-link is-active'
+                    : 'workspace-nav-link'
+                }
+                key={route.path}
+                onClick={() => navigateTo(route.path)}
+                title={routeTitle}
+                type="button"
+              >
+                <span className="workspace-nav-link-icon" aria-hidden="true">
+                  <Icon size={18} strokeWidth={2} />
+                </span>
+                <strong className="workspace-nav-link-label">
+                  {routeTitle}
+                </strong>
+              </button>
+            );
+          })}
+
+          <div
+            className={
+              isTicketCreateMenuOpen
+                ? 'workspace-nav-dropdown is-open'
+                : 'workspace-nav-dropdown'
+            }
+          >
+            <button
+              aria-expanded={!isSidebarCollapsed && isTicketCreateMenuOpen}
+              className="workspace-nav-link"
+              onClick={() => {
+                if (isSidebarCollapsed) {
+                  return;
+                }
+
+                setIsTicketCreateMenuOpen((current) => !current);
+              }}
+              title="Créer un ticket"
+              type="button"
+            >
+              <span className="workspace-nav-link-icon" aria-hidden="true">
+                <Plus size={18} strokeWidth={2} />
+              </span>
+              <strong className="workspace-nav-link-label">
+                Créer un ticket
+              </strong>
+              <ChevronDown
+                className="workspace-nav-dropdown-chevron"
+                size={16}
+                strokeWidth={2}
+              />
+            </button>
+
+            {isTicketCreateMenuOpen ? (
+              <div className="workspace-nav-dropdown-list">
+                <button
+                  className={
+                    pathname === '/agent/incidents/new'
+                      ? 'workspace-nav-dropdown-item is-active'
+                      : 'workspace-nav-dropdown-item'
+                  }
+                  onClick={() => navigateTo('/agent/incidents/new')}
+                  type="button"
+                >
+                  <AlertTriangle size={15} strokeWidth={2} />
+                  Créer un incident
+                </button>
+                <button
+                  className={
+                    pathname === '/agent/requests/new'
+                      ? 'workspace-nav-dropdown-item is-active'
+                      : 'workspace-nav-dropdown-item'
+                  }
+                  onClick={() => navigateTo('/agent/requests/new')}
+                  type="button"
+                >
+                  <FileText size={15} strokeWidth={2} />
+                  Créer une demande
+                </button>
+              </div>
+            ) : null}
+
+            <div className="workspace-nav-flyout">
+              <div className="workspace-nav-flyout-title">Créer un ticket</div>
+              <div className="workspace-nav-flyout-list">
+                <button
+                  className={
+                    pathname === '/agent/incidents/new'
+                      ? 'workspace-nav-dropdown-item is-active'
+                      : 'workspace-nav-dropdown-item'
+                  }
+                  onClick={() => navigateTo('/agent/incidents/new')}
+                  type="button"
+                >
+                  <AlertTriangle size={15} strokeWidth={2} />
+                  Créer un incident
+                </button>
+                <button
+                  className={
+                    pathname === '/agent/requests/new'
+                      ? 'workspace-nav-dropdown-item is-active'
+                      : 'workspace-nav-dropdown-item'
+                  }
+                  onClick={() => navigateTo('/agent/requests/new')}
+                  type="button"
+                >
+                  <FileText size={15} strokeWidth={2} />
+                  Créer une demande
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {visibleRoutes.map((route) => {
+            if (route.path === '/reports') {
+              return null;
+            }
+
+            const Icon = routeIcons[route.path] ?? Ticket;
+            const isActive = isRouteActive(route.path, pathname);
+            const routeTitle = getRouteDisplayTitle(
+              route.path,
+              route.title,
+              session,
+            );
             const shouldShowTicketDropdown =
               route.path === '/agent/tickets' &&
               session?.user.role !== 'DEMANDEUR';
+            const isTicketDropdownParentActive =
+              shouldShowTicketDropdown &&
+              pathname.startsWith('/agent/tickets/');
 
             if (shouldShowTicketDropdown) {
               return (
@@ -234,16 +393,20 @@ export function AppShell({
                   key={route.path}
                 >
                   <button
-                    aria-expanded={isTicketListMenuOpen}
+                    aria-expanded={!isSidebarCollapsed && isTicketListMenuOpen}
                     className={
-                      isActive
+                      isTicketDropdownParentActive
                         ? 'workspace-nav-link is-active'
                         : 'workspace-nav-link'
                     }
-                    onClick={() =>
-                      setIsTicketListMenuOpen((current) => !current)
-                    }
-                    title={route.title}
+                    onClick={() => {
+                      if (isSidebarCollapsed) {
+                        return;
+                      }
+
+                      setIsTicketListMenuOpen((current) => !current);
+                    }}
+                    title={routeTitle}
                     type="button"
                   >
                     <span
@@ -253,7 +416,7 @@ export function AppShell({
                       <Icon size={18} strokeWidth={2} />
                     </span>
                     <strong className="workspace-nav-link-label">
-                      {route.title}
+                      {routeTitle}
                     </strong>
                     <ChevronDown
                       className="workspace-nav-dropdown-chevron"
@@ -265,35 +428,87 @@ export function AppShell({
                   {isTicketListMenuOpen ? (
                     <div className="workspace-nav-dropdown-list">
                       <button
-                        className="workspace-nav-dropdown-item"
+                        className={
+                          pathname === '/agent/tickets'
+                            ? 'workspace-nav-dropdown-item is-active'
+                            : 'workspace-nav-dropdown-item'
+                        }
                         onClick={() => navigateTo('/agent/tickets')}
                         type="button"
                       >
+                        <ListChecks size={15} strokeWidth={2} />
                         Tous les tickets
                       </button>
                       <button
-                        className="workspace-nav-dropdown-item"
-                        onClick={() => navigateTo('/agent/my-tickets')}
-                        type="button"
-                      >
-                        Mes tickets
-                      </button>
-                      <button
-                        className="workspace-nav-dropdown-item"
+                        className={
+                          pathname === '/agent/unassigned-tickets'
+                            ? 'workspace-nav-dropdown-item is-active'
+                            : 'workspace-nav-dropdown-item'
+                        }
                         onClick={() => navigateTo('/agent/unassigned-tickets')}
                         type="button"
                       >
+                        <Ticket size={15} strokeWidth={2} />
                         Non assignés
                       </button>
                       <button
-                        className="workspace-nav-dropdown-item"
+                        className={
+                          pathname === '/agent/assigned-to-me'
+                            ? 'workspace-nav-dropdown-item is-active'
+                            : 'workspace-nav-dropdown-item'
+                        }
                         onClick={() => navigateTo('/agent/assigned-to-me')}
                         type="button"
                       >
+                        <User size={15} strokeWidth={2} />
                         Assignés à moi
                       </button>
                     </div>
                   ) : null}
+
+                  <div className="workspace-nav-flyout">
+                    <div className="workspace-nav-flyout-title">
+                      {routeTitle}
+                    </div>
+                    <div className="workspace-nav-flyout-list">
+                      <button
+                        className={
+                          pathname === '/agent/tickets'
+                            ? 'workspace-nav-dropdown-item is-active'
+                            : 'workspace-nav-dropdown-item'
+                        }
+                        onClick={() => navigateTo('/agent/tickets')}
+                        type="button"
+                      >
+                        <ListChecks size={15} strokeWidth={2} />
+                        Tous les tickets
+                      </button>
+                      <button
+                        className={
+                          pathname === '/agent/unassigned-tickets'
+                            ? 'workspace-nav-dropdown-item is-active'
+                            : 'workspace-nav-dropdown-item'
+                        }
+                        onClick={() => navigateTo('/agent/unassigned-tickets')}
+                        type="button"
+                      >
+                        <Ticket size={15} strokeWidth={2} />
+                        Non assignés
+                      </button>
+                      <button
+                        className={
+                          pathname === '/agent/assigned-to-me'
+                            ? 'workspace-nav-dropdown-item is-active'
+                            : 'workspace-nav-dropdown-item'
+                        }
+                        onClick={() => navigateTo('/agent/assigned-to-me')}
+                        type="button"
+                      >
+                        <User size={15} strokeWidth={2} />
+                        Assignés à moi
+                      </button>
+                    </div>
+                  </div>
                 </div>
               );
             }
@@ -307,14 +522,14 @@ export function AppShell({
                 }
                 key={route.path}
                 onClick={() => navigateTo(route.path)}
-                title={route.title}
+                title={routeTitle}
                 type="button"
               >
                 <span className="workspace-nav-link-icon" aria-hidden="true">
                   <Icon size={18} strokeWidth={2} />
                 </span>
                 <strong className="workspace-nav-link-label">
-                  {route.title}
+                  {routeTitle}
                 </strong>
               </button>
             );
