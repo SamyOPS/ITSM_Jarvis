@@ -4,6 +4,7 @@ import {
   Archive,
   BarChart3,
   ChevronDown,
+  ClipboardList,
   FileText,
   House,
   LayoutDashboard,
@@ -18,6 +19,7 @@ import {
   SlidersHorizontal,
   Ticket,
   User,
+  UserX,
   Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -49,7 +51,7 @@ const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/agent/my-tickets': Ticket,
   '/agent/requests/new': FileText,
   '/agent/tickets': ListChecks,
-  '/agent/unassigned-tickets': Ticket,
+  '/agent/unassigned-tickets': UserX,
   '/reports': BarChart3,
 };
 
@@ -436,7 +438,7 @@ export function AppShell({
                         onClick={() => navigateTo('/agent/tickets')}
                         type="button"
                       >
-                        <ListChecks size={15} strokeWidth={2} />
+                        <ClipboardList size={15} strokeWidth={2} />
                         Tous les tickets
                       </button>
                       <button
@@ -448,7 +450,7 @@ export function AppShell({
                         onClick={() => navigateTo('/agent/unassigned-tickets')}
                         type="button"
                       >
-                        <Ticket size={15} strokeWidth={2} />
+                        <UserX size={15} strokeWidth={2} />
                         Non assignés
                       </button>
                       <button
@@ -480,7 +482,7 @@ export function AppShell({
                         onClick={() => navigateTo('/agent/tickets')}
                         type="button"
                       >
-                        <ListChecks size={15} strokeWidth={2} />
+                        <ClipboardList size={15} strokeWidth={2} />
                         Tous les tickets
                       </button>
                       <button
@@ -492,7 +494,7 @@ export function AppShell({
                         onClick={() => navigateTo('/agent/unassigned-tickets')}
                         type="button"
                       >
-                        <Ticket size={15} strokeWidth={2} />
+                        <UserX size={15} strokeWidth={2} />
                         Non assignés
                       </button>
                       <button
