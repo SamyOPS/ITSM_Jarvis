@@ -1620,8 +1620,28 @@ a {
   gap: 4px;
 }
 
+.ticket-table-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .ticket-table-primary strong {
   color: #17335f;
+}
+
+.ticket-overdue-marker {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .ticket-table-number {
