@@ -49,6 +49,16 @@ export type ChangeTicketStatusPayload = {
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
 };
 
+export type UpdateTicketPayload = {
+  categoryId: string;
+  channelId?: string | null;
+  ciId?: string | null;
+  description: string;
+  requestedForUserId?: string | null;
+  serviceId?: string | null;
+  title: string;
+};
+
 export type AddTicketCommentPayload = {
   body: string;
   isInternal?: boolean;
@@ -207,6 +217,33 @@ export async function deleteTicket(
         `La suppression du ticket a echoue avec le statut ${response.status}`,
     );
   }
+}
+
+export async function updateTicket(
+  accessToken: string,
+  ticketId: string,
+  payload: UpdateTicketPayload,
+): Promise<TicketDetailSnapshot> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/tickets/${ticketId}`, {
+    method: 'PATCH',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      message ||
+        `La mise a jour du ticket a echoue avec le statut ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as TicketDetailSnapshot;
 }
 
 export async function getTicketComments(

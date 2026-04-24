@@ -85,6 +85,7 @@ describe('ChangeTicketPriorityUseCase', () => {
       updateAssignment: jest.fn(),
       updatePriority,
       updateStatus: jest.fn(),
+      updateTicket: jest.fn(),
     };
     const priorityRepository: ReferentialPriorityReadRepository = {
       listPriorities: jest
@@ -173,6 +174,7 @@ describe('ChangeTicketPriorityUseCase', () => {
       updateAssignment: jest.fn(),
       updatePriority: jest.fn(),
       updateStatus: jest.fn(),
+      updateTicket: jest.fn(),
     };
     const priorityRepository: ReferentialPriorityReadRepository = {
       listPriorities: jest.fn().mockResolvedValue([]),

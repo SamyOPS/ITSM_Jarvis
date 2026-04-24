@@ -62,6 +62,7 @@ import {
   getTicketById,
   getTicketComments,
   searchTickets,
+  updateTicket,
   uploadTicketAttachmentBinary,
 } from '../../infrastructure/api/ticketing-api';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
@@ -127,6 +128,16 @@ type AssignmentDraftState = {
   assignedToUserId: string;
 
   assignmentGroupId: string;
+};
+
+type TicketEditDraftState = {
+  categoryId: string;
+  channelId: string;
+  ciId: string;
+  description: string;
+  requestedForUserId: string;
+  serviceId: string;
+  title: string;
 };
 
 type CommentDraftState = {
@@ -231,6 +242,16 @@ const INITIAL_ASSIGNMENT_DRAFT: AssignmentDraftState = {
   assignmentGroupId: '',
 };
 
+const INITIAL_TICKET_EDIT_DRAFT: TicketEditDraftState = {
+  categoryId: '',
+  channelId: '',
+  ciId: '',
+  description: '',
+  requestedForUserId: '',
+  serviceId: '',
+  title: '',
+};
+
 const INITIAL_COMMENT_DRAFT: CommentDraftState = {
   body: '',
 
@@ -303,6 +324,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const [assignmentDraft, setAssignmentDraft] = useState<AssignmentDraftState>(
     INITIAL_ASSIGNMENT_DRAFT,
   );
+  const [ticketEditDraft, setTicketEditDraft] = useState<TicketEditDraftState>(
+    INITIAL_TICKET_EDIT_DRAFT,
+  );
 
   const [commentDraft, setCommentDraft] = useState<CommentDraftState>(
     INITIAL_COMMENT_DRAFT,
@@ -329,6 +353,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isSubmittingAssignment, setIsSubmittingAssignment] = useState(false);
+  const [isSubmittingTicketEdit, setIsSubmittingTicketEdit] = useState(false);
 
   const [isSubmittingStatus, setIsSubmittingStatus] = useState(false);
 
@@ -421,6 +446,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const canManageTicket = canManageTicketActions(session.user.role);
 
   const canDeleteTickets = session.user.role === 'ADMIN';
+  const canEditTicket = session.user.role === 'ADMIN';
 
   const canCreateInternalComments = canCreateInternalTicketComments(
     session.user.role,
@@ -830,6 +856,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           assignedToUserId: nextTicket.ticket.assignedToUserId ?? '',
 
           assignmentGroupId: nextTicket.ticket.assignmentGroupId ?? '',
+        });
+
+        setTicketEditDraft({
+          categoryId: nextTicket.ticket.categoryId,
+          channelId: nextTicket.ticket.channelId ?? '',
+          ciId: nextTicket.ticket.ciId ?? '',
+          description: nextTicket.ticket.description,
+          requestedForUserId: nextTicket.ticket.requestedForUserId ?? '',
+          serviceId: nextTicket.ticket.serviceId ?? '',
+          title: nextTicket.ticket.title,
         });
 
         setStatusDraft(asTicketStatus(nextTicket.ticket.status) ?? 'OPEN');
@@ -1469,6 +1505,88 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       );
     } finally {
       setIsSubmittingAssignment(false);
+    }
+  }
+
+  function handleTicketEditFieldChange(
+    field: keyof TicketEditDraftState,
+    value: string,
+  ): void {
+    setTicketEditDraft((currentDraft) => ({
+      ...currentDraft,
+      [field]: value,
+    }));
+
+    setDetailActionErrorMessage(null);
+    setDetailActionSuccessMessage(null);
+  }
+
+  async function handleTicketEditSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> {
+    event.preventDefault();
+
+    if (!selectedTicketDetail || !canEditTicket) {
+      return;
+    }
+
+    setIsSubmittingTicketEdit(true);
+    setDetailActionErrorMessage(null);
+    setDetailActionSuccessMessage(null);
+
+    try {
+      const updatedTicket = await updateTicket(
+        session.accessToken,
+        selectedTicketDetail.ticket.id,
+        {
+          categoryId: ticketEditDraft.categoryId.trim(),
+          channelId: normalizeOptionalId(ticketEditDraft.channelId),
+          ciId: normalizeOptionalId(ticketEditDraft.ciId),
+          description: ticketEditDraft.description.trim(),
+          requestedForUserId: normalizeOptionalId(
+            ticketEditDraft.requestedForUserId,
+          ),
+          serviceId: normalizeOptionalId(ticketEditDraft.serviceId),
+          title: ticketEditDraft.title.trim(),
+        },
+      );
+
+      setSelectedTicketDetail(updatedTicket);
+      setTicketEditDraft({
+        categoryId: updatedTicket.ticket.categoryId,
+        channelId: updatedTicket.ticket.channelId ?? '',
+        ciId: updatedTicket.ticket.ciId ?? '',
+        description: updatedTicket.ticket.description,
+        requestedForUserId: updatedTicket.ticket.requestedForUserId ?? '',
+        serviceId: updatedTicket.ticket.serviceId ?? '',
+        title: updatedTicket.ticket.title,
+      });
+
+      setTickets((currentTickets) =>
+        currentTickets.map((ticket) =>
+          ticket.id === updatedTicket.ticket.id
+            ? {
+                ...ticket,
+                categoryId: updatedTicket.ticket.categoryId,
+                channelId: updatedTicket.ticket.channelId,
+                ciId: updatedTicket.ticket.ciId,
+                requestedForUserId: updatedTicket.ticket.requestedForUserId,
+                serviceId: updatedTicket.ticket.serviceId,
+                title: updatedTicket.ticket.title,
+              }
+            : ticket,
+        ),
+      );
+
+      setDetailActionSuccessMessage('Ticket mis a jour.');
+    } catch (error) {
+      setDetailActionErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Erreur inconnue lors de la mise a jour du ticket',
+      );
+    } finally {
+      setIsSubmittingTicketEdit(false);
     }
   }
 
@@ -3318,6 +3436,165 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                     {canManageTicket ? (
                       <div className="ticket-detail-actions">
+                        {canEditTicket ? (
+                          <form
+                            className="ticket-detail-action-card"
+                            onSubmit={handleTicketEditSubmit}
+                          >
+                            <h4>Modifier le ticket</h4>
+
+                            <label className="field">
+                              <span>Titre</span>
+
+                              <input
+                                onChange={(event) =>
+                                  handleTicketEditFieldChange(
+                                    'title',
+                                    event.target.value,
+                                  )
+                                }
+                                value={ticketEditDraft.title}
+                              />
+                            </label>
+
+                            <label className="field">
+                              <span>Description</span>
+
+                              <textarea
+                                onChange={(event) =>
+                                  handleTicketEditFieldChange(
+                                    'description',
+                                    event.target.value,
+                                  )
+                                }
+                                rows={4}
+                                value={ticketEditDraft.description}
+                              />
+                            </label>
+
+                            <label className="field">
+                              <span>Categorie</span>
+
+                              <select
+                                onChange={(event) =>
+                                  handleTicketEditFieldChange(
+                                    'categoryId',
+                                    event.target.value,
+                                  )
+                                }
+                                value={ticketEditDraft.categoryId}
+                              >
+                                <option value="">Choisir une categorie</option>
+
+                                {catalog.categories.map((category) => (
+                                  <option key={category.id} value={category.id}>
+                                    {category.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label className="field">
+                              <span>Demandeur</span>
+
+                              <select
+                                onChange={(event) =>
+                                  handleTicketEditFieldChange(
+                                    'requestedForUserId',
+                                    event.target.value,
+                                  )
+                                }
+                                value={ticketEditDraft.requestedForUserId}
+                              >
+                                <option value="">Non renseigne</option>
+
+                                {userDirectory
+                                  .filter((user) => user.isActive)
+                                  .map((user) => (
+                                    <option key={user.id} value={user.id}>
+                                      {formatKnownUserName(user, user.id)}
+                                    </option>
+                                  ))}
+                              </select>
+                            </label>
+
+                            <label className="field">
+                              <span>Canal</span>
+
+                              <select
+                                onChange={(event) =>
+                                  handleTicketEditFieldChange(
+                                    'channelId',
+                                    event.target.value,
+                                  )
+                                }
+                                value={ticketEditDraft.channelId}
+                              >
+                                <option value="">Non renseigne</option>
+
+                                {catalog.channels.map((channel) => (
+                                  <option key={channel.id} value={channel.id}>
+                                    {translateChannel(channel.name)}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label className="field">
+                              <span>Service</span>
+
+                              <select
+                                onChange={(event) =>
+                                  handleTicketEditFieldChange(
+                                    'serviceId',
+                                    event.target.value,
+                                  )
+                                }
+                                value={ticketEditDraft.serviceId}
+                              >
+                                <option value="">Non renseigne</option>
+
+                                {catalog.services.map((service) => (
+                                  <option key={service.id} value={service.id}>
+                                    {service.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label className="field">
+                              <span>Equipement concerne</span>
+
+                              <select
+                                onChange={(event) =>
+                                  handleTicketEditFieldChange(
+                                    'ciId',
+                                    event.target.value,
+                                  )
+                                }
+                                value={ticketEditDraft.ciId}
+                              >
+                                <option value="">Non renseigne</option>
+
+                                {catalog.cis.map((ci) => (
+                                  <option key={ci.id} value={ci.id}>
+                                    {ci.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <button
+                              className="secondary-button"
+                              disabled={isSubmittingTicketEdit}
+                            >
+                              {isSubmittingTicketEdit
+                                ? 'Enregistrement...'
+                                : 'Enregistrer les modifications'}
+                            </button>
+                          </form>
+                        ) : null}
+
                         <form
                           className="ticket-detail-action-card"
                           onSubmit={handleAssignmentSubmit}

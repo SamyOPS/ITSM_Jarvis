@@ -261,6 +261,34 @@ export class SupabaseTicketWriteRepository
     );
   }
 
+  async updateTicket(
+    ticketId: string,
+    record: {
+      categoryId: string;
+      channelId: string | null;
+      ciId: string | null;
+      description: string;
+      requestedForUserId: string | null;
+      serviceId: string | null;
+      title: string;
+    },
+  ): Promise<void> {
+    await this.send(
+      `tickets?id=eq.${ticketId}`,
+      'PATCH',
+      {
+        category_id: record.categoryId,
+        channel_id: record.channelId,
+        ci_id: record.ciId,
+        description: record.description,
+        requested_for_user_id: record.requestedForUserId,
+        service_id: record.serviceId,
+        title: record.title,
+      },
+      false,
+    );
+  }
+
   async deleteTicket(ticketId: string): Promise<void> {
     await this.deleteTicketRelatedRows(ticketId);
     await this.send(`tickets?id=eq.${ticketId}`, 'DELETE', undefined, false);

@@ -27,6 +27,7 @@ import { GetTicketByIdUseCase } from '../../../application/ticketing/use-cases/g
 import { ListTicketAttachmentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-attachments.use-case';
 import { ListTicketCommentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-comments.use-case';
 import { SearchTicketsUseCase } from '../../../application/ticketing/use-cases/search-tickets.use-case';
+import { UpdateTicketUseCase } from '../../../application/ticketing/use-cases/update-ticket.use-case';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
 import { UserRole } from '../../../domain/auth/user-role';
 import { CreatedIncident } from '../../../domain/ticketing/created-incident';
@@ -48,6 +49,7 @@ import type { ChangeTicketPriorityDto } from './change-ticket-priority.dto';
 import type { ChangeTicketStatusDto } from './change-ticket-status.dto';
 import type { CreateIncidentDto } from './create-incident.dto';
 import type { CreateRequestDto } from './create-request.dto';
+import type { UpdateTicketDto } from './update-ticket.dto';
 
 type SearchTicketsQueryDto = {
   assignedToUserId?: string;
@@ -82,6 +84,7 @@ export class TicketsController {
     private readonly addTicketAttachmentUseCase: AddTicketAttachmentUseCase,
     private readonly deleteTicketAttachmentUseCase: DeleteTicketAttachmentUseCase,
     private readonly deleteTicketUseCase: DeleteTicketUseCase,
+    private readonly updateTicketUseCase: UpdateTicketUseCase,
   ) {}
 
   @Get()
@@ -123,6 +126,28 @@ export class TicketsController {
       actorRole: user.role,
       actorUserId: user.id,
       ticketId: id,
+    });
+  }
+
+  @Patch(':id')
+  @UseGuards(BearerAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  updateTicket(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: UpdateTicketDto,
+  ): Promise<TicketDetail> {
+    return this.updateTicketUseCase.execute({
+      actorRole: user.role,
+      actorUserId: user.id,
+      categoryId: body.categoryId,
+      channelId: body.channelId ?? null,
+      ciId: body.ciId ?? null,
+      description: body.description,
+      requestedForUserId: body.requestedForUserId ?? null,
+      serviceId: body.serviceId ?? null,
+      ticketId: id,
+      title: body.title,
     });
   }
 
