@@ -339,6 +339,51 @@ class InMemoryTicketRepository
     return Promise.resolve();
   }
 
+  updateTicket(
+    ticketId: string,
+    record: {
+      categoryId: string;
+      channelId: string | null;
+      ciId: string | null;
+      description: string;
+      requestedForUserId: string | null;
+      serviceId: string | null;
+      title: string;
+    },
+  ): Promise<void> {
+    const current = this.tickets.get(ticketId);
+
+    if (!current) {
+      throw new Error(`Ticket ${ticketId} not found in memory.`);
+    }
+
+    this.tickets.set(ticketId, {
+      ...current,
+      ticket: new Ticket(
+        current.ticket.id,
+        current.ticket.number,
+        current.ticket.type,
+        current.ticket.status,
+        record.title,
+        record.description,
+        current.ticket.priorityId,
+        record.categoryId,
+        current.ticket.createdByUserId,
+        record.requestedForUserId,
+        record.serviceId,
+        record.channelId,
+        current.ticket.assignmentGroupId,
+        current.ticket.assignedToUserId,
+        record.ciId,
+        current.ticket.createdAt,
+        current.ticket.responseDueAt,
+        current.ticket.resolutionDueAt,
+      ),
+    });
+
+    return Promise.resolve();
+  }
+
   getTicketById(ticketId: string): Promise<TicketDetail | null> {
     const current = this.tickets.get(ticketId);
 

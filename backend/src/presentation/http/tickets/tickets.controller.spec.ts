@@ -13,6 +13,7 @@ import { GetTicketByIdUseCase } from '../../../application/ticketing/use-cases/g
 import { ListTicketAttachmentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-attachments.use-case';
 import { ListTicketCommentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-comments.use-case';
 import { SearchTicketsUseCase } from '../../../application/ticketing/use-cases/search-tickets.use-case';
+import { UpdateTicketUseCase } from '../../../application/ticketing/use-cases/update-ticket.use-case';
 import { UserRole } from '../../../domain/auth/user-role';
 import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
 import { RequestType } from '../../../domain/ticketing/request-type';
@@ -78,6 +79,10 @@ describe('TicketsController', () => {
   });
   const deleteComment = jest.fn().mockResolvedValue(undefined);
   const deleteTicket = jest.fn().mockResolvedValue(undefined);
+  const updateTicket = jest.fn().mockResolvedValue({
+    priorityName: 'HIGH',
+    ticket: { id: 'ticket-1', title: 'Titre modifie' },
+  });
   const listAttachments = jest.fn().mockResolvedValue([
     {
       bucketId: 'ticket-attachments',
@@ -133,6 +138,7 @@ describe('TicketsController', () => {
     archiveExpiredTickets.mockClear();
     deleteComment.mockClear();
     deleteTicket.mockClear();
+    updateTicket.mockClear();
     listAttachments.mockClear();
     addAttachment.mockClear();
     deleteAttachment.mockClear();
@@ -184,6 +190,9 @@ describe('TicketsController', () => {
       {
         execute: deleteTicket,
       } as unknown as DeleteTicketUseCase,
+      {
+        execute: updateTicket,
+      } as unknown as UpdateTicketUseCase,
     );
   });
 
@@ -274,6 +283,45 @@ describe('TicketsController', () => {
       actorUserId: 'user-1',
       priorityId: 'priority-high',
       ticketId: 'ticket-1',
+    });
+  });
+
+  it('delegates ticket content updates to the dedicated use case', async () => {
+    await expect(
+      controller.updateTicket(
+        'ticket-1',
+        {
+          accessToken: 'token',
+          email: 'admin@jarvis.local',
+          id: 'admin-1',
+          role: UserRole.ADMIN,
+        },
+        {
+          categoryId: 'category-2',
+          channelId: 'channel-1',
+          ciId: 'ci-1',
+          description: 'Description mise a jour',
+          requestedForUserId: 'requester-1',
+          serviceId: 'service-1',
+          title: 'Titre modifie',
+        },
+      ),
+    ).resolves.toEqual({
+      priorityName: 'HIGH',
+      ticket: { id: 'ticket-1', title: 'Titre modifie' },
+    });
+
+    expect(updateTicket).toHaveBeenCalledWith({
+      actorRole: UserRole.ADMIN,
+      actorUserId: 'admin-1',
+      categoryId: 'category-2',
+      channelId: 'channel-1',
+      ciId: 'ci-1',
+      description: 'Description mise a jour',
+      requestedForUserId: 'requester-1',
+      serviceId: 'service-1',
+      ticketId: 'ticket-1',
+      title: 'Titre modifie',
     });
   });
 
