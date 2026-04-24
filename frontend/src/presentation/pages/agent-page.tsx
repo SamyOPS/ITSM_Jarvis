@@ -1,4 +1,11 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+
+import {
+  ArrowDown,
+  ArrowUp,
+  BadgeAlert,
+  SlidersHorizontal,
+} from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
@@ -145,7 +152,7 @@ type TicketSearchFiltersState = {
 
   q: string;
 
-  sortBy: 'CREATED_AT_DESC' | 'OPERATIONAL_PRIORITY';
+  sortBy: 'CREATED_AT_ASC' | 'CREATED_AT_DESC' | 'OPERATIONAL_PRIORITY';
 
   status: '' | TicketStatus;
 
@@ -236,6 +243,23 @@ const INITIAL_ATTACHMENT_DRAFT: AttachmentDraftState = {
 
 const TICKET_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
 const TICKETS_PER_PAGE = 15;
+const TICKET_SORT_OPTIONS = [
+  {
+    value: 'OPERATIONAL_PRIORITY' as const,
+    label: 'Priorite operationnelle',
+    icon: BadgeAlert,
+  },
+  {
+    value: 'CREATED_AT_DESC' as const,
+    label: "Plus recents d'abord",
+    icon: ArrowDown,
+  },
+  {
+    value: 'CREATED_AT_ASC' as const,
+    label: "Plus anciens d'abord",
+    icon: ArrowUp,
+  },
+];
 
 export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const [catalog, setCatalog] =
@@ -386,6 +410,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const [tickets, setTickets] = useState<TicketSummarySnapshot[]>([]);
   const [ticketPage, setTicketPage] = useState(1);
   const [userDirectory, setUserDirectory] = useState<AdminUserSummary[]>([]);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
 
   const [incidentValidationErrors, setIncidentValidationErrors] =
     useState<IncidentValidationErrors>({});
@@ -429,6 +454,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     1,
     Math.ceil(tickets.length / TICKETS_PER_PAGE),
   );
+  const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const ticketListTitle = getTicketListTitle(section, session.user.role);
   const ticketListDescription = getTicketListDescription(section);
   const ticketListEmptyMessage = getTicketListEmptyMessage(section);
@@ -592,6 +618,36 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       setMode('REQUEST');
     }
   }, [isIncidentCreatePage, isRequestCreatePage]);
+
+  useEffect(() => {
+    if (!isSortMenuOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent): void {
+      if (
+        sortMenuRef.current &&
+        event.target instanceof Node &&
+        !sortMenuRef.current.contains(event.target)
+      ) {
+        setIsSortMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') {
+        setIsSortMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSortMenuOpen]);
 
   useEffect(() => {
     if (!showListPanel) {
@@ -967,13 +1023,17 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     [catalog.priorities],
   );
 
-  const sortedTickets = useMemo(
-    () =>
-      searchFilters.sortBy === 'CREATED_AT_DESC'
-        ? sortTicketsByCreatedAtDesc(tickets)
-        : sortTicketsByOperationalPriority(tickets, prioritiesById),
-    [prioritiesById, searchFilters.sortBy, tickets],
-  );
+  const sortedTickets = useMemo(() => {
+    if (searchFilters.sortBy === 'CREATED_AT_DESC') {
+      return sortTicketsByCreatedAtDesc(tickets);
+    }
+
+    if (searchFilters.sortBy === 'CREATED_AT_ASC') {
+      return sortTicketsByCreatedAtAsc(tickets);
+    }
+
+    return sortTicketsByOperationalPriority(tickets, prioritiesById);
+  }, [prioritiesById, searchFilters.sortBy, tickets]);
 
   const paginatedTickets = useMemo(() => {
     const startIndex = (ticketPage - 1) * TICKETS_PER_PAGE;
@@ -2337,10 +2397,80 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     <p>{ticketListDescription}</p>
                   </div>
 
-                  <div className="ticket-list-meta">
-                    <span>Resultats</span>
+                  <div className="ticket-list-toolbar">
+                    <div className="ticket-list-count" aria-live="polite">
+                      <strong>{tickets.length}</strong>
+                      <span>tickets</span>
+                    </div>
 
-                    <strong>{tickets.length}</strong>
+                    <div className="ticket-list-sort-menu" ref={sortMenuRef}>
+                      <button
+                        aria-expanded={isSortMenuOpen}
+                        aria-haspopup="menu"
+                        className={
+                          isSortMenuOpen
+                            ? 'ticket-filter-trigger is-open'
+                            : 'ticket-filter-trigger'
+                        }
+                        onClick={() =>
+                          setIsSortMenuOpen((currentState) => !currentState)
+                        }
+                        type="button"
+                      >
+                        <span>Trier par</span>
+                        <SlidersHorizontal size={18} strokeWidth={2} />
+                      </button>
+
+                      {isSortMenuOpen ? (
+                        <div className="ticket-sort-popover" role="menu">
+                          <div className="ticket-sort-popover-label">
+                            Trier par
+                          </div>
+
+                          <div className="ticket-sort-option-list">
+                            {TICKET_SORT_OPTIONS.map((option) => {
+                              const Icon = option.icon;
+
+                              return (
+                                <button
+                                  className={
+                                    searchFilters.sortBy === option.value
+                                      ? 'ticket-sort-option is-active'
+                                      : 'ticket-sort-option'
+                                  }
+                                  key={option.value}
+                                  onClick={() => {
+                                    handleSearchFilterChange(
+                                      'sortBy',
+                                      option.value,
+                                    );
+                                    setIsSortMenuOpen(false);
+                                  }}
+                                  role="menuitemradio"
+                                  type="button"
+                                >
+                                  <span
+                                    className="ticket-sort-option-icon"
+                                    aria-hidden="true"
+                                  >
+                                    <Icon size={16} strokeWidth={2} />
+                                  </span>
+
+                                  <span className="ticket-sort-option-copy">
+                                    <strong>{option.label}</strong>
+                                    <span>
+                                      {searchFilters.sortBy === option.value
+                                        ? 'Selection actuelle'
+                                        : 'Appliquer ce tri'}
+                                    </span>
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
 
@@ -2436,25 +2566,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           {translatePriority(priority.name)}
                         </option>
                       ))}
-                    </select>
-                  </label>
-
-                  <label className="field">
-                    <span>Tri</span>
-
-                    <select
-                      onChange={(event) =>
-                        handleSearchFilterChange('sortBy', event.target.value)
-                      }
-                      value={searchFilters.sortBy}
-                    >
-                      <option value="OPERATIONAL_PRIORITY">
-                        Priorité opérationnelle
-                      </option>
-
-                      <option value="CREATED_AT_DESC">
-                        Plus récents d’abord
-                      </option>
                     </select>
                   </label>
                 </div>
@@ -3618,6 +3729,14 @@ function sortTicketsByCreatedAtDesc(
 ): TicketSummarySnapshot[] {
   return [...tickets].sort(
     (left, right) => toTimestamp(right.createdAt) - toTimestamp(left.createdAt),
+  );
+}
+
+function sortTicketsByCreatedAtAsc(
+  tickets: TicketSummarySnapshot[],
+): TicketSummarySnapshot[] {
+  return [...tickets].sort(
+    (left, right) => toTimestamp(left.createdAt) - toTimestamp(right.createdAt),
   );
 }
 
