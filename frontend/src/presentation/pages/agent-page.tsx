@@ -145,6 +145,8 @@ type TicketSearchFiltersState = {
 
   q: string;
 
+  sortBy: 'CREATED_AT_DESC' | 'OPERATIONAL_PRIORITY';
+
   status: '' | TicketStatus;
 
   type: '' | TicketMode;
@@ -208,6 +210,8 @@ const INITIAL_SEARCH_FILTERS: TicketSearchFiltersState = {
   priorityId: '',
 
   q: '',
+
+  sortBy: 'OPERATIONAL_PRIORITY',
 
   status: '',
 
@@ -539,6 +543,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     searchFilters.categoryId,
     searchFilters.priorityId,
     searchFilters.q,
+    searchFilters.sortBy,
     searchFilters.status,
     searchFilters.type,
   ]);
@@ -963,8 +968,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   );
 
   const sortedTickets = useMemo(
-    () => sortTicketsByOperationalPriority(tickets, prioritiesById),
-    [prioritiesById, tickets],
+    () =>
+      searchFilters.sortBy === 'CREATED_AT_DESC'
+        ? sortTicketsByCreatedAtDesc(tickets)
+        : sortTicketsByOperationalPriority(tickets, prioritiesById),
+    [prioritiesById, searchFilters.sortBy, tickets],
   );
 
   const paginatedTickets = useMemo(() => {
@@ -2430,6 +2438,25 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       ))}
                     </select>
                   </label>
+
+                  <label className="field">
+                    <span>Tri</span>
+
+                    <select
+                      onChange={(event) =>
+                        handleSearchFilterChange('sortBy', event.target.value)
+                      }
+                      value={searchFilters.sortBy}
+                    >
+                      <option value="OPERATIONAL_PRIORITY">
+                        Priorité opérationnelle
+                      </option>
+
+                      <option value="CREATED_AT_DESC">
+                        Plus récents d’abord
+                      </option>
+                    </select>
+                  </label>
                 </div>
 
                 {isLoadingTickets ? (
@@ -2482,7 +2509,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 </td>
                                 <td>
                                   <div className="ticket-table-primary">
-                                    <strong>{ticket.title}</strong>
+                                    <div className="ticket-table-title-row">
+                                      <strong>{ticket.title}</strong>
+                                      {renderOverdueMarker(ticket)}
+                                    </div>
                                   </div>
                                 </td>
                                 <td>
@@ -3583,6 +3613,14 @@ function sortTicketsByOperationalPriority(
   });
 }
 
+function sortTicketsByCreatedAtDesc(
+  tickets: TicketSummarySnapshot[],
+): TicketSummarySnapshot[] {
+  return [...tickets].sort(
+    (left, right) => toTimestamp(right.createdAt) - toTimestamp(left.createdAt),
+  );
+}
+
 function getTicketOperationalScore(
   ticket: TicketSummarySnapshot,
   prioritiesById: Map<string, { level: number; name: string }>,
@@ -3702,6 +3740,17 @@ function renderPriorityBadge(
       {translatePriority(priorityName)}
     </span>
   );
+}
+
+function renderOverdueMarker(ticket: TicketSummarySnapshot) {
+  if (
+    ticket.responseSlaStatus !== 'OVERDUE' &&
+    ticket.resolutionSlaStatus !== 'OVERDUE'
+  ) {
+    return null;
+  }
+
+  return <span className="ticket-overdue-marker">Retard</span>;
 }
 
 function renderStatusBadge(status: string) {
