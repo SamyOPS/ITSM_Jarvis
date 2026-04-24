@@ -2511,7 +2511,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   <div className="ticket-table-primary">
                                     <div className="ticket-table-title-row">
                                       <strong>{ticket.title}</strong>
-                                      {renderOverdueMarker(ticket)}
                                     </div>
                                   </div>
                                 </td>
@@ -2550,12 +2549,17 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     ?.name ?? 'Non définie'}
                                 </td>
                                 <td>
-                                  {prioritiesById.get(ticket.priorityId)
-                                    ?.resolutionHours !== null &&
-                                  prioritiesById.get(ticket.priorityId)
-                                    ?.resolutionHours !== undefined
-                                    ? `${prioritiesById.get(ticket.priorityId)!.resolutionHours} h`
-                                    : '—'}
+                                  <div className="ticket-resolution-cell">
+                                    <span className="ticket-resolution-value">
+                                      {prioritiesById.get(ticket.priorityId)
+                                        ?.resolutionHours !== null &&
+                                      prioritiesById.get(ticket.priorityId)
+                                        ?.resolutionHours !== undefined
+                                        ? `${prioritiesById.get(ticket.priorityId)!.resolutionHours} h`
+                                        : '?'}
+                                    </span>
+                                    {renderOverdueMarker(ticket)}
+                                  </div>
                                 </td>
                               </tr>
                             ))}

@@ -1578,6 +1578,12 @@ a {
   white-space: nowrap;
 }
 
+.ticket-table th:first-child,
+.ticket-table td:first-child {
+  min-width: 92px;
+  width: 92px;
+}
+
 .ticket-table th {
   position: sticky;
   top: 0;
@@ -1593,6 +1599,7 @@ a {
 .ticket-table th:nth-child(2),
 .ticket-table td:nth-child(2) {
   min-width: 220px;
+  max-width: 220px;
 }
 
 .ticket-table th:nth-child(3),
@@ -1621,13 +1628,20 @@ a {
 }
 
 .ticket-table-title-row {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .ticket-table-primary strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: #17335f;
 }
 
@@ -1642,6 +1656,19 @@ a {
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
+}
+
+.ticket-resolution-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.ticket-resolution-value {
+  display: inline-block;
+  min-width: 2.75rem;
+  text-align: left;
 }
 
 .ticket-table-number {
