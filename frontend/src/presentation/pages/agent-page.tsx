@@ -97,6 +97,7 @@ type IncidentLookupSearchField =
   | 'LAST_NAME'
   | 'GROUP'
   | 'SERVICE';
+type TicketListSearchField = 'TITLE' | 'REQUESTER' | 'TECHNICIAN';
 
 type IncidentDraftState = {
   assignedToUserId: string;
@@ -179,6 +180,8 @@ type TicketSearchFiltersState = {
 
   q: string;
 
+  searchField: TicketListSearchField;
+
   sortBy: 'CREATED_AT_ASC' | 'CREATED_AT_DESC' | 'OPERATIONAL_PRIORITY';
 
   status: '' | TicketStatus;
@@ -250,6 +253,8 @@ const INITIAL_SEARCH_FILTERS: TicketSearchFiltersState = {
   priorityId: '',
 
   q: '',
+
+  searchField: 'TITLE',
 
   sortBy: 'OPERATIONAL_PRIORITY',
 
@@ -507,9 +512,29 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const detailBackPath = isArchiveDetailPage
     ? '/agent/archives'
     : '/agent/tickets';
+  const scopedTickets = useMemo(
+    () =>
+      filterTicketsByListScope(
+        tickets,
+        section,
+        session.user.id,
+        session.user.role,
+      ),
+    [section, session.user.id, session.user.role, tickets],
+  );
+  const searchedTickets = useMemo(
+    () =>
+      filterTicketsByListSearch(
+        filterTicketsByListFilters(scopedTickets, searchFilters),
+        searchFilters.q,
+        userDirectory,
+        searchFilters.searchField,
+      ),
+    [scopedTickets, searchFilters, userDirectory],
+  );
   const totalTicketPages = Math.max(
     1,
-    Math.ceil(tickets.length / TICKETS_PER_PAGE),
+    Math.ceil(searchedTickets.length / TICKETS_PER_PAGE),
   );
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const ticketListTitle = getTicketListTitle(section, session.user.role);
@@ -626,9 +651,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     searchFilters.categoryId,
     searchFilters.priorityId,
     searchFilters.q,
+    searchFilters.searchField,
     searchFilters.sortBy,
     searchFilters.status,
     searchFilters.type,
+    section,
   ]);
 
   useEffect(() => {
@@ -654,7 +681,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       return;
     }
 
-    const selectedIndex = tickets.findIndex(
+    const selectedIndex = searchedTickets.findIndex(
       (ticket) => ticket.id === selectedTicketId,
     );
 
@@ -667,7 +694,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     if (nextPage !== ticketPage) {
       setTicketPage(nextPage);
     }
-  }, [showListPanel, selectedTicketId, ticketPage, tickets]);
+  }, [searchedTickets, showListPanel, selectedTicketId, ticketPage]);
 
   useEffect(() => {
     if (isIncidentCreatePage) {
@@ -724,17 +751,17 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
       try {
         const nextTickets = await searchTickets(session.accessToken, {
-          categoryId: normalizeOptionalId(searchFilters.categoryId),
+          categoryId: null,
 
           includeArchived: isArchiveListPage,
 
-          priorityId: normalizeOptionalId(searchFilters.priorityId),
+          priorityId: null,
 
           q: null,
 
-          status: searchFilters.status || null,
+          status: null,
 
-          type: searchFilters.type || null,
+          type: null,
         });
 
         if (cancelled) {
@@ -744,39 +771,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         const activeTickets = isArchiveListPage
           ? nextTickets.filter((ticket) => ticket.archivedAt)
           : nextTickets.filter((ticket) => !ticket.archivedAt);
-        let displayedTickets = activeTickets;
 
-        if (isMyTicketsPage) {
-          displayedTickets = activeTickets.filter(
-            (ticket) => ticket.createdByUserId === session.user.id,
-          );
-        } else if (isListPage && session.user.role === 'DEMANDEUR') {
-          displayedTickets = activeTickets.filter(
-            (ticket) =>
-              ticket.createdByUserId === session.user.id ||
-              ticket.requestedForUserId === session.user.id,
-          );
-        } else if (isAssignedToMePage) {
-          displayedTickets = activeTickets.filter(
-            (ticket) => ticket.assignedToUserId === session.user.id,
-          );
-        } else if (isUnassignedTicketsPage) {
-          displayedTickets = activeTickets.filter(
-            (ticket) => !ticket.assignedToUserId,
-          );
-        }
-
-        displayedTickets = filterTicketsByListSearch(
-          displayedTickets,
-          searchFilters.q,
-          userDirectory,
-        );
-
-        setTickets(displayedTickets);
+        setTickets(activeTickets);
 
         if (
           selectedTicketId &&
-          !displayedTickets.some((ticket) => ticket.id === selectedTicketId)
+          !activeTickets.some((ticket) => ticket.id === selectedTicketId)
         ) {
           setSelectedTicketId(null);
         }
@@ -800,30 +800,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [
-    isArchiveListPage,
-    isAssignedToMePage,
-    isListPage,
-    isMyTicketsPage,
-    isUnassignedTicketsPage,
-    searchFilters.categoryId,
-
-    searchFilters.priorityId,
-
-    searchFilters.q,
-
-    searchFilters.status,
-
-    searchFilters.type,
-
-    selectedTicketId,
-
-    session.accessToken,
-    session.user.id,
-    session.user.role,
-    showListPanel,
-    userDirectory,
-  ]);
+  }, [isArchiveListPage, selectedTicketId, session.accessToken, showListPanel]);
 
   useEffect(() => {
     if (!selectedTicketId) {
@@ -1096,15 +1073,15 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   const sortedTickets = useMemo(() => {
     if (searchFilters.sortBy === 'CREATED_AT_DESC') {
-      return sortTicketsByCreatedAtDesc(tickets);
+      return sortTicketsByCreatedAtDesc(searchedTickets);
     }
 
     if (searchFilters.sortBy === 'CREATED_AT_ASC') {
-      return sortTicketsByCreatedAtAsc(tickets);
+      return sortTicketsByCreatedAtAsc(searchedTickets);
     }
 
-    return sortTicketsByOperationalPriority(tickets, prioritiesById);
-  }, [prioritiesById, searchFilters.sortBy, tickets]);
+    return sortTicketsByOperationalPriority(searchedTickets, prioritiesById);
+  }, [prioritiesById, searchFilters.sortBy, searchedTickets]);
 
   const paginatedTickets = useMemo(() => {
     const startIndex = (ticketPage - 1) * TICKETS_PER_PAGE;
@@ -2745,7 +2722,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           ) : null}
                         </select>
                         <div className="incident-lookup-search-input">
-                          <Search size={18} />
                           <input
                             autoFocus
                             onChange={(event) =>
@@ -2956,7 +2932,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                   <div className="ticket-list-toolbar">
                     <div className="ticket-list-count" aria-live="polite">
-                      <strong>{tickets.length}</strong>
+                      <strong>{searchedTickets.length}</strong>
                       <span>tickets</span>
                     </div>
 
@@ -3035,13 +3011,32 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   <label className="field ticket-filter-search">
                     <span>Recherche</span>
 
-                    <input
-                      onChange={(event) =>
-                        handleSearchFilterChange('q', event.target.value)
-                      }
-                      placeholder="Titre, demandeur ou technicien"
-                      value={searchFilters.q}
-                    />
+                    <div className="ticket-list-target-search">
+                      <select
+                        aria-label="Categorie de recherche"
+                        onChange={(event) =>
+                          handleSearchFilterChange(
+                            'searchField',
+                            event.target.value,
+                          )
+                        }
+                        value={searchFilters.searchField}
+                      >
+                        <option value="TITLE">Titre</option>
+                        <option value="REQUESTER">Demandeur</option>
+                        <option value="TECHNICIAN">Technicien</option>
+                      </select>
+
+                      <div className="ticket-list-target-search-input">
+                        <input
+                          onChange={(event) =>
+                            handleSearchFilterChange('q', event.target.value)
+                          }
+                          placeholder="Rechercher"
+                          value={searchFilters.q}
+                        />
+                      </div>
+                    </div>
                   </label>
 
                   <label className="field">
@@ -3133,7 +3128,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   </p>
                 ) : loadTicketsErrorMessage ? (
                   <p className="ticket-form-error">{loadTicketsErrorMessage}</p>
-                ) : tickets.length === 0 ? (
+                ) : searchedTickets.length === 0 ? (
                   <p className="ticket-form-message">
                     {ticketListEmptyMessage}
                   </p>
@@ -3148,7 +3143,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               <th>Titre</th>
                               <th>Entité</th>
                               <th>Statut</th>
-                              <th>Dernière modification</th>
                               <th>Date d’ouverture</th>
                               <th>Priorité</th>
                               <th>Demandeur</th>
@@ -3189,7 +3183,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     : 'Service non défini'}
                                 </td>
                                 <td>{renderStatusBadge(ticket.status)}</td>
-                                <td>{formatTicketDate(ticket.createdAt)}</td>
                                 <td>{formatTicketDate(ticket.createdAt)}</td>
                                 <td>
                                   {renderPriorityBadge(ticket, prioritiesById)}
@@ -3239,7 +3232,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     <div className="ticket-pagination">
                       <p className="ticket-form-helper">
                         Page {ticketPage} sur {totalTicketPages} -{' '}
-                        {tickets.length} tickets
+                        {searchedTickets.length} tickets
                       </p>
 
                       <div className="ticket-pagination-actions">
@@ -4442,10 +4435,65 @@ function getIncidentLookupSearchValue(
   }
 }
 
+function filterTicketsByListScope(
+  tickets: TicketSummarySnapshot[],
+  section: AgentPageProps['section'],
+  userId: string,
+  userRole: UserRole,
+): TicketSummarySnapshot[] {
+  if (section === 'MY_TICKETS') {
+    return tickets.filter((ticket) => ticket.createdByUserId === userId);
+  }
+
+  if (section === 'ASSIGNED_TO_ME') {
+    return tickets.filter((ticket) => ticket.assignedToUserId === userId);
+  }
+
+  if (section === 'UNASSIGNED_TICKETS') {
+    return tickets.filter((ticket) => !ticket.assignedToUserId);
+  }
+
+  if (section === 'LIST' && userRole === 'DEMANDEUR') {
+    return tickets.filter(
+      (ticket) =>
+        ticket.createdByUserId === userId ||
+        ticket.requestedForUserId === userId,
+    );
+  }
+
+  return tickets;
+}
+
+function filterTicketsByListFilters(
+  tickets: TicketSummarySnapshot[],
+  filters: TicketSearchFiltersState,
+): TicketSummarySnapshot[] {
+  return tickets.filter((ticket) => {
+    if (filters.type && ticket.type !== filters.type) {
+      return false;
+    }
+
+    if (filters.status && ticket.status !== filters.status) {
+      return false;
+    }
+
+    if (filters.categoryId && ticket.categoryId !== filters.categoryId) {
+      return false;
+    }
+
+    if (filters.priorityId && ticket.priorityId !== filters.priorityId) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
 function filterTicketsByListSearch(
   tickets: TicketSummarySnapshot[],
   searchText: string,
   users: AdminUserSummary[],
+  searchField: TicketListSearchField,
 ): TicketSummarySnapshot[] {
   const normalizedSearch = normalizeSearchText(searchText);
 
@@ -4468,7 +4516,19 @@ function filterTicketsByListSearch(
         )
       : '';
 
-    return [ticket.title, requesterName, technicianName].some((value) =>
+    const searchableValues: string[] = (() => {
+      switch (searchField) {
+        case 'REQUESTER':
+          return [requesterName];
+        case 'TECHNICIAN':
+          return [technicianName];
+        case 'TITLE':
+        default:
+          return [ticket.title];
+      }
+    })();
+
+    return searchableValues.some((value) =>
       normalizeSearchText(value).includes(normalizedSearch),
     );
   });
