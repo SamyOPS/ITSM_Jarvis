@@ -15,6 +15,7 @@ export type CreateIncidentPayload = {
   ciId?: string | null;
   description: string;
   impact: IncidentSeverity;
+  requestedForUserId?: string | null;
   serviceId?: string | null;
   title: string;
   urgency: IncidentSeverity;
