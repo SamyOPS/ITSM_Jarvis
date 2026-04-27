@@ -2327,15 +2327,6 @@ a {
   font-size: 0.9rem;
 }
 
-.ticket-attachment-preview {
-  width: 100%;
-  max-height: 240px;
-  object-fit: cover;
-  border: 1px solid rgba(207, 216, 234, 0.9);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.9);
-}
-
 .ticket-attachment-actions {
   display: flex;
   justify-content: flex-end;

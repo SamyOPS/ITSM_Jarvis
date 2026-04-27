@@ -461,10 +461,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const [creationAttachmentInputKey, setCreationAttachmentInputKey] =
     useState(0);
 
-  const [attachmentPreviewUrls, setAttachmentPreviewUrls] = useState<
-    Record<string, string>
-  >({});
-
   const [isEditingInfo, setIsEditingInfo] = useState(false);
 
   const [tickets, setTickets] = useState<TicketSummarySnapshot[]>([]);
@@ -823,8 +819,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
       setAttachmentInputKey(0);
 
-      setAttachmentPreviewUrls({});
-
       setDeletingAttachmentId(null);
 
       setDeletingCommentId(null);
@@ -915,66 +909,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       cancelled = true;
     };
   }, [selectedTicketId, session.accessToken]);
-
-  useEffect(() => {
-    const imageAttachments = selectedTicketAttachments.filter((attachment) =>
-      attachment.mimeType?.startsWith('image/'),
-    );
-
-    if (imageAttachments.length === 0) {
-      setAttachmentPreviewUrls((currentUrls) => {
-        Object.values(currentUrls).forEach((url) => URL.revokeObjectURL(url));
-        return {};
-      });
-      return;
-    }
-
-    let cancelled = false;
-    const createdUrls: string[] = [];
-
-    async function loadAttachmentPreviews(): Promise<void> {
-      try {
-        const nextEntries = await Promise.all(
-          imageAttachments.map(async (attachment) => {
-            const blob = await downloadTicketAttachmentBinary(
-              session.accessToken,
-              attachment.bucketId,
-              attachment.storagePath,
-            );
-            const objectUrl = URL.createObjectURL(blob);
-            createdUrls.push(objectUrl);
-
-            return [attachment.id, objectUrl] as const;
-          }),
-        );
-
-        if (cancelled) {
-          createdUrls.forEach((url) => URL.revokeObjectURL(url));
-          return;
-        }
-
-        setAttachmentPreviewUrls((currentUrls) => {
-          Object.values(currentUrls).forEach((url) => URL.revokeObjectURL(url));
-          return Object.fromEntries(nextEntries);
-        });
-      } catch {
-        if (!cancelled) {
-          setAttachmentPreviewUrls((currentUrls) => {
-            Object.values(currentUrls).forEach((url) =>
-              URL.revokeObjectURL(url),
-            );
-            return {};
-          });
-        }
-      }
-    }
-
-    void loadAttachmentPreviews();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedTicketAttachments, session.accessToken]);
 
   useEffect(() => {
     if (!selectedTicketId) {
@@ -2154,17 +2088,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           (currentAttachment) => currentAttachment.id !== attachment.id,
         ),
       );
-      setAttachmentPreviewUrls((currentUrls) => {
-        const nextUrls = { ...currentUrls };
-        const previewUrl = nextUrls[attachment.id];
-
-        if (previewUrl) {
-          URL.revokeObjectURL(previewUrl);
-          delete nextUrls[attachment.id];
-        }
-
-        return nextUrls;
-      });
 
       const nextAttachments = await getTicketAttachments(
         session.accessToken,
@@ -4046,15 +3969,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                         : 'Supprimer'}
                                     </button>
                                   </div>
-
-                                  {attachment.mimeType?.startsWith('image/') &&
-                                  attachmentPreviewUrls[attachment.id] ? (
-                                    <img
-                                      alt={attachment.fileName}
-                                      className="ticket-attachment-preview"
-                                      src={attachmentPreviewUrls[attachment.id]}
-                                    />
-                                  ) : null}
                                 </div>
                               ))}
                             </div>
