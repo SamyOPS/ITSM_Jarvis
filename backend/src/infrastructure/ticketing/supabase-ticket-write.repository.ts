@@ -304,15 +304,23 @@ export class SupabaseTicketWriteRepository
     );
 
     if (record.incident !== undefined) {
+      const incident = record.incident;
+      const incidentPayload: {
+        impact: string | null;
+        root_cause: string | null;
+        urgency: string | null;
+        workaround: string | null;
+      } = {
+        impact: incident ? String(incident.impact) : null,
+        root_cause: incident ? incident.rootCause : null,
+        urgency: incident ? String(incident.urgency) : null,
+        workaround: incident ? incident.workaround : null,
+      };
+
       await this.send(
         `incidents?ticket_id=eq.${ticketId}`,
         'PATCH',
-        {
-          impact: record.incident?.impact ?? null,
-          root_cause: record.incident?.rootCause ?? null,
-          urgency: record.incident?.urgency ?? null,
-          workaround: record.incident?.workaround ?? null,
-        },
+        incidentPayload,
         false,
       );
     }

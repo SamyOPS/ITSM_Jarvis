@@ -188,7 +188,9 @@ function normalizeOptionalId(value: string | null | undefined): string | null {
   return normalized ? normalized : null;
 }
 
-function normalizeOptionalText(value: string | null | undefined): string | null {
+function normalizeOptionalText(
+  value: string | null | undefined,
+): string | null {
   const normalized = value?.trim();
 
   return normalized ? normalized : null;
