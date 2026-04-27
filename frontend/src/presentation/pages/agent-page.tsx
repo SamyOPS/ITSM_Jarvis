@@ -319,7 +319,6 @@ const TICKET_SORT_OPTIONS = [
   },
 ];
 
-
 export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);

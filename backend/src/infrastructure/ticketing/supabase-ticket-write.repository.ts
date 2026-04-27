@@ -35,6 +35,7 @@ import { calculateTicketSlaStatus } from '../../application/ticketing/sla-status
 import { CreatedIncident } from '../../domain/ticketing/created-incident';
 import { CreatedRequest } from '../../domain/ticketing/created-request';
 import { Incident } from '../../domain/ticketing/incident';
+import { IncidentSeverity } from '../../domain/ticketing/incident-severity';
 import { TicketAttachment } from '../../domain/ticketing/ticket-attachment';
 import { PriorityName } from '../../domain/ticketing/priority-name';
 import { RequestApprovalStatus } from '../../domain/ticketing/request-approval-status';
