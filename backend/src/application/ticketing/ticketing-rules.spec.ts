@@ -25,7 +25,7 @@ describe('ticketing rules', () => {
       expect(() =>
         assertAllowedTicketStatusTransition(
           TicketStatus.OPEN,
-          TicketStatus.IN_PROGRESS,
+          TicketStatus.PENDING,
         ),
       ).not.toThrow();
     });

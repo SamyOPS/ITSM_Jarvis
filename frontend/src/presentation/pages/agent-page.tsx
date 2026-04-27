@@ -84,7 +84,7 @@ type AgentPageProps = {
 
 type TicketMode = 'INCIDENT' | 'REQUEST';
 
-type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'PENDING' | 'RESOLVED' | 'CLOSED';
 
 type DetailWorkspaceTab = 'COMMENTS' | 'ATTACHMENTS';
 
@@ -2637,6 +2637,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                       <option value="IN_PROGRESS">En cours</option>
 
+                      <option value="PENDING">En attente</option>
+
                       <option value="RESOLVED">Resolu</option>
 
                       <option value="CLOSED">Clos</option>
@@ -3684,6 +3686,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                               <option value="IN_PROGRESS">En cours</option>
 
+                              <option value="PENDING">En attente</option>
+
                               <option value="RESOLVED">Resolu</option>
 
                               <option value="CLOSED">Clos</option>
@@ -3843,6 +3847,7 @@ function asTicketStatus(value: string): TicketStatus | null {
   if (
     value === 'OPEN' ||
     value === 'IN_PROGRESS' ||
+    value === 'PENDING' ||
     value === 'RESOLVED' ||
     value === 'CLOSED'
   ) {
@@ -4045,19 +4050,23 @@ function getStatusRank(status: string): number {
     return 0;
   }
 
-  if (status === 'OPEN') {
+  if (status === 'PENDING') {
     return 1;
   }
 
-  if (status === 'RESOLVED') {
+  if (status === 'OPEN') {
     return 2;
   }
 
-  if (status === 'CLOSED') {
+  if (status === 'RESOLVED') {
     return 3;
   }
 
-  return 4;
+  if (status === 'CLOSED') {
+    return 4;
+  }
+
+  return 5;
 }
 
 function getSlaRank(ticket: TicketSummarySnapshot): number {

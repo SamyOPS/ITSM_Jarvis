@@ -132,4 +132,65 @@ describe('ChangeTicketStatusUseCase', () => {
       'Ticket status transition CLOSED -> IN_PROGRESS is not allowed in V1.',
     );
   });
+
+  it('allows moving a ticket from in progress to pending', async () => {
+    const detail = new TicketDetail(
+      new Ticket(
+        'ticket-2',
+        'TICK-000002',
+        TicketType.INCIDENT,
+        TicketStatus.IN_PROGRESS,
+        'VPN KO',
+        'Impossible de se connecter',
+        'priority-1',
+        'category-1',
+        'creator-1',
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        '2026-03-31T10:00:00.000Z',
+      ),
+      null,
+      null,
+      null,
+    );
+    const getTicketById = jest
+      .fn()
+      .mockResolvedValueOnce(detail)
+      .mockResolvedValueOnce({
+        ...detail,
+        ticket: {
+          ...detail.ticket,
+          status: TicketStatus.PENDING,
+        },
+      });
+    const updateStatus = jest.fn().mockResolvedValue(undefined);
+    const write = jest.fn().mockResolvedValue(undefined);
+    const useCase = new ChangeTicketStatusUseCase(
+      {
+        getTicketById,
+      } as unknown as TicketReadRepository,
+      {
+        updateStatus,
+      } as unknown as TicketWriteRepository,
+      {
+        write,
+      } as unknown as TicketAuditService,
+    );
+
+    await expect(
+      useCase.execute({
+        actorUserId: 'agent-1',
+        status: TicketStatus.PENDING,
+        ticketId: 'ticket-2',
+      }),
+    ).resolves.toMatchObject({
+      ticket: {
+        status: TicketStatus.PENDING,
+      },
+    });
+  });
 });

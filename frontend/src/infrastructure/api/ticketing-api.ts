@@ -36,7 +36,7 @@ export type SearchTicketsFilters = {
   includeArchived?: boolean;
   priorityId?: string | null;
   q?: string | null;
-  status?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | null;
+  status?: 'OPEN' | 'IN_PROGRESS' | 'PENDING' | 'RESOLVED' | 'CLOSED' | null;
   type?: 'INCIDENT' | 'REQUEST' | null;
 };
 
@@ -46,7 +46,7 @@ export type AssignTicketPayload = {
 };
 
 export type ChangeTicketStatusPayload = {
-  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  status: 'OPEN' | 'IN_PROGRESS' | 'PENDING' | 'RESOLVED' | 'CLOSED';
 };
 
 export type UpdateTicketPayload = {

@@ -5,7 +5,7 @@ export type ReportingFilters = {
   categoryId?: string | null;
   from?: string | null;
   priorityId?: string | null;
-  status?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | null;
+  status?: 'OPEN' | 'IN_PROGRESS' | 'PENDING' | 'RESOLVED' | 'CLOSED' | null;
   to?: string | null;
   type?: 'INCIDENT' | 'REQUEST' | null;
 };
