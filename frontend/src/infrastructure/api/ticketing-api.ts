@@ -54,9 +54,13 @@ export type UpdateTicketPayload = {
   channelId?: string | null;
   ciId?: string | null;
   description: string;
+  impact?: IncidentSeverity | null;
   requestedForUserId?: string | null;
+  rootCause?: string | null;
   serviceId?: string | null;
   title: string;
+  urgency?: IncidentSeverity | null;
+  workaround?: string | null;
 };
 
 export type AddTicketCommentPayload = {

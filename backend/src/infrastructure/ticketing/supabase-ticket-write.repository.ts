@@ -268,7 +268,19 @@ export class SupabaseTicketWriteRepository
       channelId: string | null;
       ciId: string | null;
       description: string;
+      incident:
+        | {
+            impact: IncidentSeverity;
+            rootCause: string | null;
+            urgency: IncidentSeverity;
+            workaround: string | null;
+          }
+        | null
+        | undefined;
+      priorityId: string | null;
       requestedForUserId: string | null;
+      resolutionDueAt: string | null;
+      responseDueAt: string | null;
       serviceId: string | null;
       title: string;
     },
@@ -281,12 +293,29 @@ export class SupabaseTicketWriteRepository
         channel_id: record.channelId,
         ci_id: record.ciId,
         description: record.description,
+        priority_id: record.priorityId,
         requested_for_user_id: record.requestedForUserId,
+        resolution_due_at: record.resolutionDueAt,
+        response_due_at: record.responseDueAt,
         service_id: record.serviceId,
         title: record.title,
       },
       false,
     );
+
+    if (record.incident !== undefined) {
+      await this.send(
+        `incidents?ticket_id=eq.${ticketId}`,
+        'PATCH',
+        {
+          impact: record.incident?.impact ?? null,
+          root_cause: record.incident?.rootCause ?? null,
+          urgency: record.incident?.urgency ?? null,
+          workaround: record.incident?.workaround ?? null,
+        },
+        false,
+      );
+    }
   }
 
   async deleteTicket(ticketId: string): Promise<void> {
