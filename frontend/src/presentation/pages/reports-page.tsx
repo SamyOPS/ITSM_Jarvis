@@ -34,7 +34,7 @@ type ReportsFilterState = {
   categoryId: string;
   from: string;
   priorityId: string;
-  status: '' | 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  status: '' | 'OPEN' | 'IN_PROGRESS' | 'PENDING' | 'RESOLVED' | 'CLOSED';
   to: string;
   type: '' | 'INCIDENT' | 'REQUEST';
 };

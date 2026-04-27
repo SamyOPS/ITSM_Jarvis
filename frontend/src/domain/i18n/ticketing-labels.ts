@@ -88,6 +88,8 @@ export function translateTicketStatus(status: string): string {
       return 'Ouvert';
     case 'IN_PROGRESS':
       return 'En cours';
+    case 'PENDING':
+      return 'En attente';
     case 'RESOLVED':
       return 'Résolu';
     case 'CLOSED':

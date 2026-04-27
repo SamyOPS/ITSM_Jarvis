@@ -13,11 +13,25 @@ const ALLOWED_STATUS_TRANSITIONS: Record<
 > = {
   [TicketStatus.OPEN]: [
     TicketStatus.IN_PROGRESS,
+    TicketStatus.PENDING,
     TicketStatus.RESOLVED,
     TicketStatus.CLOSED,
   ],
-  [TicketStatus.IN_PROGRESS]: [TicketStatus.RESOLVED, TicketStatus.CLOSED],
-  [TicketStatus.RESOLVED]: [TicketStatus.IN_PROGRESS, TicketStatus.CLOSED],
+  [TicketStatus.IN_PROGRESS]: [
+    TicketStatus.PENDING,
+    TicketStatus.RESOLVED,
+    TicketStatus.CLOSED,
+  ],
+  [TicketStatus.PENDING]: [
+    TicketStatus.IN_PROGRESS,
+    TicketStatus.RESOLVED,
+    TicketStatus.CLOSED,
+  ],
+  [TicketStatus.RESOLVED]: [
+    TicketStatus.IN_PROGRESS,
+    TicketStatus.PENDING,
+    TicketStatus.CLOSED,
+  ],
   [TicketStatus.CLOSED]: [TicketStatus.CLOSED],
 };
 
