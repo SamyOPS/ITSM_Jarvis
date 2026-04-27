@@ -1328,6 +1328,237 @@ a {
   font-size: 0.95rem;
 }
 
+.incident-lookup-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px;
+  min-height: 46px;
+  border: 1px solid rgba(181, 197, 224, 0.95);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.incident-lookup-field input {
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.incident-lookup-field button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-left: 1px solid rgba(181, 197, 224, 0.95);
+  background: rgba(248, 251, 255, 0.98);
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.incident-lookup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.incident-lookup-dialog {
+  display: grid;
+  gap: 16px;
+  width: min(980px, 100%);
+  max-height: min(760px, calc(100vh - 48px));
+  padding: 20px;
+  border: 1px solid rgba(207, 216, 234, 0.95);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 24px 70px rgba(16, 34, 65, 0.24);
+  overflow: hidden;
+}
+
+.incident-lookup-header,
+.incident-lookup-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.incident-lookup-header h3 {
+  margin: 8px 0 0;
+}
+
+.incident-lookup-close {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.incident-lookup-close:hover {
+  border-color: rgba(190, 18, 60, 0.35);
+  background: rgba(254, 226, 226, 0.95);
+  color: #be123c;
+  transform: translateY(-1px);
+}
+
+.incident-lookup-search,
+.ticket-list-target-search {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  padding: 0;
+  border: 1px solid rgba(207, 216, 234, 0.95);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text-muted);
+  box-shadow: 0 10px 28px rgba(43, 76, 125, 0.06);
+  overflow: hidden;
+}
+
+.incident-lookup-search select,
+.ticket-list-target-search select {
+  min-width: 0;
+  height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-right: 1px solid rgba(207, 216, 234, 0.95);
+  border-radius: 0;
+  background: rgba(248, 251, 255, 0.96);
+  color: #24406c;
+  font-weight: 400;
+  cursor: pointer;
+  outline: none;
+}
+
+.incident-lookup-search-input,
+.ticket-list-target-search-input {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0 14px;
+  color: var(--text-muted);
+}
+
+.incident-lookup-search-input input,
+.ticket-list-target-search-input input {
+  min-width: 0;
+  width: 100%;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+  box-shadow: none;
+}
+
+.incident-lookup-search-input input:focus,
+.ticket-list-target-search-input input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.incident-lookup-search:focus-within,
+.ticket-list-target-search:focus-within {
+  border-color: rgba(25, 86, 179, 0.38);
+  box-shadow: 0 0 0 3px rgba(25, 86, 179, 0.1);
+}
+
+.incident-lookup-table-scroll {
+  overflow: auto;
+  border: 1px solid rgba(207, 216, 234, 0.88);
+  border-radius: 12px;
+}
+
+.incident-lookup-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.incident-lookup-table th,
+.incident-lookup-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(207, 216, 234, 0.72);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.incident-lookup-table th {
+  position: sticky;
+  top: 0;
+  background: rgba(245, 248, 255, 0.98);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.incident-lookup-row {
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.incident-lookup-row:hover,
+.incident-lookup-row:focus-visible {
+  background: rgba(239, 245, 255, 0.88);
+  box-shadow: inset 3px 0 0 var(--primary);
+  outline: none;
+}
+
+.incident-lookup-identity {
+  color: #26548f;
+  font-weight: 400;
+}
+
+.incident-lookup-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.incident-lookup-pagination {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.incident-lookup-pagination div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.incident-lookup-page-button {
+  min-width: 98px;
+}
+
+.incident-lookup-current-page {
+  display: grid;
+  place-items: center;
+  min-width: 40px;
+  height: 40px;
+  border: 1px solid rgba(25, 86, 179, 0.35);
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 400;
+}
+
 .ticket-upload-zone {
   display: grid;
   gap: 10px;
@@ -1534,12 +1765,12 @@ a {
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
-  padding: 9px 13px;
-  border: 1px solid rgba(207, 216, 234, 0.88);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: #17335f;
-  box-shadow: 0 10px 26px rgba(26, 44, 78, 0.06);
+  box-shadow: none;
 }
 
 .ticket-list-count strong {

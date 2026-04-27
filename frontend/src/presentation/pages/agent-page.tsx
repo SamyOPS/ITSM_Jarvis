@@ -5,7 +5,9 @@ import {
   ArrowLeft,
   ArrowUp,
   BadgeAlert,
+  Search,
   SlidersHorizontal,
+  X,
 } from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
@@ -87,16 +89,33 @@ type TicketMode = 'INCIDENT' | 'REQUEST';
 
 type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'PENDING' | 'RESOLVED' | 'CLOSED';
 
+type IncidentLookupKind = 'ASSIGNEE' | 'REQUESTER';
+
+type IncidentLookupSearchField =
+  | 'IDENTIFIER'
+  | 'FIRST_NAME'
+  | 'LAST_NAME'
+  | 'GROUP'
+  | 'SERVICE';
+
+type TicketListSearchField = 'TITLE' | 'REQUESTER' | 'TECHNICIAN';
+
 type IncidentDraftState = {
+  assignedToUserId: string;
+
   categoryId: string;
 
   channelId: string;
 
   ciId: string;
 
+  comment: string;
+
   description: string;
 
   impact: IncidentSeverity;
+
+  requestedForUserId: string;
 
   serviceId: string;
 
@@ -166,6 +185,8 @@ type TicketSearchFiltersState = {
 
   q: string;
 
+  searchField: TicketListSearchField;
+
   sortBy: 'CREATED_AT_ASC' | 'CREATED_AT_DESC' | 'OPERATIONAL_PRIORITY';
 
   status: '' | TicketStatus;
@@ -190,15 +211,21 @@ const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
 };
 
 const INITIAL_INCIDENT_DRAFT: IncidentDraftState = {
+  assignedToUserId: '',
+
   categoryId: '',
 
   channelId: '',
 
   ciId: '',
 
+  comment: '',
+
   description: '',
 
   impact: 'MEDIUM',
+
+  requestedForUserId: '',
 
   serviceId: '',
 
@@ -231,6 +258,8 @@ const INITIAL_SEARCH_FILTERS: TicketSearchFiltersState = {
   priorityId: '',
 
   q: '',
+
+  searchField: 'TITLE',
 
   sortBy: 'OPERATIONAL_PRIORITY',
 
@@ -270,6 +299,7 @@ const INITIAL_ATTACHMENT_DRAFT: AttachmentDraftState = {
 };
 
 const TICKET_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
+const INCIDENT_LOOKUP_PAGE_SIZE = 10;
 const TICKETS_PER_PAGE = 15;
 const TICKET_SORT_OPTIONS = [
   {
@@ -288,6 +318,7 @@ const TICKET_SORT_OPTIONS = [
     icon: ArrowUp,
   },
 ];
+
 
 export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const [catalog, setCatalog] =
@@ -441,6 +472,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const [ticketPage, setTicketPage] = useState(1);
   const [userDirectory, setUserDirectory] = useState<AdminUserSummary[]>([]);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const [incidentLookupKind, setIncidentLookupKind] =
+    useState<IncidentLookupKind | null>(null);
+  const [incidentLookupPage, setIncidentLookupPage] = useState(1);
+  const [incidentLookupSearch, setIncidentLookupSearch] = useState('');
+  const [incidentLookupSearchField, setIncidentLookupSearchField] =
+    useState<IncidentLookupSearchField>('IDENTIFIER');
 
   const [incidentValidationErrors, setIncidentValidationErrors] =
     useState<IncidentValidationErrors>({});
@@ -449,6 +486,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     useState<RequestValidationErrors>({});
 
   const canManageTicket = canManageTicketActions(session.user.role);
+  const showIncidentAdvancedFields =
+    mode === 'INCIDENT' && canManageTicketActions(session.user.role);
 
   const canDeleteTickets = session.user.role === 'ADMIN';
   const canEditTicket = session.user.role === 'ADMIN';
@@ -481,9 +520,29 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const detailBackPath = isArchiveDetailPage
     ? '/agent/archives'
     : '/agent/tickets';
+  const scopedTickets = useMemo(
+    () =>
+      filterTicketsByListScope(
+        tickets,
+        section,
+        session.user.id,
+        session.user.role,
+      ),
+    [section, session.user.id, session.user.role, tickets],
+  );
+  const searchedTickets = useMemo(
+    () =>
+      filterTicketsByListSearch(
+        filterTicketsByListFilters(scopedTickets, searchFilters),
+        searchFilters.q,
+        userDirectory,
+        searchFilters.searchField,
+      ),
+    [scopedTickets, searchFilters, userDirectory],
+  );
   const totalTicketPages = Math.max(
     1,
-    Math.ceil(tickets.length / TICKETS_PER_PAGE),
+    Math.ceil(searchedTickets.length / TICKETS_PER_PAGE),
   );
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const ticketListTitle = getTicketListTitle(section, session.user.role);
@@ -600,10 +659,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     searchFilters.categoryId,
     searchFilters.priorityId,
     searchFilters.q,
+    searchFilters.searchField,
     searchFilters.sortBy,
     searchFilters.status,
     searchFilters.type,
+    section,
   ]);
+
+  useEffect(() => {
+    setIncidentLookupPage(1);
+  }, [incidentLookupKind, incidentLookupSearch]);
 
   useEffect(() => {
     if (!showListPanel) {
@@ -624,7 +689,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       return;
     }
 
-    const selectedIndex = tickets.findIndex(
+    const selectedIndex = searchedTickets.findIndex(
       (ticket) => ticket.id === selectedTicketId,
     );
 
@@ -637,7 +702,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     if (nextPage !== ticketPage) {
       setTicketPage(nextPage);
     }
-  }, [showListPanel, selectedTicketId, ticketPage, tickets]);
+  }, [searchedTickets, showListPanel, selectedTicketId, ticketPage]);
 
   useEffect(() => {
     if (isIncidentCreatePage) {
@@ -694,17 +759,17 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
       try {
         const nextTickets = await searchTickets(session.accessToken, {
-          categoryId: normalizeOptionalId(searchFilters.categoryId),
+          categoryId: null,
 
           includeArchived: isArchiveListPage,
 
-          priorityId: normalizeOptionalId(searchFilters.priorityId),
+          priorityId: null,
 
           q: null,
 
-          status: searchFilters.status || null,
+          status: null,
 
-          type: searchFilters.type || null,
+          type: null,
         });
 
         if (cancelled) {
@@ -714,39 +779,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         const activeTickets = isArchiveListPage
           ? nextTickets.filter((ticket) => ticket.archivedAt)
           : nextTickets.filter((ticket) => !ticket.archivedAt);
-        let displayedTickets = activeTickets;
 
-        if (isMyTicketsPage) {
-          displayedTickets = activeTickets.filter(
-            (ticket) => ticket.createdByUserId === session.user.id,
-          );
-        } else if (isListPage && session.user.role === 'DEMANDEUR') {
-          displayedTickets = activeTickets.filter(
-            (ticket) =>
-              ticket.createdByUserId === session.user.id ||
-              ticket.requestedForUserId === session.user.id,
-          );
-        } else if (isAssignedToMePage) {
-          displayedTickets = activeTickets.filter(
-            (ticket) => ticket.assignedToUserId === session.user.id,
-          );
-        } else if (isUnassignedTicketsPage) {
-          displayedTickets = activeTickets.filter(
-            (ticket) => !ticket.assignedToUserId,
-          );
-        }
-
-        displayedTickets = filterTicketsByListSearch(
-          displayedTickets,
-          searchFilters.q,
-          userDirectory,
-        );
-
-        setTickets(displayedTickets);
+        setTickets(activeTickets);
 
         if (
           selectedTicketId &&
-          !displayedTickets.some((ticket) => ticket.id === selectedTicketId)
+          !activeTickets.some((ticket) => ticket.id === selectedTicketId)
         ) {
           setSelectedTicketId(null);
         }
@@ -770,30 +808,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [
-    isArchiveListPage,
-    isAssignedToMePage,
-    isListPage,
-    isMyTicketsPage,
-    isUnassignedTicketsPage,
-    searchFilters.categoryId,
-
-    searchFilters.priorityId,
-
-    searchFilters.q,
-
-    searchFilters.status,
-
-    searchFilters.type,
-
-    selectedTicketId,
-
-    session.accessToken,
-    session.user.id,
-    session.user.role,
-    showListPanel,
-    userDirectory,
-  ]);
+  }, [isArchiveListPage, selectedTicketId, session.accessToken, showListPanel]);
 
   useEffect(() => {
     if (!selectedTicketId) {
@@ -1072,15 +1087,15 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   const sortedTickets = useMemo(() => {
     if (searchFilters.sortBy === 'CREATED_AT_DESC') {
-      return sortTicketsByCreatedAtDesc(tickets);
+      return sortTicketsByCreatedAtDesc(searchedTickets);
     }
 
     if (searchFilters.sortBy === 'CREATED_AT_ASC') {
-      return sortTicketsByCreatedAtAsc(tickets);
+      return sortTicketsByCreatedAtAsc(searchedTickets);
     }
 
-    return sortTicketsByOperationalPriority(tickets, prioritiesById);
-  }, [prioritiesById, searchFilters.sortBy, tickets]);
+    return sortTicketsByOperationalPriority(searchedTickets, prioritiesById);
+  }, [prioritiesById, searchFilters.sortBy, searchedTickets]);
 
   const paginatedTickets = useMemo(() => {
     const startIndex = (ticketPage - 1) * TICKETS_PER_PAGE;
@@ -1127,6 +1142,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     [userDirectory],
   );
 
+  const requesters = useMemo(
+    () =>
+      userDirectory.filter(
+        (user) => user.isActive && user.role === 'DEMANDEUR',
+      ),
+    [userDirectory],
+  );
+
   const assignableTechnicians = useMemo(
     () =>
       technicians.filter(
@@ -1136,6 +1159,44 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       ),
     [assignmentDraft.assignmentGroupId, technicians],
   );
+
+  const incidentLookupSource =
+    incidentLookupKind === 'ASSIGNEE' ? technicians : requesters;
+  const filteredIncidentLookupUsers = useMemo(
+    () =>
+      filterIncidentLookupUsers(
+        incidentLookupSource,
+        incidentLookupSearch,
+        incidentLookupSearchField,
+        groupsById,
+      ),
+    [
+      groupsById,
+      incidentLookupSearch,
+      incidentLookupSearchField,
+      incidentLookupSource,
+    ],
+  );
+  const incidentLookupTotalPages = Math.max(
+    1,
+    Math.ceil(filteredIncidentLookupUsers.length / INCIDENT_LOOKUP_PAGE_SIZE),
+  );
+  const paginatedIncidentLookupUsers = filteredIncidentLookupUsers.slice(
+    (incidentLookupPage - 1) * INCIDENT_LOOKUP_PAGE_SIZE,
+    incidentLookupPage * INCIDENT_LOOKUP_PAGE_SIZE,
+  );
+  const selectedIncidentTechnician = usersById.get(
+    incidentDraft.assignedToUserId,
+  );
+  const selectedIncidentRequester = usersById.get(
+    incidentDraft.requestedForUserId,
+  );
+
+  useEffect(() => {
+    if (incidentLookupPage > incidentLookupTotalPages) {
+      setIncidentLookupPage(incidentLookupTotalPages);
+    }
+  }, [incidentLookupPage, incidentLookupTotalPages]);
 
   function handleIncidentFieldChange(
     field: keyof IncidentDraftState,
@@ -1187,6 +1248,32 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
       [field]: value,
     }));
+  }
+
+  function openIncidentLookup(kind: IncidentLookupKind): void {
+    setIncidentLookupKind(kind);
+    setIncidentLookupSearch('');
+    setIncidentLookupSearchField('IDENTIFIER');
+    setIncidentLookupPage(1);
+  }
+
+  function closeIncidentLookup(): void {
+    setIncidentLookupKind(null);
+    setIncidentLookupSearch('');
+    setIncidentLookupSearchField('IDENTIFIER');
+    setIncidentLookupPage(1);
+  }
+
+  function handleIncidentLookupSelect(user: AdminUserSummary): void {
+    if (incidentLookupKind === 'ASSIGNEE') {
+      handleIncidentFieldChange('assignedToUserId', user.id);
+    }
+
+    if (incidentLookupKind === 'REQUESTER') {
+      handleIncidentFieldChange('requestedForUserId', user.id);
+    }
+
+    closeIncidentLookup();
   }
 
   function handleAssignmentFieldChange(
@@ -1247,7 +1334,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setCreatedRequest(null);
 
     if (mode === 'INCIDENT') {
-      const errors = validateIncidentDraft(incidentDraft);
+      const errors = validateIncidentDraft(
+        incidentDraft,
+        showIncidentAdvancedFields,
+      );
 
       setIncidentValidationErrors(errors);
 
@@ -1271,12 +1361,68 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
           impact: incidentDraft.impact,
 
+          requestedForUserId: showIncidentAdvancedFields
+            ? normalizeOptionalId(incidentDraft.requestedForUserId)
+            : null,
+
           serviceId: normalizeOptionalId(incidentDraft.serviceId),
 
           title: incidentDraft.title.trim(),
 
           urgency: incidentDraft.urgency,
         });
+
+        const postCreationWarnings: string[] = [];
+        let ticketForList: TicketSummarySnapshot = {
+          ...result.ticket,
+          priorityName: result.priorityName,
+        };
+
+        if (
+          showIncidentAdvancedFields &&
+          incidentDraft.assignedToUserId.trim()
+        ) {
+          const selectedTechnician = usersById.get(
+            incidentDraft.assignedToUserId,
+          );
+
+          try {
+            const updatedTicket = await assignTicket(
+              session.accessToken,
+              result.ticket.id,
+              {
+                assignedToUserId: incidentDraft.assignedToUserId.trim(),
+                assignmentGroupId: selectedTechnician?.groupId ?? null,
+              },
+            );
+
+            ticketForList = {
+              ...updatedTicket.ticket,
+              priorityName: result.priorityName,
+            };
+          } catch (error) {
+            postCreationWarnings.push(
+              error instanceof Error
+                ? `l'assignation a echoue : ${error.message}`
+                : "l'assignation a echoue",
+            );
+          }
+        }
+
+        if (showIncidentAdvancedFields && incidentDraft.comment.trim()) {
+          try {
+            await addTicketComment(session.accessToken, result.ticket.id, {
+              body: incidentDraft.comment.trim(),
+              isInternal: false,
+            });
+          } catch (error) {
+            postCreationWarnings.push(
+              error instanceof Error
+                ? `l'ajout du commentaire a echoue : ${error.message}`
+                : "l'ajout du commentaire a echoue",
+            );
+          }
+        }
 
         setCreatedIncident(result);
 
@@ -1289,11 +1435,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         }));
 
         setTickets((currentTickets) => [
-          {
-            ...result.ticket,
-
-            priorityName: result.priorityName,
-          },
+          ticketForList,
 
           ...currentTickets.filter((ticket) => ticket.id !== result.ticket.id),
         ]);
@@ -1310,12 +1452,29 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           description: '',
 
           title: '',
+
+          assignedToUserId: '',
+
+          comment: '',
+
+          requestedForUserId: '',
         }));
 
-        if (attachmentUploadErrorMessage) {
-          setSubmitErrorMessage(attachmentUploadErrorMessage);
-        } else {
+        if (!attachmentUploadErrorMessage) {
           resetCreationAttachmentSelection('INCIDENT');
+        }
+
+        if (attachmentUploadErrorMessage || postCreationWarnings.length > 0) {
+          setSubmitErrorMessage(
+            [
+              attachmentUploadErrorMessage,
+              ...postCreationWarnings.map(
+                (warning) => `Ticket cree, mais ${warning}.`,
+              ),
+            ]
+              .filter(Boolean)
+              .join(' '),
+          );
         }
       } catch (error) {
         setSubmitErrorMessage(
@@ -2328,6 +2487,84 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           ))}
                         </select>
                       </label>
+
+                      {showIncidentAdvancedFields ? (
+                        <>
+                          <label className="field">
+                            <span>Assigne a</span>
+
+                            <div className="incident-lookup-field">
+                              <input
+                                readOnly
+                                value={
+                                  selectedIncidentTechnician
+                                    ? formatKnownUserName(
+                                        selectedIncidentTechnician,
+                                        selectedIncidentTechnician.id,
+                                      )
+                                    : ''
+                                }
+                              />
+
+                              <button
+                                aria-label="Rechercher un technicien"
+                                onClick={() => openIncidentLookup('ASSIGNEE')}
+                                type="button"
+                              >
+                                <Search size={18} />
+                              </button>
+                            </div>
+                          </label>
+
+                          <label className="field">
+                            <span>Demandeur</span>
+
+                            <div className="incident-lookup-field">
+                              <input
+                                readOnly
+                                value={
+                                  selectedIncidentRequester
+                                    ? formatKnownUserName(
+                                        selectedIncidentRequester,
+                                        selectedIncidentRequester.id,
+                                      )
+                                    : ''
+                                }
+                              />
+
+                              <button
+                                aria-label="Rechercher un demandeur"
+                                onClick={() => openIncidentLookup('REQUESTER')}
+                                type="button"
+                              >
+                                <Search size={18} />
+                              </button>
+                            </div>
+
+                            {incidentValidationErrors.requestedForUserId ? (
+                              <small className="field-error">
+                                {incidentValidationErrors.requestedForUserId}
+                              </small>
+                            ) : null}
+                          </label>
+
+                          <label className="field ticket-form-span-2">
+                            <span>Commentaire</span>
+
+                            <textarea
+                              onChange={(event) =>
+                                handleIncidentFieldChange(
+                                  'comment',
+                                  event.target.value,
+                                )
+                              }
+                              placeholder="Ajoute une note utile au traitement de l incident."
+                              rows={4}
+                              value={incidentDraft.comment}
+                            />
+                          </label>
+                        </>
+                      ) : null}
                     </>
                   ) : (
                     <>
@@ -2454,6 +2691,187 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     </p>
                   ) : null}
                 </form>
+
+                {showIncidentAdvancedFields && incidentLookupKind ? (
+                  <div
+                    aria-modal="true"
+                    className="incident-lookup-overlay"
+                    role="dialog"
+                  >
+                    <section className="incident-lookup-dialog">
+                      <header className="incident-lookup-header">
+                        <div>
+                          <h3>
+                            {incidentLookupKind === 'ASSIGNEE'
+                              ? 'Selectionner un technicien'
+                              : 'Selectionner un demandeur'}
+                          </h3>
+                        </div>
+
+                        <button
+                          aria-label="Fermer la selection"
+                          className="incident-lookup-close"
+                          onClick={closeIncidentLookup}
+                          type="button"
+                        >
+                          <X size={18} />
+                        </button>
+                      </header>
+
+                      <label className="incident-lookup-search">
+                        <select
+                          aria-label="Categorie de recherche"
+                          onChange={(event) =>
+                            setIncidentLookupSearchField(
+                              event.target.value as IncidentLookupSearchField,
+                            )
+                          }
+                          value={incidentLookupSearchField}
+                        >
+                          <option value="IDENTIFIER">Identifiant</option>
+                          <option value="FIRST_NAME">Prenom</option>
+                          <option value="LAST_NAME">Nom</option>
+                          {incidentLookupKind === 'ASSIGNEE' ? (
+                            <>
+                              <option value="GROUP">Groupe</option>
+                              <option value="SERVICE">Service</option>
+                            </>
+                          ) : null}
+                        </select>
+                        <div className="incident-lookup-search-input">
+                          <input
+                            autoFocus
+                            onChange={(event) =>
+                              setIncidentLookupSearch(event.target.value)
+                            }
+                            placeholder="Rechercher"
+                            value={incidentLookupSearch}
+                          />
+                        </div>
+                      </label>
+
+                      <div className="incident-lookup-table-scroll">
+                        <table className="incident-lookup-table">
+                          <thead>
+                            <tr>
+                              <th>Identifiant</th>
+                              <th>Prenom</th>
+                              <th>Nom</th>
+                              <th>Mail</th>
+                              {incidentLookupKind === 'ASSIGNEE' ? (
+                                <>
+                                  <th>Groupe</th>
+                                  <th>Service</th>
+                                </>
+                              ) : null}
+                            </tr>
+                          </thead>
+
+                          <tbody>
+                            {paginatedIncidentLookupUsers.length === 0 ? (
+                              <tr>
+                                <td
+                                  colSpan={
+                                    incidentLookupKind === 'ASSIGNEE' ? 6 : 4
+                                  }
+                                >
+                                  Aucun utilisateur ne correspond a la
+                                  recherche.
+                                </td>
+                              </tr>
+                            ) : (
+                              paginatedIncidentLookupUsers.map((user) => {
+                                const group = user.groupId
+                                  ? groupsById.get(user.groupId)
+                                  : null;
+
+                                return (
+                                  <tr
+                                    className="incident-lookup-row"
+                                    key={user.id}
+                                    onClick={() =>
+                                      handleIncidentLookupSelect(user)
+                                    }
+                                    tabIndex={0}
+                                    onKeyDown={(event) => {
+                                      if (
+                                        event.key === 'Enter' ||
+                                        event.key === ' '
+                                      ) {
+                                        event.preventDefault();
+                                        handleIncidentLookupSelect(user);
+                                      }
+                                    }}
+                                  >
+                                    <td className="incident-lookup-identity">
+                                      {formatKnownUserName(user, user.id)}
+                                    </td>
+                                    <td>{user.firstName ?? 'Non renseigne'}</td>
+                                    <td>{user.lastName ?? 'Non renseigne'}</td>
+                                    <td>{user.email ?? '-'}</td>
+                                    {incidentLookupKind === 'ASSIGNEE' ? (
+                                      <>
+                                        <td>{group?.name ?? 'Non assigne'}</td>
+                                        <td>Non defini</td>
+                                      </>
+                                    ) : null}
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <footer className="incident-lookup-pagination">
+                        <span>
+                          Page {incidentLookupPage} sur{' '}
+                          {incidentLookupTotalPages} -{' '}
+                          {filteredIncidentLookupUsers.length} resultat
+                          {filteredIncidentLookupUsers.length > 1 ? 's' : ''}
+                        </span>
+
+                        <div>
+                          <button
+                            className="secondary-button incident-lookup-page-button"
+                            disabled={incidentLookupPage <= 1}
+                            onClick={() =>
+                              setIncidentLookupPage((currentPage) =>
+                                Math.max(1, currentPage - 1),
+                              )
+                            }
+                            type="button"
+                          >
+                            Precedent
+                          </button>
+
+                          <span className="incident-lookup-current-page">
+                            {incidentLookupPage}
+                          </span>
+
+                          <button
+                            className="secondary-button incident-lookup-page-button"
+                            disabled={
+                              incidentLookupPage >= incidentLookupTotalPages
+                            }
+                            onClick={() =>
+                              setIncidentLookupPage((currentPage) =>
+                                Math.min(
+                                  incidentLookupTotalPages,
+                                  currentPage + 1,
+                                ),
+                              )
+                            }
+                            type="button"
+                          >
+                            Suivant
+                          </button>
+                        </div>
+                      </footer>
+                    </section>
+                  </div>
+                ) : null}
+
                 <div className="ticket-created-stack">
                   {createdIncident ? (
                     <article className="ticket-created-card">
@@ -2531,7 +2949,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                   <div className="ticket-list-toolbar">
                     <div className="ticket-list-count" aria-live="polite">
-                      <strong>{tickets.length}</strong>
+                      <strong>{searchedTickets.length}</strong>
                       <span>tickets</span>
                     </div>
 
@@ -2610,13 +3028,32 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   <label className="field ticket-filter-search">
                     <span>Recherche</span>
 
-                    <input
-                      onChange={(event) =>
-                        handleSearchFilterChange('q', event.target.value)
-                      }
-                      placeholder="Titre, demandeur ou technicien"
-                      value={searchFilters.q}
-                    />
+                    <div className="ticket-list-target-search">
+                      <select
+                        aria-label="Categorie de recherche"
+                        onChange={(event) =>
+                          handleSearchFilterChange(
+                            'searchField',
+                            event.target.value,
+                          )
+                        }
+                        value={searchFilters.searchField}
+                      >
+                        <option value="TITLE">Titre</option>
+                        <option value="REQUESTER">Demandeur</option>
+                        <option value="TECHNICIAN">Technicien</option>
+                      </select>
+
+                      <div className="ticket-list-target-search-input">
+                        <input
+                          onChange={(event) =>
+                            handleSearchFilterChange('q', event.target.value)
+                          }
+                          placeholder="Rechercher"
+                          value={searchFilters.q}
+                        />
+                      </div>
+                    </div>
                   </label>
 
                   <label className="field">
@@ -2710,7 +3147,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   </p>
                 ) : loadTicketsErrorMessage ? (
                   <p className="ticket-form-error">{loadTicketsErrorMessage}</p>
-                ) : tickets.length === 0 ? (
+                ) : searchedTickets.length === 0 ? (
                   <p className="ticket-form-message">
                     {ticketListEmptyMessage}
                   </p>
@@ -2725,7 +3162,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               <th>Titre</th>
                               <th>Entité</th>
                               <th>Statut</th>
-                              <th>Dernière modification</th>
                               <th>Date d’ouverture</th>
                               <th>Priorité</th>
                               <th>Demandeur</th>
@@ -2766,7 +3202,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     : 'Service non défini'}
                                 </td>
                                 <td>{renderStatusBadge(ticket.status)}</td>
-                                <td>{formatTicketDate(ticket.createdAt)}</td>
                                 <td>{formatTicketDate(ticket.createdAt)}</td>
                                 <td>
                                   {renderPriorityBadge(ticket, prioritiesById)}
@@ -2816,7 +3251,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     <div className="ticket-pagination">
                       <p className="ticket-form-helper">
                         Page {ticketPage} sur {totalTicketPages} -{' '}
-                        {tickets.length} tickets
+                        {searchedTickets.length} tickets
                       </p>
 
                       <div className="ticket-pagination-actions">
@@ -3753,6 +4188,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
 function validateIncidentDraft(
   draft: IncidentDraftState,
+  requiresRequester: boolean,
 ): IncidentValidationErrors {
   const errors: IncidentValidationErrors = {};
 
@@ -3766,6 +4202,10 @@ function validateIncidentDraft(
 
   if (!draft.categoryId.trim()) {
     errors.categoryId = 'La categorie est obligatoire.';
+  }
+
+  if (requiresRequester && !draft.requestedForUserId.trim()) {
+    errors.requestedForUserId = 'Le demandeur est obligatoire.';
   }
 
   return errors;
@@ -3981,10 +4421,112 @@ function formatKnownUserName(
   return fullName || user.displayName || fallback;
 }
 
+function filterIncidentLookupUsers(
+  users: AdminUserSummary[],
+  searchText: string,
+  searchField: IncidentLookupSearchField,
+  groupsById: Map<string, { name: string }>,
+): AdminUserSummary[] {
+  const normalizedSearch = normalizeSearchText(searchText);
+
+  if (!normalizedSearch) {
+    return users;
+  }
+
+  return users.filter((user) => {
+    const groupName = user.groupId
+      ? (groupsById.get(user.groupId)?.name ?? 'Non assigne')
+      : 'Non assigne';
+    const searchableValue = getIncidentLookupSearchValue(
+      user,
+      searchField,
+      groupName,
+    );
+
+    return normalizeSearchText(searchableValue).includes(normalizedSearch);
+  });
+}
+
+function getIncidentLookupSearchValue(
+  user: AdminUserSummary,
+  searchField: IncidentLookupSearchField,
+  groupName: string,
+): string {
+  switch (searchField) {
+    case 'IDENTIFIER':
+      return formatKnownUserName(user, user.id);
+    case 'FIRST_NAME':
+      return user.firstName ?? '';
+    case 'LAST_NAME':
+      return user.lastName ?? '';
+    case 'GROUP':
+      return groupName;
+    case 'SERVICE':
+      return 'Non defini';
+    default:
+      return '';
+  }
+}
+
+function filterTicketsByListScope(
+  tickets: TicketSummarySnapshot[],
+  section: AgentPageProps['section'],
+  userId: string,
+  userRole: UserRole,
+): TicketSummarySnapshot[] {
+  if (section === 'MY_TICKETS') {
+    return tickets.filter((ticket) => ticket.createdByUserId === userId);
+  }
+
+  if (section === 'ASSIGNED_TO_ME') {
+    return tickets.filter((ticket) => ticket.assignedToUserId === userId);
+  }
+
+  if (section === 'UNASSIGNED_TICKETS') {
+    return tickets.filter((ticket) => !ticket.assignedToUserId);
+  }
+
+  if (section === 'LIST' && userRole === 'DEMANDEUR') {
+    return tickets.filter(
+      (ticket) =>
+        ticket.createdByUserId === userId ||
+        ticket.requestedForUserId === userId,
+    );
+  }
+
+  return tickets;
+}
+
+function filterTicketsByListFilters(
+  tickets: TicketSummarySnapshot[],
+  filters: TicketSearchFiltersState,
+): TicketSummarySnapshot[] {
+  return tickets.filter((ticket) => {
+    if (filters.type && ticket.type !== filters.type) {
+      return false;
+    }
+
+    if (filters.status && ticket.status !== filters.status) {
+      return false;
+    }
+
+    if (filters.categoryId && ticket.categoryId !== filters.categoryId) {
+      return false;
+    }
+
+    if (filters.priorityId && ticket.priorityId !== filters.priorityId) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
 function filterTicketsByListSearch(
   tickets: TicketSummarySnapshot[],
   searchText: string,
   users: AdminUserSummary[],
+  searchField: TicketListSearchField,
 ): TicketSummarySnapshot[] {
   const normalizedSearch = normalizeSearchText(searchText);
 
@@ -4007,7 +4549,19 @@ function filterTicketsByListSearch(
         )
       : '';
 
-    return [ticket.title, requesterName, technicianName].some((value) =>
+    const searchableValues: string[] = (() => {
+      switch (searchField) {
+        case 'REQUESTER':
+          return [requesterName];
+        case 'TECHNICIAN':
+          return [technicianName];
+        case 'TITLE':
+        default:
+          return [ticket.title];
+      }
+    })();
+
+    return searchableValues.some((value) =>
       normalizeSearchText(value).includes(normalizedSearch),
     );
   });
