@@ -58,7 +58,19 @@ export type UpdateTicketRecord = {
   channelId: string | null;
   ciId: string | null;
   description: string;
+  incident:
+    | {
+        impact: IncidentSeverity;
+        rootCause: string | null;
+        urgency: IncidentSeverity;
+        workaround: string | null;
+      }
+    | null
+    | undefined;
+  priorityId: string | null;
   requestedForUserId: string | null;
+  resolutionDueAt: string | null;
+  responseDueAt: string | null;
   serviceId: string | null;
   title: string;
 };

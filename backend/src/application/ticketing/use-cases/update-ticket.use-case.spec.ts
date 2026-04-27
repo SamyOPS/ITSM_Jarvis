@@ -1,5 +1,9 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
+import { ReferentialPriority } from '../../../domain/referentials/referential-priority';
 import { UserRole } from '../../../domain/auth/user-role';
+import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
+import { Incident } from '../../../domain/ticketing/incident';
 import { PriorityName } from '../../../domain/ticketing/priority-name';
 import { Ticket } from '../../../domain/ticketing/ticket';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
@@ -31,7 +35,13 @@ describe('UpdateTicketUseCase', () => {
         '2026-04-01T08:00:00.000Z',
       ),
       PriorityName.MEDIUM,
-      null,
+      new Incident(
+        'ticket-1',
+        IncidentSeverity.HIGH,
+        IncidentSeverity.MEDIUM,
+        null,
+        null,
+      ),
       null,
     );
     const updatedDetail = new TicketDetail(
@@ -52,9 +62,17 @@ describe('UpdateTicketUseCase', () => {
         null,
         'ci-1',
         '2026-04-01T08:00:00.000Z',
+        '2026-04-01T12:00:00.000Z',
+        '2026-04-01T20:00:00.000Z',
       ),
-      PriorityName.MEDIUM,
-      null,
+      PriorityName.CRITICAL,
+      new Incident(
+        'ticket-1',
+        IncidentSeverity.HIGH,
+        IncidentSeverity.HIGH,
+        'Analyse terminee',
+        'Escalade N3',
+      ),
       null,
     );
     const updateTicket = jest.fn().mockResolvedValue(undefined);
@@ -75,9 +93,30 @@ describe('UpdateTicketUseCase', () => {
       updateStatus: jest.fn(),
       updateTicket,
     };
+    const priorityRepository: ReferentialPriorityReadRepository = {
+      listPriorities: jest
+        .fn()
+        .mockResolvedValue([
+          new ReferentialPriority(
+            'priority-medium',
+            PriorityName.MEDIUM,
+            2,
+            8,
+            24,
+          ),
+          new ReferentialPriority(
+            'priority-critical',
+            PriorityName.CRITICAL,
+            4,
+            4,
+            12,
+          ),
+        ]),
+    };
     const useCase = new UpdateTicketUseCase(
       ticketReadRepository,
       ticketWriteRepository,
+      priorityRepository,
     );
 
     await expect(
@@ -88,10 +127,14 @@ describe('UpdateTicketUseCase', () => {
         channelId: 'channel-1',
         ciId: 'ci-1',
         description: 'Description mise a jour',
+        impact: IncidentSeverity.HIGH,
         requestedForUserId: 'requester-1',
+        rootCause: 'Analyse terminee',
         serviceId: 'service-1',
         ticketId: 'ticket-1',
         title: 'Titre mis a jour',
+        urgency: IncidentSeverity.HIGH,
+        workaround: 'Escalade N3',
       }),
     ).resolves.toBe(updatedDetail);
 
@@ -100,28 +143,43 @@ describe('UpdateTicketUseCase', () => {
       channelId: 'channel-1',
       ciId: 'ci-1',
       description: 'Description mise a jour',
+      incident: {
+        impact: IncidentSeverity.HIGH,
+        rootCause: 'Analyse terminee',
+        urgency: IncidentSeverity.HIGH,
+        workaround: 'Escalade N3',
+      },
+      priorityId: 'priority-critical',
       requestedForUserId: 'requester-1',
+      resolutionDueAt: expect.any(String) as unknown as string,
+      responseDueAt: expect.any(String) as unknown as string,
       serviceId: 'service-1',
       title: 'Titre mis a jour',
     });
   });
 
   it('rejects non admin users', async () => {
+    const ticketReadRepository: TicketReadRepository = {
+      getTicketById: jest.fn(),
+      searchTickets: jest.fn(),
+    };
+    const ticketWriteRepository: TicketWriteRepository = {
+      archiveClosedTicketsBefore: jest.fn(),
+      createIncident: jest.fn(),
+      createRequest: jest.fn(),
+      deleteTicket: jest.fn(),
+      updateAssignment: jest.fn(),
+      updatePriority: jest.fn(),
+      updateStatus: jest.fn(),
+      updateTicket: jest.fn(),
+    };
+    const priorityRepository: ReferentialPriorityReadRepository = {
+      listPriorities: jest.fn(),
+    };
     const useCase = new UpdateTicketUseCase(
-      {
-        getTicketById: jest.fn(),
-        searchTickets: jest.fn(),
-      } as unknown as TicketReadRepository,
-      {
-        archiveClosedTicketsBefore: jest.fn(),
-        createIncident: jest.fn(),
-        createRequest: jest.fn(),
-        deleteTicket: jest.fn(),
-        updateAssignment: jest.fn(),
-        updatePriority: jest.fn(),
-        updateStatus: jest.fn(),
-        updateTicket: jest.fn(),
-      } as unknown as TicketWriteRepository,
+      ticketReadRepository,
+      ticketWriteRepository,
+      priorityRepository,
     );
 
     await expect(
@@ -165,21 +223,27 @@ describe('UpdateTicketUseCase', () => {
       null,
       null,
     );
+    const ticketReadRepository: TicketReadRepository = {
+      getTicketById: jest.fn().mockResolvedValue(archivedDetail),
+      searchTickets: jest.fn(),
+    };
+    const ticketWriteRepository: TicketWriteRepository = {
+      archiveClosedTicketsBefore: jest.fn(),
+      createIncident: jest.fn(),
+      createRequest: jest.fn(),
+      deleteTicket: jest.fn(),
+      updateAssignment: jest.fn(),
+      updatePriority: jest.fn(),
+      updateStatus: jest.fn(),
+      updateTicket: jest.fn(),
+    };
+    const priorityRepository: ReferentialPriorityReadRepository = {
+      listPriorities: jest.fn(),
+    };
     const useCase = new UpdateTicketUseCase(
-      {
-        getTicketById: jest.fn().mockResolvedValue(archivedDetail),
-        searchTickets: jest.fn(),
-      } as unknown as TicketReadRepository,
-      {
-        archiveClosedTicketsBefore: jest.fn(),
-        createIncident: jest.fn(),
-        createRequest: jest.fn(),
-        deleteTicket: jest.fn(),
-        updateAssignment: jest.fn(),
-        updatePriority: jest.fn(),
-        updateStatus: jest.fn(),
-        updateTicket: jest.fn(),
-      } as unknown as TicketWriteRepository,
+      ticketReadRepository,
+      ticketWriteRepository,
+      priorityRepository,
     );
 
     await expect(
@@ -195,21 +259,27 @@ describe('UpdateTicketUseCase', () => {
   });
 
   it('rejects unknown tickets', async () => {
+    const ticketReadRepository: TicketReadRepository = {
+      getTicketById: jest.fn().mockResolvedValue(null),
+      searchTickets: jest.fn(),
+    };
+    const ticketWriteRepository: TicketWriteRepository = {
+      archiveClosedTicketsBefore: jest.fn(),
+      createIncident: jest.fn(),
+      createRequest: jest.fn(),
+      deleteTicket: jest.fn(),
+      updateAssignment: jest.fn(),
+      updatePriority: jest.fn(),
+      updateStatus: jest.fn(),
+      updateTicket: jest.fn(),
+    };
+    const priorityRepository: ReferentialPriorityReadRepository = {
+      listPriorities: jest.fn(),
+    };
     const useCase = new UpdateTicketUseCase(
-      {
-        getTicketById: jest.fn().mockResolvedValue(null),
-        searchTickets: jest.fn(),
-      } as unknown as TicketReadRepository,
-      {
-        archiveClosedTicketsBefore: jest.fn(),
-        createIncident: jest.fn(),
-        createRequest: jest.fn(),
-        deleteTicket: jest.fn(),
-        updateAssignment: jest.fn(),
-        updatePriority: jest.fn(),
-        updateStatus: jest.fn(),
-        updateTicket: jest.fn(),
-      } as unknown as TicketWriteRepository,
+      ticketReadRepository,
+      ticketWriteRepository,
+      priorityRepository,
     );
 
     await expect(

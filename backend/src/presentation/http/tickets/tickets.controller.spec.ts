@@ -318,10 +318,14 @@ describe('TicketsController', () => {
       channelId: 'channel-1',
       ciId: 'ci-1',
       description: 'Description mise a jour',
+      impact: null,
       requestedForUserId: 'requester-1',
+      rootCause: null,
       serviceId: 'service-1',
       ticketId: 'ticket-1',
       title: 'Titre modifie',
+      urgency: null,
+      workaround: null,
     });
   });
 

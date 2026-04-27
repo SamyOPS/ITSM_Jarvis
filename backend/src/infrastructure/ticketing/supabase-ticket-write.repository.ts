@@ -35,6 +35,7 @@ import { calculateTicketSlaStatus } from '../../application/ticketing/sla-status
 import { CreatedIncident } from '../../domain/ticketing/created-incident';
 import { CreatedRequest } from '../../domain/ticketing/created-request';
 import { Incident } from '../../domain/ticketing/incident';
+import { IncidentSeverity } from '../../domain/ticketing/incident-severity';
 import { TicketAttachment } from '../../domain/ticketing/ticket-attachment';
 import { PriorityName } from '../../domain/ticketing/priority-name';
 import { RequestApprovalStatus } from '../../domain/ticketing/request-approval-status';
@@ -268,7 +269,19 @@ export class SupabaseTicketWriteRepository
       channelId: string | null;
       ciId: string | null;
       description: string;
+      incident:
+        | {
+            impact: IncidentSeverity;
+            rootCause: string | null;
+            urgency: IncidentSeverity;
+            workaround: string | null;
+          }
+        | null
+        | undefined;
+      priorityId: string | null;
       requestedForUserId: string | null;
+      resolutionDueAt: string | null;
+      responseDueAt: string | null;
       serviceId: string | null;
       title: string;
     },
@@ -281,12 +294,37 @@ export class SupabaseTicketWriteRepository
         channel_id: record.channelId,
         ci_id: record.ciId,
         description: record.description,
+        priority_id: record.priorityId,
         requested_for_user_id: record.requestedForUserId,
+        resolution_due_at: record.resolutionDueAt,
+        response_due_at: record.responseDueAt,
         service_id: record.serviceId,
         title: record.title,
       },
       false,
     );
+
+    if (record.incident !== undefined) {
+      const incident = record.incident;
+      const incidentPayload: {
+        impact: string | null;
+        root_cause: string | null;
+        urgency: string | null;
+        workaround: string | null;
+      } = {
+        impact: incident ? String(incident.impact) : null,
+        root_cause: incident ? incident.rootCause : null,
+        urgency: incident ? String(incident.urgency) : null,
+        workaround: incident ? incident.workaround : null,
+      };
+
+      await this.send(
+        `incidents?ticket_id=eq.${ticketId}`,
+        'PATCH',
+        incidentPayload,
+        false,
+      );
+    }
   }
 
   async deleteTicket(ticketId: string): Promise<void> {

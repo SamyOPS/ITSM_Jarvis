@@ -144,10 +144,14 @@ export class TicketsController {
       channelId: body.channelId ?? null,
       ciId: body.ciId ?? null,
       description: body.description,
+      impact: body.impact ?? null,
       requestedForUserId: body.requestedForUserId ?? null,
+      rootCause: body.rootCause ?? null,
       serviceId: body.serviceId ?? null,
       ticketId: id,
       title: body.title,
+      urgency: body.urgency ?? null,
+      workaround: body.workaround ?? null,
     });
   }
 

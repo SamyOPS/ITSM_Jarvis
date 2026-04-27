@@ -4,9 +4,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { UserRole } from '../../../domain/auth/user-role';
+import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
+import { TicketType } from '../../../domain/ticketing/ticket-type';
 import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
+import { calculateSlaTargets } from '../sla-targets';
+import { resolveIncidentPriorityName } from '../incident-priority';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import {
   TicketWriteRepository,
@@ -21,10 +26,14 @@ export type UpdateTicketCommand = {
   channelId?: string | null;
   ciId?: string | null;
   description: string;
+  impact?: IncidentSeverity | null;
   requestedForUserId?: string | null;
+  rootCause?: string | null;
   serviceId?: string | null;
   ticketId: string;
   title: string;
+  urgency?: IncidentSeverity | null;
+  workaround?: string | null;
 };
 
 @Injectable()
@@ -34,6 +43,8 @@ export class UpdateTicketUseCase {
     private readonly ticketReadRepository: TicketReadRepository,
     @Inject(TicketWriteRepository)
     private readonly ticketWriteRepository: TicketWriteRepository,
+    @Inject(ReferentialPriorityReadRepository)
+    private readonly priorityRepository: ReferentialPriorityReadRepository,
   ) {}
 
   async execute(command: UpdateTicketCommand): Promise<TicketDetail> {
@@ -94,12 +105,64 @@ export class UpdateTicketUseCase {
       throw error;
     }
 
+    let incidentRecord: UpdateTicketRecord['incident'] = undefined;
+    let priorityId: string | null = null;
+    let responseDueAt: string | null = null;
+    let resolutionDueAt: string | null = null;
+
+    if (existingTicket.ticket.type === TicketType.INCIDENT) {
+      if (!existingTicket.incident) {
+        throw new BadRequestException(
+          `Ticket ${ticketId} has no incident details to update.`,
+        );
+      }
+
+      const impact = command.impact ?? existingTicket.incident.impact;
+      const urgency = command.urgency ?? existingTicket.incident.urgency;
+
+      if (!isIncidentSeverity(impact)) {
+        throw new BadRequestException('impact is invalid.');
+      }
+
+      if (!isIncidentSeverity(urgency)) {
+        throw new BadRequestException('urgency is invalid.');
+      }
+
+      incidentRecord = {
+        impact,
+        rootCause: normalizeOptionalText(command.rootCause),
+        urgency,
+        workaround: normalizeOptionalText(command.workaround),
+      };
+
+      const priorities = await this.priorityRepository.listPriorities();
+      const priorityName = resolveIncidentPriorityName(impact, urgency);
+      const resolvedPriority = priorities.find(
+        (priority) => priority.name === priorityName,
+      );
+
+      if (!resolvedPriority) {
+        throw new BadRequestException(
+          `Priority ${priorityName} is not configured in referentials.`,
+        );
+      }
+
+      priorityId = resolvedPriority.id;
+      const slaTargets = calculateSlaTargets(resolvedPriority);
+      responseDueAt = slaTargets.responseDueAt;
+      resolutionDueAt = slaTargets.resolutionDueAt;
+    }
+
     const record: UpdateTicketRecord = {
       categoryId,
       channelId: normalizeOptionalId(command.channelId),
       ciId: normalizeOptionalId(command.ciId),
       description,
+      incident: incidentRecord,
+      priorityId,
       requestedForUserId: normalizeOptionalId(command.requestedForUserId),
+      resolutionDueAt,
+      responseDueAt,
       serviceId: normalizeOptionalId(command.serviceId),
       title,
     };
@@ -123,4 +186,22 @@ function normalizeOptionalId(value: string | null | undefined): string | null {
   const normalized = value?.trim();
 
   return normalized ? normalized : null;
+}
+
+function normalizeOptionalText(
+  value: string | null | undefined,
+): string | null {
+  const normalized = value?.trim();
+
+  return normalized ? normalized : null;
+}
+
+function isIncidentSeverity(
+  value: IncidentSeverity | null | undefined,
+): value is IncidentSeverity {
+  return (
+    value === IncidentSeverity.LOW ||
+    value === IncidentSeverity.MEDIUM ||
+    value === IncidentSeverity.HIGH
+  );
 }
