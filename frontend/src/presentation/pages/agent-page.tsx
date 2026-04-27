@@ -4,7 +4,9 @@ import {
   ArrowDown,
   ArrowUp,
   BadgeAlert,
+  Search,
   SlidersHorizontal,
+  X,
 } from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
@@ -88,12 +90,24 @@ type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'PENDING' | 'RESOLVED' | 'CLOSED';
 
 type DetailWorkspaceTab = 'COMMENTS' | 'ATTACHMENTS';
 
+type IncidentLookupKind = 'ASSIGNEE' | 'REQUESTER';
+type IncidentLookupSearchField =
+  | 'IDENTIFIER'
+  | 'FIRST_NAME'
+  | 'LAST_NAME'
+  | 'GROUP'
+  | 'SERVICE';
+
 type IncidentDraftState = {
+  assignedToUserId: string;
+
   categoryId: string;
 
   channelId: string;
 
   ciId: string;
+
+  comment: string;
 
   description: string;
 
@@ -104,6 +118,8 @@ type IncidentDraftState = {
   title: string;
 
   urgency: IncidentSeverity;
+
+  requestedForUserId: string;
 };
 
 type RequestDraftState = {
@@ -187,11 +203,15 @@ const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
 };
 
 const INITIAL_INCIDENT_DRAFT: IncidentDraftState = {
+  assignedToUserId: '',
+
   categoryId: '',
 
   channelId: '',
 
   ciId: '',
+
+  comment: '',
 
   description: '',
 
@@ -202,6 +222,8 @@ const INITIAL_INCIDENT_DRAFT: IncidentDraftState = {
   title: '',
 
   urgency: 'MEDIUM',
+
+  requestedForUserId: '',
 };
 
 const INITIAL_REQUEST_DRAFT: RequestDraftState = {
@@ -263,6 +285,7 @@ const INITIAL_ATTACHMENT_DRAFT: AttachmentDraftState = {
 };
 
 const TICKET_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
+const INCIDENT_LOOKUP_PAGE_SIZE = 10;
 const TICKETS_PER_PAGE = 15;
 const TICKET_SORT_OPTIONS = [
   {
@@ -436,6 +459,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const [ticketPage, setTicketPage] = useState(1);
   const [userDirectory, setUserDirectory] = useState<AdminUserSummary[]>([]);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const [incidentLookupKind, setIncidentLookupKind] =
+    useState<IncidentLookupKind | null>(null);
+  const [incidentLookupPage, setIncidentLookupPage] = useState(1);
+  const [incidentLookupSearch, setIncidentLookupSearch] = useState('');
+  const [incidentLookupSearchField, setIncidentLookupSearchField] =
+    useState<IncidentLookupSearchField>('IDENTIFIER');
 
   const [incidentValidationErrors, setIncidentValidationErrors] =
     useState<IncidentValidationErrors>({});
@@ -444,6 +473,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     useState<RequestValidationErrors>({});
 
   const canManageTicket = canManageTicketActions(session.user.role);
+  const showIncidentAdvancedFields =
+    mode === 'INCIDENT' && canManageTicketActions(session.user.role);
 
   const canDeleteTickets = session.user.role === 'ADMIN';
   const canEditTicket = session.user.role === 'ADMIN';
@@ -599,6 +630,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     searchFilters.status,
     searchFilters.type,
   ]);
+
+  useEffect(() => {
+    setIncidentLookupPage(1);
+  }, [incidentLookupKind, incidentLookupSearch]);
 
   useEffect(() => {
     if (!showListPanel) {
@@ -1116,6 +1151,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     [userDirectory],
   );
 
+  const requesters = useMemo(
+    () =>
+      userDirectory.filter(
+        (user) => user.isActive && user.role === 'DEMANDEUR',
+      ),
+    [userDirectory],
+  );
+
   const assignableTechnicians = useMemo(
     () =>
       technicians.filter(
@@ -1125,6 +1168,44 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       ),
     [assignmentDraft.assignmentGroupId, technicians],
   );
+
+  const incidentLookupSource =
+    incidentLookupKind === 'ASSIGNEE' ? technicians : requesters;
+  const filteredIncidentLookupUsers = useMemo(
+    () =>
+      filterIncidentLookupUsers(
+        incidentLookupSource,
+        incidentLookupSearch,
+        incidentLookupSearchField,
+        groupsById,
+      ),
+    [
+      groupsById,
+      incidentLookupSearch,
+      incidentLookupSearchField,
+      incidentLookupSource,
+    ],
+  );
+  const incidentLookupTotalPages = Math.max(
+    1,
+    Math.ceil(filteredIncidentLookupUsers.length / INCIDENT_LOOKUP_PAGE_SIZE),
+  );
+  const paginatedIncidentLookupUsers = filteredIncidentLookupUsers.slice(
+    (incidentLookupPage - 1) * INCIDENT_LOOKUP_PAGE_SIZE,
+    incidentLookupPage * INCIDENT_LOOKUP_PAGE_SIZE,
+  );
+  const selectedIncidentTechnician = usersById.get(
+    incidentDraft.assignedToUserId,
+  );
+  const selectedIncidentRequester = usersById.get(
+    incidentDraft.requestedForUserId,
+  );
+
+  useEffect(() => {
+    if (incidentLookupPage > incidentLookupTotalPages) {
+      setIncidentLookupPage(incidentLookupTotalPages);
+    }
+  }, [incidentLookupPage, incidentLookupTotalPages]);
 
   function handleIncidentFieldChange(
     field: keyof IncidentDraftState,
@@ -1176,6 +1257,32 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
       [field]: value,
     }));
+  }
+
+  function openIncidentLookup(kind: IncidentLookupKind): void {
+    setIncidentLookupKind(kind);
+    setIncidentLookupSearch('');
+    setIncidentLookupSearchField('IDENTIFIER');
+    setIncidentLookupPage(1);
+  }
+
+  function closeIncidentLookup(): void {
+    setIncidentLookupKind(null);
+    setIncidentLookupSearch('');
+    setIncidentLookupSearchField('IDENTIFIER');
+    setIncidentLookupPage(1);
+  }
+
+  function handleIncidentLookupSelect(user: AdminUserSummary): void {
+    if (incidentLookupKind === 'ASSIGNEE') {
+      handleIncidentFieldChange('assignedToUserId', user.id);
+    }
+
+    if (incidentLookupKind === 'REQUESTER') {
+      handleIncidentFieldChange('requestedForUserId', user.id);
+    }
+
+    closeIncidentLookup();
   }
 
   function handleAssignmentFieldChange(
@@ -1236,7 +1343,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setCreatedRequest(null);
 
     if (mode === 'INCIDENT') {
-      const errors = validateIncidentDraft(incidentDraft);
+      const errors = validateIncidentDraft(
+        incidentDraft,
+        showIncidentAdvancedFields,
+      );
 
       setIncidentValidationErrors(errors);
 
@@ -1260,12 +1370,68 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
           impact: incidentDraft.impact,
 
+          requestedForUserId: showIncidentAdvancedFields
+            ? normalizeOptionalId(incidentDraft.requestedForUserId)
+            : null,
+
           serviceId: normalizeOptionalId(incidentDraft.serviceId),
 
           title: incidentDraft.title.trim(),
 
           urgency: incidentDraft.urgency,
         });
+
+        const postCreationWarnings: string[] = [];
+        let ticketForList: TicketSummarySnapshot = {
+          ...result.ticket,
+          priorityName: result.priorityName,
+        };
+
+        if (
+          showIncidentAdvancedFields &&
+          incidentDraft.assignedToUserId.trim()
+        ) {
+          const selectedTechnician = usersById.get(
+            incidentDraft.assignedToUserId,
+          );
+
+          try {
+            const updatedTicket = await assignTicket(
+              session.accessToken,
+              result.ticket.id,
+              {
+                assignedToUserId: incidentDraft.assignedToUserId.trim(),
+                assignmentGroupId: selectedTechnician?.groupId ?? null,
+              },
+            );
+
+            ticketForList = {
+              ...updatedTicket.ticket,
+              priorityName: result.priorityName,
+            };
+          } catch (error) {
+            postCreationWarnings.push(
+              error instanceof Error
+                ? `l'assignation a echoue : ${error.message}`
+                : "l'assignation a echoue",
+            );
+          }
+        }
+
+        if (showIncidentAdvancedFields && incidentDraft.comment.trim()) {
+          try {
+            await addTicketComment(session.accessToken, result.ticket.id, {
+              body: incidentDraft.comment.trim(),
+              isInternal: false,
+            });
+          } catch (error) {
+            postCreationWarnings.push(
+              error instanceof Error
+                ? `l'ajout du commentaire a echoue : ${error.message}`
+                : "l'ajout du commentaire a echoue",
+            );
+          }
+        }
 
         setCreatedIncident(result);
 
@@ -1278,11 +1444,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         }));
 
         setTickets((currentTickets) => [
-          {
-            ...result.ticket,
-
-            priorityName: result.priorityName,
-          },
+          ticketForList,
 
           ...currentTickets.filter((ticket) => ticket.id !== result.ticket.id),
         ]);
@@ -1299,12 +1461,29 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           description: '',
 
           title: '',
+
+          assignedToUserId: '',
+
+          comment: '',
+
+          requestedForUserId: '',
         }));
 
-        if (attachmentUploadErrorMessage) {
-          setSubmitErrorMessage(attachmentUploadErrorMessage);
-        } else {
+        if (!attachmentUploadErrorMessage) {
           resetCreationAttachmentSelection('INCIDENT');
+        }
+
+        if (attachmentUploadErrorMessage || postCreationWarnings.length > 0) {
+          setSubmitErrorMessage(
+            [
+              attachmentUploadErrorMessage,
+              ...postCreationWarnings.map(
+                (warning) => `Ticket cree, mais ${warning}.`,
+              ),
+            ]
+              .filter(Boolean)
+              .join(' '),
+          );
         }
       } catch (error) {
         setSubmitErrorMessage(
@@ -2314,6 +2493,84 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           ))}
                         </select>
                       </label>
+
+                      {showIncidentAdvancedFields ? (
+                        <>
+                          <label className="field">
+                            <span>Assigne a</span>
+
+                            <div className="incident-lookup-field">
+                              <input
+                                readOnly
+                                value={
+                                  selectedIncidentTechnician
+                                    ? formatKnownUserName(
+                                        selectedIncidentTechnician,
+                                        selectedIncidentTechnician.id,
+                                      )
+                                    : ''
+                                }
+                              />
+
+                              <button
+                                aria-label="Rechercher un technicien"
+                                onClick={() => openIncidentLookup('ASSIGNEE')}
+                                type="button"
+                              >
+                                <Search size={18} />
+                              </button>
+                            </div>
+                          </label>
+
+                          <label className="field">
+                            <span>Demandeur</span>
+
+                            <div className="incident-lookup-field">
+                              <input
+                                readOnly
+                                value={
+                                  selectedIncidentRequester
+                                    ? formatKnownUserName(
+                                        selectedIncidentRequester,
+                                        selectedIncidentRequester.id,
+                                      )
+                                    : ''
+                                }
+                              />
+
+                              <button
+                                aria-label="Rechercher un demandeur"
+                                onClick={() => openIncidentLookup('REQUESTER')}
+                                type="button"
+                              >
+                                <Search size={18} />
+                              </button>
+                            </div>
+
+                            {incidentValidationErrors.requestedForUserId ? (
+                              <small className="field-error">
+                                {incidentValidationErrors.requestedForUserId}
+                              </small>
+                            ) : null}
+                          </label>
+
+                          <label className="field ticket-form-span-2">
+                            <span>Commentaire</span>
+
+                            <textarea
+                              onChange={(event) =>
+                                handleIncidentFieldChange(
+                                  'comment',
+                                  event.target.value,
+                                )
+                              }
+                              placeholder="Ajoute une note utile au traitement de l incident."
+                              rows={4}
+                              value={incidentDraft.comment}
+                            />
+                          </label>
+                        </>
+                      ) : null}
                     </>
                   ) : (
                     <>
@@ -2440,6 +2697,188 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     </p>
                   ) : null}
                 </form>
+
+                {showIncidentAdvancedFields && incidentLookupKind ? (
+                  <div
+                    aria-modal="true"
+                    className="incident-lookup-overlay"
+                    role="dialog"
+                  >
+                    <section className="incident-lookup-dialog">
+                      <header className="incident-lookup-header">
+                        <div>
+                          <h3>
+                            {incidentLookupKind === 'ASSIGNEE'
+                              ? 'Selectionner un technicien'
+                              : 'Selectionner un demandeur'}
+                          </h3>
+                        </div>
+
+                        <button
+                          aria-label="Fermer la selection"
+                          className="incident-lookup-close"
+                          onClick={closeIncidentLookup}
+                          type="button"
+                        >
+                          <X size={18} />
+                        </button>
+                      </header>
+
+                      <label className="incident-lookup-search">
+                        <select
+                          aria-label="Categorie de recherche"
+                          onChange={(event) =>
+                            setIncidentLookupSearchField(
+                              event.target.value as IncidentLookupSearchField,
+                            )
+                          }
+                          value={incidentLookupSearchField}
+                        >
+                          <option value="IDENTIFIER">Identifiant</option>
+                          <option value="FIRST_NAME">Prenom</option>
+                          <option value="LAST_NAME">Nom</option>
+                          {incidentLookupKind === 'ASSIGNEE' ? (
+                            <>
+                              <option value="GROUP">Groupe</option>
+                              <option value="SERVICE">Service</option>
+                            </>
+                          ) : null}
+                        </select>
+                        <div className="incident-lookup-search-input">
+                          <Search size={18} />
+                          <input
+                            autoFocus
+                            onChange={(event) =>
+                              setIncidentLookupSearch(event.target.value)
+                            }
+                            placeholder="Rechercher"
+                            value={incidentLookupSearch}
+                          />
+                        </div>
+                      </label>
+
+                      <div className="incident-lookup-table-scroll">
+                        <table className="incident-lookup-table">
+                          <thead>
+                            <tr>
+                              <th>Identifiant</th>
+                              <th>Prenom</th>
+                              <th>Nom</th>
+                              <th>Mail</th>
+                              {incidentLookupKind === 'ASSIGNEE' ? (
+                                <>
+                                  <th>Groupe</th>
+                                  <th>Service</th>
+                                </>
+                              ) : null}
+                            </tr>
+                          </thead>
+
+                          <tbody>
+                            {paginatedIncidentLookupUsers.length === 0 ? (
+                              <tr>
+                                <td
+                                  colSpan={
+                                    incidentLookupKind === 'ASSIGNEE' ? 6 : 4
+                                  }
+                                >
+                                  Aucun utilisateur ne correspond a la
+                                  recherche.
+                                </td>
+                              </tr>
+                            ) : (
+                              paginatedIncidentLookupUsers.map((user) => {
+                                const group = user.groupId
+                                  ? groupsById.get(user.groupId)
+                                  : null;
+
+                                return (
+                                  <tr
+                                    className="incident-lookup-row"
+                                    key={user.id}
+                                    onClick={() =>
+                                      handleIncidentLookupSelect(user)
+                                    }
+                                    tabIndex={0}
+                                    onKeyDown={(event) => {
+                                      if (
+                                        event.key === 'Enter' ||
+                                        event.key === ' '
+                                      ) {
+                                        event.preventDefault();
+                                        handleIncidentLookupSelect(user);
+                                      }
+                                    }}
+                                  >
+                                    <td className="incident-lookup-identity">
+                                      {formatKnownUserName(user, user.id)}
+                                    </td>
+                                    <td>{user.firstName ?? 'Non renseigne'}</td>
+                                    <td>{user.lastName ?? 'Non renseigne'}</td>
+                                    <td>{user.email ?? '-'}</td>
+                                    {incidentLookupKind === 'ASSIGNEE' ? (
+                                      <>
+                                        <td>{group?.name ?? 'Non assigne'}</td>
+                                        <td>Non defini</td>
+                                      </>
+                                    ) : null}
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <footer className="incident-lookup-pagination">
+                        <span>
+                          Page {incidentLookupPage} sur{' '}
+                          {incidentLookupTotalPages} -{' '}
+                          {filteredIncidentLookupUsers.length} resultat
+                          {filteredIncidentLookupUsers.length > 1 ? 's' : ''}
+                        </span>
+
+                        <div>
+                          <button
+                            className="secondary-button incident-lookup-page-button"
+                            disabled={incidentLookupPage <= 1}
+                            onClick={() =>
+                              setIncidentLookupPage((currentPage) =>
+                                Math.max(1, currentPage - 1),
+                              )
+                            }
+                            type="button"
+                          >
+                            Precedent
+                          </button>
+
+                          <span className="incident-lookup-current-page">
+                            {incidentLookupPage}
+                          </span>
+
+                          <button
+                            className="secondary-button incident-lookup-page-button"
+                            disabled={
+                              incidentLookupPage >= incidentLookupTotalPages
+                            }
+                            onClick={() =>
+                              setIncidentLookupPage((currentPage) =>
+                                Math.min(
+                                  incidentLookupTotalPages,
+                                  currentPage + 1,
+                                ),
+                              )
+                            }
+                            type="button"
+                          >
+                            Suivant
+                          </button>
+                        </div>
+                      </footer>
+                    </section>
+                  </div>
+                ) : null}
+
                 <div className="ticket-created-stack">
                   {createdIncident ? (
                     <article className="ticket-created-card">
@@ -3734,6 +4173,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
 function validateIncidentDraft(
   draft: IncidentDraftState,
+  requiresRequester: boolean,
 ): IncidentValidationErrors {
   const errors: IncidentValidationErrors = {};
 
@@ -3747,6 +4187,10 @@ function validateIncidentDraft(
 
   if (!draft.categoryId.trim()) {
     errors.categoryId = 'La categorie est obligatoire.';
+  }
+
+  if (requiresRequester && !draft.requestedForUserId.trim()) {
+    errors.requestedForUserId = 'Le demandeur est obligatoire.';
   }
 
   return errors;
@@ -3954,6 +4398,53 @@ function formatKnownUserName(
     .trim();
 
   return fullName || user.displayName || fallback;
+}
+
+function filterIncidentLookupUsers(
+  users: AdminUserSummary[],
+  searchText: string,
+  searchField: IncidentLookupSearchField,
+  groupsById: Map<string, { name: string }>,
+): AdminUserSummary[] {
+  const normalizedSearch = normalizeSearchText(searchText);
+
+  if (!normalizedSearch) {
+    return users;
+  }
+
+  return users.filter((user) => {
+    const groupName = user.groupId
+      ? (groupsById.get(user.groupId)?.name ?? 'Non assigne')
+      : 'Non assigne';
+    const searchableValue = getIncidentLookupSearchValue(
+      user,
+      searchField,
+      groupName,
+    );
+
+    return normalizeSearchText(searchableValue).includes(normalizedSearch);
+  });
+}
+
+function getIncidentLookupSearchValue(
+  user: AdminUserSummary,
+  searchField: IncidentLookupSearchField,
+  groupName: string,
+): string {
+  switch (searchField) {
+    case 'IDENTIFIER':
+      return formatKnownUserName(user, user.id);
+    case 'FIRST_NAME':
+      return user.firstName ?? '';
+    case 'LAST_NAME':
+      return user.lastName ?? '';
+    case 'GROUP':
+      return groupName;
+    case 'SERVICE':
+      return 'Non defini';
+    default:
+      return '';
+  }
 }
 
 function filterTicketsByListSearch(
