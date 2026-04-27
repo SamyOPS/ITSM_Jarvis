@@ -91,6 +91,12 @@ type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
 type DetailWorkspaceTab = 'COMMENTS' | 'ATTACHMENTS';
 
 type IncidentLookupKind = 'ASSIGNEE' | 'REQUESTER';
+type IncidentLookupSearchField =
+  | 'IDENTIFIER'
+  | 'FIRST_NAME'
+  | 'LAST_NAME'
+  | 'GROUP'
+  | 'SERVICE';
 
 type IncidentDraftState = {
   assignedToUserId: string;
@@ -457,6 +463,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     useState<IncidentLookupKind | null>(null);
   const [incidentLookupPage, setIncidentLookupPage] = useState(1);
   const [incidentLookupSearch, setIncidentLookupSearch] = useState('');
+  const [incidentLookupSearchField, setIncidentLookupSearchField] =
+    useState<IncidentLookupSearchField>('IDENTIFIER');
 
   const [incidentValidationErrors, setIncidentValidationErrors] =
     useState<IncidentValidationErrors>({});
@@ -1164,8 +1172,19 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const incidentLookupSource =
     incidentLookupKind === 'ASSIGNEE' ? technicians : requesters;
   const filteredIncidentLookupUsers = useMemo(
-    () => filterUsersByNameSearch(incidentLookupSource, incidentLookupSearch),
-    [incidentLookupSearch, incidentLookupSource],
+    () =>
+      filterIncidentLookupUsers(
+        incidentLookupSource,
+        incidentLookupSearch,
+        incidentLookupSearchField,
+        groupsById,
+      ),
+    [
+      groupsById,
+      incidentLookupSearch,
+      incidentLookupSearchField,
+      incidentLookupSource,
+    ],
   );
   const incidentLookupTotalPages = Math.max(
     1,
@@ -1243,12 +1262,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   function openIncidentLookup(kind: IncidentLookupKind): void {
     setIncidentLookupKind(kind);
     setIncidentLookupSearch('');
+    setIncidentLookupSearchField('IDENTIFIER');
     setIncidentLookupPage(1);
   }
 
   function closeIncidentLookup(): void {
     setIncidentLookupKind(null);
     setIncidentLookupSearch('');
+    setIncidentLookupSearchField('IDENTIFIER');
     setIncidentLookupPage(1);
   }
 
@@ -2704,15 +2725,36 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       </header>
 
                       <label className="incident-lookup-search">
-                        <Search size={18} />
-                        <input
-                          autoFocus
+                        <select
+                          aria-label="Categorie de recherche"
                           onChange={(event) =>
-                            setIncidentLookupSearch(event.target.value)
+                            setIncidentLookupSearchField(
+                              event.target.value as IncidentLookupSearchField,
+                            )
                           }
-                          placeholder="Rechercher par nom ou prenom"
-                          value={incidentLookupSearch}
-                        />
+                          value={incidentLookupSearchField}
+                        >
+                          <option value="IDENTIFIER">Identifiant</option>
+                          <option value="FIRST_NAME">Prenom</option>
+                          <option value="LAST_NAME">Nom</option>
+                          {incidentLookupKind === 'ASSIGNEE' ? (
+                            <>
+                              <option value="GROUP">Groupe</option>
+                              <option value="SERVICE">Service</option>
+                            </>
+                          ) : null}
+                        </select>
+                        <div className="incident-lookup-search-input">
+                          <Search size={18} />
+                          <input
+                            autoFocus
+                            onChange={(event) =>
+                              setIncidentLookupSearch(event.target.value)
+                            }
+                            placeholder="Rechercher"
+                            value={incidentLookupSearch}
+                          />
+                        </div>
                       </label>
 
                       <div className="incident-lookup-table-scroll">
@@ -2720,8 +2762,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           <thead>
                             <tr>
                               <th>Identifiant</th>
-                              <th>Nom</th>
                               <th>Prenom</th>
+                              <th>Nom</th>
                               <th>Mail</th>
                               {incidentLookupKind === 'ASSIGNEE' ? (
                                 <>
@@ -2768,13 +2810,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                       }
                                     }}
                                   >
-                                    <td>
-                                      <strong>
-                                        {formatKnownUserName(user, user.id)}
-                                      </strong>
+                                    <td className="incident-lookup-identity">
+                                      {formatKnownUserName(user, user.id)}
                                     </td>
-                                    <td>{user.lastName ?? 'Non renseigne'}</td>
                                     <td>{user.firstName ?? 'Non renseigne'}</td>
+                                    <td>{user.lastName ?? 'Non renseigne'}</td>
                                     <td>{user.email ?? '-'}</td>
                                     {incidentLookupKind === 'ASSIGNEE' ? (
                                       <>
@@ -4355,9 +4395,11 @@ function formatKnownUserName(
   return fullName || user.displayName || fallback;
 }
 
-function filterUsersByNameSearch(
+function filterIncidentLookupUsers(
   users: AdminUserSummary[],
   searchText: string,
+  searchField: IncidentLookupSearchField,
+  groupsById: Map<string, { name: string }>,
 ): AdminUserSummary[] {
   const normalizedSearch = normalizeSearchText(searchText);
 
@@ -4365,14 +4407,39 @@ function filterUsersByNameSearch(
     return users;
   }
 
-  return users.filter((user) =>
-    [
-      user.firstName ?? '',
-      user.lastName ?? '',
-      [user.firstName, user.lastName].filter(Boolean).join(' '),
-      [user.lastName, user.firstName].filter(Boolean).join(' '),
-    ].some((value) => normalizeSearchText(value).includes(normalizedSearch)),
-  );
+  return users.filter((user) => {
+    const groupName = user.groupId
+      ? (groupsById.get(user.groupId)?.name ?? 'Non assigne')
+      : 'Non assigne';
+    const searchableValue = getIncidentLookupSearchValue(
+      user,
+      searchField,
+      groupName,
+    );
+
+    return normalizeSearchText(searchableValue).includes(normalizedSearch);
+  });
+}
+
+function getIncidentLookupSearchValue(
+  user: AdminUserSummary,
+  searchField: IncidentLookupSearchField,
+  groupName: string,
+): string {
+  switch (searchField) {
+    case 'IDENTIFIER':
+      return formatKnownUserName(user, user.id);
+    case 'FIRST_NAME':
+      return user.firstName ?? '';
+    case 'LAST_NAME':
+      return user.lastName ?? '';
+    case 'GROUP':
+      return groupName;
+    case 'SERVICE':
+      return 'Non defini';
+    default:
+      return '';
+  }
 }
 
 function filterTicketsByListSearch(
