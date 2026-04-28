@@ -1338,6 +1338,10 @@ a {
   background: rgba(255, 255, 255, 0.9);
 }
 
+.incident-lookup-field.has-clear {
+  grid-template-columns: minmax(0, 1fr) 46px 46px;
+}
+
 .incident-lookup-field input {
   min-width: 0;
   border: 0;
@@ -1516,10 +1520,15 @@ a {
 }
 
 .incident-lookup-row:hover,
-.incident-lookup-row:focus-visible {
+.incident-lookup-row:focus-visible,
+.incident-lookup-row.is-selected {
   background: rgba(239, 245, 255, 0.88);
   box-shadow: inset 3px 0 0 var(--primary);
   outline: none;
+}
+
+.incident-lookup-row.is-selected .incident-lookup-identity {
+  color: var(--primary);
 }
 
 .incident-lookup-identity {

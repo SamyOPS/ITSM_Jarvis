@@ -659,6 +659,23 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   }, [incidentLookupKind, incidentLookupSearch]);
 
   useEffect(() => {
+    if (!showIncidentAdvancedFields) {
+      return;
+    }
+
+    setIncidentDraft((currentDraft) => {
+      if (currentDraft.requestedForUserId.trim()) {
+        return currentDraft;
+      }
+
+      return {
+        ...currentDraft,
+        requestedForUserId: session.user.id,
+      };
+    });
+  }, [session.user.id, showIncidentAdvancedFields]);
+
+  useEffect(() => {
     if (!showListPanel) {
       return;
     }
@@ -1155,28 +1172,45 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     [catalog.groups],
   );
 
+  const currentUserSummary = useMemo<AdminUserSummary>(
+    () => ({
+      displayName: null,
+      email: session.user.email,
+      firstName: session.user.firstName,
+      groupId: null,
+      id: session.user.id,
+      isActive: true,
+      lastName: session.user.lastName,
+      role: session.user.role,
+    }),
+    [session.user],
+  );
+
+  const incidentSelectableUsers = useMemo(() => {
+    if (userDirectory.some((user) => user.id === session.user.id)) {
+      return userDirectory;
+    }
+
+    return [currentUserSummary, ...userDirectory];
+  }, [currentUserSummary, session.user.id, userDirectory]);
+
   const usersById = useMemo(
-    () => new Map(userDirectory.map((user) => [user.id, user])),
-    [userDirectory],
+    () => new Map(incidentSelectableUsers.map((user) => [user.id, user])),
+    [incidentSelectableUsers],
   );
 
   const technicians = useMemo(
     () =>
-      userDirectory.filter(
+      incidentSelectableUsers.filter(
         (user) =>
-          user.isActive &&
-          Boolean(user.groupId) &&
-          (user.role === 'AGENT' || user.role === 'ADMIN'),
+          user.isActive && (user.role === 'AGENT' || user.role === 'ADMIN'),
       ),
-    [userDirectory],
+    [incidentSelectableUsers],
   );
 
   const requesters = useMemo(
-    () =>
-      userDirectory.filter(
-        (user) => user.isActive && user.role === 'DEMANDEUR',
-      ),
-    [userDirectory],
+    () => incidentSelectableUsers.filter((user) => user.isActive),
+    [incidentSelectableUsers],
   );
 
   const assignableTechnicians = useMemo(
@@ -1220,6 +1254,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const selectedIncidentRequester = usersById.get(
     incidentDraft.requestedForUserId,
   );
+  const selectedIncidentLookupUserId =
+    incidentLookupKind === 'ASSIGNEE'
+      ? incidentDraft.assignedToUserId
+      : incidentLookupKind === 'REQUESTER'
+        ? incidentDraft.requestedForUserId
+        : '';
 
   useEffect(() => {
     if (incidentLookupPage > incidentLookupTotalPages) {
@@ -1280,10 +1320,26 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   }
 
   function openIncidentLookup(kind: IncidentLookupKind): void {
+    const source = kind === 'ASSIGNEE' ? technicians : requesters;
+    const selectedUserId =
+      kind === 'ASSIGNEE'
+        ? incidentDraft.assignedToUserId
+        : incidentDraft.requestedForUserId;
+    const selectedUserIndex = filterIncidentLookupUsers(
+      source,
+      '',
+      'IDENTIFIER',
+      groupsById,
+    ).findIndex((user) => user.id === selectedUserId);
+
     setIncidentLookupKind(kind);
     setIncidentLookupSearch('');
     setIncidentLookupSearchField('IDENTIFIER');
-    setIncidentLookupPage(1);
+    setIncidentLookupPage(
+      selectedUserIndex >= 0
+        ? Math.floor(selectedUserIndex / INCIDENT_LOOKUP_PAGE_SIZE) + 1
+        : 1,
+    );
   }
 
   function closeIncidentLookup(): void {
@@ -1363,10 +1419,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setCreatedRequest(null);
 
     if (mode === 'INCIDENT') {
-      const errors = validateIncidentDraft(
-        incidentDraft,
-        showIncidentAdvancedFields,
-      );
+      const errors = validateIncidentDraft(incidentDraft);
 
       setIncidentValidationErrors(errors);
 
@@ -1391,7 +1444,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           impact: incidentDraft.impact,
 
           requestedForUserId: showIncidentAdvancedFields
-            ? normalizeOptionalId(incidentDraft.requestedForUserId)
+            ? (normalizeOptionalId(incidentDraft.requestedForUserId) ??
+              session.user.id)
             : null,
 
           serviceId: normalizeOptionalId(incidentDraft.serviceId),
@@ -1486,7 +1540,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
           comment: '',
 
-          requestedForUserId: '',
+          requestedForUserId: session.user.id,
         }));
 
         if (!attachmentUploadErrorMessage) {
@@ -2522,7 +2576,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           <label className="field">
                             <span>Assigne a</span>
 
-                            <div className="incident-lookup-field">
+                            <div
+                              className={
+                                incidentDraft.assignedToUserId
+                                  ? 'incident-lookup-field has-clear'
+                                  : 'incident-lookup-field'
+                              }
+                            >
                               <input
                                 readOnly
                                 value={
@@ -2534,6 +2594,21 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     : ''
                                 }
                               />
+
+                              {incidentDraft.assignedToUserId ? (
+                                <button
+                                  aria-label="Retirer l'assignation"
+                                  onClick={() =>
+                                    handleIncidentFieldChange(
+                                      'assignedToUserId',
+                                      '',
+                                    )
+                                  }
+                                  type="button"
+                                >
+                                  <X size={16} />
+                                </button>
+                              ) : null}
 
                               <button
                                 aria-label="Rechercher un technicien"
@@ -2816,7 +2891,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                                 return (
                                   <tr
-                                    className="incident-lookup-row"
+                                    aria-selected={
+                                      user.id === selectedIncidentLookupUserId
+                                    }
+                                    className={
+                                      user.id === selectedIncidentLookupUserId
+                                        ? 'incident-lookup-row is-selected'
+                                        : 'incident-lookup-row'
+                                    }
                                     key={user.id}
                                     onClick={() =>
                                       handleIncidentLookupSelect(user)
@@ -4217,7 +4299,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
 function validateIncidentDraft(
   draft: IncidentDraftState,
-  requiresRequester: boolean,
 ): IncidentValidationErrors {
   const errors: IncidentValidationErrors = {};
 
@@ -4231,10 +4312,6 @@ function validateIncidentDraft(
 
   if (!draft.categoryId.trim()) {
     errors.categoryId = 'La categorie est obligatoire.';
-  }
-
-  if (requiresRequester && !draft.requestedForUserId.trim()) {
-    errors.requestedForUserId = 'Le demandeur est obligatoire.';
   }
 
   return errors;
