@@ -85,7 +85,7 @@ export function translateChannel(name: string): string {
 export function translateTicketStatus(status: string): string {
   switch (status) {
     case 'OPEN':
-      return 'Ouvert';
+      return 'Nouveau';
     case 'IN_PROGRESS':
       return 'En cours';
     case 'PENDING':
