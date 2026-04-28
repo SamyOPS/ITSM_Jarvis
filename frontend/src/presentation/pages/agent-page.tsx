@@ -113,7 +113,7 @@ type IncidentDraftState = {
 
   description: string;
 
-  impact: IncidentSeverity;
+  impact: '' | IncidentSeverity;
 
   requestedForUserId: string;
 
@@ -121,7 +121,7 @@ type IncidentDraftState = {
 
   title: string;
 
-  urgency: IncidentSeverity;
+  urgency: '' | IncidentSeverity;
 };
 
 type RequestDraftState = {
@@ -141,7 +141,7 @@ type RequestDraftState = {
 
   requestedForUserId: string;
 
-  requestType: RequestType;
+  requestType: '' | RequestType;
 
   serviceId: string;
 
@@ -229,7 +229,7 @@ const INITIAL_INCIDENT_DRAFT: IncidentDraftState = {
 
   description: '',
 
-  impact: 'MEDIUM',
+  impact: '',
 
   requestedForUserId: '',
 
@@ -237,7 +237,7 @@ const INITIAL_INCIDENT_DRAFT: IncidentDraftState = {
 
   title: '',
 
-  urgency: 'MEDIUM',
+  urgency: '',
 };
 
 const INITIAL_REQUEST_DRAFT: RequestDraftState = {
@@ -257,7 +257,7 @@ const INITIAL_REQUEST_DRAFT: RequestDraftState = {
 
   requestedForUserId: '',
 
-  requestType: 'OTHER',
+  requestType: '',
 
   serviceId: '',
 
@@ -579,39 +579,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         }
 
         setCatalog(nextCatalog);
-
-        setIncidentDraft((currentDraft) => ({
-          ...currentDraft,
-
-          categoryId:
-            currentDraft.categoryId || nextCatalog.categories[0]?.id || '',
-
-          channelId:
-            currentDraft.channelId || nextCatalog.channels[0]?.id || '',
-
-          ciId: currentDraft.ciId || nextCatalog.cis[0]?.id || '',
-
-          serviceId:
-            currentDraft.serviceId || nextCatalog.services[0]?.id || '',
-        }));
-
-        setRequestDraft((currentDraft) => ({
-          ...currentDraft,
-
-          categoryId:
-            currentDraft.categoryId || nextCatalog.categories[0]?.id || '',
-
-          channelId:
-            currentDraft.channelId || nextCatalog.channels[0]?.id || '',
-
-          ciId: currentDraft.ciId || nextCatalog.cis[0]?.id || '',
-
-          priorityId:
-            currentDraft.priorityId || nextCatalog.priorities[0]?.id || '',
-
-          serviceId:
-            currentDraft.serviceId || nextCatalog.services[0]?.id || '',
-        }));
       } catch (error) {
         if (!cancelled) {
           setLoadErrorMessage(
@@ -1490,7 +1457,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
           description: incidentDraft.description.trim(),
 
-          impact: incidentDraft.impact,
+          impact: incidentDraft.impact || 'MEDIUM',
 
           requestedForUserId: showIncidentAdvancedFields
             ? (normalizeOptionalId(incidentDraft.requestedForUserId) ??
@@ -1501,7 +1468,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
           title: incidentDraft.title.trim(),
 
-          urgency: incidentDraft.urgency,
+          urgency: incidentDraft.urgency || 'MEDIUM',
         });
 
         const postCreationWarnings: string[] = [];
@@ -1650,7 +1617,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
             session.user.id)
           : null,
 
-        requestType: requestDraft.requestType,
+        requestType: requestDraft.requestType || null,
 
         serviceId: normalizeOptionalId(requestDraft.serviceId),
 
@@ -2543,7 +2510,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           : requestDraft.categoryId
                       }
                     >
-                      <option value="">Choisir une categorie</option>
+                      <option value="">Choisir une catégorie</option>
 
                       {catalog.categories.map((category) => (
                         <option key={category.id} value={category.id}>
@@ -2551,6 +2518,19 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         </option>
                       ))}
                     </select>
+                    {mode === 'INCIDENT' &&
+                    incidentValidationErrors.categoryId ? (
+                      <small className="field-error">
+                        {incidentValidationErrors.categoryId}
+                      </small>
+                    ) : null}
+
+                    {mode === 'REQUEST' &&
+                    requestValidationErrors.categoryId ? (
+                      <small className="field-error">
+                        {requestValidationErrors.categoryId}
+                      </small>
+                    ) : null}
                   </label>
 
                   <label className="field">
@@ -2633,7 +2613,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           : requestDraft.ciId
                       }
                     >
-                      <option value="">Choisir un equipement</option>
+                      <option value="">Choisir un équipement</option>
 
                       {catalog.cis.map((ci) => (
                         <option key={ci.id} value={ci.id}>
@@ -2657,12 +2637,18 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           }
                           value={incidentDraft.impact}
                         >
+                          <option value="">Choisir un impact</option>
                           {INCIDENT_SEVERITIES.map((severity) => (
                             <option key={severity} value={severity}>
                               {translateIncidentSeverity(severity)}
                             </option>
                           ))}
                         </select>
+                        {incidentValidationErrors.impact ? (
+                          <small className="field-error">
+                            {incidentValidationErrors.impact}
+                          </small>
+                        ) : null}
                       </label>
 
                       <label className="field">
@@ -2677,12 +2663,18 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           }
                           value={incidentDraft.urgency}
                         >
+                          <option value="">Choisir une priorité</option>
                           {INCIDENT_SEVERITIES.map((severity) => (
                             <option key={severity} value={severity}>
                               {translateIncidentSeverity(severity)}
                             </option>
                           ))}
                         </select>
+                        {incidentValidationErrors.urgency ? (
+                          <small className="field-error">
+                            {incidentValidationErrors.urgency}
+                          </small>
+                        ) : null}
                       </label>
 
                       {showIncidentAdvancedFields ? (
@@ -2798,7 +2790,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           }
                           value={requestDraft.priorityId}
                         >
-                          <option value="">Choisir une priorite</option>
+                          <option value="">Choisir une priorité</option>
 
                           {catalog.priorities.map((priority) => (
                             <option key={priority.id} value={priority.id}>
@@ -2806,6 +2798,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             </option>
                           ))}
                         </select>
+                        {requestValidationErrors.priorityId ? (
+                          <small className="field-error">
+                            {requestValidationErrors.priorityId}
+                          </small>
+                        ) : null}
                       </label>
 
                       <label className="field">
@@ -2821,6 +2818,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           }
                           value={requestDraft.requestType}
                         >
+                          <option value="">Choisir un type</option>
                           {REQUEST_TYPES.map((requestType) => (
                             <option key={requestType} value={requestType}>
                               {translateRequestType(requestType)}
@@ -4519,6 +4517,14 @@ function validateIncidentDraft(
 
   if (!draft.categoryId.trim()) {
     errors.categoryId = 'La categorie est obligatoire.';
+  }
+
+  if (!draft.impact) {
+    errors.impact = "L'impact est obligatoire.";
+  }
+
+  if (!draft.urgency) {
+    errors.urgency = "L'urgence est obligatoire.";
   }
 
   return errors;

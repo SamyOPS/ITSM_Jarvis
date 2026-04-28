@@ -424,6 +424,19 @@ a {
   background: rgba(255, 255, 255, 0.72);
 }
 
+.ticket-form-actions .primary-button {
+  border-color: rgba(25, 86, 179, 0.28);
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 12px 24px rgba(25, 86, 179, 0.18);
+}
+
+.ticket-form-actions .primary-button:hover:not(:disabled) {
+  border-color: rgba(20, 69, 143, 0.34);
+  background: #14458f;
+  box-shadow: 0 14px 28px rgba(25, 86, 179, 0.24);
+}
+
 .danger-button {
   border-color: rgba(178, 52, 69, 0.18);
   background: #fff3f4;
@@ -1349,6 +1362,10 @@ a {
   background: transparent;
 }
 
+.incident-lookup-field input:not(:placeholder-shown) {
+  color: #2563eb;
+}
+
 .incident-lookup-field button {
   display: grid;
   place-items: center;
@@ -1357,6 +1374,14 @@ a {
   background: rgba(248, 251, 255, 0.98);
   color: var(--primary);
   cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.incident-lookup-field button:hover {
+  background: rgba(231, 240, 255, 0.98);
+  color: #14458f;
 }
 
 .incident-lookup-overlay {
@@ -1532,7 +1557,7 @@ a {
 }
 
 .incident-lookup-identity {
-  color: #26548f;
+  color: #2563eb;
   font-weight: 400;
 }
 
