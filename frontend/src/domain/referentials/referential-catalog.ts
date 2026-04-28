@@ -38,12 +38,6 @@ export type ReferentialPriority = {
   resolutionHours: number | null;
 };
 
-export type ReferentialService = {
-  id: string;
-  name: string;
-  description: string | null;
-};
-
 export interface ReferentialCatalogSnapshot {
   categories: ReferentialCategory[];
   channels: ReferentialChannel[];
@@ -51,5 +45,4 @@ export interface ReferentialCatalogSnapshot {
   ciTypes: ReferentialCiType[];
   groups: ReferentialGroup[];
   priorities: ReferentialPriority[];
-  services: ReferentialService[];
 }

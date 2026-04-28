@@ -12,7 +12,6 @@ export type SearchTicketsFilters = {
   priorityId?: string | null;
   q?: string | null;
   requestedForUserId?: string | null;
-  serviceId?: string | null;
   status?: TicketStatus | null;
   type?: TicketType | null;
 };

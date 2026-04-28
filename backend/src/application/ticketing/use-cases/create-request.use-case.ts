@@ -19,7 +19,6 @@ export type CreateRequestCommand = {
   priorityId: string;
   requestedForUserId?: string | null;
   requestType?: RequestType | null;
-  serviceId?: string | null;
   title: string;
 };
 
@@ -86,7 +85,6 @@ export class CreateRequestUseCase {
       responseDueAt: slaTargets.responseDueAt,
       requestedForUserId: normalizeOptionalId(command.requestedForUserId),
       requestType: command.requestType ?? RequestType.OTHER,
-      serviceId: normalizeOptionalId(command.serviceId),
       title,
     };
 

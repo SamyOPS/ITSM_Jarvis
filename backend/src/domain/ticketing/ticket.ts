@@ -14,7 +14,6 @@ export class Ticket {
     public readonly categoryId: string,
     public readonly createdByUserId: string,
     public readonly requestedForUserId: string | null,
-    public readonly serviceId: string | null,
     public readonly channelId: string | null,
     public readonly assignmentGroupId: string | null,
     public readonly assignedToUserId: string | null,

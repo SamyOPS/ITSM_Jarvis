@@ -46,7 +46,6 @@ const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   ciTypes: [],
   groups: [],
   priorities: [],
-  services: [],
 };
 
 const INITIAL_FILTERS: ReportsFilterState = {

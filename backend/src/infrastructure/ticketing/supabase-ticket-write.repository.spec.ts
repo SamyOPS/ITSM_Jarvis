@@ -54,7 +54,6 @@ describe('SupabaseTicketWriteRepository', () => {
             response_due_at: '2026-04-02T10:00:00.000Z',
             requests: null,
             requested_for_user_id: null,
-            service_id: null,
             status: TicketStatus.OPEN,
             title: 'VPN KO',
             type: TicketType.INCIDENT,

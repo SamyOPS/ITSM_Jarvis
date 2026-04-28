@@ -8,7 +8,6 @@ export type UpdateTicketDto = {
   impact?: IncidentSeverity | null;
   requestedForUserId?: string | null;
   rootCause?: string | null;
-  serviceId?: string | null;
   title: string;
   urgency?: IncidentSeverity | null;
   workaround?: string | null;

@@ -7,8 +7,7 @@ export type AdminReferentialKind =
   | 'ci-types'
   | 'cis'
   | 'groups'
-  | 'priorities'
-  | 'services';
+  | 'priorities';
 
 export async function fetchReferentialCatalog(): Promise<ReferentialCatalogSnapshot> {
   const { apiUrl } = getFrontendRuntimeConfig();

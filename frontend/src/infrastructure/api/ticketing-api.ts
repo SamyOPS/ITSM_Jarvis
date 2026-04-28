@@ -16,7 +16,6 @@ export type CreateIncidentPayload = {
   description: string;
   impact: IncidentSeverity;
   requestedForUserId?: string | null;
-  serviceId?: string | null;
   title: string;
   urgency: IncidentSeverity;
 };
@@ -29,7 +28,6 @@ export type CreateRequestPayload = {
   priorityId: string;
   requestedForUserId?: string | null;
   requestType?: RequestType | null;
-  serviceId?: string | null;
   title: string;
 };
 
@@ -59,7 +57,6 @@ export type UpdateTicketPayload = {
   impact?: IncidentSeverity | null;
   requestedForUserId?: string | null;
   rootCause?: string | null;
-  serviceId?: string | null;
   title: string;
   urgency?: IncidentSeverity | null;
   workaround?: string | null;

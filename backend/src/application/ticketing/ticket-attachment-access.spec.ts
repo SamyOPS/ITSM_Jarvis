@@ -23,7 +23,6 @@ describe('assertTicketAttachmentAccess', () => {
       null,
       null,
       null,
-      null,
       '2026-04-02T08:00:00.000Z',
     ),
     null,

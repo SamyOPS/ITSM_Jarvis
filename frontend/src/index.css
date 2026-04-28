@@ -424,19 +424,6 @@ a {
   background: rgba(255, 255, 255, 0.72);
 }
 
-.ticket-form-actions .primary-button {
-  border-color: rgba(25, 86, 179, 0.28);
-  background: var(--primary);
-  color: #ffffff;
-  box-shadow: 0 12px 24px rgba(25, 86, 179, 0.18);
-}
-
-.ticket-form-actions .primary-button:hover:not(:disabled) {
-  border-color: rgba(20, 69, 143, 0.34);
-  background: #14458f;
-  box-shadow: 0 14px 28px rgba(25, 86, 179, 0.24);
-}
-
 .danger-button {
   border-color: rgba(178, 52, 69, 0.18);
   background: #fff3f4;
@@ -1334,6 +1321,14 @@ a {
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
+}
+
+.ticket-form-actions .primary-button {
+  background: #e7f0ff;
+}
+
+.ticket-form-actions .primary-button:hover:not(:disabled) {
+  background: #dce9ff;
 }
 
 .ticket-form-helper {

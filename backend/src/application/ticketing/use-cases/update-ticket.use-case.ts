@@ -29,7 +29,6 @@ export type UpdateTicketCommand = {
   impact?: IncidentSeverity | null;
   requestedForUserId?: string | null;
   rootCause?: string | null;
-  serviceId?: string | null;
   ticketId: string;
   title: string;
   urgency?: IncidentSeverity | null;
@@ -163,7 +162,6 @@ export class UpdateTicketUseCase {
       requestedForUserId: normalizeOptionalId(command.requestedForUserId),
       resolutionDueAt,
       responseDueAt,
-      serviceId: normalizeOptionalId(command.serviceId),
       title,
     };
 

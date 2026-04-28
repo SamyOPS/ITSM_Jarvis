@@ -61,7 +61,6 @@ type SearchTicketsQueryDto = {
   priorityId?: string;
   q?: string;
   requestedForUserId?: string;
-  serviceId?: string;
   status?: TicketStatus;
   type?: TicketType;
 };
@@ -147,7 +146,6 @@ export class TicketsController {
       impact: body.impact ?? null,
       requestedForUserId: body.requestedForUserId ?? null,
       rootCause: body.rootCause ?? null,
-      serviceId: body.serviceId ?? null,
       ticketId: id,
       title: body.title,
       urgency: body.urgency ?? null,

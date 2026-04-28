@@ -19,7 +19,6 @@ describe('ReferentialsController', () => {
               ciTypes: [],
               groups: [],
               priorities: [],
-              services: [],
             }),
           },
         },
@@ -37,7 +36,6 @@ describe('ReferentialsController', () => {
       ciTypes: [],
       groups: [],
       priorities: [],
-      services: [],
     });
   });
 });

@@ -97,7 +97,6 @@ describe('Ticket flow', () => {
       description: 'Impossible de se connecter au VPN depuis ce matin',
       impact: IncidentSeverity.HIGH,
       requestedForUserId: 'demandeur-1',
-      serviceId: 'service-vpn',
       title: 'VPN inaccessible',
       urgency: IncidentSeverity.MEDIUM,
     });
@@ -195,7 +194,6 @@ class InMemoryTicketRepository
       record.categoryId,
       record.createdByUserId,
       record.requestedForUserId,
-      record.serviceId,
       record.channelId,
       null,
       null,
@@ -250,7 +248,6 @@ class InMemoryTicketRepository
         current.ticket.categoryId,
         current.ticket.createdByUserId,
         current.ticket.requestedForUserId,
-        current.ticket.serviceId,
         current.ticket.channelId,
         record.assignmentGroupId,
         record.assignedToUserId,
@@ -284,7 +281,6 @@ class InMemoryTicketRepository
         current.ticket.categoryId,
         current.ticket.createdByUserId,
         current.ticket.requestedForUserId,
-        current.ticket.serviceId,
         current.ticket.channelId,
         current.ticket.assignmentGroupId,
         current.ticket.assignedToUserId,
@@ -325,7 +321,6 @@ class InMemoryTicketRepository
         current.ticket.categoryId,
         current.ticket.createdByUserId,
         current.ticket.requestedForUserId,
-        current.ticket.serviceId,
         current.ticket.channelId,
         current.ticket.assignmentGroupId,
         current.ticket.assignedToUserId,
@@ -347,7 +342,6 @@ class InMemoryTicketRepository
       ciId: string | null;
       description: string;
       requestedForUserId: string | null;
-      serviceId: string | null;
       title: string;
     },
   ): Promise<void> {
@@ -370,7 +364,6 @@ class InMemoryTicketRepository
         record.categoryId,
         current.ticket.createdByUserId,
         record.requestedForUserId,
-        record.serviceId,
         record.channelId,
         current.ticket.assignmentGroupId,
         current.ticket.assignedToUserId,

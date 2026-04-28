@@ -4,7 +4,6 @@ import { ReferentialCi } from '../../../domain/referentials/referential-ci';
 import { ReferentialCiType } from '../../../domain/referentials/referential-ci-type';
 import { ReferentialGroup } from '../../../domain/referentials/referential-group';
 import { ReferentialPriority } from '../../../domain/referentials/referential-priority';
-import { ReferentialService } from '../../../domain/referentials/referential-service';
 import { PriorityName } from '../../../domain/ticketing/priority-name';
 import { SupportLevel } from '../../../domain/ticketing/support-level';
 import { GetReferentialCatalogUseCase } from './get-referential-catalog.use-case';
@@ -62,13 +61,6 @@ describe('GetReferentialCatalogUseCase', () => {
             new ReferentialPriority('priority-1', PriorityName.LOW, 1, 24, 72),
           ]),
       } as never,
-      {
-        execute: jest
-          .fn()
-          .mockResolvedValue([
-            new ReferentialService('service-1', 'Workstation', null),
-          ]),
-      } as never,
     );
 
     await expect(useCase.execute()).resolves.toEqual({
@@ -91,7 +83,6 @@ describe('GetReferentialCatalogUseCase', () => {
       priorities: [
         new ReferentialPriority('priority-1', PriorityName.LOW, 1, 24, 72),
       ],
-      services: [new ReferentialService('service-1', 'Workstation', null)],
     });
   });
 });

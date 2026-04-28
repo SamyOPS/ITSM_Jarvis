@@ -30,7 +30,6 @@ export class SearchTicketsUseCase {
       priorityId: normalizeOptionalId(query.priorityId),
       q: normalizeOptionalText(query.q),
       requestedForUserId: normalizeOptionalId(query.requestedForUserId),
-      serviceId: normalizeOptionalId(query.serviceId),
       status: query.status ?? null,
       type: query.type ?? null,
     };

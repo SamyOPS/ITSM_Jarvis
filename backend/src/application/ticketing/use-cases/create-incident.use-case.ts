@@ -20,7 +20,6 @@ export type CreateIncidentCommand = {
   impact: IncidentSeverity;
   requestedForUserId?: string | null;
   rootCause?: string | null;
-  serviceId?: string | null;
   title: string;
   urgency: IncidentSeverity;
   workaround?: string | null;
@@ -88,7 +87,6 @@ export class CreateIncidentUseCase {
       responseDueAt: slaTargets.responseDueAt,
       requestedForUserId: normalizeOptionalId(command.requestedForUserId),
       rootCause: normalizeOptionalText(command.rootCause),
-      serviceId: normalizeOptionalId(command.serviceId),
       title,
       urgency: command.urgency,
       workaround: normalizeOptionalText(command.workaround),

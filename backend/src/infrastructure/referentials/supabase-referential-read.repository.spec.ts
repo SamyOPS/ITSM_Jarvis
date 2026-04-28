@@ -90,7 +90,7 @@ describe('SupabaseReferentialReadRepository', () => {
 
     const repository = new SupabaseReferentialReadRepository();
 
-    await expect(repository.listServices()).rejects.toThrow(
+    await expect(repository.listCategories()).rejects.toThrow(
       ServiceUnavailableException,
     );
   });

@@ -219,7 +219,6 @@ function createTicketSummary(
     null,
     null,
     null,
-    null,
     overrides.assignedToUserId ?? null,
     null,
     overrides.createdAt ?? '2026-04-03T10:00:00.000Z',

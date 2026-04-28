@@ -51,16 +51,6 @@ export type UpdateReferentialPriorityCommand =
     id: string;
   };
 
-export type CreateReferentialServiceCommand = {
-  name: string;
-  description: string | null;
-};
-
-export type UpdateReferentialServiceCommand =
-  CreateReferentialServiceCommand & {
-    id: string;
-  };
-
 export type CreateReferentialCiCommand = {
   name: string;
   ciTypeId: string;
