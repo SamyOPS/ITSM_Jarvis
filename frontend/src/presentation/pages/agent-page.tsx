@@ -3070,7 +3070,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       >
                         <option value="TITLE">Titre</option>
                         <option value="REQUESTER">Demandeur</option>
-                        <option value="TECHNICIAN">Technicien</option>
+                        <option value="TECHNICIAN">Assigné à</option>
                       </select>
 
                       <div className="ticket-list-target-search-input">
@@ -3113,7 +3113,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     >
                       <option value="">Tous</option>
 
-                      <option value="OPEN">Ouvert</option>
+                      <option value="OPEN">Nouveau</option>
 
                       <option value="IN_PROGRESS">En cours</option>
 
@@ -3367,7 +3367,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           }
                           value={statusDraft}
                         >
-                          <option value="OPEN">Ouvert</option>
+                          <option value="OPEN">Nouveau</option>
                           <option value="IN_PROGRESS">En cours</option>
                           <option value="PENDING">En attente</option>
                           <option value="RESOLVED">Résolu</option>

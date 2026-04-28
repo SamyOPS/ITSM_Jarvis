@@ -4970,8 +4970,8 @@ a {
 }
 
 .ticket-status-badge--open .ticket-status-badge-icon {
-  background: #f59e0b;
-  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.14);
+  background: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
 }
 
 .ticket-status-badge--in_progress .ticket-status-badge-icon {
@@ -4985,8 +4985,8 @@ a {
 }
 
 .ticket-status-badge--resolved .ticket-status-badge-icon {
-  background: #2563eb;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
+  background: #14b8a6;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.14);
 }
 
 .ticket-status-badge--closed .ticket-status-badge-icon {
