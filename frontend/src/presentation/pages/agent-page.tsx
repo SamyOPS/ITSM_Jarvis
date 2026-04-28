@@ -4007,21 +4007,24 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       ) : null}
 
                       <hr className="tdp-divider" />
-
                       <div className="tdp-reply-area">
                         <form
                           className="tdp-reply-comment-form"
                           onSubmit={handleCommentSubmit}
                         >
-                          <textarea
-                            className="tdp-reply-textarea"
-                            onChange={(event) =>
-                              handleCommentBodyChange(event.target.value)
-                            }
-                            placeholder="Rédigez votre commentaire..."
-                            rows={3}
-                            value={commentDraft.body}
-                          />
+                          <label className="field">
+                            <span>Commentaire</span>
+
+                            <textarea
+                              className="tdp-reply-textarea"
+                              onChange={(event) =>
+                                handleCommentBodyChange(event.target.value)
+                              }
+                              placeholder="Ajoute une note utile au traitement du ticket."
+                              rows={4}
+                              value={commentDraft.body}
+                            />
+                          </label>
 
                           <div className="tdp-reply-footer">
                             {canCreateInternalComments ? (
@@ -4039,7 +4042,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               </label>
                             ) : (
                               <span className="tdp-form-hint">
-                                Les notes internes sont réservées aux agents et
+                                Les notes internes sont r?serv?es aux agents et
                                 admins.
                               </span>
                             )}
@@ -4069,33 +4072,42 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           className="tdp-reply-attachment-form"
                           onSubmit={handleAttachmentSubmit}
                         >
-                          <label className="tdp-file-zone">
-                            <input
-                              accept="*/*"
-                              key={attachmentInputKey}
-                              onChange={(event) =>
-                                handleAttachmentSelection(
-                                  event.target.files?.[0] ?? null,
-                                )
-                              }
-                              type="file"
-                            />
+                          <div className="field">
+                            <span>Pièces jointes</span>
 
-                            <span className="tdp-file-zone-hint">
-                              {attachmentDraft.file
-                                ? `${attachmentDraft.file.name} (${formatFileSize(attachmentDraft.file.size)})`
-                                : 'Glissez un fichier ici ou cliquez pour sélectionner'}
-                            </span>
+                            <div className="ticket-upload-zone tdp-upload-zone">
+                              <div className="ticket-upload-actions">
+                                <label className="ticket-upload-button">
+                                  Choisir un fichier
+                                  <input
+                                    accept="*/*"
+                                    key={attachmentInputKey}
+                                    onChange={(event) =>
+                                      handleAttachmentSelection(
+                                        event.target.files?.[0] ?? null,
+                                      )
+                                    }
+                                    type="file"
+                                  />
+                                </label>
 
-                            <span className="tdp-form-hint">
-                              Formats acceptés : PDF, PNG, JPG, DOCX. 2 Mo max
-                              par fichier.
-                            </span>
-                          </label>
+                                <span className="ticket-upload-note">
+                                  {attachmentDraft.file
+                                    ? `${attachmentDraft.file.name} (${formatFileSize(attachmentDraft.file.size)})`
+                                    : 'Aucun fichier sélectionné'}
+                                </span>
+                              </div>
 
-                          <div className="tdp-reply-footer">
-                            <span />
+                              <div className="ticket-upload-note ticket-upload-note--stacked">
+                                <span>
+                                  Formats acceptés : PDF, PNG, JPG, DOCX.
+                                </span>
+                                <span>2 Mo max par fichier.</span>
+                              </div>
+                            </div>
+                          </div>
 
+                          <div className="tdp-reply-footer tdp-reply-footer--end">
                             <button
                               className="secondary-button"
                               disabled={isSubmittingAttachment}
