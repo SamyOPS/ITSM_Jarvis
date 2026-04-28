@@ -14,7 +14,6 @@ import { ManageCisUseCase } from '../../../application/referentials/use-cases/ma
 import { ManageCiTypesUseCase } from '../../../application/referentials/use-cases/manage-ci-types.use-case';
 import { ManageGroupsUseCase } from '../../../application/referentials/use-cases/manage-groups.use-case';
 import { ManagePrioritiesUseCase } from '../../../application/referentials/use-cases/manage-priorities.use-case';
-import { ManageServicesUseCase } from '../../../application/referentials/use-cases/manage-services.use-case';
 import { AuthPolicy } from '../../../domain/auth/auth-policy';
 import { UserRole } from '../../../domain/auth/user-role';
 import { PriorityName } from '../../../domain/ticketing/priority-name';
@@ -39,10 +38,6 @@ type PriorityBody = {
   responseHours?: number | null;
   resolutionHours?: number | null;
 };
-type ServiceBody = {
-  name: string;
-  description?: string | null;
-};
 type CiBody = {
   name: string;
   ciTypeId: string;
@@ -63,7 +58,6 @@ export class AdminReferentialsController {
     private readonly manageCiTypesUseCase: ManageCiTypesUseCase,
     private readonly manageGroupsUseCase: ManageGroupsUseCase,
     private readonly managePrioritiesUseCase: ManagePrioritiesUseCase,
-    private readonly manageServicesUseCase: ManageServicesUseCase,
   ) {}
 
   @Post('categories')
@@ -171,29 +165,6 @@ export class AdminReferentialsController {
   @HttpCode(204)
   async deletePriority(@Param('id') id: string): Promise<void> {
     await this.managePrioritiesUseCase.delete(id);
-  }
-
-  @Post('services')
-  createService(@Body() body: ServiceBody) {
-    return this.manageServicesUseCase.create({
-      name: body.name,
-      description: body.description ?? null,
-    });
-  }
-
-  @Patch('services/:id')
-  updateService(@Param('id') id: string, @Body() body: ServiceBody) {
-    return this.manageServicesUseCase.update({
-      id,
-      name: body.name,
-      description: body.description ?? null,
-    });
-  }
-
-  @Delete('services/:id')
-  @HttpCode(204)
-  async deleteService(@Param('id') id: string): Promise<void> {
-    await this.manageServicesUseCase.delete(id);
   }
 
   @Post('cis')

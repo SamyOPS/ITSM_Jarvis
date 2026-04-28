@@ -68,7 +68,6 @@ type SupabaseTicketRow = {
   resolution_due_at: string | null;
   response_due_at: string | null;
   requested_for_user_id: string | null;
-  service_id: string | null;
   status: TicketStatus;
   title: string;
   type: TicketType;
@@ -282,7 +281,6 @@ export class SupabaseTicketWriteRepository
       requestedForUserId: string | null;
       resolutionDueAt: string | null;
       responseDueAt: string | null;
-      serviceId: string | null;
       title: string;
     },
   ): Promise<void> {
@@ -298,7 +296,6 @@ export class SupabaseTicketWriteRepository
         requested_for_user_id: record.requestedForUserId,
         resolution_due_at: record.resolutionDueAt,
         response_due_at: record.responseDueAt,
-        service_id: record.serviceId,
         title: record.title,
       },
       false,
@@ -355,7 +352,7 @@ export class SupabaseTicketWriteRepository
     const query = new URLSearchParams({
       order: 'created_at.desc',
       select:
-        'id,number,type,status,title,priority_id,category_id,created_by_user_id,requested_for_user_id,service_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,closed_at,response_due_at,resolution_due_at,archived_at',
+        'id,number,type,status,title,priority_id,category_id,created_by_user_id,requested_for_user_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,closed_at,response_due_at,resolution_due_at,archived_at',
     });
 
     applyOptionalFilter(query, 'assigned_to_user_id', filters.assignedToUserId);
@@ -373,8 +370,6 @@ export class SupabaseTicketWriteRepository
       'requested_for_user_id',
       filters.requestedForUserId,
     );
-    applyOptionalFilter(query, 'service_id', filters.serviceId);
-
     if (filters.status) {
       query.set('status', `eq.${filters.status}`);
     }
@@ -406,7 +401,6 @@ export class SupabaseTicketWriteRepository
         ticket.category_id,
         ticket.created_by_user_id,
         ticket.requested_for_user_id,
-        ticket.service_id,
         ticket.channel_id,
         ticket.assignment_group_id,
         ticket.assigned_to_user_id,
@@ -431,7 +425,6 @@ export class SupabaseTicketWriteRepository
         ticket.category_id,
         ticket.created_by_user_id,
         ticket.requested_for_user_id,
-        ticket.service_id,
         ticket.channel_id,
         ticket.assignment_group_id,
         ticket.assigned_to_user_id,
@@ -449,7 +442,7 @@ export class SupabaseTicketWriteRepository
   async getTicketById(ticketId: string): Promise<TicketDetail | null> {
     const query = new URLSearchParams({
       select:
-        'id,number,type,status,title,description,priority_id,category_id,created_by_user_id,requested_for_user_id,service_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,closed_at,response_due_at,resolution_due_at,archived_at,incidents(*),requests(*)',
+        'id,number,type,status,title,description,priority_id,category_id,created_by_user_id,requested_for_user_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,closed_at,response_due_at,resolution_due_at,archived_at,incidents(*),requests(*)',
       id: `eq.${ticketId}`,
       limit: '1',
     });
@@ -479,7 +472,6 @@ export class SupabaseTicketWriteRepository
       ticket.category_id,
       ticket.created_by_user_id,
       ticket.requested_for_user_id,
-      ticket.service_id,
       ticket.channel_id,
       ticket.assignment_group_id,
       ticket.assigned_to_user_id,
@@ -505,7 +497,6 @@ export class SupabaseTicketWriteRepository
         mappedTicket.categoryId,
         mappedTicket.createdByUserId,
         mappedTicket.requestedForUserId,
-        mappedTicket.serviceId,
         mappedTicket.channelId,
         mappedTicket.assignmentGroupId,
         mappedTicket.assignedToUserId,
@@ -776,7 +767,6 @@ export class SupabaseTicketWriteRepository
       requestedForUserId: record.requestedForUserId,
       resolutionDueAt: record.resolutionDueAt,
       responseDueAt: record.responseDueAt,
-      serviceId: record.serviceId,
       status: TicketStatus.OPEN,
       title: record.title,
       type: TicketType.INCIDENT,
@@ -797,7 +787,6 @@ export class SupabaseTicketWriteRepository
           ticket.category_id,
           ticket.created_by_user_id,
           ticket.requested_for_user_id,
-          ticket.service_id,
           ticket.channel_id,
           ticket.assignment_group_id,
           ticket.assigned_to_user_id,
@@ -835,7 +824,6 @@ export class SupabaseTicketWriteRepository
       requestedForUserId: record.requestedForUserId,
       resolutionDueAt: record.resolutionDueAt,
       responseDueAt: record.responseDueAt,
-      serviceId: record.serviceId,
       status: TicketStatus.OPEN,
       title: record.title,
       type: TicketType.REQUEST,
@@ -856,7 +844,6 @@ export class SupabaseTicketWriteRepository
           ticket.category_id,
           ticket.created_by_user_id,
           ticket.requested_for_user_id,
-          ticket.service_id,
           ticket.channel_id,
           ticket.assignment_group_id,
           ticket.assigned_to_user_id,
@@ -892,7 +879,6 @@ export class SupabaseTicketWriteRepository
     resolutionDueAt: string | null;
     responseDueAt: string | null;
     requestedForUserId: string | null;
-    serviceId: string | null;
     status: TicketStatus;
     title: string;
     type: TicketType;
@@ -910,7 +896,6 @@ export class SupabaseTicketWriteRepository
         resolution_due_at: record.resolutionDueAt,
         response_due_at: record.responseDueAt,
         requested_for_user_id: record.requestedForUserId,
-        service_id: record.serviceId,
         status: record.status,
         title: record.title,
         type: record.type,

@@ -8,7 +8,6 @@ export type CreateIncidentDto = {
   impact: IncidentSeverity;
   requestedForUserId?: string | null;
   rootCause?: string | null;
-  serviceId?: string | null;
   title: string;
   urgency: IncidentSeverity;
   workaround?: string | null;

@@ -14,8 +14,6 @@ import { ReferentialGroupReadRepository } from '../application/referentials/repo
 import { ReferentialGroupWriteRepository } from '../application/referentials/repositories/referential-group-write.repository';
 import { ReferentialPriorityReadRepository } from '../application/referentials/repositories/referential-priority-read.repository';
 import { ReferentialPriorityWriteRepository } from '../application/referentials/repositories/referential-priority-write.repository';
-import { ReferentialServiceReadRepository } from '../application/referentials/repositories/referential-service-read.repository';
-import { ReferentialServiceWriteRepository } from '../application/referentials/repositories/referential-service-write.repository';
 import { TicketAttachmentReadRepository } from '../application/ticketing/repositories/ticket-attachment-read.repository';
 import { TicketAttachmentWriteRepository } from '../application/ticketing/repositories/ticket-attachment-write.repository';
 import { TicketCommentReadRepository } from '../application/ticketing/repositories/ticket-comment-read.repository';
@@ -44,8 +42,6 @@ const referentialRepositoryBindings = [
   ReferentialGroupWriteRepository,
   ReferentialPriorityReadRepository,
   ReferentialPriorityWriteRepository,
-  ReferentialServiceReadRepository,
-  ReferentialServiceWriteRepository,
 ].map((provide) => ({
   provide,
   useExisting: SupabaseReferentialReadRepository,

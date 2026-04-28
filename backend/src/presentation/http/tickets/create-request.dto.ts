@@ -8,6 +8,5 @@ export type CreateRequestDto = {
   priorityId: string;
   requestedForUserId?: string | null;
   requestType?: RequestType | null;
-  serviceId?: string | null;
   title: string;
 };

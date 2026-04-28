@@ -39,7 +39,6 @@ describe('CreateRequestUseCase', () => {
         null,
         null,
         null,
-        null,
         '2026-04-03T09:00:00.000Z',
         '2026-04-03T18:00:00.000Z',
         '2026-04-04T10:00:00.000Z',

@@ -4,7 +4,6 @@ import { ReferentialCi } from './referential-ci';
 import { ReferentialCiType } from './referential-ci-type';
 import { ReferentialGroup } from './referential-group';
 import { ReferentialPriority } from './referential-priority';
-import { ReferentialService } from './referential-service';
 
 export interface ReferentialCatalogSnapshot {
   categories: ReferentialCategory[];
@@ -13,5 +12,4 @@ export interface ReferentialCatalogSnapshot {
   ciTypes: ReferentialCiType[];
   groups: ReferentialGroup[];
   priorities: ReferentialPriority[];
-  services: ReferentialService[];
 }

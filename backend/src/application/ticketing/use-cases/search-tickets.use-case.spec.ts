@@ -32,7 +32,6 @@ describe('SearchTicketsUseCase', () => {
       priorityId: null,
       q: 'vpn',
       requestedForUserId: null,
-      serviceId: null,
       status: TicketStatus.OPEN,
       type: TicketType.INCIDENT,
     });
@@ -54,7 +53,6 @@ describe('SearchTicketsUseCase', () => {
       null,
       null,
       null,
-      null,
       '2026-04-02T10:00:00.000Z',
     );
     const requestedTicket = new TicketSummary(
@@ -68,7 +66,6 @@ describe('SearchTicketsUseCase', () => {
       'category-1',
       'agent-1',
       'demandeur-1',
-      null,
       null,
       null,
       null,
@@ -100,7 +97,6 @@ describe('SearchTicketsUseCase', () => {
       priorityId: null,
       q: 'vpn',
       requestedForUserId: null,
-      serviceId: null,
       status: null,
       type: null,
     });
@@ -113,7 +109,6 @@ describe('SearchTicketsUseCase', () => {
       priorityId: null,
       q: 'vpn',
       requestedForUserId: 'demandeur-1',
-      serviceId: null,
       status: null,
       type: null,
     });
@@ -201,7 +196,6 @@ function createTicketSummary(
     'HIGH',
     'category-1',
     'user-1',
-    null,
     null,
     null,
     null,

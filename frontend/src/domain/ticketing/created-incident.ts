@@ -27,7 +27,6 @@ export type CreatedIncidentSnapshot = {
     resolutionSlaStatus: string | null;
     responseDueAt: string | null;
     responseSlaStatus: string | null;
-    serviceId: string | null;
     status: string;
     title: string;
     type: string;

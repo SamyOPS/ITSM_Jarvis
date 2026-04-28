@@ -19,7 +19,6 @@ export type CreateIncidentRecord = {
   responseDueAt: string | null;
   requestedForUserId: string | null;
   rootCause: string | null;
-  serviceId: string | null;
   title: string;
   urgency: IncidentSeverity;
   workaround: string | null;
@@ -38,7 +37,6 @@ export type CreateRequestRecord = {
   requestedForUserId: string | null;
   requestType: RequestType;
   approvalStatus: RequestApprovalStatus | null;
-  serviceId: string | null;
   title: string;
 };
 
@@ -71,7 +69,6 @@ export type UpdateTicketRecord = {
   requestedForUserId: string | null;
   resolutionDueAt: string | null;
   responseDueAt: string | null;
-  serviceId: string | null;
   title: string;
 };
 

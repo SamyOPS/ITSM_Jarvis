@@ -23,7 +23,6 @@ describe('GetTicketByIdUseCase', () => {
         null,
         null,
         null,
-        null,
         '2026-03-31T10:00:00.000Z',
       ),
       null,

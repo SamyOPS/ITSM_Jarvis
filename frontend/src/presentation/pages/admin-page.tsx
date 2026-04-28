@@ -14,7 +14,6 @@ import type {
   ReferentialCiType,
   ReferentialGroup,
   ReferentialPriority,
-  ReferentialService,
 } from '../../domain/referentials/referential-catalog';
 import {
   type AdminReferentialKind,
@@ -53,8 +52,7 @@ type ReferentialListItem =
   | ReferentialCi
   | ReferentialCiType
   | ReferentialGroup
-  | ReferentialPriority
-  | ReferentialService;
+  | ReferentialPriority;
 
 // Keep these references stable across PR merge snapshots so ESLint sees them as used
 // even when GitHub builds a merged admin page variant.
@@ -97,11 +95,6 @@ const REFERENTIAL_SECTIONS: Array<{
     kind: 'priorities',
     title: 'Priorités',
   },
-  {
-    description: 'Services métier ou techniques impactés par les tickets.',
-    kind: 'services',
-    title: 'Services',
-  },
 ];
 
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
@@ -111,7 +104,6 @@ const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   ciTypes: [],
   groups: [],
   priorities: [],
-  services: [],
 };
 
 const PRIORITY_NAMES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
@@ -546,29 +538,6 @@ function renderFormFields(
           </label>
         </>
       );
-    case 'services':
-      return (
-        <>
-          <label className="field">
-            <span>Nom</span>
-            <input
-              onChange={(event) => onFieldChange('name', event.target.value)}
-              required
-              value={formState.name}
-            />
-          </label>
-          <label className="field">
-            <span>Description</span>
-            <textarea
-              onChange={(event) =>
-                onFieldChange('description', event.target.value)
-              }
-              rows={3}
-              value={formState.description}
-            />
-          </label>
-        </>
-      );
     case 'cis':
       return (
         <>
@@ -661,8 +630,6 @@ function getItemsForKind(
       return catalog.groups;
     case 'priorities':
       return catalog.priorities;
-    case 'services':
-      return catalog.services;
     default:
       return [];
   }
@@ -730,14 +697,6 @@ function buildFormState(
           priority.responseHours === null ? '' : String(priority.responseHours),
       };
     }
-    case 'services': {
-      const service = item as ReferentialService;
-      return {
-        ...base,
-        description: service.description ?? '',
-        name: service.name,
-      };
-    }
     default:
       return base;
   }
@@ -770,11 +729,6 @@ function buildPayload(
         name: formState.priorityName,
         resolutionHours: toNullableNumber(formState.resolutionHours),
         responseHours: toNullableNumber(formState.responseHours),
-      };
-    case 'services':
-      return {
-        description: formState.description.trim() || null,
-        name: formState.name.trim(),
       };
     case 'cis':
       return {
@@ -846,10 +800,6 @@ function getItemMeta(
       return `L${priority.level} - R${priority.responseHours ?? '-'}h / ${
         priority.resolutionHours ?? '-'
       }h`;
-    }
-    case 'services': {
-      const service = item as ReferentialService;
-      return service.description ?? 'Aucune description';
     }
     default:
       return item.id;

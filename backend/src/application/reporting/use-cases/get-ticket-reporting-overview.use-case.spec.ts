@@ -59,7 +59,6 @@ describe('GetTicketReportingOverviewUseCase', () => {
       priorityId: null,
       q: null,
       requestedForUserId: null,
-      serviceId: null,
       status: null,
       type: null,
     });
@@ -209,7 +208,6 @@ function createTicketSummary(
     'HIGH',
     'category-1',
     'user-1',
-    null,
     null,
     null,
     null,

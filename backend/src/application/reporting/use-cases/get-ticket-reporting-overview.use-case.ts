@@ -65,7 +65,6 @@ export class GetTicketReportingOverviewUseCase {
       priorityId: filters.priorityId,
       q: null,
       requestedForUserId: null,
-      serviceId: null,
       status: filters.status,
       type: filters.type,
     });

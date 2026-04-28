@@ -12,14 +12,12 @@ import {
   type CreateReferentialCiTypeCommand,
   type CreateReferentialGroupCommand,
   type CreateReferentialPriorityCommand,
-  type CreateReferentialServiceCommand,
   type UpdateReferentialCategoryCommand,
   type UpdateReferentialChannelCommand,
   type UpdateReferentialCiCommand,
   type UpdateReferentialCiTypeCommand,
   type UpdateReferentialGroupCommand,
   type UpdateReferentialPriorityCommand,
-  type UpdateReferentialServiceCommand,
 } from '../../application/referentials/referential-admin.commands';
 import { ReferentialCategoryReadRepository } from '../../application/referentials/repositories/referential-category-read.repository';
 import { ReferentialCategoryWriteRepository } from '../../application/referentials/repositories/referential-category-write.repository';
@@ -33,15 +31,12 @@ import { ReferentialGroupReadRepository } from '../../application/referentials/r
 import { ReferentialGroupWriteRepository } from '../../application/referentials/repositories/referential-group-write.repository';
 import { ReferentialPriorityReadRepository } from '../../application/referentials/repositories/referential-priority-read.repository';
 import { ReferentialPriorityWriteRepository } from '../../application/referentials/repositories/referential-priority-write.repository';
-import { ReferentialServiceReadRepository } from '../../application/referentials/repositories/referential-service-read.repository';
-import { ReferentialServiceWriteRepository } from '../../application/referentials/repositories/referential-service-write.repository';
 import { ReferentialCategory } from '../../domain/referentials/referential-category';
 import { ReferentialChannel } from '../../domain/referentials/referential-channel';
 import { ReferentialCi } from '../../domain/referentials/referential-ci';
 import { ReferentialCiType } from '../../domain/referentials/referential-ci-type';
 import { ReferentialGroup } from '../../domain/referentials/referential-group';
 import { ReferentialPriority } from '../../domain/referentials/referential-priority';
-import { ReferentialService } from '../../domain/referentials/referential-service';
 import { PriorityName } from '../../domain/ticketing/priority-name';
 import { SupportLevel } from '../../domain/ticketing/support-level';
 import { getBackendRuntimeConfig } from '../config/app-config';
@@ -74,11 +69,6 @@ type SupabasePriorityRow = {
   resolution_hours: number | null;
   response_hours: number | null;
 };
-type SupabaseServiceRow = {
-  description: string | null;
-  id: string;
-  name: string;
-};
 type SupabaseErrorPayload = {
   code?: string;
   details?: string;
@@ -101,9 +91,7 @@ export class SupabaseReferentialReadRepository
     ReferentialGroupReadRepository,
     ReferentialGroupWriteRepository,
     ReferentialPriorityReadRepository,
-    ReferentialPriorityWriteRepository,
-    ReferentialServiceReadRepository,
-    ReferentialServiceWriteRepository
+    ReferentialPriorityWriteRepository
 {
   async listCategories(): Promise<ReferentialCategory[]> {
     const rows = await this.fetchTable<SupabaseCategoryRow>(
@@ -387,49 +375,6 @@ export class SupabaseReferentialReadRepository
     await this.deleteById('priorities', id);
   }
 
-  async listServices(): Promise<ReferentialService[]> {
-    const rows = await this.fetchTable<SupabaseServiceRow>(
-      'services',
-      'id,name,description',
-      'name.asc',
-    );
-    return rows.map((row) => this.mapService(row));
-  }
-
-  async createService(
-    command: CreateReferentialServiceCommand,
-  ): Promise<ReferentialService> {
-    const rows = await this.mutateTable<SupabaseServiceRow>(
-      'POST',
-      'services',
-      { name: command.name, description: command.description },
-      'id,name,description',
-    );
-    return this.expectSingle(rows, 'services', (row) => this.mapService(row));
-  }
-
-  async updateService(
-    command: UpdateReferentialServiceCommand,
-  ): Promise<ReferentialService> {
-    const rows = await this.mutateTable<SupabaseServiceRow>(
-      'PATCH',
-      'services',
-      { name: command.name, description: command.description },
-      'id,name,description',
-      [{ column: 'id', value: command.id }],
-    );
-    return this.expectSingle(
-      rows,
-      'services',
-      (row) => this.mapService(row),
-      command.id,
-    );
-  }
-
-  async deleteService(id: string): Promise<void> {
-    await this.deleteById('services', id);
-  }
-
   private mapCategory(row: SupabaseCategoryRow): ReferentialCategory {
     return new ReferentialCategory(row.id, row.name, row.parent_id);
   }
@@ -467,9 +412,6 @@ export class SupabaseReferentialReadRepository
     );
   }
 
-  private mapService(row: SupabaseServiceRow): ReferentialService {
-    return new ReferentialService(row.id, row.name, row.description);
-  }
   private async fetchTable<Row>(
     table: string,
     select: string,

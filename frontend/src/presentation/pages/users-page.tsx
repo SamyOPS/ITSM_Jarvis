@@ -39,7 +39,6 @@ const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   ciTypes: [],
   groups: [],
   priorities: [],
-  services: [],
 };
 
 const EMPTY_USER_FORM: UserFormState = {
