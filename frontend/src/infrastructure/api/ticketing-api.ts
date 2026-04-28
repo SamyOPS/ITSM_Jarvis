@@ -27,6 +27,7 @@ export type CreateRequestPayload = {
   ciId?: string | null;
   description: string;
   priorityId: string;
+  requestedForUserId?: string | null;
   requestType?: RequestType | null;
   serviceId?: string | null;
   title: string;

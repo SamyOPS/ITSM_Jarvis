@@ -125,15 +125,21 @@ type IncidentDraftState = {
 };
 
 type RequestDraftState = {
+  assignedToUserId: string;
+
   categoryId: string;
 
   channelId: string;
 
   ciId: string;
 
+  comment: string;
+
   description: string;
 
   priorityId: string;
+
+  requestedForUserId: string;
 
   requestType: RequestType;
 
@@ -235,15 +241,21 @@ const INITIAL_INCIDENT_DRAFT: IncidentDraftState = {
 };
 
 const INITIAL_REQUEST_DRAFT: RequestDraftState = {
+  assignedToUserId: '',
+
   categoryId: '',
 
   channelId: '',
 
   ciId: '',
 
+  comment: '',
+
   description: '',
 
   priorityId: '',
+
+  requestedForUserId: '',
 
   requestType: 'OTHER',
 
@@ -487,6 +499,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const canManageTicket = canManageTicketActions(session.user.role);
   const showIncidentAdvancedFields =
     mode === 'INCIDENT' && canManageTicketActions(session.user.role);
+  const showRequestAdvancedFields =
+    mode === 'REQUEST' && canManageTicketActions(session.user.role);
+  const showCreationAdvancedFields =
+    showIncidentAdvancedFields || showRequestAdvancedFields;
 
   const canDeleteTickets = session.user.role === 'ADMIN';
   const canEditTicket = session.user.role === 'ADMIN';
@@ -659,11 +675,15 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   }, [incidentLookupKind, incidentLookupSearch]);
 
   useEffect(() => {
-    if (!showIncidentAdvancedFields) {
+    if (!showCreationAdvancedFields) {
       return;
     }
 
-    setIncidentDraft((currentDraft) => {
+    const ensureCurrentUserAsRequester = <
+      TDraft extends IncidentDraftState | RequestDraftState,
+    >(
+      currentDraft: TDraft,
+    ): TDraft => {
       if (currentDraft.requestedForUserId.trim()) {
         return currentDraft;
       }
@@ -672,8 +692,15 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         ...currentDraft,
         requestedForUserId: session.user.id,
       };
-    });
-  }, [session.user.id, showIncidentAdvancedFields]);
+    };
+
+    if (mode === 'INCIDENT') {
+      setIncidentDraft(ensureCurrentUserAsRequester);
+      return;
+    }
+
+    setRequestDraft(ensureCurrentUserAsRequester);
+  }, [mode, session.user.id, showCreationAdvancedFields]);
 
   useEffect(() => {
     if (!showListPanel) {
@@ -1254,11 +1281,21 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const selectedIncidentRequester = usersById.get(
     incidentDraft.requestedForUserId,
   );
+  const selectedRequestTechnician = usersById.get(
+    requestDraft.assignedToUserId,
+  );
+  const selectedRequestRequester = usersById.get(
+    requestDraft.requestedForUserId,
+  );
   const selectedIncidentLookupUserId =
     incidentLookupKind === 'ASSIGNEE'
-      ? incidentDraft.assignedToUserId
+      ? mode === 'INCIDENT'
+        ? incidentDraft.assignedToUserId
+        : requestDraft.assignedToUserId
       : incidentLookupKind === 'REQUESTER'
-        ? incidentDraft.requestedForUserId
+        ? mode === 'INCIDENT'
+          ? incidentDraft.requestedForUserId
+          : requestDraft.requestedForUserId
         : '';
 
   useEffect(() => {
@@ -1323,8 +1360,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     const source = kind === 'ASSIGNEE' ? technicians : requesters;
     const selectedUserId =
       kind === 'ASSIGNEE'
-        ? incidentDraft.assignedToUserId
-        : incidentDraft.requestedForUserId;
+        ? mode === 'INCIDENT'
+          ? incidentDraft.assignedToUserId
+          : requestDraft.assignedToUserId
+        : mode === 'INCIDENT'
+          ? incidentDraft.requestedForUserId
+          : requestDraft.requestedForUserId;
     const selectedUserIndex = filterIncidentLookupUsers(
       source,
       '',
@@ -1351,11 +1392,19 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   function handleIncidentLookupSelect(user: AdminUserSummary): void {
     if (incidentLookupKind === 'ASSIGNEE') {
-      handleIncidentFieldChange('assignedToUserId', user.id);
+      if (mode === 'INCIDENT') {
+        handleIncidentFieldChange('assignedToUserId', user.id);
+      } else {
+        handleRequestFieldChange('assignedToUserId', user.id);
+      }
     }
 
     if (incidentLookupKind === 'REQUESTER') {
-      handleIncidentFieldChange('requestedForUserId', user.id);
+      if (mode === 'INCIDENT') {
+        handleIncidentFieldChange('requestedForUserId', user.id);
+      } else {
+        handleRequestFieldChange('requestedForUserId', user.id);
+      }
     }
 
     closeIncidentLookup();
@@ -1596,12 +1645,64 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
         priorityId: requestDraft.priorityId.trim(),
 
+        requestedForUserId: showRequestAdvancedFields
+          ? (normalizeOptionalId(requestDraft.requestedForUserId) ??
+            session.user.id)
+          : null,
+
         requestType: requestDraft.requestType,
 
         serviceId: normalizeOptionalId(requestDraft.serviceId),
 
         title: requestDraft.title.trim(),
       });
+
+      const postCreationWarnings: string[] = [];
+      let ticketForList: TicketSummarySnapshot = {
+        ...result.ticket,
+        priorityName: result.priorityName,
+      };
+
+      if (showRequestAdvancedFields && requestDraft.assignedToUserId.trim()) {
+        const selectedTechnician = usersById.get(requestDraft.assignedToUserId);
+
+        try {
+          const updatedTicket = await assignTicket(
+            session.accessToken,
+            result.ticket.id,
+            {
+              assignedToUserId: requestDraft.assignedToUserId.trim(),
+              assignmentGroupId: selectedTechnician?.groupId ?? null,
+            },
+          );
+
+          ticketForList = {
+            ...updatedTicket.ticket,
+            priorityName: result.priorityName,
+          };
+        } catch (error) {
+          postCreationWarnings.push(
+            error instanceof Error
+              ? `l'assignation a echoue : ${error.message}`
+              : "l'assignation a echoue",
+          );
+        }
+      }
+
+      if (showRequestAdvancedFields && requestDraft.comment.trim()) {
+        try {
+          await addTicketComment(session.accessToken, result.ticket.id, {
+            body: requestDraft.comment.trim(),
+            isInternal: false,
+          });
+        } catch (error) {
+          postCreationWarnings.push(
+            error instanceof Error
+              ? `l'ajout du commentaire a echoue : ${error.message}`
+              : "l'ajout du commentaire a echoue",
+          );
+        }
+      }
 
       setCreatedRequest(result);
 
@@ -1614,11 +1715,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       }));
 
       setTickets((currentTickets) => [
-        {
-          ...result.ticket,
-
-          priorityName: result.priorityName,
-        },
+        ticketForList,
 
         ...currentTickets.filter((ticket) => ticket.id !== result.ticket.id),
       ]);
@@ -1635,12 +1732,29 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         description: '',
 
         title: '',
+
+        assignedToUserId: '',
+
+        comment: '',
+
+        requestedForUserId: session.user.id,
       }));
 
-      if (attachmentUploadErrorMessage) {
-        setSubmitErrorMessage(attachmentUploadErrorMessage);
-      } else {
+      if (!attachmentUploadErrorMessage) {
         resetCreationAttachmentSelection('REQUEST');
+      }
+
+      if (attachmentUploadErrorMessage || postCreationWarnings.length > 0) {
+        setSubmitErrorMessage(
+          [
+            attachmentUploadErrorMessage,
+            ...postCreationWarnings.map(
+              (warning) => `Ticket cree, mais ${warning}.`,
+            ),
+          ]
+            .filter(Boolean)
+            .join(' '),
+        );
       }
     } catch (error) {
       setSubmitErrorMessage(
@@ -2714,6 +2828,99 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           ))}
                         </select>
                       </label>
+
+                      {showRequestAdvancedFields ? (
+                        <>
+                          <label className="field">
+                            <span>Assigne a</span>
+
+                            <div
+                              className={
+                                requestDraft.assignedToUserId
+                                  ? 'incident-lookup-field has-clear'
+                                  : 'incident-lookup-field'
+                              }
+                            >
+                              <input
+                                readOnly
+                                value={
+                                  selectedRequestTechnician
+                                    ? formatKnownUserName(
+                                        selectedRequestTechnician,
+                                        selectedRequestTechnician.id,
+                                      )
+                                    : ''
+                                }
+                              />
+
+                              {requestDraft.assignedToUserId ? (
+                                <button
+                                  aria-label="Retirer l'assignation"
+                                  onClick={() =>
+                                    handleRequestFieldChange(
+                                      'assignedToUserId',
+                                      '',
+                                    )
+                                  }
+                                  type="button"
+                                >
+                                  <X size={16} />
+                                </button>
+                              ) : null}
+
+                              <button
+                                aria-label="Rechercher un technicien"
+                                onClick={() => openIncidentLookup('ASSIGNEE')}
+                                type="button"
+                              >
+                                <Search size={18} />
+                              </button>
+                            </div>
+                          </label>
+
+                          <label className="field">
+                            <span>Demandeur</span>
+
+                            <div className="incident-lookup-field">
+                              <input
+                                readOnly
+                                value={
+                                  selectedRequestRequester
+                                    ? formatKnownUserName(
+                                        selectedRequestRequester,
+                                        selectedRequestRequester.id,
+                                      )
+                                    : ''
+                                }
+                              />
+
+                              <button
+                                aria-label="Rechercher un demandeur"
+                                onClick={() => openIncidentLookup('REQUESTER')}
+                                type="button"
+                              >
+                                <Search size={18} />
+                              </button>
+                            </div>
+                          </label>
+
+                          <label className="field ticket-form-span-2">
+                            <span>Commentaire</span>
+
+                            <textarea
+                              onChange={(event) =>
+                                handleRequestFieldChange(
+                                  'comment',
+                                  event.target.value,
+                                )
+                              }
+                              placeholder="Ajoute une note utile au traitement de la demande."
+                              rows={4}
+                              value={requestDraft.comment}
+                            />
+                          </label>
+                        </>
+                      ) : null}
                     </>
                   )}
 
@@ -2796,7 +3003,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   ) : null}
                 </form>
 
-                {showIncidentAdvancedFields && incidentLookupKind ? (
+                {showCreationAdvancedFields && incidentLookupKind ? (
                   <div
                     aria-modal="true"
                     className="incident-lookup-overlay"
