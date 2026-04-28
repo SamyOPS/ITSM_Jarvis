@@ -3453,8 +3453,7 @@ a {
 
 .tdp-reply-area {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.9fr);
-  gap: 14px;
+  gap: 18px;
 }
 
 .tdp-reply-comment-form,
@@ -3477,27 +3476,17 @@ a {
   flex-wrap: wrap;
 }
 
-.tdp-file-zone {
+.tdp-reply-footer--end {
+  justify-content: flex-end;
+}
+
+.tdp-upload-zone {
+  margin-top: 2px;
+}
+
+.ticket-upload-note--stacked {
   display: grid;
-  gap: 10px;
-  padding: 16px;
-  border: 1px dashed rgba(25, 86, 179, 0.28);
-  border-radius: 14px;
-  background: rgba(245, 248, 255, 0.75);
-  cursor: pointer;
-}
-
-.tdp-file-zone input[type='file'] {
-  width: 100%;
-  padding: 0;
-  border: none;
-  background: transparent;
-}
-
-.tdp-file-zone-hint {
-  color: #17335f;
-  font-size: 0.9rem;
-  font-weight: 600;
+  gap: 2px;
 }
 
 @media (max-width: 900px) {
@@ -3515,9 +3504,6 @@ a {
     max-height: none;
   }
 
-  .tdp-reply-area {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 760px) {
