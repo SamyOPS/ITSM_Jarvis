@@ -24,7 +24,11 @@ import {
   translateTicketType,
 } from '../../domain/i18n/ticketing-labels';
 
-import type { ReferentialCatalogSnapshot } from '../../domain/referentials/referential-catalog';
+import type {
+  ReferentialCatalogSnapshot,
+  ReferentialCi,
+  ReferentialGroup,
+} from '../../domain/referentials/referential-catalog';
 
 import type { CreatedIncidentSnapshot } from '../../domain/ticketing/created-incident';
 
@@ -86,17 +90,28 @@ type TicketMode = 'INCIDENT' | 'REQUEST';
 
 type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'PENDING' | 'RESOLVED' | 'CLOSED';
 
-type IncidentLookupKind = 'ASSIGNEE' | 'REQUESTER';
+type IncidentLookupKind =
+  | 'ASSIGNEE'
+  | 'ASSIGNMENT_GROUP'
+  | 'REQUEST_EQUIPMENT'
+  | 'REQUESTER';
 
 type IncidentLookupSearchField =
   | 'IDENTIFIER'
   | 'FIRST_NAME'
   | 'LAST_NAME'
-  | 'GROUP';
+  | 'GROUP'
+  | 'LEVEL'
+  | 'NAME'
+  | 'SERIAL_NUMBER'
+  | 'STATUS'
+  | 'TYPE';
 
 type TicketListSearchField = 'TITLE' | 'REQUESTER' | 'TECHNICIAN';
 
 type IncidentDraftState = {
+  assignmentGroupId: string;
+
   assignedToUserId: string;
 
   categoryId: string;
@@ -119,6 +134,8 @@ type IncidentDraftState = {
 };
 
 type RequestDraftState = {
+  assignmentGroupId: string;
+
   assignedToUserId: string;
 
   categoryId: string;
@@ -206,6 +223,8 @@ const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
 };
 
 const INITIAL_INCIDENT_DRAFT: IncidentDraftState = {
+  assignmentGroupId: '',
+
   assignedToUserId: '',
 
   categoryId: '',
@@ -228,6 +247,8 @@ const INITIAL_INCIDENT_DRAFT: IncidentDraftState = {
 };
 
 const INITIAL_REQUEST_DRAFT: RequestDraftState = {
+  assignmentGroupId: '',
+
   assignedToUserId: '',
 
   categoryId: '',
@@ -618,7 +639,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   useEffect(() => {
     setIncidentLookupPage(1);
-  }, [incidentLookupKind, incidentLookupSearch]);
+  }, [incidentLookupKind, incidentLookupSearch, incidentLookupSearchField]);
 
   useEffect(() => {
     if (!showCreationRequesterField) {
@@ -1070,6 +1091,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     [catalog.cis],
   );
 
+  const ciTypesById = useMemo(
+    () => new Map(catalog.ciTypes.map((ciType) => [ciType.id, ciType])),
+
+    [catalog.ciTypes],
+  );
+
   const groupsById = useMemo(
     () => new Map(catalog.groups.map((group) => [group.id, group])),
 
@@ -1127,8 +1154,38 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     [assignmentDraft.assignmentGroupId, technicians],
   );
 
+  const selectedCreationAssignmentGroupId =
+    mode === 'INCIDENT'
+      ? incidentDraft.assignmentGroupId
+      : requestDraft.assignmentGroupId;
+  const selectedCreationTechnicianId =
+    mode === 'INCIDENT'
+      ? incidentDraft.assignedToUserId
+      : requestDraft.assignedToUserId;
+  const selectedCreationTechnician = usersById.get(
+    selectedCreationTechnicianId,
+  );
+  const incidentLookupTechnicians = useMemo(
+    () =>
+      technicians.filter(
+        (technician) =>
+          !selectedCreationAssignmentGroupId ||
+          technician.groupId === selectedCreationAssignmentGroupId,
+      ),
+    [selectedCreationAssignmentGroupId, technicians],
+  );
+  const incidentLookupGroups = useMemo(
+    () =>
+      selectedCreationTechnician?.groupId
+        ? catalog.groups.filter(
+            (group) => group.id === selectedCreationTechnician.groupId,
+          )
+        : catalog.groups,
+    [catalog.groups, selectedCreationTechnician?.groupId],
+  );
+
   const incidentLookupSource =
-    incidentLookupKind === 'ASSIGNEE' ? technicians : requesters;
+    incidentLookupKind === 'ASSIGNEE' ? incidentLookupTechnicians : requesters;
   const filteredIncidentLookupUsers = useMemo(
     () =>
       filterIncidentLookupUsers(
@@ -1144,26 +1201,63 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       incidentLookupSource,
     ],
   );
+  const filteredIncidentLookupGroups = useMemo(
+    () =>
+      filterIncidentLookupGroups(
+        incidentLookupGroups,
+        incidentLookupSearch,
+        incidentLookupSearchField,
+      ),
+    [incidentLookupGroups, incidentLookupSearch, incidentLookupSearchField],
+  );
+  const filteredIncidentLookupEquipment = useMemo(
+    () =>
+      filterIncidentLookupEquipment(
+        catalog.cis,
+        incidentLookupSearch,
+        incidentLookupSearchField,
+        ciTypesById,
+      ),
+    [catalog.cis, ciTypesById, incidentLookupSearch, incidentLookupSearchField],
+  );
+  const incidentLookupResultCount =
+    incidentLookupKind === 'ASSIGNMENT_GROUP'
+      ? filteredIncidentLookupGroups.length
+      : incidentLookupKind === 'REQUEST_EQUIPMENT'
+        ? filteredIncidentLookupEquipment.length
+        : filteredIncidentLookupUsers.length;
   const incidentLookupTotalPages = Math.max(
     1,
-    Math.ceil(filteredIncidentLookupUsers.length / INCIDENT_LOOKUP_PAGE_SIZE),
+    Math.ceil(incidentLookupResultCount / INCIDENT_LOOKUP_PAGE_SIZE),
   );
   const paginatedIncidentLookupUsers = filteredIncidentLookupUsers.slice(
     (incidentLookupPage - 1) * INCIDENT_LOOKUP_PAGE_SIZE,
     incidentLookupPage * INCIDENT_LOOKUP_PAGE_SIZE,
   );
+  const paginatedIncidentLookupGroups = filteredIncidentLookupGroups.slice(
+    (incidentLookupPage - 1) * INCIDENT_LOOKUP_PAGE_SIZE,
+    incidentLookupPage * INCIDENT_LOOKUP_PAGE_SIZE,
+  );
+  const paginatedIncidentLookupEquipment =
+    filteredIncidentLookupEquipment.slice(
+      (incidentLookupPage - 1) * INCIDENT_LOOKUP_PAGE_SIZE,
+      incidentLookupPage * INCIDENT_LOOKUP_PAGE_SIZE,
+    );
   const selectedIncidentTechnician = usersById.get(
     incidentDraft.assignedToUserId,
   );
+  const selectedIncidentGroup = groupsById.get(incidentDraft.assignmentGroupId);
   const selectedIncidentRequester = usersById.get(
     incidentDraft.requestedForUserId,
   );
   const selectedRequestTechnician = usersById.get(
     requestDraft.assignedToUserId,
   );
+  const selectedRequestGroup = groupsById.get(requestDraft.assignmentGroupId);
   const selectedRequestRequester = usersById.get(
     requestDraft.requestedForUserId,
   );
+  const selectedRequestEquipment = cisById.get(requestDraft.ciId);
   const selectedIncidentLookupUserId =
     incidentLookupKind === 'ASSIGNEE'
       ? mode === 'INCIDENT'
@@ -1174,6 +1268,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           ? incidentDraft.requestedForUserId
           : requestDraft.requestedForUserId
         : '';
+  const selectedIncidentLookupGroupId =
+    incidentLookupKind === 'ASSIGNMENT_GROUP'
+      ? mode === 'INCIDENT'
+        ? incidentDraft.assignmentGroupId
+        : requestDraft.assignmentGroupId
+      : '';
+  const selectedIncidentLookupEquipmentId =
+    incidentLookupKind === 'REQUEST_EQUIPMENT' ? requestDraft.ciId : '';
 
   useEffect(() => {
     if (incidentLookupPage > incidentLookupTotalPages) {
@@ -1186,11 +1288,41 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     value: string,
   ): void {
-    setIncidentDraft((currentDraft) => ({
-      ...currentDraft,
+    setIncidentDraft((currentDraft) => {
+      if (field === 'assignedToUserId') {
+        const selectedTechnician = usersById.get(value);
 
-      [field]: value,
-    }));
+        return {
+          ...currentDraft,
+
+          assignedToUserId: value,
+
+          assignmentGroupId:
+            selectedTechnician?.groupId ?? currentDraft.assignmentGroupId,
+        };
+      }
+
+      if (field === 'assignmentGroupId') {
+        const selectedTechnician = usersById.get(currentDraft.assignedToUserId);
+
+        return {
+          ...currentDraft,
+
+          assignedToUserId:
+            selectedTechnician?.groupId === value
+              ? currentDraft.assignedToUserId
+              : '',
+
+          assignmentGroupId: value,
+        };
+      }
+
+      return {
+        ...currentDraft,
+
+        [field]: value,
+      };
+    });
 
     setIncidentValidationErrors((currentErrors) => ({
       ...currentErrors,
@@ -1206,11 +1338,41 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     value: string,
   ): void {
-    setRequestDraft((currentDraft) => ({
-      ...currentDraft,
+    setRequestDraft((currentDraft) => {
+      if (field === 'assignedToUserId') {
+        const selectedTechnician = usersById.get(value);
 
-      [field]: value,
-    }));
+        return {
+          ...currentDraft,
+
+          assignedToUserId: value,
+
+          assignmentGroupId:
+            selectedTechnician?.groupId ?? currentDraft.assignmentGroupId,
+        };
+      }
+
+      if (field === 'assignmentGroupId') {
+        const selectedTechnician = usersById.get(currentDraft.assignedToUserId);
+
+        return {
+          ...currentDraft,
+
+          assignedToUserId:
+            selectedTechnician?.groupId === value
+              ? currentDraft.assignedToUserId
+              : '',
+
+          assignmentGroupId: value,
+        };
+      }
+
+      return {
+        ...currentDraft,
+
+        [field]: value,
+      };
+    });
 
     setRequestValidationErrors((currentErrors) => ({
       ...currentErrors,
@@ -1234,7 +1396,50 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   }
 
   function openIncidentLookup(kind: IncidentLookupKind): void {
-    const source = kind === 'ASSIGNEE' ? technicians : requesters;
+    if (kind === 'REQUEST_EQUIPMENT') {
+      const selectedEquipmentIndex = filterIncidentLookupEquipment(
+        catalog.cis,
+        '',
+        'IDENTIFIER',
+        ciTypesById,
+      ).findIndex((ci) => ci.id === requestDraft.ciId);
+
+      setIncidentLookupKind(kind);
+      setIncidentLookupSearch('');
+      setIncidentLookupSearchField('IDENTIFIER');
+      setIncidentLookupPage(
+        selectedEquipmentIndex >= 0
+          ? Math.floor(selectedEquipmentIndex / INCIDENT_LOOKUP_PAGE_SIZE) + 1
+          : 1,
+      );
+
+      return;
+    }
+
+    if (kind === 'ASSIGNMENT_GROUP') {
+      const selectedGroupId =
+        mode === 'INCIDENT'
+          ? incidentDraft.assignmentGroupId
+          : requestDraft.assignmentGroupId;
+      const selectedGroupIndex = filterIncidentLookupGroups(
+        incidentLookupGroups,
+        '',
+        'IDENTIFIER',
+      ).findIndex((group) => group.id === selectedGroupId);
+
+      setIncidentLookupKind(kind);
+      setIncidentLookupSearch('');
+      setIncidentLookupSearchField('IDENTIFIER');
+      setIncidentLookupPage(
+        selectedGroupIndex >= 0
+          ? Math.floor(selectedGroupIndex / INCIDENT_LOOKUP_PAGE_SIZE) + 1
+          : 1,
+      );
+
+      return;
+    }
+
+    const source = kind === 'ASSIGNEE' ? incidentLookupTechnicians : requesters;
     const selectedUserId =
       kind === 'ASSIGNEE'
         ? mode === 'INCIDENT'
@@ -1282,6 +1487,21 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       } else {
         handleRequestFieldChange('requestedForUserId', user.id);
       }
+    }
+
+    closeIncidentLookup();
+  }
+
+  function handleIncidentEquipmentLookupSelect(ci: ReferentialCi): void {
+    handleRequestFieldChange('ciId', ci.id);
+    closeIncidentLookup();
+  }
+
+  function handleIncidentGroupLookupSelect(group: ReferentialGroup): void {
+    if (mode === 'INCIDENT') {
+      handleIncidentFieldChange('assignmentGroupId', group.id);
+    } else {
+      handleRequestFieldChange('assignmentGroupId', group.id);
     }
 
     closeIncidentLookup();
@@ -1385,21 +1605,29 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           priorityName: result.priorityName,
         };
 
+        const incidentAssignedToUserId = normalizeOptionalId(
+          incidentDraft.assignedToUserId,
+        );
+        const incidentAssignmentGroupId = normalizeOptionalId(
+          incidentDraft.assignmentGroupId,
+        );
+
         if (
           showIncidentAdvancedFields &&
-          incidentDraft.assignedToUserId.trim()
+          (incidentAssignedToUserId || incidentAssignmentGroupId)
         ) {
-          const selectedTechnician = usersById.get(
-            incidentDraft.assignedToUserId,
-          );
+          const selectedTechnician = incidentAssignedToUserId
+            ? usersById.get(incidentAssignedToUserId)
+            : null;
 
           try {
             const updatedTicket = await assignTicket(
               session.accessToken,
               result.ticket.id,
               {
-                assignedToUserId: incidentDraft.assignedToUserId.trim(),
-                assignmentGroupId: selectedTechnician?.groupId ?? null,
+                assignedToUserId: incidentAssignedToUserId,
+                assignmentGroupId:
+                  selectedTechnician?.groupId ?? incidentAssignmentGroupId,
               },
             );
 
@@ -1459,6 +1687,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           description: '',
 
           title: '',
+
+          assignmentGroupId: '',
 
           assignedToUserId: '',
 
@@ -1536,16 +1766,29 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         priorityName: result.priorityName,
       };
 
-      if (showRequestAdvancedFields && requestDraft.assignedToUserId.trim()) {
-        const selectedTechnician = usersById.get(requestDraft.assignedToUserId);
+      const requestAssignedToUserId = normalizeOptionalId(
+        requestDraft.assignedToUserId,
+      );
+      const requestAssignmentGroupId = normalizeOptionalId(
+        requestDraft.assignmentGroupId,
+      );
+
+      if (
+        showRequestAdvancedFields &&
+        (requestAssignedToUserId || requestAssignmentGroupId)
+      ) {
+        const selectedTechnician = requestAssignedToUserId
+          ? usersById.get(requestAssignedToUserId)
+          : null;
 
         try {
           const updatedTicket = await assignTicket(
             session.accessToken,
             result.ticket.id,
             {
-              assignedToUserId: requestDraft.assignedToUserId.trim(),
-              assignmentGroupId: selectedTechnician?.groupId ?? null,
+              assignedToUserId: requestAssignedToUserId,
+              assignmentGroupId:
+                selectedTechnician?.groupId ?? requestAssignmentGroupId,
             },
           );
 
@@ -1606,9 +1849,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
         title: '',
 
+        assignmentGroupId: '',
+
         assignedToUserId: '',
 
         comment: '',
+
+        ciId: '',
 
         requestedForUserId: session.user.id,
       }));
@@ -2455,33 +2702,63 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     </select>
                   </label>
 
-                  <label className="field">
-                    <span>Equipement concerne</span>
+                  {mode === 'INCIDENT' ? (
+                    <label className="field">
+                      <span>Equipement concerne</span>
 
-                    <select
-                      onChange={(event) =>
-                        mode === 'INCIDENT'
-                          ? handleIncidentFieldChange(
-                              'ciId',
-                              event.target.value,
-                            )
-                          : handleRequestFieldChange('ciId', event.target.value)
-                      }
-                      value={
-                        mode === 'INCIDENT'
-                          ? incidentDraft.ciId
-                          : requestDraft.ciId
-                      }
-                    >
-                      <option value="">Choisir un équipement</option>
+                      <select
+                        onChange={(event) =>
+                          handleIncidentFieldChange('ciId', event.target.value)
+                        }
+                        value={incidentDraft.ciId}
+                      >
+                        <option value="">Choisir un équipement</option>
 
-                      {catalog.cis.map((ci) => (
-                        <option key={ci.id} value={ci.id}>
-                          {ci.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                        {catalog.cis.map((ci) => (
+                          <option key={ci.id} value={ci.id}>
+                            {ci.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : (
+                    <label className="field">
+                      <span>Equipement demande</span>
+
+                      <div
+                        className={
+                          requestDraft.ciId
+                            ? 'incident-lookup-field has-clear'
+                            : 'incident-lookup-field'
+                        }
+                      >
+                        <input
+                          readOnly
+                          value={selectedRequestEquipment?.name ?? ''}
+                        />
+
+                        {requestDraft.ciId ? (
+                          <button
+                            aria-label="Retirer l'equipement demande"
+                            onClick={() => handleRequestFieldChange('ciId', '')}
+                            type="button"
+                          >
+                            <X size={16} />
+                          </button>
+                        ) : null}
+
+                        <button
+                          aria-label="Rechercher un equipement"
+                          onClick={() =>
+                            openIncidentLookup('REQUEST_EQUIPMENT')
+                          }
+                          type="button"
+                        >
+                          <Search size={18} />
+                        </button>
+                      </div>
+                    </label>
+                  )}
 
                   {mode === 'INCIDENT' ? (
                     <>
@@ -2539,7 +2816,51 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                       {showIncidentAdvancedFields ? (
                         <label className="field">
-                          <span>Assigne a</span>
+                          <span>Assigné groupe</span>
+
+                          <div
+                            className={
+                              incidentDraft.assignmentGroupId
+                                ? 'incident-lookup-field has-clear'
+                                : 'incident-lookup-field'
+                            }
+                          >
+                            <input
+                              readOnly
+                              value={selectedIncidentGroup?.name ?? ''}
+                            />
+
+                            {incidentDraft.assignmentGroupId ? (
+                              <button
+                                aria-label="Retirer le groupe assigne"
+                                onClick={() =>
+                                  handleIncidentFieldChange(
+                                    'assignmentGroupId',
+                                    '',
+                                  )
+                                }
+                                type="button"
+                              >
+                                <X size={16} />
+                              </button>
+                            ) : null}
+
+                            <button
+                              aria-label="Rechercher un groupe"
+                              onClick={() =>
+                                openIncidentLookup('ASSIGNMENT_GROUP')
+                              }
+                              type="button"
+                            >
+                              <Search size={18} />
+                            </button>
+                          </div>
+                        </label>
+                      ) : null}
+
+                      {showIncidentAdvancedFields ? (
+                        <label className="field">
+                          <span>Assigné technicien</span>
 
                           <div
                             className={
@@ -2669,7 +2990,51 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                       {showRequestAdvancedFields ? (
                         <label className="field">
-                          <span>Assigne a</span>
+                          <span>Assigné groupe</span>
+
+                          <div
+                            className={
+                              requestDraft.assignmentGroupId
+                                ? 'incident-lookup-field has-clear'
+                                : 'incident-lookup-field'
+                            }
+                          >
+                            <input
+                              readOnly
+                              value={selectedRequestGroup?.name ?? ''}
+                            />
+
+                            {requestDraft.assignmentGroupId ? (
+                              <button
+                                aria-label="Retirer le groupe assigne"
+                                onClick={() =>
+                                  handleRequestFieldChange(
+                                    'assignmentGroupId',
+                                    '',
+                                  )
+                                }
+                                type="button"
+                              >
+                                <X size={16} />
+                              </button>
+                            ) : null}
+
+                            <button
+                              aria-label="Rechercher un groupe"
+                              onClick={() =>
+                                openIncidentLookup('ASSIGNMENT_GROUP')
+                              }
+                              type="button"
+                            >
+                              <Search size={18} />
+                            </button>
+                          </div>
+                        </label>
+                      ) : null}
+
+                      {showRequestAdvancedFields ? (
+                        <label className="field">
+                          <span>Assigné technicien</span>
 
                           <div
                             className={
@@ -2853,9 +3218,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       <header className="incident-lookup-header">
                         <div>
                           <h3>
-                            {incidentLookupKind === 'ASSIGNEE'
-                              ? 'Selectionner un technicien'
-                              : 'Selectionner un demandeur'}
+                            {incidentLookupKind === 'ASSIGNMENT_GROUP'
+                              ? 'Selectionner un groupe'
+                              : incidentLookupKind === 'REQUEST_EQUIPMENT'
+                                ? 'Selectionner un equipement'
+                                : incidentLookupKind === 'ASSIGNEE'
+                                  ? 'Selectionner un technicien'
+                                  : 'Selectionner un demandeur'}
                           </h3>
                         </div>
 
@@ -2880,13 +3249,29 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           value={incidentLookupSearchField}
                         >
                           <option value="IDENTIFIER">Identifiant</option>
-                          <option value="FIRST_NAME">Prenom</option>
-                          <option value="LAST_NAME">Nom</option>
-                          {incidentLookupKind === 'ASSIGNEE' ? (
+                          {incidentLookupKind === 'ASSIGNMENT_GROUP' ? (
                             <>
-                              <option value="GROUP">Groupe</option>
+                              <option value="NAME">Nom</option>
+                              <option value="LEVEL">Niveau</option>
                             </>
-                          ) : null}
+                          ) : incidentLookupKind === 'REQUEST_EQUIPMENT' ? (
+                            <>
+                              <option value="NAME">Nom</option>
+                              <option value="TYPE">Type</option>
+                              <option value="STATUS">Statut</option>
+                              <option value="SERIAL_NUMBER">
+                                Numero de serie
+                              </option>
+                            </>
+                          ) : (
+                            <>
+                              <option value="FIRST_NAME">Prenom</option>
+                              <option value="LAST_NAME">Nom</option>
+                              {incidentLookupKind === 'ASSIGNEE' ? (
+                                <option value="GROUP">Groupe</option>
+                              ) : null}
+                            </>
+                          )}
                         </select>
                         <div className="incident-lookup-search-input">
                           <input
@@ -2903,21 +3288,132 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       <div className="incident-lookup-table-scroll">
                         <table className="incident-lookup-table">
                           <thead>
-                            <tr>
-                              <th>Identifiant</th>
-                              <th>Prenom</th>
-                              <th>Nom</th>
-                              <th>Mail</th>
-                              {incidentLookupKind === 'ASSIGNEE' ? (
-                                <>
-                                  <th>Groupe</th>
-                                </>
-                              ) : null}
-                            </tr>
+                            {incidentLookupKind === 'ASSIGNMENT_GROUP' ? (
+                              <tr>
+                                <th>Identifiant</th>
+                                <th>Nom</th>
+                                <th>Niveau</th>
+                                <th>Description</th>
+                              </tr>
+                            ) : incidentLookupKind === 'REQUEST_EQUIPMENT' ? (
+                              <tr>
+                                <th>Identifiant</th>
+                                <th>Nom</th>
+                                <th>Type</th>
+                                <th>Statut</th>
+                                <th>Numero de serie</th>
+                              </tr>
+                            ) : (
+                              <tr>
+                                <th>Identifiant</th>
+                                <th>Prenom</th>
+                                <th>Nom</th>
+                                <th>Mail</th>
+                                {incidentLookupKind === 'ASSIGNEE' ? (
+                                  <>
+                                    <th>Groupe</th>
+                                  </>
+                                ) : null}
+                              </tr>
+                            )}
                           </thead>
 
                           <tbody>
-                            {paginatedIncidentLookupUsers.length === 0 ? (
+                            {incidentLookupKind === 'ASSIGNMENT_GROUP' ? (
+                              paginatedIncidentLookupGroups.length === 0 ? (
+                                <tr>
+                                  <td colSpan={4}>
+                                    Aucun groupe ne correspond a la recherche.
+                                  </td>
+                                </tr>
+                              ) : (
+                                paginatedIncidentLookupGroups.map((group) => (
+                                  <tr
+                                    aria-selected={
+                                      group.id === selectedIncidentLookupGroupId
+                                    }
+                                    className={
+                                      group.id === selectedIncidentLookupGroupId
+                                        ? 'incident-lookup-row is-selected'
+                                        : 'incident-lookup-row'
+                                    }
+                                    key={group.id}
+                                    onClick={() =>
+                                      handleIncidentGroupLookupSelect(group)
+                                    }
+                                    tabIndex={0}
+                                    onKeyDown={(event) => {
+                                      if (
+                                        event.key === 'Enter' ||
+                                        event.key === ' '
+                                      ) {
+                                        event.preventDefault();
+                                        handleIncidentGroupLookupSelect(group);
+                                      }
+                                    }}
+                                  >
+                                    <td className="incident-lookup-identity">
+                                      {group.name}
+                                    </td>
+                                    <td>{group.name}</td>
+                                    <td>{group.level ?? '-'}</td>
+                                    <td>{group.description ?? '-'}</td>
+                                  </tr>
+                                ))
+                              )
+                            ) : incidentLookupKind === 'REQUEST_EQUIPMENT' ? (
+                              paginatedIncidentLookupEquipment.length === 0 ? (
+                                <tr>
+                                  <td colSpan={5}>
+                                    Aucun equipement ne correspond a la
+                                    recherche.
+                                  </td>
+                                </tr>
+                              ) : (
+                                paginatedIncidentLookupEquipment.map((ci) => {
+                                  const ciType = ciTypesById.get(ci.ciTypeId);
+
+                                  return (
+                                    <tr
+                                      aria-selected={
+                                        ci.id ===
+                                        selectedIncidentLookupEquipmentId
+                                      }
+                                      className={
+                                        ci.id ===
+                                        selectedIncidentLookupEquipmentId
+                                          ? 'incident-lookup-row is-selected'
+                                          : 'incident-lookup-row'
+                                      }
+                                      key={ci.id}
+                                      onClick={() =>
+                                        handleIncidentEquipmentLookupSelect(ci)
+                                      }
+                                      tabIndex={0}
+                                      onKeyDown={(event) => {
+                                        if (
+                                          event.key === 'Enter' ||
+                                          event.key === ' '
+                                        ) {
+                                          event.preventDefault();
+                                          handleIncidentEquipmentLookupSelect(
+                                            ci,
+                                          );
+                                        }
+                                      }}
+                                    >
+                                      <td className="incident-lookup-identity">
+                                        {ci.name}
+                                      </td>
+                                      <td>{ci.name}</td>
+                                      <td>{ciType?.name ?? 'Type inconnu'}</td>
+                                      <td>{ci.status}</td>
+                                      <td>{ci.serialNumber ?? '-'}</td>
+                                    </tr>
+                                  );
+                                })
+                              )
+                            ) : paginatedIncidentLookupUsers.length === 0 ? (
                               <tr>
                                 <td
                                   colSpan={
@@ -2982,8 +3478,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         <span>
                           Page {incidentLookupPage} sur{' '}
                           {incidentLookupTotalPages} -{' '}
-                          {filteredIncidentLookupUsers.length} resultat
-                          {filteredIncidentLookupUsers.length > 1 ? 's' : ''}
+                          {incidentLookupResultCount} resultat
+                          {incidentLookupResultCount > 1 ? 's' : ''}
                         </span>
 
                         <div>
@@ -4582,6 +5078,78 @@ function getIncidentLookupSearchValue(
       return user.lastName ?? '';
     case 'GROUP':
       return groupName;
+    default:
+      return '';
+  }
+}
+
+function filterIncidentLookupGroups(
+  groups: ReferentialGroup[],
+  searchText: string,
+  searchField: IncidentLookupSearchField,
+): ReferentialGroup[] {
+  const normalizedSearch = normalizeSearchText(searchText);
+
+  if (!normalizedSearch) {
+    return groups;
+  }
+
+  return groups.filter((group) =>
+    normalizeSearchText(
+      getIncidentLookupGroupSearchValue(group, searchField),
+    ).includes(normalizedSearch),
+  );
+}
+
+function getIncidentLookupGroupSearchValue(
+  group: ReferentialGroup,
+  searchField: IncidentLookupSearchField,
+): string {
+  switch (searchField) {
+    case 'IDENTIFIER':
+    case 'NAME':
+      return group.name;
+    case 'LEVEL':
+      return group.level ?? '';
+    default:
+      return '';
+  }
+}
+
+function filterIncidentLookupEquipment(
+  cis: ReferentialCi[],
+  searchText: string,
+  searchField: IncidentLookupSearchField,
+  ciTypesById: Map<string, { name: string }>,
+): ReferentialCi[] {
+  const normalizedSearch = normalizeSearchText(searchText);
+
+  if (!normalizedSearch) {
+    return cis;
+  }
+
+  return cis.filter((ci) =>
+    normalizeSearchText(
+      getIncidentLookupEquipmentSearchValue(ci, searchField, ciTypesById),
+    ).includes(normalizedSearch),
+  );
+}
+
+function getIncidentLookupEquipmentSearchValue(
+  ci: ReferentialCi,
+  searchField: IncidentLookupSearchField,
+  ciTypesById: Map<string, { name: string }>,
+): string {
+  switch (searchField) {
+    case 'IDENTIFIER':
+    case 'NAME':
+      return ci.name;
+    case 'TYPE':
+      return ciTypesById.get(ci.ciTypeId)?.name ?? '';
+    case 'STATUS':
+      return ci.status;
+    case 'SERIAL_NUMBER':
+      return ci.serialNumber ?? '';
     default:
       return '';
   }
