@@ -2698,7 +2698,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
             ) : (
               <div className="ticket-form-layout ticket-form-layout--single">
                 <form className="ticket-form-grid" onSubmit={handleSubmit}>
-                  <label className="field ticket-form-span-2">
+                  <label className="field ticket-form-span-2 ticket-create-order-title">
                     <span>Titre</span>
 
                     <input
@@ -2715,8 +2715,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       }
                       placeholder={
                         mode === 'INCIDENT'
-                          ? 'Ex. : VPN inaccessible pour l agence Nord'
-                          : 'Ex. : Demande d acces VPN pour l agence Nord'
+                          ? 'Ex. : Imprimante RH hors service'
+                          : 'Ex. : Installation d un nouveau logiciel'
                       }
                       value={
                         mode === 'INCIDENT'
@@ -2738,7 +2738,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     ) : null}
                   </label>
 
-                  <label className="field ticket-form-span-2">
+                  <label className="field ticket-form-span-2 ticket-create-order-description">
                     <span>Description</span>
 
                     <textarea
@@ -2784,10 +2784,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   </label>
 
                   {mode === 'INCIDENT' ? (
-                    <label className="field">
+                    <label className="field ticket-create-order-incident-category">
                       <span>Categorie</span>
 
                       <select
+                        className={
+                          incidentDraft.categoryId ? '' : 'select-placeholder'
+                        }
                         onChange={(event) =>
                           handleIncidentFieldChange(
                             'categoryId',
@@ -2797,7 +2800,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         }
                         value={incidentDraft.categoryId}
                       >
-                        <option value="">Choisir une catégorie</option>
+                        <option disabled hidden value="">
+                          Choisir une catégorie
+                        </option>
 
                         {incidentCategoryOptions.map((category) => (
                           <option key={category.id} value={category.id}>
@@ -2814,10 +2819,25 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   ) : null}
 
                   {showCreationChannelField ? (
-                    <label className="field">
+                    <label
+                      className={
+                        mode === 'INCIDENT'
+                          ? 'field ticket-create-order-incident-channel'
+                          : 'field ticket-create-order-request-channel'
+                      }
+                    >
                       <span>Canal</span>
 
                       <select
+                        className={
+                          (
+                            mode === 'INCIDENT'
+                              ? incidentDraft.channelId
+                              : requestDraft.channelId
+                          )
+                            ? ''
+                            : 'select-placeholder'
+                        }
                         onChange={(event) =>
                           mode === 'INCIDENT'
                             ? handleIncidentFieldChange(
@@ -2835,7 +2855,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             : requestDraft.channelId
                         }
                       >
-                        <option value="">Choisir un canal</option>
+                        <option disabled hidden value="">
+                          Choisir un canal
+                        </option>
 
                         {catalog.channels.map((channel) => (
                           <option key={channel.id} value={channel.id}>
@@ -2846,8 +2868,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     </label>
                   ) : null}
 
-                  {mode === 'INCIDENT' ? (
-                    <label className="field">
+                  {mode === 'INCIDENT' && session.user.role !== 'DEMANDEUR' ? (
+                    <label className="field ticket-create-order-incident-equipment">
                       <span>Equipement concerne</span>
 
                       <div
@@ -2858,6 +2880,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         }
                       >
                         <input
+                          className={
+                            incidentDraft.ciId ? '' : 'lookup-placeholder'
+                          }
+                          placeholder="Choisir l'equipement"
                           readOnly
                           value={selectedIncidentEquipment?.name ?? ''}
                         />
@@ -2885,8 +2911,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         </button>
                       </div>
                     </label>
-                  ) : (
-                    <label className="field">
+                  ) : null}
+
+                  {mode === 'REQUEST' ? (
+                    <label className="field ticket-create-order-request-equipment">
                       <span>Equipement demande</span>
 
                       <div
@@ -2897,6 +2925,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         }
                       >
                         <input
+                          className={
+                            requestDraft.ciId ? '' : 'lookup-placeholder'
+                          }
+                          placeholder="Choisir l'équipement"
                           readOnly
                           value={selectedRequestEquipment?.name ?? ''}
                         />
@@ -2922,14 +2954,17 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         </button>
                       </div>
                     </label>
-                  )}
+                  ) : null}
 
                   {mode === 'INCIDENT' ? (
                     <>
-                      <label className="field">
+                      <label className="field ticket-create-order-incident-impact">
                         <span>Impact</span>
 
                         <select
+                          className={
+                            incidentDraft.impact ? '' : 'select-placeholder'
+                          }
                           onChange={(event) =>
                             handleIncidentFieldChange(
                               'impact',
@@ -2938,7 +2973,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           }
                           value={incidentDraft.impact}
                         >
-                          <option value="">Choisir l'impact</option>
+                          <option disabled hidden value="">
+                            Choisir l'impact
+                          </option>
                           {INCIDENT_SEVERITIES.map((severity) => (
                             <option key={severity} value={severity}>
                               {translateIncidentSeverity(severity)}
@@ -2952,10 +2989,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         ) : null}
                       </label>
 
-                      <label className="field">
+                      <label className="field ticket-create-order-incident-urgency">
                         <span>Urgence</span>
 
                         <select
+                          className={
+                            incidentDraft.urgency ? '' : 'select-placeholder'
+                          }
                           onChange={(event) =>
                             handleIncidentFieldChange(
                               'urgency',
@@ -2964,7 +3004,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           }
                           value={incidentDraft.urgency}
                         >
-                          <option value="">Choisir l'urgence</option>
+                          <option disabled hidden value="">
+                            Choisir l'urgence
+                          </option>
                           {INCIDENT_SEVERITIES.map((severity) => (
                             <option key={severity} value={severity}>
                               {translateIncidentSeverity(severity)}
@@ -2979,7 +3021,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       </label>
 
                       {showIncidentAdvancedFields ? (
-                        <label className="field">
+                        <label className="field ticket-create-order-incident-group">
                           <span>Assigné groupe</span>
 
                           <div
@@ -2990,6 +3032,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             }
                           >
                             <input
+                              className={
+                                incidentDraft.assignmentGroupId
+                                  ? ''
+                                  : 'lookup-placeholder'
+                              }
+                              placeholder="Choisir le groupe"
                               readOnly
                               value={selectedIncidentGroup?.name ?? ''}
                             />
@@ -3023,7 +3071,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       ) : null}
 
                       {showIncidentAdvancedFields ? (
-                        <label className="field">
+                        <label className="field ticket-create-order-incident-technician">
                           <span>Assigné technicien</span>
 
                           <div
@@ -3034,6 +3082,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             }
                           >
                             <input
+                              className={
+                                incidentDraft.assignedToUserId
+                                  ? ''
+                                  : 'lookup-placeholder'
+                              }
+                              placeholder="Choisir le technicien"
                               readOnly
                               value={
                                 selectedIncidentTechnician
@@ -3072,7 +3126,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       ) : null}
 
                       {showCreationRequesterField ? (
-                        <label className="field">
+                        <label className="field ticket-create-order-incident-requester">
                           <span>Demandeur</span>
 
                           <div className="incident-lookup-field">
@@ -3106,7 +3160,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       ) : null}
 
                       {showIncidentAdvancedFields ? (
-                        <label className="field ticket-form-span-2">
+                        <label className="field ticket-form-span-2 ticket-create-order-incident-comment">
                           <span>Commentaire</span>
 
                           <textarea
@@ -3125,10 +3179,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     </>
                   ) : (
                     <>
-                      <label className="field">
+                      <label className="field ticket-create-order-request-priority">
                         <span>Priorite</span>
 
                         <select
+                          className={
+                            requestDraft.priorityId ? '' : 'select-placeholder'
+                          }
                           onChange={(event) =>
                             handleRequestFieldChange(
                               'priorityId',
@@ -3137,7 +3194,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           }
                           value={requestDraft.priorityId}
                         >
-                          <option value="">Choisir une priorité</option>
+                          <option disabled hidden value="">
+                            Choisir la priorité
+                          </option>
 
                           {catalog.priorities.map((priority) => (
                             <option key={priority.id} value={priority.id}>
@@ -3153,7 +3212,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       </label>
 
                       {showRequestAdvancedFields ? (
-                        <label className="field">
+                        <label className="field ticket-create-order-request-group">
                           <span>Assigné groupe</span>
 
                           <div
@@ -3164,6 +3223,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             }
                           >
                             <input
+                              className={
+                                requestDraft.assignmentGroupId
+                                  ? ''
+                                  : 'lookup-placeholder'
+                              }
+                              placeholder="Choisir le groupe"
                               readOnly
                               value={selectedRequestGroup?.name ?? ''}
                             />
@@ -3197,7 +3262,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       ) : null}
 
                       {showRequestAdvancedFields ? (
-                        <label className="field">
+                        <label className="field ticket-create-order-request-technician">
                           <span>Assigné technicien</span>
 
                           <div
@@ -3208,6 +3273,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             }
                           >
                             <input
+                              className={
+                                requestDraft.assignedToUserId
+                                  ? ''
+                                  : 'lookup-placeholder'
+                              }
+                              placeholder="Choisir le technicien"
                               readOnly
                               value={
                                 selectedRequestTechnician
@@ -3246,7 +3317,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       ) : null}
 
                       {showCreationRequesterField ? (
-                        <label className="field">
+                        <label className="field ticket-create-order-request-requester">
                           <span>Demandeur</span>
 
                           <div className="incident-lookup-field">
@@ -3274,7 +3345,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       ) : null}
 
                       {showRequestAdvancedFields ? (
-                        <label className="field ticket-form-span-2">
+                        <label className="field ticket-form-span-2 ticket-create-order-request-comment">
                           <span>Commentaire</span>
 
                           <textarea
@@ -3293,7 +3364,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     </>
                   )}
 
-                  <div className="field ticket-form-span-2">
+                  <div className="field ticket-form-span-2 ticket-create-order-attachments">
                     <span>Pieces jointes</span>
 
                     <div className="ticket-upload-zone">
@@ -3349,7 +3420,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     </div>
                   </div>
 
-                  <div className="ticket-form-actions ticket-form-span-2">
+                  <div className="ticket-form-actions ticket-form-span-2 ticket-create-order-actions">
                     <button className="primary-button" disabled={isSubmitting}>
                       {isSubmitting
                         ? 'Creation en cours...'
@@ -3366,7 +3437,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   </div>
 
                   {submitErrorMessage ? (
-                    <p className="ticket-form-error ticket-form-span-2">
+                    <p className="ticket-form-error ticket-form-span-2 ticket-create-order-error">
                       {submitErrorMessage}
                     </p>
                   ) : null}

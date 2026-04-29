@@ -59,6 +59,14 @@ select {
   color: #15315f;
 }
 
+select.select-placeholder {
+  color: var(--text-muted);
+}
+
+select.select-placeholder option {
+  color: #15315f;
+}
+
 textarea {
   resize: vertical;
 }
@@ -1280,6 +1288,78 @@ a {
   grid-column: span 2;
 }
 
+.ticket-create-order-title {
+  order: 10;
+}
+
+.ticket-create-order-description {
+  order: 20;
+}
+
+.ticket-create-order-request-equipment {
+  order: 80;
+}
+
+.ticket-create-order-incident-equipment {
+  order: 80;
+}
+
+.ticket-create-order-incident-category,
+.ticket-create-order-request-priority {
+  order: 50;
+}
+
+.ticket-create-order-incident-urgency {
+  order: 60;
+}
+
+.ticket-create-order-incident-impact {
+  order: 70;
+}
+
+.ticket-create-order-incident-technician,
+.ticket-create-order-request-technician {
+  order: 100;
+}
+
+.ticket-create-order-incident-group,
+.ticket-create-order-request-group {
+  order: 101;
+}
+
+.ticket-create-order-request-channel {
+  order: 81;
+}
+
+.ticket-create-order-request-comment {
+  order: 110;
+}
+
+.ticket-create-order-incident-requester,
+.ticket-create-order-request-requester {
+  order: 30;
+}
+
+.ticket-create-order-incident-channel {
+  order: 81;
+}
+
+.ticket-create-order-incident-comment {
+  order: 110;
+}
+
+.ticket-create-order-attachments {
+  order: 200;
+}
+
+.ticket-create-order-actions {
+  order: 210;
+}
+
+.ticket-create-order-error {
+  order: 220;
+}
+
 .ticket-preview-card {
   display: grid;
   gap: 14px;
@@ -1359,6 +1439,10 @@ a {
 
 .incident-lookup-field input:not(:placeholder-shown) {
   color: #2563eb;
+}
+
+.incident-lookup-field input.lookup-placeholder {
+  color: var(--text-muted);
 }
 
 .incident-lookup-field button {
