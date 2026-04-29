@@ -93,6 +93,7 @@ type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'PENDING' | 'RESOLVED' | 'CLOSED';
 type IncidentLookupKind =
   | 'ASSIGNEE'
   | 'ASSIGNMENT_GROUP'
+  | 'INCIDENT_EQUIPMENT'
   | 'REQUEST_EQUIPMENT'
   | 'REQUESTER';
 
@@ -269,6 +270,8 @@ const INITIAL_REQUEST_DRAFT: RequestDraftState = {
 
   title: '',
 };
+
+const REQUEST_DEFAULT_CATEGORY_NAME = 'Demande';
 
 const INITIAL_SEARCH_FILTERS: TicketSearchFiltersState = {
   categoryId: '',
@@ -502,6 +505,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     mode === 'INCIDENT' && canManageTicketActions(session.user.role);
   const showRequestAdvancedFields =
     mode === 'REQUEST' && canManageTicketActions(session.user.role);
+  const showCreationChannelField = canManageTicketActions(session.user.role);
 
   const canDeleteTickets = session.user.role === 'ADMIN';
   const canEditTicket = session.user.role === 'ADMIN';
@@ -1055,6 +1059,26 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     [catalog.categories],
   );
 
+  const requestDefaultCategory = useMemo(
+    () =>
+      catalog.categories.find(
+        (category) =>
+          normalizeSearchText(category.name) ===
+          normalizeSearchText(REQUEST_DEFAULT_CATEGORY_NAME),
+      ),
+    [catalog.categories],
+  );
+
+  const incidentCategoryOptions = useMemo(
+    () =>
+      catalog.categories.filter(
+        (category) =>
+          normalizeSearchText(category.name) !==
+          normalizeSearchText(REQUEST_DEFAULT_CATEGORY_NAME),
+      ),
+    [catalog.categories],
+  );
+
   const prioritiesById = useMemo(
     () =>
       new Map(catalog.priorities.map((priority) => [priority.id, priority])),
@@ -1082,6 +1106,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const channelsById = useMemo(
     () => new Map(catalog.channels.map((channel) => [channel.id, channel])),
 
+    [catalog.channels],
+  );
+
+  const portalChannel = useMemo(
+    () =>
+      catalog.channels.find((channel) => {
+        const normalizedName = normalizeSearchText(channel.name);
+
+        return normalizedName === 'portail' || normalizedName === 'portal';
+      }),
     [catalog.channels],
   );
 
@@ -1210,20 +1244,28 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       ),
     [incidentLookupGroups, incidentLookupSearch, incidentLookupSearchField],
   );
-  const filteredIncidentLookupEquipment = useMemo(
-    () =>
-      filterIncidentLookupEquipment(
-        catalog.cis,
-        incidentLookupSearch,
-        incidentLookupSearchField,
-        ciTypesById,
-      ),
-    [catalog.cis, ciTypesById, incidentLookupSearch, incidentLookupSearchField],
-  );
+  const filteredIncidentLookupEquipment = useMemo(() => {
+    const equipmentSource =
+      incidentLookupKind === 'INCIDENT_EQUIPMENT' ? [] : catalog.cis;
+
+    return filterIncidentLookupEquipment(
+      equipmentSource,
+      incidentLookupSearch,
+      incidentLookupSearchField,
+      ciTypesById,
+    );
+  }, [
+    catalog.cis,
+    ciTypesById,
+    incidentLookupKind,
+    incidentLookupSearch,
+    incidentLookupSearchField,
+  ]);
   const incidentLookupResultCount =
     incidentLookupKind === 'ASSIGNMENT_GROUP'
       ? filteredIncidentLookupGroups.length
-      : incidentLookupKind === 'REQUEST_EQUIPMENT'
+      : incidentLookupKind === 'INCIDENT_EQUIPMENT' ||
+          incidentLookupKind === 'REQUEST_EQUIPMENT'
         ? filteredIncidentLookupEquipment.length
         : filteredIncidentLookupUsers.length;
   const incidentLookupTotalPages = Math.max(
@@ -1250,6 +1292,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const selectedIncidentRequester = usersById.get(
     incidentDraft.requestedForUserId,
   );
+  const selectedIncidentEquipment = cisById.get(incidentDraft.ciId);
   const selectedRequestTechnician = usersById.get(
     requestDraft.assignedToUserId,
   );
@@ -1275,7 +1318,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         : requestDraft.assignmentGroupId
       : '';
   const selectedIncidentLookupEquipmentId =
-    incidentLookupKind === 'REQUEST_EQUIPMENT' ? requestDraft.ciId : '';
+    incidentLookupKind === 'INCIDENT_EQUIPMENT'
+      ? incidentDraft.ciId
+      : incidentLookupKind === 'REQUEST_EQUIPMENT'
+        ? requestDraft.ciId
+        : '';
 
   useEffect(() => {
     if (incidentLookupPage > incidentLookupTotalPages) {
@@ -1396,13 +1443,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   }
 
   function openIncidentLookup(kind: IncidentLookupKind): void {
-    if (kind === 'REQUEST_EQUIPMENT') {
+    if (kind === 'INCIDENT_EQUIPMENT' || kind === 'REQUEST_EQUIPMENT') {
+      const selectedEquipmentId =
+        kind === 'INCIDENT_EQUIPMENT' ? incidentDraft.ciId : requestDraft.ciId;
+      const equipmentSource = kind === 'INCIDENT_EQUIPMENT' ? [] : catalog.cis;
       const selectedEquipmentIndex = filterIncidentLookupEquipment(
-        catalog.cis,
+        equipmentSource,
         '',
         'IDENTIFIER',
         ciTypesById,
-      ).findIndex((ci) => ci.id === requestDraft.ciId);
+      ).findIndex((ci) => ci.id === selectedEquipmentId);
 
       setIncidentLookupKind(kind);
       setIncidentLookupSearch('');
@@ -1493,7 +1543,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   }
 
   function handleIncidentEquipmentLookupSelect(ci: ReferentialCi): void {
-    handleRequestFieldChange('ciId', ci.id);
+    if (incidentLookupKind === 'INCIDENT_EQUIPMENT') {
+      handleIncidentFieldChange('ciId', ci.id);
+    } else {
+      handleRequestFieldChange('ciId', ci.id);
+    }
+
     closeIncidentLookup();
   }
 
@@ -1578,10 +1633,18 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       setIsSubmitting(true);
 
       try {
+        const incidentChannelId = showCreationChannelField
+          ? normalizeOptionalId(incidentDraft.channelId)
+          : (portalChannel?.id ?? null);
+
+        if (!showCreationChannelField && !incidentChannelId) {
+          throw new Error("Le canal 'Portail' est manquant dans Supabase.");
+        }
+
         const result = await createIncident(session.accessToken, {
           categoryId: incidentDraft.categoryId.trim(),
 
-          channelId: normalizeOptionalId(incidentDraft.channelId),
+          channelId: incidentChannelId,
 
           ciId: normalizeOptionalId(incidentDraft.ciId),
 
@@ -1739,10 +1802,27 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setIsSubmitting(true);
 
     try {
-      const result = await createRequest(session.accessToken, {
-        categoryId: requestDraft.categoryId.trim(),
+      const requestCategoryId =
+        requestDraft.categoryId.trim() || requestDefaultCategory?.id || '';
 
-        channelId: normalizeOptionalId(requestDraft.channelId),
+      if (!requestCategoryId) {
+        throw new Error(
+          "La categorie technique 'Demande' est manquante dans Supabase.",
+        );
+      }
+
+      const requestChannelId = showCreationChannelField
+        ? normalizeOptionalId(requestDraft.channelId)
+        : (portalChannel?.id ?? null);
+
+      if (!showCreationChannelField && !requestChannelId) {
+        throw new Error("Le canal 'Portail' est manquant dans Supabase.");
+      }
+
+      const result = await createRequest(session.accessToken, {
+        categoryId: requestCategoryId,
+
+        channelId: requestChannelId,
 
         ciId: normalizeOptionalId(requestDraft.ciId),
 
@@ -2626,100 +2706,107 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     ) : null}
                   </label>
 
-                  <label className="field">
-                    <span>Categorie</span>
+                  {mode === 'INCIDENT' ? (
+                    <label className="field">
+                      <span>Categorie</span>
 
-                    <select
-                      onChange={(event) =>
-                        mode === 'INCIDENT'
-                          ? handleIncidentFieldChange(
-                              'categoryId',
+                      <select
+                        onChange={(event) =>
+                          handleIncidentFieldChange(
+                            'categoryId',
 
-                              event.target.value,
-                            )
-                          : handleRequestFieldChange(
-                              'categoryId',
-                              event.target.value,
-                            )
-                      }
-                      value={
-                        mode === 'INCIDENT'
-                          ? incidentDraft.categoryId
-                          : requestDraft.categoryId
-                      }
-                    >
-                      <option value="">Choisir une catégorie</option>
+                            event.target.value,
+                          )
+                        }
+                        value={incidentDraft.categoryId}
+                      >
+                        <option value="">Choisir une catégorie</option>
 
-                      {catalog.categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                    {mode === 'INCIDENT' &&
-                    incidentValidationErrors.categoryId ? (
-                      <small className="field-error">
-                        {incidentValidationErrors.categoryId}
-                      </small>
-                    ) : null}
+                        {incidentCategoryOptions.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                      {incidentValidationErrors.categoryId ? (
+                        <small className="field-error">
+                          {incidentValidationErrors.categoryId}
+                        </small>
+                      ) : null}
+                    </label>
+                  ) : null}
 
-                    {mode === 'REQUEST' &&
-                    requestValidationErrors.categoryId ? (
-                      <small className="field-error">
-                        {requestValidationErrors.categoryId}
-                      </small>
-                    ) : null}
-                  </label>
+                  {showCreationChannelField ? (
+                    <label className="field">
+                      <span>Canal</span>
 
-                  <label className="field">
-                    <span>Canal</span>
+                      <select
+                        onChange={(event) =>
+                          mode === 'INCIDENT'
+                            ? handleIncidentFieldChange(
+                                'channelId',
+                                event.target.value,
+                              )
+                            : handleRequestFieldChange(
+                                'channelId',
+                                event.target.value,
+                              )
+                        }
+                        value={
+                          mode === 'INCIDENT'
+                            ? incidentDraft.channelId
+                            : requestDraft.channelId
+                        }
+                      >
+                        <option value="">Choisir un canal</option>
 
-                    <select
-                      onChange={(event) =>
-                        mode === 'INCIDENT'
-                          ? handleIncidentFieldChange(
-                              'channelId',
-                              event.target.value,
-                            )
-                          : handleRequestFieldChange(
-                              'channelId',
-                              event.target.value,
-                            )
-                      }
-                      value={
-                        mode === 'INCIDENT'
-                          ? incidentDraft.channelId
-                          : requestDraft.channelId
-                      }
-                    >
-                      <option value="">Choisir un canal</option>
-
-                      {catalog.channels.map((channel) => (
-                        <option key={channel.id} value={channel.id}>
-                          {translateChannel(channel.name)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                        {catalog.channels.map((channel) => (
+                          <option key={channel.id} value={channel.id}>
+                            {translateChannel(channel.name)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
 
                   {mode === 'INCIDENT' ? (
                     <label className="field">
                       <span>Equipement concerne</span>
 
-                      <select
-                        onChange={(event) =>
-                          handleIncidentFieldChange('ciId', event.target.value)
+                      <div
+                        className={
+                          incidentDraft.ciId
+                            ? 'incident-lookup-field has-clear'
+                            : 'incident-lookup-field'
                         }
-                        value={incidentDraft.ciId}
                       >
-                        <option value="">Choisir un équipement</option>
+                        <input
+                          readOnly
+                          value={selectedIncidentEquipment?.name ?? ''}
+                        />
 
-                        {catalog.cis.map((ci) => (
-                          <option key={ci.id} value={ci.id}>
-                            {ci.name}
-                          </option>
-                        ))}
-                      </select>
+                        {incidentDraft.ciId ? (
+                          <button
+                            aria-label="Retirer l'equipement concerne"
+                            onClick={() =>
+                              handleIncidentFieldChange('ciId', '')
+                            }
+                            type="button"
+                          >
+                            <X size={16} />
+                          </button>
+                        ) : null}
+
+                        <button
+                          aria-label="Rechercher un equipement"
+                          onClick={() =>
+                            openIncidentLookup('INCIDENT_EQUIPMENT')
+                          }
+                          type="button"
+                        >
+                          <Search size={18} />
+                        </button>
+                      </div>
                     </label>
                   ) : (
                     <label className="field">
@@ -3220,7 +3307,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           <h3>
                             {incidentLookupKind === 'ASSIGNMENT_GROUP'
                               ? 'Selectionner un groupe'
-                              : incidentLookupKind === 'REQUEST_EQUIPMENT'
+                              : incidentLookupKind === 'INCIDENT_EQUIPMENT' ||
+                                  incidentLookupKind === 'REQUEST_EQUIPMENT'
                                 ? 'Selectionner un equipement'
                                 : incidentLookupKind === 'ASSIGNEE'
                                   ? 'Selectionner un technicien'
@@ -3254,7 +3342,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               <option value="NAME">Nom</option>
                               <option value="LEVEL">Niveau</option>
                             </>
-                          ) : incidentLookupKind === 'REQUEST_EQUIPMENT' ? (
+                          ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ||
+                            incidentLookupKind === 'REQUEST_EQUIPMENT' ? (
                             <>
                               <option value="NAME">Nom</option>
                               <option value="TYPE">Type</option>
@@ -3295,7 +3384,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 <th>Niveau</th>
                                 <th>Description</th>
                               </tr>
-                            ) : incidentLookupKind === 'REQUEST_EQUIPMENT' ? (
+                            ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ||
+                              incidentLookupKind === 'REQUEST_EQUIPMENT' ? (
                               <tr>
                                 <th>Identifiant</th>
                                 <th>Nom</th>
@@ -3361,12 +3451,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   </tr>
                                 ))
                               )
-                            ) : incidentLookupKind === 'REQUEST_EQUIPMENT' ? (
+                            ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ||
+                              incidentLookupKind === 'REQUEST_EQUIPMENT' ? (
                               paginatedIncidentLookupEquipment.length === 0 ? (
                                 <tr>
                                   <td colSpan={5}>
-                                    Aucun equipement ne correspond a la
-                                    recherche.
+                                    {incidentLookupKind === 'INCIDENT_EQUIPMENT'
+                                      ? 'Aucun equipement disponible dans le parc informatique pour le moment.'
+                                      : 'Aucun equipement ne correspond a la recherche.'}
                                   </td>
                                 </tr>
                               ) : (
@@ -4839,10 +4931,6 @@ function validateRequestDraft(
 
   if (!draft.description.trim()) {
     errors.description = 'La description est obligatoire.';
-  }
-
-  if (!draft.categoryId.trim()) {
-    errors.categoryId = 'La categorie est obligatoire.';
   }
 
   if (!draft.priorityId.trim()) {
