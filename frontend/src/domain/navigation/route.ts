@@ -49,7 +49,7 @@ export const ROUTES: RouteDefinition[] = [
   {
     description: 'Liste des tickets crees par l utilisateur connecte.',
     path: '/agent/my-tickets',
-    title: 'Mes tickets',
+    title: 'Mes tickets crÃ©Ã©s',
   },
   {
     description: 'Liste des tickets sans technicien assigne.',
