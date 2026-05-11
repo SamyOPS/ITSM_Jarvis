@@ -40,6 +40,8 @@ interface AppShellProps {
   session: AuthSessionSnapshot | null;
 }
 
+type SidebarMenuId = 'create-ticket' | 'ticket-list';
+
 const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/': LayoutDashboard,
   '/admin': Shield,
@@ -125,9 +127,10 @@ export function AppShell({
   session,
 }: AppShellProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isTicketCreateMenuOpen, setIsTicketCreateMenuOpen] = useState(false);
+  const [openSidebarMenu, setOpenSidebarMenu] = useState<SidebarMenuId | null>(
+    null,
+  );
   const [isTicketMenuOpen, setIsTicketMenuOpen] = useState(false);
-  const [isTicketListMenuOpen, setIsTicketListMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const ticketMenuRef = useRef<HTMLDivElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
@@ -141,6 +144,8 @@ export function AppShell({
   const isHomeRoute = pathname === homeRoute;
   const userInitials = useMemo(() => getUserInitials(session), [session]);
   const userDisplayName = useMemo(() => getUserDisplayName(session), [session]);
+  const isTicketCreateMenuOpen = openSidebarMenu === 'create-ticket';
+  const isTicketListMenuOpen = openSidebarMenu === 'ticket-list';
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent): void {
@@ -173,8 +178,7 @@ export function AppShell({
   }
 
   function handleSidebarToggle(): void {
-    setIsTicketCreateMenuOpen(false);
-    setIsTicketListMenuOpen(false);
+    setOpenSidebarMenu(null);
     setIsSidebarCollapsed((current) => !current);
   }
 
@@ -287,7 +291,9 @@ export function AppShell({
                   return;
                 }
 
-                setIsTicketCreateMenuOpen((current) => !current);
+                setOpenSidebarMenu((current) =>
+                  current === 'create-ticket' ? null : 'create-ticket',
+                );
               }}
               title="Créer un ticket"
               type="button"
@@ -331,18 +337,6 @@ export function AppShell({
                   <FileText size={15} strokeWidth={2} />
                   Créer une demande
                 </button>
-                <button
-                  className={
-                    pathname === '/agent/my-tickets'
-                      ? 'workspace-nav-dropdown-item is-active'
-                      : 'workspace-nav-dropdown-item'
-                  }
-                  onClick={() => navigateTo('/agent/my-tickets')}
-                  type="button"
-                >
-                  <Ticket size={15} strokeWidth={2} />
-                  Mes tickets crÃ©Ã©s
-                </button>
               </div>
             ) : null}
 
@@ -373,21 +367,29 @@ export function AppShell({
                   <FileText size={15} strokeWidth={2} />
                   Créer une demande
                 </button>
-                <button
-                  className={
-                    pathname === '/agent/my-tickets'
-                      ? 'workspace-nav-dropdown-item is-active'
-                      : 'workspace-nav-dropdown-item'
-                  }
-                  onClick={() => navigateTo('/agent/my-tickets')}
-                  type="button"
-                >
-                  <Ticket size={15} strokeWidth={2} />
-                  Mes tickets crÃ©Ã©s
-                </button>
               </div>
             </div>
           </div>
+
+          {session?.user.role === 'DEMANDEUR' ? (
+            <button
+              className={
+                pathname === '/agent/my-tickets'
+                  ? 'workspace-nav-link is-active'
+                  : 'workspace-nav-link'
+              }
+              onClick={() => navigateTo('/agent/my-tickets')}
+              title="Mes tickets créés"
+              type="button"
+            >
+              <span className="workspace-nav-link-icon" aria-hidden="true">
+                <Ticket size={18} strokeWidth={2} />
+              </span>
+              <strong className="workspace-nav-link-label">
+                Mes tickets créés
+              </strong>
+            </button>
+          ) : null}
 
           {visibleRoutes.map((route) => {
             if (route.path === '/reports') {
@@ -395,6 +397,13 @@ export function AppShell({
             }
 
             if (route.path === '/agent/my-tickets') {
+              return null;
+            }
+
+            if (
+              route.path === '/agent/tickets' &&
+              session?.user.role === 'DEMANDEUR'
+            ) {
               return null;
             }
 
@@ -434,7 +443,9 @@ export function AppShell({
                         return;
                       }
 
-                      setIsTicketListMenuOpen((current) => !current);
+                      setOpenSidebarMenu((current) =>
+                        current === 'ticket-list' ? null : 'ticket-list',
+                      );
                     }}
                     title={routeTitle}
                     type="button"
@@ -493,6 +504,18 @@ export function AppShell({
                         <User size={15} strokeWidth={2} />
                         Assignés à moi
                       </button>
+                      <button
+                        className={
+                          pathname === '/agent/my-tickets'
+                            ? 'workspace-nav-dropdown-item is-active'
+                            : 'workspace-nav-dropdown-item'
+                        }
+                        onClick={() => navigateTo('/agent/my-tickets')}
+                        type="button"
+                      >
+                        <Ticket size={15} strokeWidth={2} />
+                        Mes tickets créés
+                      </button>
                     </div>
                   ) : null}
 
@@ -536,6 +559,18 @@ export function AppShell({
                       >
                         <User size={15} strokeWidth={2} />
                         Assignés à moi
+                      </button>
+                      <button
+                        className={
+                          pathname === '/agent/my-tickets'
+                            ? 'workspace-nav-dropdown-item is-active'
+                            : 'workspace-nav-dropdown-item'
+                        }
+                        onClick={() => navigateTo('/agent/my-tickets')}
+                        type="button"
+                      >
+                        <Ticket size={15} strokeWidth={2} />
+                        Mes tickets créés
                       </button>
                     </div>
                   </div>
