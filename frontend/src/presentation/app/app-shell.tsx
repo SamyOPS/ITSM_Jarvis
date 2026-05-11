@@ -331,6 +331,18 @@ export function AppShell({
                   <FileText size={15} strokeWidth={2} />
                   Créer une demande
                 </button>
+                <button
+                  className={
+                    pathname === '/agent/my-tickets'
+                      ? 'workspace-nav-dropdown-item is-active'
+                      : 'workspace-nav-dropdown-item'
+                  }
+                  onClick={() => navigateTo('/agent/my-tickets')}
+                  type="button"
+                >
+                  <Ticket size={15} strokeWidth={2} />
+                  Mes tickets crÃ©Ã©s
+                </button>
               </div>
             ) : null}
 
@@ -361,12 +373,28 @@ export function AppShell({
                   <FileText size={15} strokeWidth={2} />
                   Créer une demande
                 </button>
+                <button
+                  className={
+                    pathname === '/agent/my-tickets'
+                      ? 'workspace-nav-dropdown-item is-active'
+                      : 'workspace-nav-dropdown-item'
+                  }
+                  onClick={() => navigateTo('/agent/my-tickets')}
+                  type="button"
+                >
+                  <Ticket size={15} strokeWidth={2} />
+                  Mes tickets crÃ©Ã©s
+                </button>
               </div>
             </div>
           </div>
 
           {visibleRoutes.map((route) => {
             if (route.path === '/reports') {
+              return null;
+            }
+
+            if (route.path === '/agent/my-tickets') {
               return null;
             }
 
