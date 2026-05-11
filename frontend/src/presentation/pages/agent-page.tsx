@@ -3980,7 +3980,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               <th>Demandeur</th>
                               <th>Assigné à</th>
                               <th>Catégorie</th>
-                              <th>Temps de résolution</th>
+                              <th>TTR</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -4038,12 +4038,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 <td>
                                   <div className="ticket-resolution-cell">
                                     <span className="ticket-resolution-value">
-                                      {prioritiesById.get(ticket.priorityId)
-                                        ?.resolutionHours !== null &&
-                                      prioritiesById.get(ticket.priorityId)
-                                        ?.resolutionHours !== undefined
-                                        ? `${prioritiesById.get(ticket.priorityId)!.resolutionHours} h`
-                                        : '?'}
+                                      {formatTicketResolutionDueAt(
+                                        ticket,
+                                        prioritiesById,
+                                      )}
                                     </span>
                                     {renderOverdueMarker(ticket)}
                                   </div>
@@ -5041,6 +5039,31 @@ function formatTicketDate(value: string): string {
 
     year: 'numeric',
   });
+}
+
+function formatTicketResolutionDueAt(
+  ticket: TicketSummarySnapshot,
+  prioritiesById: Map<string, { resolutionHours: number | null }>,
+): string {
+  const resolutionHours = prioritiesById.get(
+    ticket.priorityId,
+  )?.resolutionHours;
+
+  if (resolutionHours === null || resolutionHours === undefined) {
+    return '?';
+  }
+
+  const createdAt = new Date(ticket.createdAt);
+
+  if (Number.isNaN(createdAt.getTime())) {
+    return '?';
+  }
+
+  const resolutionDueAt = new Date(
+    createdAt.getTime() + resolutionHours * 60 * 60 * 1000,
+  );
+
+  return formatTicketDate(resolutionDueAt.toISOString());
 }
 
 function formatFileSize(sizeBytes: number): string {

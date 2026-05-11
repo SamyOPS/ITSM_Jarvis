@@ -1,4 +1,4 @@
-export type RoutePath =
+﻿export type RoutePath =
   | '/'
   | '/admin'
   | '/admin/users'
@@ -49,7 +49,7 @@ export const ROUTES: RouteDefinition[] = [
   {
     description: 'Liste des tickets crees par l utilisateur connecte.',
     path: '/agent/my-tickets',
-    title: 'Mes tickets crÃ©Ã©s',
+    title: 'Mes tickets créés',
   },
   {
     description: 'Liste des tickets sans technicien assigne.',
