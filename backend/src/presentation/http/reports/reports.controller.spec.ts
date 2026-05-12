@@ -12,6 +12,7 @@ describe('ReportsController', () => {
       agents: [],
       filters: {
         assignedToUserId: null,
+        assignmentGroupId: null,
         categoryId: null,
         from: '2026-04-01T00:00:00.000Z',
         priorityId: null,
@@ -26,6 +27,7 @@ describe('ReportsController', () => {
     await expect(
       controller.getAgentPerformance(
         {
+          assignmentGroupId: 'group-1',
           from: '2026-04-01',
           to: '2026-04-10',
         },
@@ -34,6 +36,7 @@ describe('ReportsController', () => {
     ).resolves.toEqual(agentPerformance);
 
     expect(execute).toHaveBeenCalledWith({
+      assignmentGroupId: 'group-1',
       from: '2026-04-01',
       to: '2026-04-10',
     });
@@ -42,17 +45,23 @@ describe('ReportsController', () => {
   it('delegates breakdown queries to the use case', async () => {
     const breakdown = {
       filters: {
+        assignedToUserId: null,
+        assignmentGroupId: null,
+        categoryId: null,
         from: null,
         priorityId: null,
         status: null,
         to: null,
         type: TicketType.INCIDENT,
       },
+      ticketActivityTimeline: [],
       ticketsByAgent: [],
       ticketsByCategory: [],
+      ticketsByChannel: [],
       ticketsByDay: [],
       ticketsByPriority: [],
       ticketsByStatus: [],
+      ticketsByStatusPeriod: [],
     };
     const execute = jest.fn().mockResolvedValue(breakdown);
     const controller = createController({ breakdownExecute: execute });
@@ -74,6 +83,9 @@ describe('ReportsController', () => {
   it('delegates overview queries to the use case', async () => {
     const overview = {
       filters: {
+        assignedToUserId: null,
+        assignmentGroupId: null,
+        categoryId: null,
         from: '2026-04-01T00:00:00.000Z',
         priorityId: 'priority-high',
         status: TicketStatus.OPEN,
@@ -89,6 +101,7 @@ describe('ReportsController', () => {
         inProgress: 0,
         open: 2,
         resolved: 0,
+        unassigned: 0,
         responseOverdue: 1,
         resolutionOverdue: 0,
         total: 2,

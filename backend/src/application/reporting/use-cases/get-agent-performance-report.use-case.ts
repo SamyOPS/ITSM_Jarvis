@@ -13,6 +13,7 @@ import { TicketReadRepository } from '../../ticketing/repositories/ticket-read.r
 
 export type AgentPerformanceReportQuery = {
   assignedToUserId?: string | null;
+  assignmentGroupId?: string | null;
   categoryId?: string | null;
   from?: string | null;
   priorityId?: string | null;
@@ -33,6 +34,7 @@ export type AgentPerformanceReportItem = {
 export type AgentPerformanceReport = {
   filters: {
     assignedToUserId: string | null;
+    assignmentGroupId: string | null;
     categoryId: string | null;
     from: string | null;
     priorityId: string | null;
@@ -61,7 +63,7 @@ export class GetAgentPerformanceReportUseCase {
     const [tickets, users] = await Promise.all([
       this.ticketReadRepository.searchTickets({
         assignedToUserId: filters.assignedToUserId,
-        assignmentGroupId: null,
+        assignmentGroupId: filters.assignmentGroupId,
         categoryId: filters.categoryId,
         channelId: null,
         createdByUserId: null,
@@ -238,8 +240,8 @@ function formatUserName(user: AdminUserSummary): string {
 }
 
 function normalizeFilters(query: AgentPerformanceReportQuery) {
-  const from = normalizeOptionalDate(query.from, 'from');
-  const to = normalizeOptionalDate(query.to, 'to');
+  const from = normalizeOptionalDate(query.from, 'from', 'start');
+  const to = normalizeOptionalDate(query.to, 'to', 'end');
 
   if (from && to && new Date(from).getTime() > new Date(to).getTime()) {
     throw new BadRequestException('from must be before to.');
@@ -247,6 +249,7 @@ function normalizeFilters(query: AgentPerformanceReportQuery) {
 
   return {
     assignedToUserId: normalizeOptionalText(query.assignedToUserId),
+    assignmentGroupId: normalizeOptionalText(query.assignmentGroupId),
     categoryId: normalizeOptionalText(query.categoryId),
     from,
     priorityId: normalizeOptionalText(query.priorityId),
@@ -282,6 +285,7 @@ function withoutArchivedTickets(tickets: TicketSummary[]): TicketSummary[] {
 function normalizeOptionalDate(
   value: string | null | undefined,
   fieldName: string,
+  boundary: 'end' | 'start',
 ): string | null {
   const normalized = value?.trim();
 
@@ -293,6 +297,12 @@ function normalizeOptionalDate(
 
   if (Number.isNaN(date.getTime())) {
     throw new BadRequestException(`${fieldName} must be a valid date.`);
+  }
+
+  if (boundary === 'start') {
+    date.setUTCHours(0, 0, 0, 0);
+  } else {
+    date.setUTCHours(23, 59, 59, 999);
   }
 
   return date.toISOString();

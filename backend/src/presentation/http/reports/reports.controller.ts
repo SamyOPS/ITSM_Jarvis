@@ -22,6 +22,7 @@ import { RolesGuard } from '../auth/roles.guard';
 
 type TicketReportingOverviewQueryDto = {
   assignedToUserId?: string;
+  assignmentGroupId?: string;
   categoryId?: string;
   from?: string;
   priorityId?: string;

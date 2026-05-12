@@ -4,11 +4,13 @@ import { ReferentialCategoryReadRepository } from '../../referentials/repositori
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { TicketReadRepository } from '../../ticketing/repositories/ticket-read.repository';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
+import { SlaIndicator } from '../../../domain/ticketing/sla-indicator';
 import { TicketSummary } from '../../../domain/ticketing/ticket-summary';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
 
 export type TicketReportingBreakdownQuery = {
   assignedToUserId?: string | null;
+  assignmentGroupId?: string | null;
   categoryId?: string | null;
   from?: string | null;
   priorityId?: string | null;
@@ -28,9 +30,27 @@ export type TicketReportingBreakdownDayItem = {
   date: string;
 };
 
+export type TicketReportingTimelineItem = {
+  closed: number;
+  open: number;
+  overdue: number;
+  period: string;
+  resolved: number;
+};
+
+export type TicketReportingStatusPeriodItem = {
+  closed: number;
+  inProgress: number;
+  open: number;
+  pending: number;
+  period: string;
+  resolved: number;
+};
+
 export type TicketReportingBreakdown = {
   filters: {
     assignedToUserId: string | null;
+    assignmentGroupId: string | null;
     categoryId: string | null;
     from: string | null;
     priorityId: string | null;
@@ -38,11 +58,14 @@ export type TicketReportingBreakdown = {
     to: string | null;
     type: TicketType | null;
   };
+  ticketActivityTimeline: TicketReportingTimelineItem[];
   ticketsByAgent: TicketReportingBreakdownItem[];
   ticketsByCategory: TicketReportingBreakdownItem[];
+  ticketsByChannel: TicketReportingBreakdownItem[];
   ticketsByDay: TicketReportingBreakdownDayItem[];
   ticketsByPriority: TicketReportingBreakdownItem[];
   ticketsByStatus: TicketReportingBreakdownItem[];
+  ticketsByStatusPeriod: TicketReportingStatusPeriodItem[];
 };
 
 @Injectable()
@@ -65,7 +88,7 @@ export class GetTicketReportingBreakdownUseCase {
     const [tickets, users, categories, priorities] = await Promise.all([
       this.ticketReadRepository.searchTickets({
         assignedToUserId: filters.assignedToUserId,
-        assignmentGroupId: null,
+        assignmentGroupId: filters.assignmentGroupId,
         categoryId: filters.categoryId,
         channelId: null,
         createdByUserId: null,
@@ -94,6 +117,7 @@ export class GetTicketReportingBreakdownUseCase {
 
     return {
       filters,
+      ticketActivityTimeline: buildTicketActivityTimeline(scopedTickets),
       ticketsByAgent: countByKey(
         scopedTickets,
         (ticket) => ticket.assignedToUserId,
@@ -110,6 +134,11 @@ export class GetTicketReportingBreakdownUseCase {
             ? (categoriesById.get(categoryId)?.name ?? categoryId)
             : 'Non definie',
       ),
+      ticketsByChannel: countByKey(
+        scopedTickets,
+        (ticket) => ticket.channelId,
+        (channelId) => channelId ?? 'Non renseigne',
+      ),
       ticketsByDay: countByDay(scopedTickets),
       ticketsByPriority: countByKey(
         scopedTickets,
@@ -124,8 +153,114 @@ export class GetTicketReportingBreakdownUseCase {
         (ticket) => ticket.status,
         (status) => status ?? 'Non defini',
       ),
+      ticketsByStatusPeriod: buildTicketStatusPeriod(scopedTickets),
     };
   }
+}
+
+function buildTicketActivityTimeline(
+  tickets: TicketSummary[],
+): TicketReportingTimelineItem[] {
+  const buckets = new Map<
+    string,
+    {
+      closed: number;
+      open: number;
+      overdue: number;
+      period: string;
+      resolved: number;
+    }
+  >();
+
+  for (const ticket of tickets) {
+    const period = ticket.createdAt.slice(0, 7);
+    const current = buckets.get(period) ?? {
+      closed: 0,
+      open: 0,
+      overdue: 0,
+      period,
+      resolved: 0,
+    };
+
+    if (
+      ticket.status === TicketStatus.OPEN ||
+      ticket.status === TicketStatus.IN_PROGRESS ||
+      ticket.status === TicketStatus.PENDING
+    ) {
+      current.open += 1;
+    }
+
+    if (ticket.status === TicketStatus.RESOLVED) {
+      current.resolved += 1;
+    }
+
+    if (ticket.status === TicketStatus.CLOSED) {
+      current.closed += 1;
+    }
+
+    if (isTicketOverdue(ticket)) {
+      current.overdue += 1;
+    }
+
+    buckets.set(period, current);
+  }
+
+  return [...buckets.values()].sort((left, right) =>
+    left.period.localeCompare(right.period),
+  );
+}
+
+function buildTicketStatusPeriod(
+  tickets: TicketSummary[],
+): TicketReportingStatusPeriodItem[] {
+  const buckets = new Map<
+    string,
+    {
+      closed: number;
+      inProgress: number;
+      open: number;
+      pending: number;
+      period: string;
+      resolved: number;
+    }
+  >();
+
+  for (const ticket of tickets) {
+    const period = ticket.createdAt.slice(0, 7);
+    const current = buckets.get(period) ?? {
+      closed: 0,
+      inProgress: 0,
+      open: 0,
+      pending: 0,
+      period,
+      resolved: 0,
+    };
+
+    if (ticket.status === TicketStatus.OPEN) {
+      current.open += 1;
+    } else if (ticket.status === TicketStatus.IN_PROGRESS) {
+      current.inProgress += 1;
+    } else if (ticket.status === TicketStatus.PENDING) {
+      current.pending += 1;
+    } else if (ticket.status === TicketStatus.RESOLVED) {
+      current.resolved += 1;
+    } else if (ticket.status === TicketStatus.CLOSED) {
+      current.closed += 1;
+    }
+
+    buckets.set(period, current);
+  }
+
+  return [...buckets.values()].sort((left, right) =>
+    left.period.localeCompare(right.period),
+  );
+}
+
+function isTicketOverdue(ticket: TicketSummary): boolean {
+  return (
+    ticket.responseSlaStatus === SlaIndicator.OVERDUE ||
+    ticket.resolutionSlaStatus === SlaIndicator.OVERDUE
+  );
 }
 
 function countByKey(
@@ -196,8 +331,8 @@ function formatUserName(
 }
 
 function normalizeFilters(query: TicketReportingBreakdownQuery) {
-  const from = normalizeOptionalDate(query.from, 'from');
-  const to = normalizeOptionalDate(query.to, 'to');
+  const from = normalizeOptionalDate(query.from, 'from', 'start');
+  const to = normalizeOptionalDate(query.to, 'to', 'end');
 
   if (from && to && new Date(from).getTime() > new Date(to).getTime()) {
     throw new BadRequestException('from must be before to.');
@@ -205,6 +340,7 @@ function normalizeFilters(query: TicketReportingBreakdownQuery) {
 
   return {
     assignedToUserId: normalizeOptionalText(query.assignedToUserId),
+    assignmentGroupId: normalizeOptionalText(query.assignmentGroupId),
     categoryId: normalizeOptionalText(query.categoryId),
     from,
     priorityId: normalizeOptionalText(query.priorityId),
@@ -240,6 +376,7 @@ function withoutArchivedTickets(tickets: TicketSummary[]): TicketSummary[] {
 function normalizeOptionalDate(
   value: string | null | undefined,
   fieldName: string,
+  boundary: 'end' | 'start',
 ): string | null {
   const normalized = value?.trim();
 
@@ -251,6 +388,12 @@ function normalizeOptionalDate(
 
   if (Number.isNaN(date.getTime())) {
     throw new BadRequestException(`${fieldName} must be a valid date.`);
+  }
+
+  if (boundary === 'start') {
+    date.setUTCHours(0, 0, 0, 0);
+  } else {
+    date.setUTCHours(23, 59, 59, 999);
   }
 
   return date.toISOString();

@@ -28,6 +28,7 @@ describe('GetTicketReportingOverviewUseCase', () => {
     await expect(useCase.execute()).resolves.toEqual({
       filters: {
         assignedToUserId: null,
+        assignmentGroupId: null,
         categoryId: null,
         from: null,
         priorityId: null,
@@ -40,13 +41,18 @@ describe('GetTicketReportingOverviewUseCase', () => {
         averageResponseTimeMinutes: null,
       },
       totals: {
+        assigned: 0,
         closed: 1,
+        incidents: 4,
         inProgress: 1,
         open: 1,
+        pending: 0,
+        requests: 0,
         resolved: 1,
         responseOverdue: 1,
         resolutionOverdue: 1,
         total: 4,
+        unassigned: 4,
       },
     });
 
@@ -81,6 +87,7 @@ describe('GetTicketReportingOverviewUseCase', () => {
 
     await expect(
       useCase.execute({
+        assignmentGroupId: 'group-1',
         from: '2026-04-02',
         priorityId: 'priority-high',
         status: TicketStatus.OPEN,
@@ -89,20 +96,23 @@ describe('GetTicketReportingOverviewUseCase', () => {
       }),
     ).resolves.toMatchObject({
       filters: {
+        assignmentGroupId: 'group-1',
         from: '2026-04-02T00:00:00.000Z',
         priorityId: 'priority-high',
         status: TicketStatus.OPEN,
-        to: '2026-04-04T00:00:00.000Z',
+        to: '2026-04-04T23:59:59.999Z',
         type: TicketType.INCIDENT,
       },
       totals: {
         open: 1,
+        unassigned: 1,
         total: 1,
       },
     });
 
     expect(searchTickets).toHaveBeenCalledWith(
       expect.objectContaining({
+        assignmentGroupId: 'group-1',
         priorityId: 'priority-high',
         status: TicketStatus.OPEN,
         type: TicketType.INCIDENT,
@@ -173,6 +183,7 @@ describe('GetTicketReportingOverviewUseCase', () => {
         responseOverdue: 1,
         resolutionOverdue: 1,
         total: 4,
+        unassigned: 4,
       },
     });
   });

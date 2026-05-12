@@ -10,6 +10,7 @@ import { TicketReadRepository } from '../../ticketing/repositories/ticket-read.r
 
 export type TicketReportingOverviewQuery = {
   assignedToUserId?: string | null;
+  assignmentGroupId?: string | null;
   categoryId?: string | null;
   from?: string | null;
   priorityId?: string | null;
@@ -21,6 +22,7 @@ export type TicketReportingOverviewQuery = {
 export type TicketReportingOverview = {
   filters: {
     assignedToUserId: string | null;
+    assignmentGroupId: string | null;
     categoryId: string | null;
     from: string | null;
     priorityId: string | null;
@@ -29,10 +31,15 @@ export type TicketReportingOverview = {
     type: TicketType | null;
   };
   totals: {
+    assigned: number;
     closed: number;
+    incidents: number;
     inProgress: number;
     open: number;
+    pending: number;
+    requests: number;
     resolved: number;
+    unassigned: number;
     responseOverdue: number;
     resolutionOverdue: number;
     total: number;
@@ -58,7 +65,7 @@ export class GetTicketReportingOverviewUseCase {
     const filters = normalizeFilters(query);
     const tickets = await this.ticketReadRepository.searchTickets({
       assignedToUserId: filters.assignedToUserId,
-      assignmentGroupId: null,
+      assignmentGroupId: filters.assignmentGroupId,
       categoryId: filters.categoryId,
       channelId: null,
       createdByUserId: null,
@@ -83,10 +90,18 @@ export class GetTicketReportingOverviewUseCase {
       filters,
       kpis,
       totals: {
+        assigned: scopedTickets.filter((ticket) =>
+          Boolean(ticket.assignedToUserId),
+        ).length,
         closed: countByStatus(scopedTickets, TicketStatus.CLOSED),
+        incidents: countByType(scopedTickets, TicketType.INCIDENT),
         inProgress: countByStatus(scopedTickets, TicketStatus.IN_PROGRESS),
         open: countByStatus(scopedTickets, TicketStatus.OPEN),
+        pending: countByStatus(scopedTickets, TicketStatus.PENDING),
+        requests: countByType(scopedTickets, TicketType.REQUEST),
         resolved: countByStatus(scopedTickets, TicketStatus.RESOLVED),
+        unassigned: scopedTickets.filter((ticket) => !ticket.assignedToUserId)
+          .length,
         responseOverdue: scopedTickets.filter(
           (ticket) => ticket.responseSlaStatus === SlaIndicator.OVERDUE,
         ).length,
@@ -208,8 +223,8 @@ function isNumber(value: number | null): value is number {
 }
 
 function normalizeFilters(query: TicketReportingOverviewQuery) {
-  const from = normalizeOptionalDate(query.from, 'from');
-  const to = normalizeOptionalDate(query.to, 'to');
+  const from = normalizeOptionalDate(query.from, 'from', 'start');
+  const to = normalizeOptionalDate(query.to, 'to', 'end');
 
   if (from && to && new Date(from).getTime() > new Date(to).getTime()) {
     throw new BadRequestException('from must be before to.');
@@ -217,6 +232,7 @@ function normalizeFilters(query: TicketReportingOverviewQuery) {
 
   return {
     assignedToUserId: normalizeOptionalText(query.assignedToUserId),
+    assignmentGroupId: normalizeOptionalText(query.assignmentGroupId),
     categoryId: normalizeOptionalText(query.categoryId),
     from,
     priorityId: normalizeOptionalText(query.priorityId),
@@ -253,9 +269,14 @@ function countByStatus(tickets: TicketSummary[], status: TicketStatus): number {
   return tickets.filter((ticket) => ticket.status === status).length;
 }
 
+function countByType(tickets: TicketSummary[], type: TicketType): number {
+  return tickets.filter((ticket) => ticket.type === type).length;
+}
+
 function normalizeOptionalDate(
   value: string | null | undefined,
   fieldName: string,
+  boundary: 'end' | 'start',
 ): string | null {
   const normalized = value?.trim();
 
@@ -267,6 +288,12 @@ function normalizeOptionalDate(
 
   if (Number.isNaN(date.getTime())) {
     throw new BadRequestException(`${fieldName} must be a valid date.`);
+  }
+
+  if (boundary === 'start') {
+    date.setUTCHours(0, 0, 0, 0);
+  } else {
+    date.setUTCHours(23, 59, 59, 999);
   }
 
   return date.toISOString();
