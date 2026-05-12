@@ -21,6 +21,13 @@ export type UpdateAdminUserRecord = {
 export abstract class AdminUserWriteRepository {
   abstract createUser(record: CreateAdminUserRecord): Promise<AdminUserSummary>;
 
+  abstract deleteUser(userId: string): Promise<void>;
+
+  abstract updateUserStatus(
+    userId: string,
+    isActive: boolean,
+  ): Promise<AdminUserSummary>;
+
   abstract updateUser(
     userId: string,
     record: UpdateAdminUserRecord,

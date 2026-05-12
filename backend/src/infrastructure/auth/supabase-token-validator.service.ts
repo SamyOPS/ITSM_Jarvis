@@ -10,12 +10,14 @@ import { getBackendRuntimeConfig } from '../config/app-config';
 
 type SupabaseUserProfileRow = {
   first_name: string | null;
+  is_active: boolean;
   last_name: string | null;
   role: string;
 };
 
 type SupabaseResolvedProfile = {
   firstName: string | null;
+  isActive: boolean | null;
   lastName: string | null;
   role: UserRole | null;
 };
@@ -60,6 +62,10 @@ export class SupabaseTokenValidatorService {
 
     const profile = await this.fetchProfile(accessToken, payload.id);
 
+    if (profile.isActive === false) {
+      throw new UnauthorizedException('User account is inactive.');
+    }
+
     return {
       accessToken,
       email: payload.email,
@@ -78,6 +84,7 @@ export class SupabaseTokenValidatorService {
     if (!userId) {
       return {
         firstName: null,
+        isActive: null,
         lastName: null,
         role: null,
       };
@@ -90,13 +97,14 @@ export class SupabaseTokenValidatorService {
     if (!config.supabaseUrl || !supabaseApiKey) {
       return {
         firstName: null,
+        isActive: null,
         lastName: null,
         role: null,
       };
     }
 
     const url = new URL(`${config.supabaseUrl}/rest/v1/users`);
-    url.searchParams.set('select', 'role,first_name,last_name');
+    url.searchParams.set('select', 'role,first_name,last_name,is_active');
     url.searchParams.set('id', `eq.${userId}`);
     url.searchParams.set('limit', '1');
 
@@ -128,6 +136,7 @@ export class SupabaseTokenValidatorService {
     if (!row) {
       return {
         firstName: null,
+        isActive: null,
         lastName: null,
         role: null,
       };
@@ -135,6 +144,7 @@ export class SupabaseTokenValidatorService {
 
     return {
       firstName: row.first_name,
+      isActive: row.is_active,
       lastName: row.last_name,
       role: row.role ? this.resolveRoleFallback(row.role) : null,
     };
