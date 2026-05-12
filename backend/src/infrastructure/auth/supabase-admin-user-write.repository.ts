@@ -21,6 +21,7 @@ type SupabaseCreatedAuthUser = {
 
 type SupabaseUserRow = {
   display_name: string | null;
+  email: string | null;
   first_name: string | null;
   group_id: string | null;
   id: string;
@@ -89,6 +90,68 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
       lastName: record.lastName,
       role: record.role,
     });
+  }
+
+  async updateUserStatus(
+    userId: string,
+    isActive: boolean,
+  ): Promise<AdminUserSummary> {
+    const config = getBackendRuntimeConfig();
+    const supabaseApiKey = config.supabaseServiceRoleKey;
+
+    if (!config.supabaseUrl || !supabaseApiKey) {
+      throw new ServiceUnavailableException(
+        'Supabase admin user status configuration is incomplete.',
+      );
+    }
+
+    const response = await fetch(
+      `${config.supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation',
+        },
+        body: JSON.stringify({
+          is_active: isActive,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const message = await response.text();
+
+      throw new BadRequestException(
+        message ||
+          `Supabase public user status update returned status ${response.status}.`,
+      );
+    }
+
+    const payload = (await response.json()) as SupabaseUserRow[];
+    const row = payload[0];
+
+    if (!row) {
+      throw new BadRequestException('User does not exist.');
+    }
+
+    return mapUserRow(row, row.email);
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    const config = getBackendRuntimeConfig();
+    const supabaseApiKey = config.supabaseServiceRoleKey;
+
+    if (!config.supabaseUrl || !supabaseApiKey) {
+      throw new ServiceUnavailableException(
+        'Supabase admin user deletion configuration is incomplete.',
+      );
+    }
+
+    await deleteSupabaseAuthUser(config.supabaseUrl, supabaseApiKey, userId);
+    await deletePublicUser(config.supabaseUrl, supabaseApiKey, userId);
   }
 }
 
@@ -186,6 +249,72 @@ async function updateSupabaseAuthUser(
   }
 }
 
+async function deleteSupabaseAuthUser(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+): Promise<void> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+      method: 'DELETE',
+      headers: {
+        apikey: supabaseApiKey,
+        Authorization: `Bearer ${supabaseApiKey}`,
+      },
+    });
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase auth user deletion is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase auth user deletion returned status ${response.status}.`,
+    );
+  }
+}
+
+async function deletePublicUser(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+): Promise<void> {
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: 'DELETE',
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          Prefer: 'return=minimal',
+        },
+      },
+    );
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase public user deletion is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase public user deletion returned status ${response.status}.`,
+    );
+  }
+}
+
 async function upsertPublicUser(
   supabaseUrl: string,
   supabaseApiKey: string,
@@ -242,9 +371,16 @@ async function upsertPublicUser(
     | SupabaseUserRow;
   const row = Array.isArray(payload) ? payload[0] : payload;
 
+  return mapUserRow(row, record.email);
+}
+
+function mapUserRow(
+  row: SupabaseUserRow,
+  email: string | null,
+): AdminUserSummary {
   return {
     displayName: row.display_name,
-    email: record.email,
+    email,
     firstName: row.first_name,
     groupId: row.group_id,
     id: row.id,

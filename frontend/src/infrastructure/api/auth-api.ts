@@ -183,6 +183,55 @@ export async function updateAdminUser(
   return (await response.json()) as AdminUserSummary;
 }
 
+export async function updateAdminUserStatus(
+  accessToken: string,
+  userId: string,
+  isActive: boolean,
+): Promise<AdminUserSummary> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/auth/admin/users/${userId}/status`, {
+    method: 'PATCH',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ isActive }),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message ||
+        `Admin user status update failed with status ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as AdminUserSummary;
+}
+
+export async function deleteAdminUser(
+  accessToken: string,
+  userId: string,
+): Promise<void> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/auth/admin/users/${userId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message || `Admin user deletion failed with status ${response.status}`,
+    );
+  }
+}
+
 export async function fetchUserDirectory(
   accessToken: string,
 ): Promise<AdminUserSummary[]> {

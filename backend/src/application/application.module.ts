@@ -3,9 +3,11 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { GetAuthSetupUseCase } from './auth/use-cases/get-auth-setup.use-case';
 import { GetAuthenticatedUserUseCase } from './auth/use-cases/get-authenticated-user.use-case';
 import { CreateAdminUserUseCase } from './auth/use-cases/create-admin-user.use-case';
+import { DeleteAdminUserUseCase } from './auth/use-cases/delete-admin-user.use-case';
 import { GetHealthUseCase } from './health/use-cases/get-health.use-case';
 import { ListAdminUsersUseCase } from './auth/use-cases/list-admin-users.use-case';
 import { UpdateAdminUserUseCase } from './auth/use-cases/update-admin-user.use-case';
+import { UpdateAdminUserStatusUseCase } from './auth/use-cases/update-admin-user-status.use-case';
 import { GetReferentialCatalogUseCase } from './referentials/use-cases/get-referential-catalog.use-case';
 import { ListCategoriesUseCase } from './referentials/use-cases/list-categories.use-case';
 import { ListChannelsUseCase } from './referentials/use-cases/list-channels.use-case';
@@ -86,8 +88,10 @@ const ticketingUseCases = [
     GetAuthSetupUseCase,
     GetAuthenticatedUserUseCase,
     CreateAdminUserUseCase,
+    DeleteAdminUserUseCase,
     ListAdminUsersUseCase,
     UpdateAdminUserUseCase,
+    UpdateAdminUserStatusUseCase,
     GetAgentPerformanceReportUseCase,
     GetTicketReportingBreakdownUseCase,
     GetTicketReportingOverviewUseCase,
@@ -99,8 +103,10 @@ const ticketingUseCases = [
     GetAuthSetupUseCase,
     GetAuthenticatedUserUseCase,
     CreateAdminUserUseCase,
+    DeleteAdminUserUseCase,
     ListAdminUsersUseCase,
     UpdateAdminUserUseCase,
+    UpdateAdminUserStatusUseCase,
     GetAgentPerformanceReportUseCase,
     GetTicketReportingBreakdownUseCase,
     GetTicketReportingOverviewUseCase,
