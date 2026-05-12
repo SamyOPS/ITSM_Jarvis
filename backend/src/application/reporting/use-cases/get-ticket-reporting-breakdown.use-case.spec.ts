@@ -73,6 +73,7 @@ describe('GetTicketReportingBreakdownUseCase', () => {
     await expect(useCase.execute()).resolves.toEqual({
       filters: {
         assignedToUserId: null,
+        assignmentGroupId: null,
         categoryId: null,
         from: null,
         priorityId: null,
@@ -80,6 +81,15 @@ describe('GetTicketReportingBreakdownUseCase', () => {
         to: null,
         type: null,
       },
+      ticketActivityTimeline: [
+        {
+          closed: 0,
+          open: 3,
+          overdue: 0,
+          period: '2026-04',
+          resolved: 0,
+        },
+      ],
       ticketsByAgent: [
         {
           count: 2,
@@ -102,6 +112,13 @@ describe('GetTicketReportingBreakdownUseCase', () => {
           count: 1,
           id: 'category-access',
           name: 'Acces',
+        },
+      ],
+      ticketsByChannel: [
+        {
+          count: 3,
+          id: null,
+          name: 'Non renseigne',
         },
       ],
       ticketsByDay: [
@@ -138,6 +155,16 @@ describe('GetTicketReportingBreakdownUseCase', () => {
           name: TicketStatus.IN_PROGRESS,
         },
       ],
+      ticketsByStatusPeriod: [
+        {
+          closed: 0,
+          inProgress: 1,
+          open: 2,
+          pending: 0,
+          period: '2026-04',
+          resolved: 0,
+        },
+      ],
     });
   });
 
@@ -153,6 +180,7 @@ describe('GetTicketReportingBreakdownUseCase', () => {
     const useCase = createUseCase({ searchTickets });
 
     const result = await useCase.execute({
+      assignmentGroupId: 'group-1',
       from: '2026-04-02',
       priorityId: 'priority-high',
       status: TicketStatus.OPEN,
@@ -162,11 +190,12 @@ describe('GetTicketReportingBreakdownUseCase', () => {
 
     expect(result.filters).toEqual({
       assignedToUserId: null,
+      assignmentGroupId: 'group-1',
       categoryId: null,
       from: '2026-04-02T00:00:00.000Z',
       priorityId: 'priority-high',
       status: TicketStatus.OPEN,
-      to: '2026-04-04T00:00:00.000Z',
+      to: '2026-04-04T23:59:59.999Z',
       type: TicketType.INCIDENT,
     });
     expect(result.ticketsByDay).toEqual([
@@ -177,6 +206,7 @@ describe('GetTicketReportingBreakdownUseCase', () => {
     ]);
     expect(searchTickets).toHaveBeenCalledWith(
       expect.objectContaining({
+        assignmentGroupId: 'group-1',
         priorityId: 'priority-high',
         status: TicketStatus.OPEN,
         type: TicketType.INCIDENT,

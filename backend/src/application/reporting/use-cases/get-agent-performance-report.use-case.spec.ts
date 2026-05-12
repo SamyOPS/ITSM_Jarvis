@@ -82,6 +82,7 @@ describe('GetAgentPerformanceReportUseCase', () => {
       ],
       filters: {
         assignedToUserId: null,
+        assignmentGroupId: null,
         categoryId: null,
         from: null,
         priorityId: null,
@@ -114,6 +115,7 @@ describe('GetAgentPerformanceReportUseCase', () => {
     });
 
     const result = await useCase.execute({
+      assignmentGroupId: 'group-1',
       from: '2026-04-02',
       to: '2026-04-04',
       type: TicketType.INCIDENT,
@@ -131,8 +133,10 @@ describe('GetAgentPerformanceReportUseCase', () => {
     ]);
     expect(result.filters).toEqual(
       expect.objectContaining({
+        assignmentGroupId: 'group-1',
         from: '2026-04-02T00:00:00.000Z',
-        to: '2026-04-04T00:00:00.000Z',
+        to: '2026-04-04T23:59:59.999Z',
+        assignmentGroupId: 'group-1',
         type: TicketType.INCIDENT,
       }),
     );

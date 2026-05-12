@@ -2,6 +2,7 @@ import { getFrontendRuntimeConfig } from '../config/env';
 
 export type ReportingFilters = {
   assignedToUserId?: string | null;
+  assignmentGroupId?: string | null;
   categoryId?: string | null;
   from?: string | null;
   priorityId?: string | null;
@@ -13,6 +14,7 @@ export type ReportingFilters = {
 export type ReportingOverview = {
   filters: {
     assignedToUserId: string | null;
+    assignmentGroupId: string | null;
     categoryId: string | null;
     from: string | null;
     priorityId: string | null;
@@ -25,10 +27,15 @@ export type ReportingOverview = {
     averageResponseTimeMinutes: number | null;
   };
   totals: {
+    assigned: number;
     closed: number;
+    incidents: number;
     inProgress: number;
     open: number;
+    pending: number;
+    requests: number;
     resolved: number;
+    unassigned: number;
     responseOverdue: number;
     resolutionOverdue: number;
     total: number;
@@ -46,13 +53,33 @@ export type ReportingBreakdownDayItem = {
   date: string;
 };
 
+export type ReportingTimelineItem = {
+  closed: number;
+  open: number;
+  overdue: number;
+  period: string;
+  resolved: number;
+};
+
+export type ReportingStatusPeriodItem = {
+  closed: number;
+  inProgress: number;
+  open: number;
+  pending: number;
+  period: string;
+  resolved: number;
+};
+
 export type ReportingBreakdown = {
   filters: ReportingOverview['filters'];
+  ticketActivityTimeline: ReportingTimelineItem[];
   ticketsByAgent: ReportingBreakdownItem[];
   ticketsByCategory: ReportingBreakdownItem[];
+  ticketsByChannel: ReportingBreakdownItem[];
   ticketsByDay: ReportingBreakdownDayItem[];
   ticketsByPriority: ReportingBreakdownItem[];
   ticketsByStatus: ReportingBreakdownItem[];
+  ticketsByStatusPeriod: ReportingStatusPeriodItem[];
 };
 
 export type AgentPerformanceItem = {
@@ -124,6 +151,7 @@ function buildReportingQuery(filters: ReportingFilters): URLSearchParams {
   const query = new URLSearchParams();
 
   setOptionalQueryParam(query, 'assignedToUserId', filters.assignedToUserId);
+  setOptionalQueryParam(query, 'assignmentGroupId', filters.assignmentGroupId);
   setOptionalQueryParam(query, 'categoryId', filters.categoryId);
   setOptionalQueryParam(query, 'from', filters.from);
   setOptionalQueryParam(query, 'priorityId', filters.priorityId);
