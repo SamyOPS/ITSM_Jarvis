@@ -1,9 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CreateAdminUserUseCase } from '../../../application/auth/use-cases/create-admin-user.use-case';
+import { DeleteAdminUserUseCase } from '../../../application/auth/use-cases/delete-admin-user.use-case';
 import { GetAuthenticatedUserUseCase } from '../../../application/auth/use-cases/get-authenticated-user.use-case';
 import { GetAuthSetupUseCase } from '../../../application/auth/use-cases/get-auth-setup.use-case';
 import { ListAdminUsersUseCase } from '../../../application/auth/use-cases/list-admin-users.use-case';
 import { UpdateAdminUserUseCase } from '../../../application/auth/use-cases/update-admin-user.use-case';
+import { UpdateAdminUserStatusUseCase } from '../../../application/auth/use-cases/update-admin-user-status.use-case';
 import { UserRole } from '../../../domain/auth/user-role';
 import { AuthController } from './auth.controller';
 
@@ -28,6 +30,12 @@ describe('AuthController', () => {
           },
         },
         {
+          provide: DeleteAdminUserUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
           provide: ListAdminUsersUseCase,
           useValue: {
             execute: jest.fn(),
@@ -35,6 +43,12 @@ describe('AuthController', () => {
         },
         {
           provide: UpdateAdminUserUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
+          provide: UpdateAdminUserStatusUseCase,
           useValue: {
             execute: jest.fn(),
           },
@@ -121,6 +135,9 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as CreateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as DeleteAdminUserUseCase,
       new GetAuthSetupUseCase(),
       {
         execute: jest.fn(),
@@ -129,6 +146,9 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as UpdateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserStatusUseCase,
     );
 
     await expect(controller.listAdminUsers()).resolves.toEqual(users);
@@ -155,6 +175,9 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as CreateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as DeleteAdminUserUseCase,
       new GetAuthSetupUseCase(),
       {
         execute: jest.fn(),
@@ -163,6 +186,9 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as UpdateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserStatusUseCase,
     );
 
     await expect(controller.listUsers()).resolves.toEqual(users);
