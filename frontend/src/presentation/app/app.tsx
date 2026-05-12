@@ -24,6 +24,7 @@ import { AccessDeniedPage } from '../pages/access-denied-page';
 import { AdminPage } from '../pages/admin-page';
 import { AgentPage } from '../pages/agent-page';
 import { AppShell } from './app-shell';
+import { GroupsPage } from '../pages/groups-page';
 import { HomePage } from '../pages/home-page';
 import { LoginPage } from '../pages/login-page';
 import { NotFoundPage } from '../pages/not-found-page';
@@ -87,6 +88,8 @@ function renderPage({
       return <HomePage />;
     case '/admin':
       return session ? <AdminPage session={session} /> : <NotFoundPage />;
+    case '/admin/groups':
+      return session ? <GroupsPage session={session} /> : <NotFoundPage />;
     case '/admin/users':
       return session ? <UsersPage session={session} /> : <NotFoundPage />;
     case '/agent':
