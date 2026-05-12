@@ -34,11 +34,14 @@ describe('SupabaseTokenValidatorService', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: jest
-          .fn()
-          .mockResolvedValue([
-            { first_name: 'Alice', last_name: 'Martin', role: 'ADMIN' },
-          ]),
+        json: jest.fn().mockResolvedValue([
+          {
+            first_name: 'Alice',
+            is_active: true,
+            last_name: 'Martin',
+            role: 'ADMIN',
+          },
+        ]),
       }) as typeof fetch;
 
     const service = new SupabaseTokenValidatorService();
@@ -114,6 +117,39 @@ describe('SupabaseTokenValidatorService', () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
     }) as typeof fetch;
+
+    const service = new SupabaseTokenValidatorService();
+
+    await expect(service.validate('token')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('throws when the public user profile is inactive', async () => {
+    process.env.SUPABASE_URL = 'https://example.supabase.co';
+    process.env.SUPABASE_ANON_KEY = 'anon-key';
+
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          app_metadata: { role: 'DEMANDEUR' },
+          email: 'inactive@example.com',
+          id: 'user-inactive',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue([
+          {
+            first_name: 'Inactive',
+            is_active: false,
+            last_name: 'User',
+            role: 'DEMANDEUR',
+          },
+        ]),
+      }) as typeof fetch;
 
     const service = new SupabaseTokenValidatorService();
 

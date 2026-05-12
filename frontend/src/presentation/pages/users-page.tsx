@@ -199,7 +199,6 @@ export function UsersPage({ session }: UsersPageProps) {
 
       setFormState(EMPTY_USER_FORM);
       setFormMode(null);
-      setFormMessage('Compte cree avec succes.');
       await loadUsers();
     } catch (error) {
       setFormMessage(
@@ -236,7 +235,6 @@ export function UsersPage({ session }: UsersPageProps) {
       setSelectedUserId(null);
       setFormState(EMPTY_USER_FORM);
       setFormMode(null);
-      setFormMessage('Compte mis a jour avec succes.');
       await loadUsers();
     } catch (error) {
       setFormMessage(
@@ -262,7 +260,6 @@ export function UsersPage({ session }: UsersPageProps) {
       setSelectedUserId(null);
       setFormMode(null);
       setShowTrash(true);
-      setFormMessage('Utilisateur mis a la corbeille.');
       await loadUsers();
     } catch (error) {
       setFormMessage(
@@ -287,7 +284,6 @@ export function UsersPage({ session }: UsersPageProps) {
       await updateAdminUserStatus(session.accessToken, selectedUserId, true);
       setSelectedUserId(null);
       setFormMode(null);
-      setFormMessage('Utilisateur restaure.');
       await loadUsers();
     } catch (error) {
       setFormMessage(
@@ -320,7 +316,6 @@ export function UsersPage({ session }: UsersPageProps) {
       await deleteAdminUser(session.accessToken, selectedUserId);
       setSelectedUserId(null);
       setFormMode(null);
-      setFormMessage('Utilisateur supprime definitivement.');
       await loadUsers();
     } catch (error) {
       setFormMessage(

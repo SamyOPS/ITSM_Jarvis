@@ -4,6 +4,7 @@ import {
   fetchCurrentUser,
   loginWithPassword,
 } from '../../infrastructure/api/auth-api';
+import { getFrontendRuntimeConfig } from '../../infrastructure/config/env';
 import {
   clearStoredAuthSession,
   readStoredAuthSession,
@@ -257,6 +258,41 @@ export function App() {
       navigateTo('/login');
     }
   }, [isLoggingIn, pathname, sessionState]);
+
+  useEffect(() => {
+    if (sessionState !== 'authenticated') {
+      return;
+    }
+
+    const originalFetch = window.fetch.bind(window);
+    const { apiUrl } = getFrontendRuntimeConfig();
+
+    window.fetch = async (input, init) => {
+      const response = await originalFetch(input, init);
+      const requestUrl =
+        typeof input === 'string'
+          ? input
+          : input instanceof Request
+            ? input.url
+            : input.toString();
+
+      if (response.status === 401 && requestUrl.startsWith(apiUrl)) {
+        clearStoredAuthSession();
+        setAuthErrorMessage(
+          'Votre session a expiré ou votre compte est désactivé.',
+        );
+        setSession(null);
+        setSessionState('anonymous');
+        navigateTo('/login');
+      }
+
+      return response;
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [sessionState]);
 
   async function handleLogin(email: string, password: string): Promise<void> {
     setIsLoggingIn(true);
