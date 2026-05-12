@@ -102,7 +102,6 @@ type IncidentLookupSearchField =
   | 'FIRST_NAME'
   | 'LAST_NAME'
   | 'GROUP'
-  | 'LEVEL'
   | 'NAME'
   | 'SERIAL_NUMBER'
   | 'STATUS'
@@ -3488,7 +3487,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           {incidentLookupKind === 'ASSIGNMENT_GROUP' ? (
                             <>
                               <option value="NAME">Nom</option>
-                              <option value="LEVEL">Niveau</option>
                             </>
                           ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ||
                             incidentLookupKind === 'REQUEST_EQUIPMENT' ? (
@@ -3523,13 +3521,22 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       </label>
 
                       <div className="incident-lookup-table-scroll">
-                        <table className="incident-lookup-table">
+                        <table
+                          className={
+                            incidentLookupKind === 'ASSIGNMENT_GROUP' ||
+                            incidentLookupKind === 'INCIDENT_EQUIPMENT' ||
+                            incidentLookupKind === 'REQUEST_EQUIPMENT'
+                              ? 'incident-lookup-table'
+                              : incidentLookupKind === 'ASSIGNEE'
+                                ? 'incident-lookup-table incident-lookup-table--assignee'
+                                : 'incident-lookup-table incident-lookup-table--users'
+                          }
+                        >
                           <thead>
                             {incidentLookupKind === 'ASSIGNMENT_GROUP' ? (
                               <tr>
                                 <th>Identifiant</th>
                                 <th>Nom</th>
-                                <th>Niveau</th>
                                 <th>Description</th>
                               </tr>
                             ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ||
@@ -3546,11 +3553,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 <th>Identifiant</th>
                                 <th>Prenom</th>
                                 <th>Nom</th>
-                                <th>Mail</th>
+                                <th>Email</th>
                                 {incidentLookupKind === 'ASSIGNEE' ? (
-                                  <>
-                                    <th>Groupe</th>
-                                  </>
+                                  <th>Groupe</th>
                                 ) : null}
                               </tr>
                             )}
@@ -3560,7 +3565,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             {incidentLookupKind === 'ASSIGNMENT_GROUP' ? (
                               paginatedIncidentLookupGroups.length === 0 ? (
                                 <tr>
-                                  <td colSpan={4}>
+                                  <td colSpan={3}>
                                     Aucun groupe ne correspond a la recherche.
                                   </td>
                                 </tr>
@@ -3594,7 +3599,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                       {group.name}
                                     </td>
                                     <td>{group.name}</td>
-                                    <td>{group.level ?? '-'}</td>
                                     <td>{group.description ?? '-'}</td>
                                   </tr>
                                 ))
@@ -3702,9 +3706,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     <td>{user.lastName ?? 'Non renseigne'}</td>
                                     <td>{user.email ?? '-'}</td>
                                     {incidentLookupKind === 'ASSIGNEE' ? (
-                                      <>
-                                        <td>{group?.name ?? 'Non assigne'}</td>
-                                      </>
+                                      <td>{group?.name ?? 'Non assigne'}</td>
                                     ) : null}
                                   </tr>
                                 );
@@ -5365,8 +5367,6 @@ function getIncidentLookupGroupSearchValue(
     case 'IDENTIFIER':
     case 'NAME':
       return group.name;
-    case 'LEVEL':
-      return group.level ?? '';
     default:
       return '';
   }

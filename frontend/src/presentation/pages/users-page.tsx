@@ -5,7 +5,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { UserRole } from '../../domain/auth/user-role';
@@ -333,155 +333,28 @@ export function UsersPage({ session }: UsersPageProps) {
     }
   }
 
+  const isSubmitting = isCreating || isDeleting || isUpdating;
+  const userFormId = 'admin-user-form';
+
   return (
     <section className="panel referentials-panel admin-users-page">
-      <header className="admin-users-page-header">
-        <div>
-          <span className="panel-tag">Administration</span>
-          <h2>Utilisateurs</h2>
-          <p>
-            Liste des comptes de la plateforme, de leurs roles et de leur groupe
-            de support.
-          </p>
-        </div>
-
-        <button
-          className="admin-users-add-button"
-          onClick={handleOpenCreateForm}
-          type="button"
-        >
-          <Plus size={16} strokeWidth={2.3} />
-          Ajouter
-        </button>
-      </header>
-
-      <div className="referentials-summary">
-        <article>
-          <span>Total utilisateurs</span>
-          <strong>{users.length}</strong>
-        </article>
-        <article>
-          <span>Comptes actifs</span>
-          <strong>{activeUsers}</strong>
-        </article>
-        <article>
-          <span>Agents</span>
-          <strong>{agentUsers}</strong>
-        </article>
-        <article>
-          <span>Admins</span>
-          <strong>{adminUsers}</strong>
-        </article>
-      </div>
-
       {formMode ? (
-        <section className="referentials-form-card">
-          <header className="referentials-card-header">
-            <div>
-              <h3>
-                {selectedUserId ? 'Modifier un compte' : 'Ajouter un compte'}
-              </h3>
-              <p>
-                {selectedUserId
-                  ? 'Modifie les informations principales du compte selectionne.'
-                  : 'Ajoute un utilisateur dans Supabase Auth et dans le repertoire applicatif.'}
-              </p>
-            </div>
-          </header>
+        <section className="tdp-shell admin-user-detail-view">
+          <div className="tdp-topbar">
+            <button
+              className="tdp-back-btn"
+              onClick={handleResetForm}
+              type="button"
+            >
+              <ArrowLeft size={15} />
+              Retour à la liste
+            </button>
 
-          <form
-            className="referentials-form"
-            onSubmit={(event) =>
-              selectedUserId
-                ? void handleUpdateUser(event)
-                : void handleCreateUser(event)
-            }
-          >
-            <label className="field">
-              <span>Email</span>
-              <input
-                onChange={(event) =>
-                  handleFieldChange('email', event.target.value)
-                }
-                required
-                type="email"
-                value={formState.email}
-              />
-            </label>
-
-            {selectedUserId ? null : (
-              <label className="field">
-                <span>Mot de passe</span>
-                <input
-                  minLength={6}
-                  onChange={(event) =>
-                    handleFieldChange('password', event.target.value)
-                  }
-                  required
-                  type="password"
-                  value={formState.password}
-                />
-              </label>
-            )}
-
-            <label className="field">
-              <span>Prenom</span>
-              <input
-                onChange={(event) =>
-                  handleFieldChange('firstName', event.target.value)
-                }
-                value={formState.firstName}
-              />
-            </label>
-
-            <label className="field">
-              <span>Nom</span>
-              <input
-                onChange={(event) =>
-                  handleFieldChange('lastName', event.target.value)
-                }
-                value={formState.lastName}
-              />
-            </label>
-
-            <label className="field">
-              <span>Role</span>
-              <select
-                onChange={(event) =>
-                  handleFieldChange('role', event.target.value as UserRole)
-                }
-                value={formState.role}
-              >
-                {USER_ROLES.map((role) => (
-                  <option key={role} value={role}>
-                    {translateUserRole(role)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Groupe</span>
-              <select
-                onChange={(event) =>
-                  handleFieldChange('groupId', event.target.value)
-                }
-                value={formState.groupId}
-              >
-                <option value="">Aucun groupe</option>
-                {catalog.groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="referentials-actions admin-user-form-actions">
+            <div className="tdp-topbar-right">
               {selectedUserId && selectedUser?.isActive ? (
                 <button
                   className="admin-user-trash-button"
-                  disabled={isCreating || isDeleting || isUpdating}
+                  disabled={isSubmitting}
                   onClick={() => void handleMoveUserToTrash()}
                   type="button"
                 >
@@ -494,7 +367,7 @@ export function UsersPage({ session }: UsersPageProps) {
                 <>
                   <button
                     className="admin-user-delete-button"
-                    disabled={isCreating || isDeleting || isUpdating}
+                    disabled={isSubmitting}
                     onClick={() => void handleDeleteUserPermanently()}
                     type="button"
                   >
@@ -503,7 +376,7 @@ export function UsersPage({ session }: UsersPageProps) {
                   </button>
                   <button
                     className="admin-user-restore-button"
-                    disabled={isCreating || isDeleting || isUpdating}
+                    disabled={isSubmitting}
                     onClick={() => void handleRestoreUser()}
                     type="button"
                   >
@@ -515,7 +388,8 @@ export function UsersPage({ session }: UsersPageProps) {
 
               <button
                 className="primary-button"
-                disabled={isCreating || isDeleting || isUpdating}
+                disabled={isSubmitting}
+                form={userFormId}
               >
                 {selectedUserId
                   ? isUpdating
@@ -525,180 +399,312 @@ export function UsersPage({ session }: UsersPageProps) {
                     ? 'Creation...'
                     : 'Sauvegarder'}
               </button>
-              <button
-                className="secondary-button"
-                onClick={handleResetForm}
-                type="button"
-              >
-                Reinitialiser
-              </button>
             </div>
-          </form>
+          </div>
 
+          <div className="tdp-content">
+            <section className="referentials-form-card admin-user-detail-card">
+              <header className="referentials-card-header">
+                <div>
+                  <h3>
+                    {selectedUserId
+                      ? 'Modifier un compte'
+                      : 'Ajouter un compte'}
+                  </h3>
+                  <p>
+                    {selectedUserId
+                      ? 'Modifie les informations principales du compte selectionne.'
+                      : 'Ajoute un utilisateur dans Supabase Auth et dans le repertoire applicatif.'}
+                  </p>
+                </div>
+              </header>
+
+              <form
+                className="referentials-form"
+                id={userFormId}
+                onSubmit={(event) =>
+                  selectedUserId
+                    ? void handleUpdateUser(event)
+                    : void handleCreateUser(event)
+                }
+              >
+                <label className="field">
+                  <span>Email</span>
+                  <input
+                    onChange={(event) =>
+                      handleFieldChange('email', event.target.value)
+                    }
+                    required
+                    type="email"
+                    value={formState.email}
+                  />
+                </label>
+
+                {selectedUserId ? null : (
+                  <label className="field">
+                    <span>Mot de passe</span>
+                    <input
+                      minLength={6}
+                      onChange={(event) =>
+                        handleFieldChange('password', event.target.value)
+                      }
+                      required
+                      type="password"
+                      value={formState.password}
+                    />
+                  </label>
+                )}
+
+                <label className="field">
+                  <span>Prenom</span>
+                  <input
+                    onChange={(event) =>
+                      handleFieldChange('firstName', event.target.value)
+                    }
+                    value={formState.firstName}
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Nom</span>
+                  <input
+                    onChange={(event) =>
+                      handleFieldChange('lastName', event.target.value)
+                    }
+                    value={formState.lastName}
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Role</span>
+                  <select
+                    onChange={(event) =>
+                      handleFieldChange('role', event.target.value as UserRole)
+                    }
+                    value={formState.role}
+                  >
+                    {USER_ROLES.map((role) => (
+                      <option key={role} value={role}>
+                        {translateUserRole(role)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field">
+                  <span>Groupe</span>
+                  <select
+                    onChange={(event) =>
+                      handleFieldChange('groupId', event.target.value)
+                    }
+                    value={formState.groupId}
+                  >
+                    <option value="">Aucun groupe</option>
+                    {catalog.groups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </form>
+
+              {formMessage ? (
+                <p className="referentials-feedback">{formMessage}</p>
+              ) : null}
+            </section>
+          </div>
+        </section>
+      ) : (
+        <>
           {formMessage ? (
             <p className="referentials-feedback">{formMessage}</p>
           ) : null}
-        </section>
-      ) : formMessage ? (
-        <p className="referentials-feedback">{formMessage}</p>
-      ) : null}
 
-      <section className="admin-users-card">
-        <header className="referentials-card-header">
-          <div>
-            <h3>Liste des utilisateurs</h3>
-            <p>
-              Controle les profils disponibles pour les droits et les
-              assignations.
-            </p>
+          <div className="referentials-summary">
+            <article>
+              <span>Total utilisateurs</span>
+              <strong>{users.length}</strong>
+            </article>
+            <article>
+              <span>Comptes actifs</span>
+              <strong>{activeUsers}</strong>
+            </article>
+            <article>
+              <span>Agents</span>
+              <strong>{agentUsers}</strong>
+            </article>
+            <article>
+              <span>Admins</span>
+              <strong>{adminUsers}</strong>
+            </article>
           </div>
-        </header>
 
-        <div className="admin-users-toolbar">
-          <label className="ticket-list-target-search">
-            <select
-              aria-label="Champ de recherche"
-              onChange={(event) =>
-                setSearchField(event.target.value as UserSearchField)
-              }
-              value={searchField}
-            >
-              <option value="IDENTIFIER">Identifiant</option>
-              <option value="FIRST_NAME">Prenom</option>
-              <option value="LAST_NAME">Nom</option>
-              <option value="GROUP">Groupe</option>
-            </select>
-
-            <div className="ticket-list-target-search-input">
-              <input
-                onChange={(event) => setSearchText(event.target.value)}
-                placeholder="Rechercher"
-                type="search"
-                value={searchText}
-              />
-            </div>
-          </label>
-
-          <label className="admin-users-role-filter">
-            <span>Role</span>
-            <select
-              onChange={(event) =>
-                setRoleFilter(event.target.value as UserRoleFilter)
-              }
-              value={roleFilter}
-            >
-              <option value="ALL">Tous</option>
-              {USER_ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {translateUserRole(role)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <button
-            aria-label="Montrer la corbeille"
-            className={
-              showTrash
-                ? 'admin-users-trash-toggle is-active'
-                : 'admin-users-trash-toggle'
-            }
-            onClick={() => setShowTrash((current) => !current)}
-            title="Montrer la corbeille"
-            type="button"
-          >
-            <Trash2 size={17} strokeWidth={2.2} />
-            <span className="admin-users-trash-label">
-              Montrer la corbeille
-            </span>
-          </button>
-        </div>
-
-        {isLoading ? (
-          <p className="referentials-empty-state">
-            Chargement des utilisateurs...
-          </p>
-        ) : errorMessage ? (
-          <p className="referentials-error">{errorMessage}</p>
-        ) : filteredUsers.length === 0 ? (
-          <p className="referentials-empty-state">
-            Aucun utilisateur disponible.
-          </p>
-        ) : (
-          <>
-            <div className="ticket-table-scroll">
-              <table className="ticket-table admin-users-table">
-                <thead>
-                  <tr>
-                    <th>Identifiant</th>
-                    <th>Prenom</th>
-                    <th>Nom</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Groupe</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedUsers.map((user) => (
-                    <tr
-                      className={
-                        user.isActive
-                          ? 'ticket-table-row'
-                          : 'ticket-table-row is-trash'
-                      }
-                      key={user.id}
-                      onClick={() => handleSelectUser(user)}
-                    >
-                      <td>
-                        <div className="admin-users-identifier">
-                          {formatUserIdentifier(user)}
-                        </div>
-                      </td>
-                      <td>{user.firstName ?? 'Non defini'}</td>
-                      <td>{user.lastName ?? 'Non defini'}</td>
-                      <td>{user.email ?? 'Email indisponible'}</td>
-                      <td>{translateUserRole(user.role)}</td>
-                      <td>{formatUserGroupName(user, groupsById)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="ticket-pagination">
-              <p className="ticket-form-helper">
-                Page {userPage} sur {totalUserPages} - {filteredUsers.length}{' '}
-                utilisateurs
-              </p>
-              <div className="ticket-pagination-actions">
-                <button
-                  className="secondary-button"
-                  disabled={userPage === 1}
-                  onClick={() =>
-                    setUserPage((current) => Math.max(1, current - 1))
-                  }
-                  type="button"
-                >
-                  Precedent
-                </button>
-                <span className="ticket-pagination-current">{userPage}</span>
-                <button
-                  className="secondary-button"
-                  disabled={userPage === totalUserPages}
-                  onClick={() =>
-                    setUserPage((current) =>
-                      Math.min(totalUserPages, current + 1),
-                    )
-                  }
-                  type="button"
-                >
-                  Suivant
-                </button>
+          <section className="admin-users-card">
+            <header className="referentials-card-header">
+              <div>
+                <h3>Liste des utilisateurs</h3>
+                <p>
+                  Controle les profils disponibles pour les droits et les
+                  assignations.
+                </p>
               </div>
+              <button
+                className="admin-users-add-button"
+                onClick={handleOpenCreateForm}
+                type="button"
+              >
+                <Plus size={16} strokeWidth={2.3} />
+                Ajouter
+              </button>
+            </header>
+
+            <div className="admin-users-toolbar">
+              <div className="admin-users-search-field">
+                <span>Recherche</span>
+                <label className="ticket-list-target-search">
+                  <select
+                    aria-label="Champ de recherche"
+                    onChange={(event) =>
+                      setSearchField(event.target.value as UserSearchField)
+                    }
+                    value={searchField}
+                  >
+                    <option value="IDENTIFIER">Identifiant</option>
+                    <option value="FIRST_NAME">Prenom</option>
+                    <option value="LAST_NAME">Nom</option>
+                    <option value="GROUP">Groupe</option>
+                  </select>
+
+                  <div className="ticket-list-target-search-input">
+                    <input
+                      onChange={(event) => setSearchText(event.target.value)}
+                      placeholder="Rechercher"
+                      type="search"
+                      value={searchText}
+                    />
+                  </div>
+                </label>
+              </div>
+
+              <label className="admin-users-role-filter">
+                <span>Role</span>
+                <select
+                  onChange={(event) =>
+                    setRoleFilter(event.target.value as UserRoleFilter)
+                  }
+                  value={roleFilter}
+                >
+                  <option value="ALL">Tous</option>
+                  {USER_ROLES.map((role) => (
+                    <option key={role} value={role}>
+                      {translateUserRole(role)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="admin-users-trash-toggle">
+                <input
+                  checked={showTrash}
+                  onChange={(event) => setShowTrash(event.target.checked)}
+                  type="checkbox"
+                />
+                <span className="admin-users-trash-label">
+                  Montrer la corbeille
+                </span>
+              </label>
             </div>
-          </>
-        )}
-      </section>
+
+            {isLoading ? (
+              <p className="referentials-empty-state">
+                Chargement des utilisateurs...
+              </p>
+            ) : errorMessage ? (
+              <p className="referentials-error">{errorMessage}</p>
+            ) : filteredUsers.length === 0 ? (
+              <p className="referentials-empty-state">
+                Aucun utilisateur disponible.
+              </p>
+            ) : (
+              <>
+                <div className="ticket-table-scroll">
+                  <table className="ticket-table admin-users-table">
+                    <thead>
+                      <tr>
+                        <th>Identifiant</th>
+                        <th>Prenom</th>
+                        <th>Nom</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Groupe</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedUsers.map((user) => (
+                        <tr
+                          className={
+                            user.isActive
+                              ? 'ticket-table-row'
+                              : 'ticket-table-row is-trash'
+                          }
+                          key={user.id}
+                          onClick={() => handleSelectUser(user)}
+                        >
+                          <td>
+                            <div className="admin-users-identifier">
+                              {formatUserIdentifier(user)}
+                            </div>
+                          </td>
+                          <td>{user.firstName ?? 'Non defini'}</td>
+                          <td>{user.lastName ?? 'Non defini'}</td>
+                          <td>{user.email ?? 'Email indisponible'}</td>
+                          <td>{translateUserRole(user.role)}</td>
+                          <td>{formatUserGroupName(user, groupsById)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="ticket-pagination">
+                  <p className="ticket-form-helper">
+                    Page {userPage} sur {totalUserPages} -{' '}
+                    {filteredUsers.length} utilisateurs
+                  </p>
+                  <div className="ticket-pagination-actions">
+                    <button
+                      className="secondary-button"
+                      disabled={userPage === 1}
+                      onClick={() =>
+                        setUserPage((current) => Math.max(1, current - 1))
+                      }
+                      type="button"
+                    >
+                      Precedent
+                    </button>
+                    <span className="ticket-pagination-current">
+                      {userPage}
+                    </span>
+                    <button
+                      className="secondary-button"
+                      disabled={userPage === totalUserPages}
+                      onClick={() =>
+                        setUserPage((current) =>
+                          Math.min(totalUserPages, current + 1),
+                        )
+                      }
+                      type="button"
+                    >
+                      Suivant
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
+        </>
+      )}
     </section>
   );
 }
