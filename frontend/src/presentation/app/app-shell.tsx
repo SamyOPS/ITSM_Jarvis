@@ -19,7 +19,8 @@ import {
   SlidersHorizontal,
   Ticket,
   User,
-  UserX,
+  UserCheck,
+  UserMinus,
   Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -45,15 +46,16 @@ type SidebarMenuId = 'create-ticket' | 'ticket-list';
 const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/': LayoutDashboard,
   '/admin': Shield,
-  '/admin/users': Users,
+  '/admin/groups': Users,
+  '/admin/users': User,
   '/agent': LayoutDashboard,
   '/agent/archives': Archive,
-  '/agent/assigned-to-me': User,
+  '/agent/assigned-to-me': UserCheck,
   '/agent/incidents/new': AlertTriangle,
   '/agent/my-tickets': Ticket,
   '/agent/requests/new': FileText,
   '/agent/tickets': ListChecks,
-  '/agent/unassigned-tickets': UserX,
+  '/agent/unassigned-tickets': UserMinus,
   '/reports': BarChart3,
 };
 
@@ -489,7 +491,7 @@ export function AppShell({
                         onClick={() => navigateTo('/agent/unassigned-tickets')}
                         type="button"
                       >
-                        <UserX size={15} strokeWidth={2} />
+                        <UserMinus size={15} strokeWidth={2} />
                         Non assignés
                       </button>
                       <button
@@ -501,7 +503,7 @@ export function AppShell({
                         onClick={() => navigateTo('/agent/assigned-to-me')}
                         type="button"
                       >
-                        <User size={15} strokeWidth={2} />
+                        <UserCheck size={15} strokeWidth={2} />
                         Assignés à moi
                       </button>
                       <button
@@ -545,7 +547,7 @@ export function AppShell({
                         onClick={() => navigateTo('/agent/unassigned-tickets')}
                         type="button"
                       >
-                        <UserX size={15} strokeWidth={2} />
+                        <UserMinus size={15} strokeWidth={2} />
                         Non assignés
                       </button>
                       <button
@@ -557,7 +559,7 @@ export function AppShell({
                         onClick={() => navigateTo('/agent/assigned-to-me')}
                         type="button"
                       >
-                        <User size={15} strokeWidth={2} />
+                        <UserCheck size={15} strokeWidth={2} />
                         Assignés à moi
                       </button>
                       <button

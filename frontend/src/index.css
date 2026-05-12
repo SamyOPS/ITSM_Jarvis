@@ -356,6 +356,12 @@ a {
 .workspace-cta-button {
   background: linear-gradient(180deg, #edf4ff 0%, #dceafe 100%);
   border-color: rgba(25, 86, 179, 0.18);
+  font-weight: 400;
+}
+
+.primary-button.workspace-cta-button,
+.primary-button.workspace-cta-button span {
+  font-weight: 400;
 }
 
 .workspace-ticket-menu {
@@ -415,7 +421,14 @@ a {
   transition:
     transform 160ms ease,
     border-color 160ms ease,
-    background-color 160ms ease;
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.primary-button {
+  border-color: rgba(21, 49, 95, 0.24);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
 
 .nav-link:hover,
@@ -967,33 +980,40 @@ a {
   background: transparent;
 }
 
-.admin-users-add-button {
+.admin-users-page .admin-users-add-button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   min-height: 38px;
   padding: 0 16px;
-  border: 1px solid rgba(202, 126, 12, 0.28);
-  border-radius: 8px;
-  background: #ffc857;
+  border: 1px solid rgba(37, 99, 235, 0.24);
+  border-radius: 999px;
+  background-color: #e7f0ff;
   color: #17335f;
   font-weight: 700;
-  box-shadow: 0 10px 22px rgba(202, 126, 12, 0.14);
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
     transform 160ms ease;
+  appearance: none;
 }
 
-.admin-users-add-button:hover {
+.admin-users-page .admin-users-add-button:hover {
   transform: translateY(-1px);
-  border-color: rgba(202, 126, 12, 0.42);
-  background: #f5b93f;
+  border-color: rgba(37, 99, 235, 0.34);
+  background-color: #d8e7ff;
 }
 
 .admin-users-toolbar {
   display: grid;
   grid-template-columns: minmax(280px, 1fr) minmax(180px, 240px) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.admin-groups-toolbar {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr);
   gap: 12px;
   align-items: end;
 }
@@ -1121,6 +1141,26 @@ a {
   padding-right: 16px;
 }
 
+.admin-groups-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.admin-groups-table th:nth-child(1),
+.admin-groups-table td:nth-child(1) {
+  width: 24%;
+}
+
+.admin-groups-table th:nth-child(2),
+.admin-groups-table td:nth-child(2) {
+  width: 22%;
+}
+
+.admin-groups-table th:nth-child(3),
+.admin-groups-table td:nth-child(3) {
+  width: 54%;
+}
+
 .admin-users-table .ticket-table-row.is-trash {
   background: rgba(155, 46, 61, 0.04);
 }
@@ -1141,28 +1181,32 @@ a {
   gap: 8px;
   min-height: 40px;
   padding: 0 16px;
-  border-radius: 10px;
-  font-weight: 700;
+  border-radius: 999px;
+  font-weight: 400;
+}
+
+.admin-user-detail-view .primary-button {
+  font-weight: 400;
 }
 
 .admin-user-trash-button {
-  border: 1px solid rgba(202, 126, 12, 0.42);
-  background: #fff7e6;
-  color: #b45309;
+  border: 1px solid rgba(220, 50, 50, 0.25);
+  background: transparent;
+  color: #c0392b;
 }
 
 .admin-user-trash-button:hover:not(:disabled) {
-  background: #ffedd5;
+  background: rgba(220, 50, 50, 0.07);
 }
 
 .admin-user-delete-button {
-  border: 1px solid rgba(220, 38, 38, 0.28);
-  background: #dc2626;
-  color: #ffffff;
+  border: 1px solid rgba(220, 50, 50, 0.25);
+  background: transparent;
+  color: #c0392b;
 }
 
 .admin-user-delete-button:hover:not(:disabled) {
-  background: #b91c1c;
+  background: rgba(220, 50, 50, 0.07);
 }
 
 .admin-user-restore-button {
@@ -3242,7 +3286,7 @@ a {
   background: transparent;
   color: var(--text-muted);
   font-size: 0.88rem;
-  font-weight: 600;
+  font-weight: 700;
   transition: all 0.15s;
 }
 
@@ -3318,9 +3362,10 @@ a {
 }
 
 .tdp-save-btn {
-  border-color: rgba(37, 99, 235, 0.22);
+  border-color: rgba(21, 49, 95, 0.24);
   background: #e7f0ff;
   color: #15315f;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
 
 .tdp-save-btn:hover:not(:disabled) {

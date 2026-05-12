@@ -5,11 +5,14 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { ArrowLeft, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, RotateCcw, Search, Trash2, X } from 'lucide-react';
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { UserRole } from '../../domain/auth/user-role';
-import type { ReferentialCatalogSnapshot } from '../../domain/referentials/referential-catalog';
+import type {
+  ReferentialCatalogSnapshot,
+  ReferentialGroup,
+} from '../../domain/referentials/referential-catalog';
 import { translateUserRole } from '../../domain/i18n/ticketing-labels';
 import {
   createAdminUser,
@@ -36,11 +39,13 @@ type UserFormState = {
 type UserFormMode = 'create' | 'edit' | null;
 
 type UserSearchField = 'IDENTIFIER' | 'FIRST_NAME' | 'LAST_NAME' | 'GROUP';
+type UserGroupLookupSearchField = 'IDENTIFIER' | 'NAME';
 
 type UserRoleFilter = UserRole | 'ALL';
 
 const USER_ROLES: UserRole[] = ['DEMANDEUR', 'AGENT', 'ADMIN'];
 const USERS_PER_PAGE = 15;
+const USER_GROUP_LOOKUP_PAGE_SIZE = 10;
 
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],
@@ -75,7 +80,12 @@ export function UsersPage({ session }: UsersPageProps) {
   const [searchText, setSearchText] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [showTrash, setShowTrash] = useState(false);
+  const [showGroupLookup, setShowGroupLookup] = useState(false);
   const [userPage, setUserPage] = useState(1);
+  const [userGroupLookupPage, setUserGroupLookupPage] = useState(1);
+  const [userGroupLookupSearch, setUserGroupLookupSearch] = useState('');
+  const [userGroupLookupSearchField, setUserGroupLookupSearchField] =
+    useState<UserGroupLookupSearchField>('IDENTIFIER');
   const [roleFilter, setRoleFilter] = useState<UserRoleFilter>('ALL');
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
 
@@ -110,6 +120,26 @@ export function UsersPage({ session }: UsersPageProps) {
     (userPage - 1) * USERS_PER_PAGE,
     userPage * USERS_PER_PAGE,
   );
+  const filteredLookupGroups = useMemo(
+    () =>
+      filterLookupGroups(
+        catalog.groups,
+        userGroupLookupSearch,
+        userGroupLookupSearchField,
+      ),
+    [catalog.groups, userGroupLookupSearch, userGroupLookupSearchField],
+  );
+  const totalUserGroupLookupPages = Math.max(
+    1,
+    Math.ceil(filteredLookupGroups.length / USER_GROUP_LOOKUP_PAGE_SIZE),
+  );
+  const paginatedLookupGroups = filteredLookupGroups.slice(
+    (userGroupLookupPage - 1) * USER_GROUP_LOOKUP_PAGE_SIZE,
+    userGroupLookupPage * USER_GROUP_LOOKUP_PAGE_SIZE,
+  );
+  const selectedFormGroup = formState.groupId
+    ? (groupsById.get(formState.groupId) ?? null)
+    : null;
 
   const loadUsers = useCallback(async (): Promise<void> => {
     setIsLoading(true);
@@ -142,6 +172,12 @@ export function UsersPage({ session }: UsersPageProps) {
     setUserPage(1);
   }, [roleFilter, searchField, searchText, showTrash]);
 
+  useEffect(() => {
+    if (userGroupLookupPage > totalUserGroupLookupPages) {
+      setUserGroupLookupPage(totalUserGroupLookupPages);
+    }
+  }, [totalUserGroupLookupPages, userGroupLookupPage]);
+
   function handleFieldChange(field: keyof UserFormState, value: string): void {
     setFormState((currentState) => ({
       ...currentState,
@@ -153,6 +189,7 @@ export function UsersPage({ session }: UsersPageProps) {
   function handleSelectUser(user: AdminUserSummary): void {
     const inferredName = inferUserNameParts(user);
 
+    closeGroupLookup();
     setFormMode('edit');
     setSelectedUserId(user.id);
     setFormMessage(null);
@@ -167,6 +204,7 @@ export function UsersPage({ session }: UsersPageProps) {
   }
 
   function handleResetForm(): void {
+    closeGroupLookup();
     setFormMode(null);
     setSelectedUserId(null);
     setFormState(EMPTY_USER_FORM);
@@ -174,10 +212,40 @@ export function UsersPage({ session }: UsersPageProps) {
   }
 
   function handleOpenCreateForm(): void {
+    closeGroupLookup();
     setFormMode('create');
     setSelectedUserId(null);
     setFormState(EMPTY_USER_FORM);
     setFormMessage(null);
+  }
+
+  function openGroupLookup(): void {
+    const selectedGroupIndex = filterLookupGroups(
+      catalog.groups,
+      '',
+      'IDENTIFIER',
+    ).findIndex((group) => group.id === formState.groupId);
+
+    setShowGroupLookup(true);
+    setUserGroupLookupSearch('');
+    setUserGroupLookupSearchField('IDENTIFIER');
+    setUserGroupLookupPage(
+      selectedGroupIndex >= 0
+        ? Math.floor(selectedGroupIndex / USER_GROUP_LOOKUP_PAGE_SIZE) + 1
+        : 1,
+    );
+  }
+
+  function closeGroupLookup(): void {
+    setShowGroupLookup(false);
+    setUserGroupLookupSearch('');
+    setUserGroupLookupSearchField('IDENTIFIER');
+    setUserGroupLookupPage(1);
+  }
+
+  function handleGroupLookupSelect(group: ReferentialGroup): void {
+    handleFieldChange('groupId', group.id);
+    closeGroupLookup();
   }
 
   async function handleCreateUser(
@@ -201,11 +269,7 @@ export function UsersPage({ session }: UsersPageProps) {
       setFormMode(null);
       await loadUsers();
     } catch (error) {
-      setFormMessage(
-        error instanceof Error
-          ? error.message
-          : 'Erreur inconnue lors de la creation du compte',
-      );
+      setFormMessage(mapCreateUserErrorMessage(error));
     } finally {
       setIsCreating(false);
     }
@@ -488,19 +552,38 @@ export function UsersPage({ session }: UsersPageProps) {
 
                 <label className="field">
                   <span>Groupe</span>
-                  <select
-                    onChange={(event) =>
-                      handleFieldChange('groupId', event.target.value)
+                  <div
+                    className={
+                      formState.groupId
+                        ? 'incident-lookup-field has-clear'
+                        : 'incident-lookup-field'
                     }
-                    value={formState.groupId}
                   >
-                    <option value="">Aucun groupe</option>
-                    {catalog.groups.map((group) => (
-                      <option key={group.id} value={group.id}>
-                        {group.name}
-                      </option>
-                    ))}
-                  </select>
+                    <input
+                      className={formState.groupId ? '' : 'lookup-placeholder'}
+                      placeholder="Choisir le groupe"
+                      readOnly
+                      value={selectedFormGroup?.name ?? ''}
+                    />
+
+                    {formState.groupId ? (
+                      <button
+                        aria-label="Retirer le groupe"
+                        onClick={() => handleFieldChange('groupId', '')}
+                        type="button"
+                      >
+                        <X size={16} />
+                      </button>
+                    ) : null}
+
+                    <button
+                      aria-label="Rechercher un groupe"
+                      onClick={openGroupLookup}
+                      type="button"
+                    >
+                      <Search size={18} />
+                    </button>
+                  </div>
                 </label>
               </form>
 
@@ -509,6 +592,147 @@ export function UsersPage({ session }: UsersPageProps) {
               ) : null}
             </section>
           </div>
+
+          {showGroupLookup ? (
+            <div
+              aria-modal="true"
+              className="incident-lookup-overlay"
+              role="dialog"
+            >
+              <section className="incident-lookup-dialog">
+                <header className="incident-lookup-header">
+                  <div>
+                    <h3>Selectionner un groupe</h3>
+                  </div>
+
+                  <button
+                    aria-label="Fermer la selection"
+                    className="incident-lookup-close"
+                    onClick={closeGroupLookup}
+                    type="button"
+                  >
+                    <X size={18} />
+                  </button>
+                </header>
+
+                <label className="incident-lookup-search">
+                  <select
+                    aria-label="Categorie de recherche"
+                    onChange={(event) =>
+                      setUserGroupLookupSearchField(
+                        event.target.value as UserGroupLookupSearchField,
+                      )
+                    }
+                    value={userGroupLookupSearchField}
+                  >
+                    <option value="IDENTIFIER">Identifiant</option>
+                    <option value="NAME">Nom</option>
+                  </select>
+
+                  <div className="incident-lookup-search-input">
+                    <input
+                      autoFocus
+                      onChange={(event) =>
+                        setUserGroupLookupSearch(event.target.value)
+                      }
+                      placeholder="Rechercher"
+                      value={userGroupLookupSearch}
+                    />
+                  </div>
+                </label>
+
+                <div className="incident-lookup-table-scroll">
+                  <table className="incident-lookup-table">
+                    <thead>
+                      <tr>
+                        <th>Identifiant</th>
+                        <th>Nom</th>
+                        <th>Description</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {paginatedLookupGroups.length === 0 ? (
+                        <tr>
+                          <td colSpan={3}>
+                            Aucun groupe ne correspond a la recherche.
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedLookupGroups.map((group) => (
+                          <tr
+                            aria-selected={group.id === formState.groupId}
+                            className={
+                              group.id === formState.groupId
+                                ? 'incident-lookup-row is-selected'
+                                : 'incident-lookup-row'
+                            }
+                            key={group.id}
+                            onClick={() => handleGroupLookupSelect(group)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                handleGroupLookupSelect(group);
+                              }
+                            }}
+                            tabIndex={0}
+                          >
+                            <td className="incident-lookup-identity">
+                              {group.name}
+                            </td>
+                            <td>{group.name}</td>
+                            <td>{group.description ?? '-'}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <footer className="incident-lookup-pagination">
+                  <span>
+                    Page {userGroupLookupPage} sur {totalUserGroupLookupPages} -{' '}
+                    {filteredLookupGroups.length} resultat
+                    {filteredLookupGroups.length > 1 ? 's' : ''}
+                  </span>
+
+                  <div>
+                    <button
+                      className="secondary-button incident-lookup-page-button"
+                      disabled={userGroupLookupPage <= 1}
+                      onClick={() =>
+                        setUserGroupLookupPage((currentPage) =>
+                          Math.max(1, currentPage - 1),
+                        )
+                      }
+                      type="button"
+                    >
+                      Precedent
+                    </button>
+
+                    <span className="incident-lookup-current-page">
+                      {userGroupLookupPage}
+                    </span>
+
+                    <button
+                      className="secondary-button incident-lookup-page-button"
+                      disabled={
+                        userGroupLookupPage >= totalUserGroupLookupPages
+                      }
+                      onClick={() =>
+                        setUserGroupLookupPage((currentPage) =>
+                          Math.min(totalUserGroupLookupPages, currentPage + 1),
+                        )
+                      }
+                      type="button"
+                    >
+                      Suivant
+                    </button>
+                  </div>
+                </footer>
+              </section>
+            </div>
+          ) : null}
         </section>
       ) : (
         <>
@@ -544,14 +768,21 @@ export function UsersPage({ session }: UsersPageProps) {
                   assignations.
                 </p>
               </div>
-              <button
-                className="admin-users-add-button"
-                onClick={handleOpenCreateForm}
-                type="button"
-              >
-                <Plus size={16} strokeWidth={2.3} />
-                Ajouter
-              </button>
+              <div className="ticket-list-toolbar">
+                <div className="ticket-list-count" aria-live="polite">
+                  <strong>{users.length}</strong>
+                  <span>utilisateurs</span>
+                </div>
+
+                <button
+                  className="admin-users-add-button"
+                  onClick={handleOpenCreateForm}
+                  type="button"
+                >
+                  <Plus size={16} strokeWidth={2.3} />
+                  Ajouter
+                </button>
+              </div>
             </header>
 
             <div className="admin-users-toolbar">
@@ -794,4 +1025,54 @@ function formatUserGroupName(
   return user.groupId
     ? (groupsById.get(user.groupId)?.name ?? user.groupId)
     : 'Aucun groupe';
+}
+
+function filterLookupGroups(
+  groups: ReferentialGroup[],
+  searchText: string,
+  searchField: UserGroupLookupSearchField,
+): ReferentialGroup[] {
+  const normalizedSearch = normalizeSearchText(searchText);
+
+  if (!normalizedSearch) {
+    return groups;
+  }
+
+  return groups.filter((group) => {
+    const value =
+      searchField === 'IDENTIFIER' || searchField === 'NAME' ? group.name : '';
+
+    return normalizeSearchText(value).includes(normalizedSearch);
+  });
+}
+
+function mapCreateUserErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return 'Erreur inconnue lors de la creation du compte';
+  }
+
+  const normalizedMessage = normalizeSearchText(error.message);
+
+  if (
+    normalizedMessage.includes('already') &&
+    normalizedMessage.includes('registered')
+  ) {
+    return 'Un compte avec cette adresse email existe deja.';
+  }
+
+  if (
+    normalizedMessage.includes('already') &&
+    normalizedMessage.includes('exists')
+  ) {
+    return 'Un compte avec cette adresse email existe deja.';
+  }
+
+  if (
+    normalizedMessage.includes('email') &&
+    normalizedMessage.includes('duplicate')
+  ) {
+    return 'Un compte avec cette adresse email existe deja.';
+  }
+
+  return error.message;
 }
