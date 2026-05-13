@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   Archive,
   BarChart3,
-  Beaker,
   ChevronDown,
   ClipboardCheck,
   ClipboardList,
@@ -52,7 +51,6 @@ const administrationRouteOrder: RoutePath[] = [
 
 const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/': LayoutDashboard,
-  '/admin': Beaker,
   '/admin/groups': Users,
   '/admin/users': User,
   '/agent': LayoutDashboard,
@@ -632,13 +630,7 @@ export function AppShell({
             >
               <button
                 aria-expanded={!isSidebarCollapsed && isAdministrationMenuOpen}
-                className={
-                  administrationRoutes.some((route) =>
-                    isRouteActive(route.path, pathname),
-                  )
-                    ? 'workspace-nav-link is-active'
-                    : 'workspace-nav-link'
-                }
+                className="workspace-nav-link"
                 onClick={() => {
                   if (isSidebarCollapsed) {
                     return;
@@ -724,39 +716,6 @@ export function AppShell({
               </div>
             </div>
           ) : null}
-
-          {visibleRoutes
-            .filter((route) => route.path === '/admin')
-            .map((route) => {
-              const Icon = routeIcons[route.path] ?? Ticket;
-              const isActive = isRouteActive(route.path, pathname);
-              const routeTitle = getRouteDisplayTitle(
-                route.path,
-                route.title,
-                session,
-              );
-
-              return (
-                <button
-                  className={
-                    isActive
-                      ? 'workspace-nav-link is-active'
-                      : 'workspace-nav-link'
-                  }
-                  key={route.path}
-                  onClick={() => navigateTo(route.path)}
-                  title={routeTitle}
-                  type="button"
-                >
-                  <span className="workspace-nav-link-icon" aria-hidden="true">
-                    <Icon size={18} strokeWidth={2} />
-                  </span>
-                  <strong className="workspace-nav-link-label">
-                    {routeTitle}
-                  </strong>
-                </button>
-              );
-            })}
         </nav>
 
         <div className="workspace-sidebar-footer">

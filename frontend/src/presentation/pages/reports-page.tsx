@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { BarChart3, User, Users } from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 
@@ -64,6 +65,8 @@ type ReportsFilterState = {
   type: '' | 'INCIDENT' | 'REQUEST';
 };
 
+type ReportsView = 'DASHBOARD' | 'PERSONAL' | 'GROUP';
+
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],
 
@@ -99,6 +102,8 @@ const INITIAL_FILTERS: ReportsFilterState = {
 };
 
 export function ReportsPage({ session }: ReportsPageProps) {
+  const [activeView, setActiveView] = useState<ReportsView>('DASHBOARD');
+
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
 
@@ -298,265 +303,314 @@ export function ReportsPage({ session }: ReportsPageProps) {
     [scopedTickets, users],
   );
 
+  const reportViews = [
+    {
+      icon: BarChart3,
+      key: 'DASHBOARD' as const,
+      label: 'Tableau de bord',
+    },
+    {
+      icon: User,
+      key: 'PERSONAL' as const,
+      label: 'Vue personnelle',
+    },
+    {
+      icon: Users,
+      key: 'GROUP' as const,
+      label: 'Vue groupe',
+    },
+  ];
+
   return (
     <section className="reports-page">
-      <form className="reports-filter-band" onSubmit={handleSubmit}>
-        <header className="reports-filter-band-header">
-          <div>
-            <h2>Tableau de bord</h2>
+      <nav
+        aria-label="Navigation du tableau de bord"
+        className="reports-view-tabs"
+      >
+        {reportViews.map((view) => {
+          const Icon = view.icon;
 
-            <p>Vue globale des indicateurs et tendances des tickets.</p>
-          </div>
-        </header>
-
-        <div className="reports-filters">
-          <label className="field">
-            <span>Periode</span>
-
-            <select
-              onChange={(event) =>
-                handleFilterChange('periodPreset', event.target.value)
-              }
-              value={filters.periodPreset}
-            >
-              <option value="">Personnalisée</option>
-
-              <option value="LAST_7_DAYS">7 jours</option>
-
-              <option value="LAST_30_DAYS">30 jours</option>
-
-              <option value="LAST_3_MONTHS">3 mois</option>
-
-              <option value="LAST_6_MONTHS">6 mois</option>
-            </select>
-          </label>
-
-          <label className="field">
-            <span>Du</span>
-
-            <input
-              onChange={(event) =>
-                handleFilterChange('from', event.target.value)
-              }
-              type="date"
-              value={filters.from}
-            />
-          </label>
-
-          <label className="field">
-            <span>Au</span>
-
-            <input
-              onChange={(event) => handleFilterChange('to', event.target.value)}
-              type="date"
-              value={filters.to}
-            />
-          </label>
-
-          <label className="field">
-            <span>Type de ticket</span>
-
-            <select
-              onChange={(event) =>
-                handleFilterChange('type', event.target.value)
-              }
-              value={filters.type}
-            >
-              <option value="">Tous</option>
-
-              <option value="INCIDENT">Incident</option>
-
-              <option value="REQUEST">Demande</option>
-            </select>
-          </label>
-
-          <label className="field">
-            <span>Priorite</span>
-
-            <select
-              onChange={(event) =>
-                handleFilterChange('priorityId', event.target.value)
-              }
-              value={filters.priorityId}
-            >
-              <option value="">Toutes</option>
-
-              {catalog.priorities.map((priority) => (
-                <option key={priority.id} value={priority.id}>
-                  {priority.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>Categorie</span>
-
-            <select
-              onChange={(event) =>
-                handleFilterChange('categoryId', event.target.value)
-              }
-              value={filters.categoryId}
-            >
-              <option value="">Toutes</option>
-
-              {catalog.categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>Agent</span>
-
-            <select
-              disabled={isPersonalAgentReporting}
-              onChange={(event) =>
-                handleFilterChange('assignedToUserId', event.target.value)
-              }
-              value={filters.assignedToUserId}
-            >
-              <option value="">
-                {isPersonalAgentReporting ? 'Moi uniquement' : 'Tous'}
-              </option>
-
-              {technicians.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {formatUserName(user)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>Groupe</span>
-
-            <select
-              disabled={isPersonalAgentReporting}
-              onChange={(event) =>
-                handleFilterChange('assignmentGroupId', event.target.value)
-              }
-              value={filters.assignmentGroupId}
-            >
-              <option value="">Tous</option>
-
-              {catalog.groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="reports-filter-actions">
-            <button className="primary-button" disabled={isLoading}>
-              Actualiser
-            </button>
-
+          return (
             <button
-              className="secondary-button"
-              onClick={handleResetFilters}
+              aria-pressed={activeView === view.key}
+              className={
+                activeView === view.key
+                  ? 'reports-view-tab reports-view-tab--active'
+                  : 'reports-view-tab'
+              }
+              key={view.key}
+              onClick={() => setActiveView(view.key)}
               type="button"
             >
-              Reinitialiser
+              <Icon aria-hidden="true" className="reports-view-tab-icon" />
+              <span>{view.label}</span>
             </button>
-          </div>
-        </div>
-      </form>
+          );
+        })}
+      </nav>
 
-      {errorMessage ? (
-        <p className="referentials-error">{errorMessage}</p>
-      ) : null}
+      {activeView === 'DASHBOARD' ? (
+        <>
+          <form className="reports-filter-band" onSubmit={handleSubmit}>
+            <div className="reports-filters">
+              <label className="field">
+                <span>Periode</span>
 
-      <section className="reports-dashboard">
-        <div className="reports-dashboard-kpis">
-          <DashboardPrimaryKpiCard
-            label="Tickets"
-            tone="yellow"
-            value={formatNumber(overview.total)}
-          />
+                <select
+                  onChange={(event) =>
+                    handleFilterChange('periodPreset', event.target.value)
+                  }
+                  value={filters.periodPreset}
+                >
+                  <option value="">Personnalisée</option>
 
-          <DashboardPrimaryKpiCard
-            label="Tickets en retard"
-            tone="orange"
-            value={formatNumber(overview.overdue)}
-          />
+                  <option value="LAST_7_DAYS">7 jours</option>
 
-          <DashboardPrimaryKpiCard
-            label="Incidents"
-            tone="salmon"
-            value={formatNumber(overview.incidents)}
-          />
+                  <option value="LAST_30_DAYS">30 jours</option>
 
-          <DashboardPrimaryKpiCard
-            label="Demandes"
-            tone="green"
-            value={formatNumber(overview.requests)}
-          />
+                  <option value="LAST_3_MONTHS">3 mois</option>
 
-          <DashboardMiniKpiCard
-            label="Tickets entrants"
-            tone="mint"
-            value={formatNumber(overview.total)}
-          />
+                  <option value="LAST_6_MONTHS">6 mois</option>
+                </select>
+              </label>
 
-          <DashboardMiniKpiCard
-            label="Tickets assignes"
-            tone="sky"
-            value={formatNumber(overview.assigned)}
-          />
+              <label className="field">
+                <span>Du</span>
 
-          <DashboardMiniKpiCard
-            label="Tickets resolus"
-            tone="silver"
-            value={formatNumber(overview.resolved)}
-          />
+                <input
+                  onChange={(event) =>
+                    handleFilterChange('from', event.target.value)
+                  }
+                  type="date"
+                  value={filters.from}
+                />
+              </label>
 
-          <DashboardMiniKpiCard
-            label="Tickets non assignes"
-            tone="white"
-            value={formatNumber(overview.unassigned)}
-          />
+              <label className="field">
+                <span>Au</span>
 
-          <DashboardMiniKpiCard
-            label="Tickets en attente"
-            tone="amber"
-            value={formatNumber(overview.pending)}
-          />
+                <input
+                  onChange={(event) =>
+                    handleFilterChange('to', event.target.value)
+                  }
+                  type="date"
+                  value={filters.to}
+                />
+              </label>
 
-          <DashboardMiniKpiCard
-            label="Tickets fermes"
-            tone="charcoal"
-            value={formatNumber(overview.closed)}
-          />
-        </div>
+              <label className="field">
+                <span>Type de ticket</span>
 
-        <div className="reports-dashboard-charts">
-          <DashboardPanel title="Evolution des tickets">
-            <DashboardTimelineChart items={timelineItems} />
-          </DashboardPanel>
+                <select
+                  onChange={(event) =>
+                    handleFilterChange('type', event.target.value)
+                  }
+                  value={filters.type}
+                >
+                  <option value="">Tous</option>
 
-          <DashboardPanel title="Statuts des tickets par mois">
-            <DashboardStackedStatusChart items={statusPeriodItems} />
-          </DashboardPanel>
-        </div>
+                  <option value="INCIDENT">Incident</option>
 
-        <div className="reports-dashboard-tops">
-          <DashboardPanel title="Top categories de tickets">
-            <DashboardDonutWidget items={categoryWidgetItems} />
-          </DashboardPanel>
+                  <option value="REQUEST">Demande</option>
+                </select>
+              </label>
 
-          <DashboardPanel title="Top sources de tickets">
-            <DashboardBarWidget items={channelWidgetItems} />
-          </DashboardPanel>
+              <label className="field">
+                <span>Priorite</span>
 
-          <DashboardPanel title="Top agents assignes">
-            <DashboardDonutWidget items={agentWidgetItems} />
-          </DashboardPanel>
-        </div>
-      </section>
+                <select
+                  onChange={(event) =>
+                    handleFilterChange('priorityId', event.target.value)
+                  }
+                  value={filters.priorityId}
+                >
+                  <option value="">Toutes</option>
+
+                  {catalog.priorities.map((priority) => (
+                    <option key={priority.id} value={priority.id}>
+                      {priority.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field">
+                <span>Categorie</span>
+
+                <select
+                  onChange={(event) =>
+                    handleFilterChange('categoryId', event.target.value)
+                  }
+                  value={filters.categoryId}
+                >
+                  <option value="">Toutes</option>
+
+                  {catalog.categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field">
+                <span>Agent</span>
+
+                <select
+                  disabled={isPersonalAgentReporting}
+                  onChange={(event) =>
+                    handleFilterChange('assignedToUserId', event.target.value)
+                  }
+                  value={filters.assignedToUserId}
+                >
+                  <option value="">
+                    {isPersonalAgentReporting ? 'Moi uniquement' : 'Tous'}
+                  </option>
+
+                  {technicians.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {formatUserName(user)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field">
+                <span>Groupe</span>
+
+                <select
+                  disabled={isPersonalAgentReporting}
+                  onChange={(event) =>
+                    handleFilterChange('assignmentGroupId', event.target.value)
+                  }
+                  value={filters.assignmentGroupId}
+                >
+                  <option value="">Tous</option>
+
+                  {catalog.groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="reports-filter-actions">
+                <button className="primary-button" disabled={isLoading}>
+                  Actualiser
+                </button>
+
+                <button
+                  className="secondary-button"
+                  onClick={handleResetFilters}
+                  type="button"
+                >
+                  Reinitialiser
+                </button>
+              </div>
+            </div>
+          </form>
+
+          {errorMessage ? (
+            <p className="referentials-error">{errorMessage}</p>
+          ) : null}
+
+          <section className="reports-dashboard">
+            <div className="reports-dashboard-kpis">
+              <DashboardPrimaryKpiCard
+                label="Tickets"
+                tone="yellow"
+                value={formatNumber(overview.total)}
+              />
+
+              <DashboardPrimaryKpiCard
+                label="Tickets en retard"
+                tone="orange"
+                value={formatNumber(overview.overdue)}
+              />
+
+              <DashboardPrimaryKpiCard
+                label="Incidents"
+                tone="salmon"
+                value={formatNumber(overview.incidents)}
+              />
+
+              <DashboardPrimaryKpiCard
+                label="Demandes"
+                tone="green"
+                value={formatNumber(overview.requests)}
+              />
+
+              <DashboardMiniKpiCard
+                label="Tickets entrants"
+                tone="mint"
+                value={formatNumber(overview.total)}
+              />
+
+              <DashboardMiniKpiCard
+                label="Tickets assignes"
+                tone="sky"
+                value={formatNumber(overview.assigned)}
+              />
+
+              <DashboardMiniKpiCard
+                label="Tickets resolus"
+                tone="silver"
+                value={formatNumber(overview.resolved)}
+              />
+
+              <DashboardMiniKpiCard
+                label="Tickets non assignes"
+                tone="white"
+                value={formatNumber(overview.unassigned)}
+              />
+
+              <DashboardMiniKpiCard
+                label="Tickets en attente"
+                tone="amber"
+                value={formatNumber(overview.pending)}
+              />
+
+              <DashboardMiniKpiCard
+                label="Tickets fermes"
+                tone="charcoal"
+                value={formatNumber(overview.closed)}
+              />
+            </div>
+
+            <div className="reports-dashboard-charts">
+              <DashboardPanel title="Evolution des tickets">
+                <DashboardTimelineChart items={timelineItems} />
+              </DashboardPanel>
+
+              <DashboardPanel title="Statuts des tickets par mois">
+                <DashboardStackedStatusChart items={statusPeriodItems} />
+              </DashboardPanel>
+            </div>
+
+            <div className="reports-dashboard-tops">
+              <DashboardPanel title="Top categories de tickets">
+                <DashboardDonutWidget items={categoryWidgetItems} />
+              </DashboardPanel>
+
+              <DashboardPanel title="Top sources de tickets">
+                <DashboardBarWidget items={channelWidgetItems} />
+              </DashboardPanel>
+
+              <DashboardPanel title="Top agents assignes">
+                <DashboardDonutWidget items={agentWidgetItems} />
+              </DashboardPanel>
+            </div>
+          </section>
+        </>
+      ) : (
+        <section
+          aria-label={
+            activeView === 'PERSONAL' ? 'Vue personnelle' : 'Vue groupe'
+          }
+          className="reports-empty-view"
+        />
+      )}
     </section>
   );
 }
