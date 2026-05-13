@@ -75,7 +75,7 @@ export const ROUTES: RouteDefinition[] = [
   {
     description: 'Administration des referentiels et des parametres metier.',
     path: '/admin',
-    title: 'Administration',
+    title: 'test',
   },
   {
     description: 'Liste des utilisateurs et de leurs roles.',

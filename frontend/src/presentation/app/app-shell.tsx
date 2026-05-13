@@ -3,8 +3,11 @@ import {
   AlertTriangle,
   Archive,
   BarChart3,
+  Beaker,
   ChevronDown,
+  ClipboardCheck,
   ClipboardList,
+  ClipboardX,
   FileText,
   House,
   LayoutDashboard,
@@ -19,8 +22,6 @@ import {
   SlidersHorizontal,
   Ticket,
   User,
-  UserCheck,
-  UserMinus,
   Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -41,21 +42,27 @@ interface AppShellProps {
   session: AuthSessionSnapshot | null;
 }
 
-type SidebarMenuId = 'create-ticket' | 'ticket-list';
+type SidebarMenuId = 'administration' | 'create-ticket' | 'ticket-list';
+
+const administrationRouteOrder: RoutePath[] = [
+  '/admin/users',
+  '/admin/groups',
+  '/agent/archives',
+];
 
 const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/': LayoutDashboard,
-  '/admin': Shield,
+  '/admin': Beaker,
   '/admin/groups': Users,
   '/admin/users': User,
   '/agent': LayoutDashboard,
   '/agent/archives': Archive,
-  '/agent/assigned-to-me': UserCheck,
+  '/agent/assigned-to-me': ClipboardCheck,
   '/agent/incidents/new': AlertTriangle,
   '/agent/my-tickets': Ticket,
   '/agent/requests/new': FileText,
   '/agent/tickets': ListChecks,
-  '/agent/unassigned-tickets': UserMinus,
+  '/agent/unassigned-tickets': ClipboardX,
   '/reports': BarChart3,
 };
 
@@ -146,6 +153,10 @@ export function AppShell({
   const isHomeRoute = pathname === homeRoute;
   const userInitials = useMemo(() => getUserInitials(session), [session]);
   const userDisplayName = useMemo(() => getUserDisplayName(session), [session]);
+  const administrationRoutes = administrationRouteOrder
+    .map((path) => visibleRoutes.find((route) => route.path === path) ?? null)
+    .filter((route) => route !== null);
+  const isAdministrationMenuOpen = openSidebarMenu === 'administration';
   const isTicketCreateMenuOpen = openSidebarMenu === 'create-ticket';
   const isTicketListMenuOpen = openSidebarMenu === 'ticket-list';
 
@@ -403,6 +414,15 @@ export function AppShell({
             }
 
             if (
+              route.path === '/admin' ||
+              route.path === '/admin/groups' ||
+              route.path === '/admin/users' ||
+              route.path === '/agent/archives'
+            ) {
+              return null;
+            }
+
+            if (
               route.path === '/agent/tickets' &&
               session?.user.role === 'DEMANDEUR'
             ) {
@@ -491,7 +511,7 @@ export function AppShell({
                         onClick={() => navigateTo('/agent/unassigned-tickets')}
                         type="button"
                       >
-                        <UserMinus size={15} strokeWidth={2} />
+                        <ClipboardX size={15} strokeWidth={2} />
                         Non assignés
                       </button>
                       <button
@@ -503,7 +523,7 @@ export function AppShell({
                         onClick={() => navigateTo('/agent/assigned-to-me')}
                         type="button"
                       >
-                        <UserCheck size={15} strokeWidth={2} />
+                        <ClipboardCheck size={15} strokeWidth={2} />
                         Assignés à moi
                       </button>
                       <button
@@ -547,7 +567,7 @@ export function AppShell({
                         onClick={() => navigateTo('/agent/unassigned-tickets')}
                         type="button"
                       >
-                        <UserMinus size={15} strokeWidth={2} />
+                        <ClipboardX size={15} strokeWidth={2} />
                         Non assignés
                       </button>
                       <button
@@ -559,7 +579,7 @@ export function AppShell({
                         onClick={() => navigateTo('/agent/assigned-to-me')}
                         type="button"
                       >
-                        <UserCheck size={15} strokeWidth={2} />
+                        <ClipboardCheck size={15} strokeWidth={2} />
                         Assignés à moi
                       </button>
                       <button
@@ -601,6 +621,144 @@ export function AppShell({
               </button>
             );
           })}
+
+          {administrationRoutes.length > 0 ? (
+            <div
+              className={
+                isAdministrationMenuOpen
+                  ? 'workspace-nav-dropdown is-open'
+                  : 'workspace-nav-dropdown'
+              }
+            >
+              <button
+                aria-expanded={!isSidebarCollapsed && isAdministrationMenuOpen}
+                className={
+                  administrationRoutes.some((route) =>
+                    isRouteActive(route.path, pathname),
+                  )
+                    ? 'workspace-nav-link is-active'
+                    : 'workspace-nav-link'
+                }
+                onClick={() => {
+                  if (isSidebarCollapsed) {
+                    return;
+                  }
+
+                  setOpenSidebarMenu((current) =>
+                    current === 'administration' ? null : 'administration',
+                  );
+                }}
+                title="Administration"
+                type="button"
+              >
+                <span className="workspace-nav-link-icon" aria-hidden="true">
+                  <Shield size={18} strokeWidth={2} />
+                </span>
+                <strong className="workspace-nav-link-label">
+                  Administration
+                </strong>
+                <ChevronDown
+                  className="workspace-nav-dropdown-chevron"
+                  size={16}
+                  strokeWidth={2}
+                />
+              </button>
+
+              {isAdministrationMenuOpen ? (
+                <div className="workspace-nav-dropdown-list">
+                  {administrationRoutes.map((route) => {
+                    const Icon = routeIcons[route.path] ?? Ticket;
+                    const routeTitle = getRouteDisplayTitle(
+                      route.path,
+                      route.title,
+                      session,
+                    );
+
+                    return (
+                      <button
+                        className={
+                          isRouteActive(route.path, pathname)
+                            ? 'workspace-nav-dropdown-item is-active'
+                            : 'workspace-nav-dropdown-item'
+                        }
+                        key={route.path}
+                        onClick={() => navigateTo(route.path)}
+                        type="button"
+                      >
+                        <Icon size={15} strokeWidth={2} />
+                        {routeTitle}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <div className="workspace-nav-flyout">
+                <div className="workspace-nav-flyout-title">
+                  Administration
+                </div>
+                <div className="workspace-nav-flyout-list">
+                  {administrationRoutes.map((route) => {
+                    const Icon = routeIcons[route.path] ?? Ticket;
+                    const routeTitle = getRouteDisplayTitle(
+                      route.path,
+                      route.title,
+                      session,
+                    );
+
+                    return (
+                      <button
+                        className={
+                          isRouteActive(route.path, pathname)
+                            ? 'workspace-nav-dropdown-item is-active'
+                            : 'workspace-nav-dropdown-item'
+                        }
+                        key={route.path}
+                        onClick={() => navigateTo(route.path)}
+                        type="button"
+                      >
+                        <Icon size={15} strokeWidth={2} />
+                        {routeTitle}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {visibleRoutes
+            .filter((route) => route.path === '/admin')
+            .map((route) => {
+              const Icon = routeIcons[route.path] ?? Ticket;
+              const isActive = isRouteActive(route.path, pathname);
+              const routeTitle = getRouteDisplayTitle(
+                route.path,
+                route.title,
+                session,
+              );
+
+              return (
+                <button
+                  className={
+                    isActive
+                      ? 'workspace-nav-link is-active'
+                      : 'workspace-nav-link'
+                  }
+                  key={route.path}
+                  onClick={() => navigateTo(route.path)}
+                  title={routeTitle}
+                  type="button"
+                >
+                  <span className="workspace-nav-link-icon" aria-hidden="true">
+                    <Icon size={18} strokeWidth={2} />
+                  </span>
+                  <strong className="workspace-nav-link-label">
+                    {routeTitle}
+                  </strong>
+                </button>
+              );
+            })}
         </nav>
 
         <div className="workspace-sidebar-footer">
