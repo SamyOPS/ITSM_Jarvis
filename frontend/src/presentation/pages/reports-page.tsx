@@ -1,9 +1,13 @@
 import {
   type CSSProperties,
+  type Dispatch,
   type FormEvent,
+  type RefObject,
+  type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -33,7 +37,12 @@ type ReportsPageProps = {
   session: AuthSessionSnapshot;
 };
 
-type PeriodPreset = '' | 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'LAST_3_MONTHS';
+type PeriodPreset =
+  | ''
+  | 'LAST_7_DAYS'
+  | 'LAST_30_DAYS'
+  | 'LAST_3_MONTHS'
+  | 'LAST_6_MONTHS';
 
 type ReportsFilterState = {
   assignedToUserId: string;
@@ -294,28 +303,9 @@ export function ReportsPage({ session }: ReportsPageProps) {
       <form className="reports-filter-band" onSubmit={handleSubmit}>
         <header className="reports-filter-band-header">
           <div>
-            <span className="reports-eyebrow">Tableau de bord</span>
+            <h2>Tableau de bord</h2>
 
-            <h2>Filtres globaux</h2>
-
-            <p>
-              Tous les KPI, graphiques et widgets utilisent le meme contexte de
-              filtrage.
-            </p>
-          </div>
-
-          <div className="reports-filter-meta">
-            <span className="reports-filter-chip">Periode</span>
-
-            <span className="reports-filter-chip">Type</span>
-
-            <span className="reports-filter-chip">Priorite</span>
-
-            <span className="reports-filter-chip">Categorie</span>
-
-            <span className="reports-filter-chip">Agent</span>
-
-            <span className="reports-filter-chip">Groupe</span>
+            <p>Vue globale des indicateurs et tendances des tickets.</p>
           </div>
         </header>
 
@@ -336,6 +326,8 @@ export function ReportsPage({ session }: ReportsPageProps) {
               <option value="LAST_30_DAYS">30 jours</option>
 
               <option value="LAST_3_MONTHS">3 mois</option>
+
+              <option value="LAST_6_MONTHS">6 mois</option>
             </select>
           </label>
 
@@ -644,7 +636,13 @@ function DashboardMiniKpiCard({
 }
 
 function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [tooltipState, setTooltipState] = useState<{
+    align: 'center' | 'left' | 'right';
+    index: number;
+    left: string;
+    top: string;
+  } | null>(null);
+  const hideTooltip = () => setTooltipState(null);
 
   if (items.length === 0) {
     return <p className="reports-chart-empty">Aucune donnee.</p>;
@@ -669,7 +667,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
   const baselineY = paddingTop + chartHeight;
-  const activeItem = hoveredIndex === null ? null : items[hoveredIndex];
+  const activeItem = tooltipState ? items[tooltipState.index] : null;
   const yTicks = Array.from({ length: 6 }, (_, index) =>
     Math.round((maxValue / 5) * (5 - index)),
   );
@@ -699,9 +697,8 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
       label: 'Clos',
     },
   ];
-
   return (
-    <div className="reports-timeline-card">
+    <div className="reports-timeline-card" onMouseLeave={hideTooltip}>
       <div className="reports-chart-legend">
         {series.map((item) => (
           <span key={item.key}>
@@ -747,35 +744,16 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
             baselineY,
             item.color,
             item.fill,
+            setTooltipState,
+            items.length,
+            hideTooltip,
           ),
         )}
-
-        {items.map((item, index) => {
-          const segmentWidth =
-            items.length === 1 ? chartWidth : chartWidth / items.length;
-          const x =
-            items.length === 1
-              ? paddingLeft
-              : paddingLeft + segmentWidth * index - segmentWidth / 2;
-
-          return (
-            <rect
-              className="reports-hover-zone"
-              fill="transparent"
-              height={chartHeight}
-              key={item.period}
-              onMouseEnter={() => setHoveredIndex(index)}
-              onMouseLeave={() => setHoveredIndex(null)}
-              width={items.length === 1 ? chartWidth : segmentWidth}
-              x={Math.max(paddingLeft, x)}
-              y={paddingTop}
-            />
-          );
-        })}
       </svg>
 
       {activeItem ? (
         <ChartTooltip
+          align={tooltipState?.align ?? 'center'}
           className="reports-chart-tooltip--timeline"
           items={[
             {
@@ -799,7 +777,8 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
               value: activeItem.closed,
             },
           ]}
-          left={getTooltipOffset(hoveredIndex, items.length)}
+          left={tooltipState?.left ?? '50%'}
+          top={tooltipState?.top}
           title={activeItem.period}
         />
       ) : null}
@@ -824,6 +803,16 @@ function renderTimelineSeries(
   baselineY: number,
   color: string,
   fill: string,
+  setTooltipState: Dispatch<
+    SetStateAction<{
+      align: 'center' | 'left' | 'right';
+      index: number;
+      left: string;
+      top: string;
+    } | null>
+  >,
+  itemCount: number,
+  hideTooltip: () => void,
 ) {
   const points = buildTimelinePoints(
     items,
@@ -847,14 +836,48 @@ function renderTimelineSeries(
         stroke={color}
       />
       {points.map((point, index) => (
-        <circle
-          className="reports-line-point"
-          cx={point.x}
-          cy={point.y}
-          fill={color}
-          key={`${key}-${index}`}
-          r="3.6"
-        />
+        <g key={`${key}-${index}`}>
+          <circle
+            className="reports-line-point-hitbox"
+            cx={point.x}
+            cy={point.y}
+            fill="transparent"
+            onMouseLeave={hideTooltip}
+            onMouseMove={(event) => {
+              const container = event.currentTarget.closest(
+                '.reports-timeline-card',
+              );
+
+              if (!(container instanceof HTMLDivElement)) {
+                return;
+              }
+
+              const containerRect = container.getBoundingClientRect();
+              const align = index >= itemCount - 1 ? 'right' : 'left';
+              const topPx = clampNumber(
+                event.clientY - containerRect.top - 16,
+                52,
+                Math.max(52, containerRect.height - 160),
+              );
+              const horizontalOffsetPx = align === 'left' ? 28 : -28;
+
+              setTooltipState({
+                align,
+                index,
+                left: `${point.x + horizontalOffsetPx}px`,
+                top: `${topPx}px`,
+              });
+            }}
+            r="16"
+          />
+          <circle
+            className="reports-line-point"
+            cx={point.x}
+            cy={point.y}
+            fill={color}
+            r="4"
+          />
+        </g>
       ))}
     </g>
   );
@@ -896,9 +919,12 @@ function buildSmoothSvgPath(points: Array<{ x: number; y: number }>): string {
   for (let index = 1; index < points.length; index += 1) {
     const previous = points[index - 1];
     const current = points[index];
-    const controlX = previous.x + (current.x - previous.x) / 2;
+    const distanceX = current.x - previous.x;
+    const tension = 0.32;
+    const controlX1 = previous.x + distanceX * tension;
+    const controlX2 = current.x - distanceX * tension;
 
-    path += ` C ${controlX} ${previous.y}, ${controlX} ${current.y}, ${current.x} ${current.y}`;
+    path += ` C ${controlX1} ${previous.y}, ${controlX2} ${current.y}, ${current.x} ${current.y}`;
   }
 
   return path;
@@ -924,7 +950,18 @@ function DashboardStackedStatusChart({
 }: {
   items: ReportingStatusPeriodItem[];
 }) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const chartRef = useRef<HTMLDivElement | null>(null);
+  const [tooltipState, setTooltipState] = useState<{
+    align: 'left' | 'right';
+    index: number;
+    left: string;
+    segment: {
+      color: string;
+      label: string;
+      value: number;
+    };
+    top: string;
+  } | null>(null);
 
   if (items.length === 0) {
     return <p className="reports-chart-empty">Aucune donnee.</p>;
@@ -943,10 +980,10 @@ function DashboardStackedStatusChart({
     1,
   );
   const chartHeightPx = 220;
-  const activeItem = hoveredIndex === null ? null : items[hoveredIndex];
+  const activeItem = tooltipState ? items[tooltipState.index] : null;
 
   return (
-    <div className="reports-status-period-chart">
+    <div className="reports-status-period-chart" ref={chartRef}>
       <div className="reports-chart-legend">
         <span>
           <i className="reports-status-key reports-status-key--open" />
@@ -976,35 +1013,11 @@ function DashboardStackedStatusChart({
 
       {activeItem ? (
         <ChartTooltip
+          align={tooltipState?.align ?? 'left'}
           className="reports-chart-tooltip--status"
-          items={[
-            {
-              color: '#3b6ca8',
-              label: 'Ouvert',
-              value: activeItem.open,
-            },
-            {
-              color: '#f1972c',
-              label: 'En cours',
-              value: activeItem.inProgress,
-            },
-            {
-              color: '#6bb45a',
-              label: 'En attente',
-              value: activeItem.pending,
-            },
-            {
-              color: '#f2cb4d',
-              label: 'Resolu',
-              value: activeItem.resolved,
-            },
-            {
-              color: '#b07ca7',
-              label: 'Clos',
-              value: activeItem.closed,
-            },
-          ]}
-          left={getTooltipOffset(hoveredIndex, items.length)}
+          items={tooltipState ? [tooltipState.segment] : []}
+          left={tooltipState?.left ?? '50%'}
+          top={tooltipState?.top}
           title={activeItem.period}
         />
       ) : null}
@@ -1021,27 +1034,71 @@ function DashboardStackedStatusChart({
           const height = `${total <= 0 ? 0 : (total / maxTotal) * chartHeightPx}px`;
 
           return (
-            <div
-              className="reports-status-period-column"
-              key={item.period}
-              onMouseEnter={() => setHoveredIndex(index)}
-              onMouseLeave={() => setHoveredIndex(null)}
-            >
+            <div className="reports-status-period-column" key={item.period}>
               <strong>{total}</strong>
               <div
                 className="reports-status-period-stack"
                 style={{ height } as CSSProperties}
-                title={`${formatPeriodLabel(item.period)} · ${total} ticket${total > 1 ? 's' : ''}`}
               >
-                {renderStackSegment(item.open, total, 'open')}
+                {renderStackSegment(
+                  item.open,
+                  total,
+                  'open',
+                  'Ouvert',
+                  '#3b6ca8',
+                  index,
+                  items.length,
+                  chartRef,
+                  setTooltipState,
+                )}
 
-                {renderStackSegment(item.inProgress, total, 'progress')}
+                {renderStackSegment(
+                  item.inProgress,
+                  total,
+                  'progress',
+                  'En cours',
+                  '#f1972c',
+                  index,
+                  items.length,
+                  chartRef,
+                  setTooltipState,
+                )}
 
-                {renderStackSegment(item.pending, total, 'pending')}
+                {renderStackSegment(
+                  item.pending,
+                  total,
+                  'pending',
+                  'En attente',
+                  '#6bb45a',
+                  index,
+                  items.length,
+                  chartRef,
+                  setTooltipState,
+                )}
 
-                {renderStackSegment(item.resolved, total, 'resolved')}
+                {renderStackSegment(
+                  item.resolved,
+                  total,
+                  'resolved',
+                  'Resolu',
+                  '#f2cb4d',
+                  index,
+                  items.length,
+                  chartRef,
+                  setTooltipState,
+                )}
 
-                {renderStackSegment(item.closed, total, 'closed')}
+                {renderStackSegment(
+                  item.closed,
+                  total,
+                  'closed',
+                  'Clos',
+                  '#b07ca7',
+                  index,
+                  items.length,
+                  chartRef,
+                  setTooltipState,
+                )}
               </div>
 
               <span>{formatPeriodLabel(item.period)}</span>
@@ -1054,24 +1111,28 @@ function DashboardStackedStatusChart({
 }
 
 function ChartTooltip({
+  align = 'center',
   className,
   items,
   left,
+  top,
   title,
 }: {
+  align?: 'center' | 'left' | 'right';
   className?: string;
   items: Array<{ color: string; label: string; value: number }>;
   left: string;
+  top?: string;
   title: string;
 }) {
   return (
     <div
       className={
         className
-          ? `reports-chart-tooltip ${className}`
+          ? `reports-chart-tooltip reports-chart-tooltip--${align} ${className}`
           : 'reports-chart-tooltip'
       }
-      style={{ left } as CSSProperties}
+      style={{ left, top } as CSSProperties}
     >
       <strong>{formatTooltipPeriod(title)}</strong>
       <div className="reports-chart-tooltip-list">
@@ -1089,26 +1150,30 @@ function ChartTooltip({
   );
 }
 
-function getTooltipOffset(
-  hoveredIndex: number | null,
-  itemCount: number,
-): string {
-  if (hoveredIndex === null || itemCount <= 0) {
-    return '50%';
-  }
-
-  const slotWidth = 100 / itemCount;
-  const center = slotWidth * hoveredIndex + slotWidth / 2;
-
-  return `clamp(120px, ${center}%, calc(100% - 120px))`;
-}
-
 function renderStackSegment(
   value: number,
 
   total: number,
 
   tone: 'closed' | 'open' | 'pending' | 'progress' | 'resolved',
+  label: string,
+  color: string,
+  columnIndex: number,
+  itemCount: number,
+  chartRef: RefObject<HTMLDivElement | null>,
+  setTooltipState: Dispatch<
+    SetStateAction<{
+      align: 'left' | 'right';
+      index: number;
+      left: string;
+      segment: {
+        color: string;
+        label: string;
+        value: number;
+      };
+      top: string;
+    } | null>
+  >,
 ) {
   if (value <= 0 || total <= 0) {
     return null;
@@ -1117,6 +1182,39 @@ function renderStackSegment(
   return (
     <span
       className={`reports-stack-segment reports-stack-segment--${tone}`}
+      onMouseLeave={() => setTooltipState(null)}
+      onMouseMove={(event) => {
+        if (!chartRef.current) {
+          return;
+        }
+
+        const chartRect = chartRef.current.getBoundingClientRect();
+        const segmentRect = event.currentTarget.getBoundingClientRect();
+        const align = columnIndex >= itemCount - 1 ? 'right' : 'left';
+        const horizontalOffsetPx = 20;
+        const leftPx =
+          align === 'left'
+            ? segmentRect.right - chartRect.left + horizontalOffsetPx
+            : segmentRect.left - chartRect.left - horizontalOffsetPx;
+        const estimatedTooltipHeightPx = 86;
+        const topPx = clampNumber(
+          event.clientY - chartRect.top - 14,
+          56,
+          Math.max(56, chartRect.height - estimatedTooltipHeightPx),
+        );
+
+        setTooltipState({
+          align,
+          index: columnIndex,
+          left: `${leftPx}px`,
+          segment: {
+            color,
+            label,
+            value,
+          },
+          top: `${topPx}px`,
+        });
+      }}
       style={{ height: `${(value / total) * 100}%` } as CSSProperties}
     />
   );
@@ -1254,6 +1352,15 @@ function getPeriodPresetRange(preset: Exclude<PeriodPreset, ''>): {
     };
   }
 
+  if (preset === 'LAST_6_MONTHS') {
+    return {
+      from: formatDateInputValue(
+        new Date(endOfToday.getFullYear(), endOfToday.getMonth() - 5, 1),
+      ),
+      to: formatDateInputValue(endOfToday),
+    };
+  }
+
   const days = preset === 'LAST_7_DAYS' ? 6 : 29;
   const start = new Date(endOfToday);
 
@@ -1351,6 +1458,10 @@ function formatTooltipPeriod(value: string): string {
     month: '2-digit',
     year: 'numeric',
   }).format(date);
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
 
 function formatPeriodLabel(value: string): string {
