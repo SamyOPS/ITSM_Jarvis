@@ -973,6 +973,10 @@ a {
   background: transparent;
 }
 
+.admin-users-card .referentials-card-header {
+  margin-bottom: 0;
+}
+
 .admin-user-detail-card {
   padding: 0;
   border: 0;
@@ -990,7 +994,7 @@ a {
   border-radius: 999px;
   background-color: #e7f0ff;
   color: #17335f;
-  font-weight: 700;
+  font-weight: 400;
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
@@ -1187,6 +1191,13 @@ a {
 
 .admin-user-detail-view .primary-button {
   font-weight: 400;
+}
+
+.admin-detail-panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .admin-user-trash-button {

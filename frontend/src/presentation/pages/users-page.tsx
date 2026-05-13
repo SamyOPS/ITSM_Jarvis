@@ -394,9 +394,12 @@ export function UsersPage({ session }: UsersPageProps) {
 
   const isSubmitting = isCreating || isDeleting || isUpdating;
   const userFormId = 'admin-user-form';
+  const rootClassName = formMode
+    ? 'panel admin-detail-panel referentials-panel admin-users-page'
+    : 'panel referentials-panel admin-users-page';
 
   return (
-    <section className="panel referentials-panel admin-users-page">
+    <section className={rootClassName}>
       {formMode ? (
         <section className="tdp-shell admin-user-detail-view">
           <div className="tdp-topbar">

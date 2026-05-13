@@ -216,9 +216,12 @@ export function GroupsPage({ session }: GroupsPageProps) {
 
   const isSubmitting = isDeleting || isSaving;
   const groupFormId = 'admin-group-form';
+  const rootClassName = formMode
+    ? 'panel admin-detail-panel referentials-panel admin-users-page admin-groups-page'
+    : 'panel referentials-panel admin-users-page admin-groups-page';
 
   return (
-    <section className="panel referentials-panel admin-users-page admin-groups-page">
+    <section className={rootClassName}>
       {formMode ? (
         <section className="tdp-shell admin-user-detail-view">
           <div className="tdp-topbar">
