@@ -694,9 +694,7 @@ export function AppShell({
               ) : null}
 
               <div className="workspace-nav-flyout">
-                <div className="workspace-nav-flyout-title">
-                  Administration
-                </div>
+                <div className="workspace-nav-flyout-title">Administration</div>
                 <div className="workspace-nav-flyout-list">
                   {administrationRoutes.map((route) => {
                     const Icon = routeIcons[route.path] ?? Ticket;
