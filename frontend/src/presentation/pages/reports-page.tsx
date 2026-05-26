@@ -18,8 +18,6 @@ import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 
 import type { ReferentialCatalogSnapshot } from '../../domain/referentials/referential-catalog';
 
-import type { TicketSummarySnapshot } from '../../domain/ticketing/ticket-summary';
-
 import { translateChannel } from '../../domain/i18n/ticketing-labels';
 
 import { fetchUserDirectory } from '../../infrastructure/api/auth-api';
@@ -27,12 +25,17 @@ import { fetchUserDirectory } from '../../infrastructure/api/auth-api';
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
 
 import type {
+  ReportingBreakdown,
   ReportingBreakdownItem,
+  ReportingFilters,
+  ReportingOverview,
   ReportingStatusPeriodItem,
   ReportingTimelineItem,
 } from '../../infrastructure/api/reporting-api';
-
-import { searchTickets } from '../../infrastructure/api/ticketing-api';
+import {
+  fetchReportingBreakdown,
+  fetchReportingOverview,
+} from '../../infrastructure/api/reporting-api';
 
 type ReportsPageProps = {
   session: AuthSessionSnapshot;
@@ -101,6 +104,22 @@ const INITIAL_FILTERS: ReportsFilterState = {
   type: '',
 };
 
+const EMPTY_OVERVIEW_TOTALS: ReportingOverview['totals'] = {
+  assigned: 0,
+  closed: 0,
+  incidents: 0,
+  inProgress: 0,
+  open: 0,
+  overdue: 0,
+  pending: 0,
+  requests: 0,
+  resolved: 0,
+  resolutionOverdue: 0,
+  responseOverdue: 0,
+  total: 0,
+  unassigned: 0,
+};
+
 export function ReportsPage({ session }: ReportsPageProps) {
   const [activeView, setActiveView] = useState<ReportsView>('DASHBOARD');
 
@@ -113,7 +132,9 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  const [tickets, setTickets] = useState<TicketSummarySnapshot[]>([]);
+  const [overview, setOverview] = useState<ReportingOverview | null>(null);
+
+  const [breakdown, setBreakdown] = useState<ReportingBreakdown | null>(null);
 
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
 
@@ -136,25 +157,20 @@ export function ReportsPage({ session }: ReportsPageProps) {
       setErrorMessage(null);
 
       try {
-        const [nextTickets, nextCatalog, nextUsers] = await Promise.all([
-          searchTickets(session.accessToken, {
-            categoryId: normalizeOptionalText(nextFilters.categoryId),
+        const reportingFilters = buildReportingFilters(nextFilters);
+        const [nextOverview, nextBreakdown, nextCatalog, nextUsers] =
+          await Promise.all([
+            fetchReportingOverview(session.accessToken, reportingFilters),
+            fetchReportingBreakdown(session.accessToken, reportingFilters),
+            fetchReferentialCatalog(),
+            session.user.role === 'DEMANDEUR'
+              ? Promise.resolve([])
+              : fetchUserDirectory(session.accessToken),
+          ]);
 
-            includeArchived: false,
+        setOverview(nextOverview);
 
-            priorityId: normalizeOptionalText(nextFilters.priorityId),
-
-            status: nextFilters.status || null,
-
-            type: nextFilters.type || null,
-          }),
-
-          fetchReferentialCatalog(),
-
-          fetchUserDirectory(session.accessToken),
-        ]);
-
-        setTickets(nextTickets);
+        setBreakdown(nextBreakdown);
 
         setCatalog(nextCatalog);
 
@@ -223,85 +239,28 @@ export function ReportsPage({ session }: ReportsPageProps) {
     setFilters(applyPeriodPreset(INITIAL_FILTERS));
   }
 
-  const scopedTickets = useMemo(
-    () => filterTicketsForDashboard(tickets, filters, session),
-
-    [filters, session, tickets],
-  );
-
-  const overview = useMemo(
-    () => buildDashboardOverview(scopedTickets),
-
-    [scopedTickets],
-  );
-
-  const timelineItems = useMemo(
-    () => buildTicketActivityTimeline(scopedTickets),
-
-    [scopedTickets],
-  );
-
-  const statusPeriodItems = useMemo(
-    () => buildTicketStatusPeriod(scopedTickets),
-
-    [scopedTickets],
-  );
-
   const categoryWidgetItems = useMemo(
-    () =>
-      countDashboardBreakdown(
-        scopedTickets,
-
-        (ticket) => ticket.categoryId,
-
-        (categoryId) =>
-          categoryId
-            ? (catalog.categories.find((category) => category.id === categoryId)
-                ?.name ?? categoryId)
-            : 'Non definie',
-      ),
-
-    [catalog.categories, scopedTickets],
+    () => breakdown?.ticketsByCategory ?? [],
+    [breakdown],
   );
 
   const channelWidgetItems = useMemo(
     () =>
-      countDashboardBreakdown(
-        scopedTickets,
-
-        (ticket) => ticket.channelId,
-
-        (channelId) =>
-          channelId
-            ? getChannelDisplayName(
-                {
-                  count: 0,
-
-                  id: channelId,
-
-                  name: channelId,
-                },
-
-                catalog,
-              )
-            : 'Non renseigne',
-      ),
-
-    [catalog, scopedTickets],
+      (breakdown?.ticketsByChannel ?? []).map((item) => ({
+        ...item,
+        name: getChannelDisplayName(item, catalog),
+      })),
+    [breakdown, catalog],
   );
 
   const agentWidgetItems = useMemo(
-    () =>
-      countDashboardBreakdown(
-        scopedTickets,
-
-        (ticket) => ticket.assignedToUserId,
-
-        (userId) => formatAssignedUserName(userId, users),
-      ),
-
-    [scopedTickets, users],
+    () => breakdown?.ticketsByAgent ?? [],
+    [breakdown],
   );
+  const overviewTotals = overview?.totals ?? EMPTY_OVERVIEW_TOTALS;
+  const overdueTotal = getOverviewOverdueTotal(overviewTotals);
+  const timelineItems = breakdown?.ticketActivityTimeline ?? [];
+  const statusPeriodItems = breakdown?.ticketsByStatusPeriod ?? [];
 
   const reportViews = [
     {
@@ -520,61 +479,61 @@ export function ReportsPage({ session }: ReportsPageProps) {
               <DashboardPrimaryKpiCard
                 label="Tickets"
                 tone="yellow"
-                value={formatNumber(overview.total)}
+                value={formatNumber(overviewTotals.total)}
               />
 
               <DashboardPrimaryKpiCard
                 label="Tickets en retard"
                 tone="orange"
-                value={formatNumber(overview.overdue)}
+                value={formatNumber(overdueTotal)}
               />
 
               <DashboardPrimaryKpiCard
                 label="Incidents"
                 tone="salmon"
-                value={formatNumber(overview.incidents)}
+                value={formatNumber(overviewTotals.incidents)}
               />
 
               <DashboardPrimaryKpiCard
                 label="Demandes"
                 tone="green"
-                value={formatNumber(overview.requests)}
+                value={formatNumber(overviewTotals.requests)}
               />
 
               <DashboardMiniKpiCard
-                label="Tickets entrants"
+                label="Tickets en cours"
                 tone="mint"
-                value={formatNumber(overview.total)}
+                value={formatNumber(overviewTotals.inProgress)}
               />
 
               <DashboardMiniKpiCard
                 label="Tickets assignes"
                 tone="sky"
-                value={formatNumber(overview.assigned)}
+                value={formatNumber(overviewTotals.assigned)}
               />
 
               <DashboardMiniKpiCard
                 label="Tickets resolus"
                 tone="silver"
-                value={formatNumber(overview.resolved)}
+                value={formatNumber(overviewTotals.resolved)}
               />
 
               <DashboardMiniKpiCard
                 label="Tickets non assignes"
                 tone="white"
-                value={formatNumber(overview.unassigned)}
+                value={formatNumber(overviewTotals.unassigned)}
               />
 
               <DashboardMiniKpiCard
                 label="Tickets en attente"
                 tone="amber"
-                value={formatNumber(overview.pending)}
+                value={formatNumber(overviewTotals.pending)}
               />
 
               <DashboardMiniKpiCard
                 label="Tickets fermes"
                 tone="charcoal"
-                value={formatNumber(overview.closed)}
+                value={formatNumber(overviewTotals.closed)}
               />
             </div>
 
@@ -1099,7 +1058,7 @@ function DashboardStackedStatusChart({
                   total,
                   'open',
                   'Ouvert',
-                  '#3b6ca8',
+                  '#4f7fb5',
                   index,
                   items.length,
                   chartRef,
@@ -1111,7 +1070,7 @@ function DashboardStackedStatusChart({
                   total,
                   'progress',
                   'En cours',
-                  '#f1972c',
+                  '#22c55e',
                   index,
                   items.length,
                   chartRef,
@@ -1123,7 +1082,7 @@ function DashboardStackedStatusChart({
                   total,
                   'pending',
                   'En attente',
-                  '#6bb45a',
+                  '#f59e0b',
                   index,
                   items.length,
                   chartRef,
@@ -1135,7 +1094,7 @@ function DashboardStackedStatusChart({
                   total,
                   'resolved',
                   'Resolu',
-                  '#f2cb4d',
+                  '#2bb8c9',
                   index,
                   items.length,
                   chartRef,
@@ -1147,7 +1106,7 @@ function DashboardStackedStatusChart({
                   total,
                   'closed',
                   'Clos',
-                  '#b07ca7',
+                  '#64748b',
                   index,
                   items.length,
                   chartRef,
@@ -1454,34 +1413,14 @@ function formatUserName(user: AdminUserSummary): string {
   return fullName || user.displayName || user.email || user.id;
 }
 
-function formatAssignedUserName(
-  userId: string | null,
-
-  users: AdminUserSummary[],
-): string {
-  if (!userId) {
-    return 'Non assigne';
+function getOverviewOverdueTotal(
+  totals: ReportingOverview['totals'],
+): number | null {
+  if (typeof totals.overdue === 'number') {
+    return totals.overdue;
   }
 
-  return formatUserName(
-    users.find((user) => user.id === userId) ?? {
-      displayName: null,
-
-      email: null,
-
-      firstName: null,
-
-      groupId: null,
-
-      id: userId,
-
-      isActive: true,
-
-      lastName: null,
-
-      role: 'AGENT',
-    },
-  );
+  return Math.max(totals.responseOverdue, totals.resolutionOverdue);
 }
 
 function formatNumber(value: number | null | undefined): string {
@@ -1548,239 +1487,15 @@ function getChannelDisplayName(
   return channelName ? translateChannel(channelName) : item.name;
 }
 
-function filterTicketsForDashboard(
-  tickets: TicketSummarySnapshot[],
-
-  filters: ReportsFilterState,
-
-  session: AuthSessionSnapshot,
-): TicketSummarySnapshot[] {
-  const fromTime = getDateBoundaryTimestamp(filters.from, 'start');
-
-  const toTime = getDateBoundaryTimestamp(filters.to, 'end');
-
-  const assignedToUserId =
-    session.user.role === 'AGENT'
-      ? session.user.id
-      : normalizeOptionalText(filters.assignedToUserId);
-
-  const assignmentGroupId = normalizeOptionalText(filters.assignmentGroupId);
-
-  return tickets.filter((ticket) => {
-    const createdAtTime = new Date(ticket.createdAt).getTime();
-
-    if (
-      fromTime !== null &&
-      (Number.isNaN(createdAtTime) || createdAtTime < fromTime)
-    ) {
-      return false;
-    }
-
-    if (
-      toTime !== null &&
-      (Number.isNaN(createdAtTime) || createdAtTime > toTime)
-    ) {
-      return false;
-    }
-
-    if (assignedToUserId && ticket.assignedToUserId !== assignedToUserId) {
-      return false;
-    }
-
-    if (assignmentGroupId && ticket.assignmentGroupId !== assignmentGroupId) {
-      return false;
-    }
-
-    return true;
-  });
-}
-
-function getDateBoundaryTimestamp(
-  value: string,
-
-  boundary: 'end' | 'start',
-): number | null {
-  const normalized = value.trim();
-
-  if (!normalized) {
-    return null;
-  }
-
-  const [yearText, monthText, dayText] = normalized.split('-');
-
-  const year = Number(yearText);
-
-  const month = Number(monthText);
-
-  const day = Number(dayText);
-
-  if (!year || !month || !day) {
-    return null;
-  }
-
-  const date =
-    boundary === 'start'
-      ? new Date(year, month - 1, day, 0, 0, 0, 0)
-      : new Date(year, month - 1, day, 23, 59, 59, 999);
-
-  return date.getTime();
-}
-
-function buildDashboardOverview(tickets: TicketSummarySnapshot[]) {
+function buildReportingFilters(filters: ReportsFilterState): ReportingFilters {
   return {
-    assigned: tickets.filter((ticket) => Boolean(ticket.assignedToUserId))
-      .length,
-
-    closed: tickets.filter((ticket) => ticket.status === 'CLOSED').length,
-
-    incidents: tickets.filter((ticket) => ticket.type === 'INCIDENT').length,
-
-    overdue: tickets.filter(isTicketOverdue).length,
-
-    pending: tickets.filter((ticket) => ticket.status === 'PENDING').length,
-
-    requests: tickets.filter((ticket) => ticket.type === 'REQUEST').length,
-
-    resolved: tickets.filter((ticket) => ticket.status === 'RESOLVED').length,
-
-    total: tickets.length,
-
-    unassigned: tickets.filter((ticket) => !ticket.assignedToUserId).length,
+    assignedToUserId: normalizeOptionalText(filters.assignedToUserId),
+    assignmentGroupId: normalizeOptionalText(filters.assignmentGroupId),
+    categoryId: normalizeOptionalText(filters.categoryId),
+    from: normalizeOptionalText(filters.from),
+    priorityId: normalizeOptionalText(filters.priorityId),
+    status: filters.status || null,
+    to: normalizeOptionalText(filters.to),
+    type: filters.type || null,
   };
-}
-
-function buildTicketActivityTimeline(
-  tickets: TicketSummarySnapshot[],
-): ReportingTimelineItem[] {
-  const buckets = new Map<string, ReportingTimelineItem>();
-
-  for (const ticket of tickets) {
-    const period = ticket.createdAt.slice(0, 7);
-
-    const current = buckets.get(period) ?? {
-      closed: 0,
-
-      open: 0,
-
-      overdue: 0,
-
-      period,
-
-      resolved: 0,
-    };
-
-    if (
-      ticket.status === 'OPEN' ||
-      ticket.status === 'IN_PROGRESS' ||
-      ticket.status === 'PENDING'
-    ) {
-      current.open += 1;
-    }
-
-    if (ticket.status === 'RESOLVED') {
-      current.resolved += 1;
-    }
-
-    if (ticket.status === 'CLOSED') {
-      current.closed += 1;
-    }
-
-    if (isTicketOverdue(ticket)) {
-      current.overdue += 1;
-    }
-
-    buckets.set(period, current);
-  }
-
-  return [...buckets.values()].sort((left, right) =>
-    left.period.localeCompare(right.period),
-  );
-}
-
-function buildTicketStatusPeriod(
-  tickets: TicketSummarySnapshot[],
-): ReportingStatusPeriodItem[] {
-  const buckets = new Map<string, ReportingStatusPeriodItem>();
-
-  for (const ticket of tickets) {
-    const period = ticket.createdAt.slice(0, 7);
-
-    const current = buckets.get(period) ?? {
-      closed: 0,
-
-      inProgress: 0,
-
-      open: 0,
-
-      pending: 0,
-
-      period,
-
-      resolved: 0,
-    };
-
-    if (ticket.status === 'OPEN') {
-      current.open += 1;
-    } else if (ticket.status === 'IN_PROGRESS') {
-      current.inProgress += 1;
-    } else if (ticket.status === 'PENDING') {
-      current.pending += 1;
-    } else if (ticket.status === 'RESOLVED') {
-      current.resolved += 1;
-    } else if (ticket.status === 'CLOSED') {
-      current.closed += 1;
-    }
-
-    buckets.set(period, current);
-  }
-
-  return [...buckets.values()].sort((left, right) =>
-    left.period.localeCompare(right.period),
-  );
-}
-
-function countDashboardBreakdown(
-  tickets: TicketSummarySnapshot[],
-
-  getKey: (ticket: TicketSummarySnapshot) => string | null,
-
-  getName: (key: string | null) => string,
-): ReportingBreakdownItem[] {
-  const counters = new Map<string, { count: number; id: string | null }>();
-
-  for (const ticket of tickets) {
-    const id = getKey(ticket);
-
-    const key = id ?? '__null__';
-
-    const current = counters.get(key) ?? { count: 0, id };
-
-    counters.set(key, {
-      ...current,
-
-      count: current.count + 1,
-    });
-  }
-
-  return [...counters.values()]
-
-    .map((item) => ({
-      count: item.count,
-
-      id: item.id,
-
-      name: getName(item.id),
-    }))
-
-    .sort(
-      (left, right) =>
-        right.count - left.count || left.name.localeCompare(right.name),
-    );
-}
-
-function isTicketOverdue(ticket: TicketSummarySnapshot): boolean {
-  return (
-    ticket.responseSlaStatus === 'OVERDUE' ||
-    ticket.resolutionSlaStatus === 'OVERDUE'
-  );
 }

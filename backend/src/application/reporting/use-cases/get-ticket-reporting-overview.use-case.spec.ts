@@ -46,6 +46,7 @@ describe('GetTicketReportingOverviewUseCase', () => {
         incidents: 4,
         inProgress: 1,
         open: 1,
+        overdue: 2,
         pending: 0,
         requests: 0,
         resolved: 1,

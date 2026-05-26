@@ -155,7 +155,9 @@ export class AuthController {
   }
 
   @Get('users')
-  @UseGuards(BearerAuthGuard)
+  @UseGuards(BearerAuthGuard, RolesGuard)
+  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  @Policies(AuthPolicy.ACCESS_AGENT_AREA)
   listUsers(): Promise<AdminUserSummary[]> {
     return this.listAdminUsersUseCase.execute();
   }

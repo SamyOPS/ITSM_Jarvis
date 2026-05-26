@@ -32,6 +32,7 @@ export type ReportingOverview = {
     incidents: number;
     inProgress: number;
     open: number;
+    overdue: number;
     pending: number;
     requests: number;
     resolved: number;
