@@ -36,6 +36,7 @@ export type TicketReportingOverview = {
     incidents: number;
     inProgress: number;
     open: number;
+    overdue: number;
     pending: number;
     requests: number;
     resolved: number;
@@ -97,6 +98,7 @@ export class GetTicketReportingOverviewUseCase {
         incidents: countByType(scopedTickets, TicketType.INCIDENT),
         inProgress: countByStatus(scopedTickets, TicketStatus.IN_PROGRESS),
         open: countByStatus(scopedTickets, TicketStatus.OPEN),
+        overdue: scopedTickets.filter(isTicketOverdue).length,
         pending: countByStatus(scopedTickets, TicketStatus.PENDING),
         requests: countByType(scopedTickets, TicketType.REQUEST),
         resolved: countByStatus(scopedTickets, TicketStatus.RESOLVED),
@@ -263,6 +265,13 @@ function filterByPeriod(
 
 function withoutArchivedTickets(tickets: TicketSummary[]): TicketSummary[] {
   return tickets.filter((ticket) => !ticket.archivedAt);
+}
+
+function isTicketOverdue(ticket: TicketSummary): boolean {
+  return (
+    ticket.responseSlaStatus === SlaIndicator.OVERDUE ||
+    ticket.resolutionSlaStatus === SlaIndicator.OVERDUE
+  );
 }
 
 function countByStatus(tickets: TicketSummary[], status: TicketStatus): number {

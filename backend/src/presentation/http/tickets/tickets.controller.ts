@@ -103,8 +103,15 @@ export class TicketsController {
 
   @Get(':id')
   @UseGuards(BearerAuthGuard)
-  getTicketById(@Param('id') id: string): Promise<TicketDetail> {
-    return this.getTicketByIdUseCase.execute(id);
+  getTicketById(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<TicketDetail> {
+    return this.getTicketByIdUseCase.execute({
+      requesterUserId: user.id,
+      requesterUserRole: user.role,
+      ticketId: id,
+    });
   }
 
   @Post('archive-expired')

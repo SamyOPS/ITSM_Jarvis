@@ -5728,24 +5728,24 @@ a {
 
 .reports-line-key--open,
 .reports-status-key--open {
-  background: #3b6ca8;
+  background: #4f7fb5;
 }
 .reports-line-key--resolved,
 .reports-status-key--resolved {
-  background: #f2cb4d;
+  background: #2bb8c9;
 }
 .reports-line-key--overdue {
   background: #d65c57;
 }
 .reports-line-key--closed,
 .reports-status-key--closed {
-  background: #b07ca7;
+  background: #64748b;
 }
 .reports-status-key--progress {
-  background: #f1972c;
+  background: #22c55e;
 }
 .reports-status-key--pending {
-  background: #6bb45a;
+  background: #f59e0b;
 }
 
 .reports-timeline-svg {
@@ -5906,19 +5906,19 @@ a {
 }
 
 .reports-stack-segment--open {
-  background: #3b6ca8;
+  background: #4f7fb5;
 }
 .reports-stack-segment--progress {
-  background: #f1972c;
+  background: #22c55e;
 }
 .reports-stack-segment--pending {
-  background: #6bb45a;
+  background: #f59e0b;
 }
 .reports-stack-segment--resolved {
-  background: #f2cb4d;
+  background: #2bb8c9;
 }
 .reports-stack-segment--closed {
-  background: #b07ca7;
+  background: #64748b;
 }
 
 .reports-dashboard-bottom {
