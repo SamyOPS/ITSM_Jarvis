@@ -1193,6 +1193,20 @@ a {
   font-weight: 400;
 }
 
+.admin-user-save-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  width: auto;
+  padding: 0 16px;
+}
+
+.admin-user-save-button:hover:not(:disabled) {
+  background: #f2f7ff;
+  border-color: rgba(158, 203, 255, 0.45);
+}
+
 .admin-detail-panel {
   padding: 0;
   border: 0;
@@ -3290,14 +3304,14 @@ a {
   background: transparent;
   color: var(--text-muted);
   font-size: 0.88rem;
-  font-weight: 700;
+  font-weight: 400;
   transition: all 0.15s;
 }
 
 .tdp-back-btn:hover {
-  background: var(--primary-soft);
-  color: var(--primary);
-  border-color: rgba(25, 86, 179, 0.3);
+  background: #f2f7ff;
+  color: #2b6de9;
+  border-color: rgba(158, 203, 255, 0.45);
 }
 
 .tdp-topbar-right {
@@ -4280,9 +4294,13 @@ a {
 }
 
 .workspace-sidebar-toggle:hover {
-  color: #9ecbff;
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(158, 203, 255, 0.35);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.workspace-sidebar-toggle:hover svg {
+  color: #ffffff;
 }
 
 .workspace-sidebar-search {

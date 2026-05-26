@@ -449,7 +449,7 @@ export function UsersPage({ session }: UsersPageProps) {
               ) : null}
 
               <button
-                className="primary-button"
+                className="primary-button admin-user-save-button"
                 disabled={isSubmitting}
                 form={userFormId}
               >

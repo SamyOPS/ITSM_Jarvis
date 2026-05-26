@@ -248,7 +248,7 @@ export function GroupsPage({ session }: GroupsPageProps) {
               ) : null}
 
               <button
-                className="primary-button"
+                className="primary-button admin-user-save-button"
                 disabled={isSubmitting}
                 form={groupFormId}
               >
