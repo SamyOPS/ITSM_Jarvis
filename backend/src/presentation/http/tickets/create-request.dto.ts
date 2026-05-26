@@ -1,12 +1,36 @@
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { RequestType } from '../../../domain/ticketing/request-type';
 
-export type CreateRequestDto = {
-  categoryId: string;
+export class CreateRequestDto {
+  @IsString()
+  @IsNotEmpty()
+  categoryId!: string;
+
+  @IsOptional()
+  @IsString()
   channelId?: string | null;
+
+  @IsOptional()
+  @IsString()
   ciId?: string | null;
-  description: string;
-  priorityId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  description!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  priorityId!: string;
+
+  @IsOptional()
+  @IsString()
   requestedForUserId?: string | null;
+
+  @IsOptional()
+  @IsEnum(RequestType)
   requestType?: RequestType | null;
-  title: string;
-};
+
+  @IsString()
+  @IsNotEmpty()
+  title!: string;
+}

@@ -26,35 +26,27 @@ export async function loginWithPassword(
   email: string,
   password: string,
 ): Promise<AuthSessionSnapshot> {
-  const supabaseConfig = getFrontendSupabaseConfig();
-
-  const response = await fetch(
-    `${supabaseConfig.url}/auth/v1/token?grant_type=password`,
-    {
-      method: 'POST',
-      headers: {
-        apikey: supabaseConfig.anonKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    },
-  );
+  const response = await fetchSupabaseToken('password', { email, password });
 
   if (!response.ok) {
     throw new Error(`Supabase login failed with status ${response.status}`);
   }
 
-  const payload = (await response.json()) as {
-    access_token: string;
-    refresh_token: string;
-  };
-  const user = await fetchCurrentUser(payload.access_token);
+  return buildAuthSessionFromTokenResponse(response);
+}
 
-  return {
-    accessToken: payload.access_token,
-    refreshToken: payload.refresh_token,
-    user,
-  };
+export async function refreshAuthSession(
+  refreshToken: string,
+): Promise<AuthSessionSnapshot> {
+  const response = await fetchSupabaseToken('refresh_token', {
+    refresh_token: refreshToken,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Supabase refresh failed with status ${response.status}`);
+  }
+
+  return buildAuthSessionFromTokenResponse(response);
 }
 
 export async function fetchCurrentUser(
@@ -275,4 +267,36 @@ async function fetchProtectedArea(
   }
 
   return (await response.json()) as ProtectedApiResult;
+}
+
+async function buildAuthSessionFromTokenResponse(
+  response: Response,
+): Promise<AuthSessionSnapshot> {
+  const payload = (await response.json()) as {
+    access_token: string;
+    refresh_token: string;
+  };
+  const user = await fetchCurrentUser(payload.access_token);
+
+  return {
+    accessToken: payload.access_token,
+    refreshToken: payload.refresh_token,
+    user,
+  };
+}
+
+function fetchSupabaseToken(
+  grantType: 'password' | 'refresh_token',
+  payload: Record<string, string>,
+): Promise<Response> {
+  const supabaseConfig = getFrontendSupabaseConfig();
+
+  return fetch(`${supabaseConfig.url}/auth/v1/token?grant_type=${grantType}`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseConfig.anonKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
 }

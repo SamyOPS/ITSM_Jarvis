@@ -1,5 +1,7 @@
+import { IsEnum } from 'class-validator';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 
-export type ChangeTicketStatusDto = {
-  status: TicketStatus;
-};
+export class ChangeTicketStatusDto {
+  @IsEnum(TicketStatus)
+  status!: TicketStatus;
+}

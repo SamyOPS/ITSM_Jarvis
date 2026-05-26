@@ -1,7 +1,25 @@
-export type AddTicketAttachmentDto = {
-  bucketId: string;
-  fileName: string;
+import { Type } from 'class-transformer';
+import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+
+export class AddTicketAttachmentDto {
+  @IsString()
+  @IsNotEmpty()
+  bucketId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  fileName!: string;
+
+  @IsOptional()
+  @IsString()
   mimeType?: string | null;
-  sizeBytes: number;
-  storagePath: string;
-};
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  sizeBytes!: number;
+
+  @IsString()
+  @IsNotEmpty()
+  storagePath!: string;
+}
