@@ -2,12 +2,10 @@ import {
   type CSSProperties,
   type Dispatch,
   type FormEvent,
-  type RefObject,
   type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { BarChart3, User, Users } from 'lucide-react';
@@ -29,7 +27,6 @@ import type {
   ReportingBreakdownItem,
   ReportingFilters,
   ReportingOverview,
-  ReportingStatusPeriodItem,
   ReportingTimelineItem,
 } from '../../infrastructure/api/reporting-api';
 import {
@@ -260,7 +257,10 @@ export function ReportsPage({ session }: ReportsPageProps) {
   const overviewTotals = overview?.totals ?? EMPTY_OVERVIEW_TOTALS;
   const overdueTotal = getOverviewOverdueTotal(overviewTotals);
   const timelineItems = breakdown?.ticketActivityTimeline ?? [];
-  const statusPeriodItems = breakdown?.ticketsByStatusPeriod ?? [];
+  const statusDistributionItems = useMemo(
+    () => buildStatusDistributionItems(breakdown?.ticketsByStatus ?? []),
+    [breakdown],
+  );
 
   const reportViews = [
     {
@@ -542,8 +542,10 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 <DashboardTimelineChart items={timelineItems} />
               </DashboardPanel>
 
-              <DashboardPanel title="Statuts des tickets par mois">
-                <DashboardStackedStatusChart items={statusPeriodItems} />
+              <DashboardPanel title="Repartition des statuts">
+                <DashboardStatusDistributionChart
+                  items={statusDistributionItems}
+                />
               </DashboardPanel>
             </div>
 
@@ -958,166 +960,59 @@ function buildAreaSvgPath(
   return `${linePath} L ${lastPoint.x} ${baselineY} L ${firstPoint.x} ${baselineY} Z`;
 }
 
-function DashboardStackedStatusChart({
+function DashboardStatusDistributionChart({
   items,
 }: {
-  items: ReportingStatusPeriodItem[];
+  items: Array<{
+    color: string;
+    count: number;
+    key: 'closed' | 'open' | 'pending' | 'progress' | 'resolved';
+    label: string;
+  }>;
 }) {
-  const chartRef = useRef<HTMLDivElement | null>(null);
-  const [tooltipState, setTooltipState] = useState<{
-    align: 'left' | 'right';
-    index: number;
-    left: string;
-    segment: {
-      color: string;
-      label: string;
-      value: number;
-    };
-    top: string;
-  } | null>(null);
-
   if (items.length === 0) {
     return <p className="reports-chart-empty">Aucune donnee.</p>;
   }
 
-  const maxTotal = Math.max(
-    ...items.map(
-      (item) =>
-        item.open +
-        item.inProgress +
-        item.pending +
-        item.resolved +
-        item.closed,
-    ),
-
-    1,
-  );
-  const chartHeightPx = 220;
-  const activeItem = tooltipState ? items[tooltipState.index] : null;
+  const maxCount = Math.max(...items.map((item) => item.count), 1);
 
   return (
-    <div className="reports-status-period-chart" ref={chartRef}>
+    <div className="reports-status-distribution-chart">
       <div className="reports-chart-legend">
-        <span>
-          <i className="reports-status-key reports-status-key--open" />
-          Ouvert
-        </span>
-
-        <span>
-          <i className="reports-status-key reports-status-key--progress" />
-          En cours
-        </span>
-
-        <span>
-          <i className="reports-status-key reports-status-key--pending" />
-          En attente
-        </span>
-
-        <span>
-          <i className="reports-status-key reports-status-key--resolved" />
-          Resolu
-        </span>
-
-        <span>
-          <i className="reports-status-key reports-status-key--closed" />
-          Clos
-        </span>
+        {items.map((item) => (
+          <span key={item.key}>
+            <i
+              className={`reports-status-key reports-status-key--${item.key}`}
+            />
+            {item.label}
+          </span>
+        ))}
       </div>
 
-      {activeItem ? (
-        <ChartTooltip
-          align={tooltipState?.align ?? 'left'}
-          className="reports-chart-tooltip--status"
-          items={tooltipState ? [tooltipState.segment] : []}
-          left={tooltipState?.left ?? '50%'}
-          top={tooltipState?.top}
-          title={activeItem.period}
-        />
-      ) : null}
-
-      <div className="reports-status-period-columns">
-        {items.map((item, index) => {
-          const total =
-            item.open +
-            item.inProgress +
-            item.pending +
-            item.resolved +
-            item.closed;
-
-          const height = `${total <= 0 ? 0 : (total / maxTotal) * chartHeightPx}px`;
-
-          return (
-            <div className="reports-status-period-column" key={item.period}>
-              <strong>{total}</strong>
-              <div
-                className="reports-status-period-stack"
-                style={{ height } as CSSProperties}
-              >
-                {renderStackSegment(
-                  item.open,
-                  total,
-                  'open',
-                  'Ouvert',
-                  '#4f7fb5',
-                  index,
-                  items.length,
-                  chartRef,
-                  setTooltipState,
-                )}
-
-                {renderStackSegment(
-                  item.inProgress,
-                  total,
-                  'progress',
-                  'En cours',
-                  '#22c55e',
-                  index,
-                  items.length,
-                  chartRef,
-                  setTooltipState,
-                )}
-
-                {renderStackSegment(
-                  item.pending,
-                  total,
-                  'pending',
-                  'En attente',
-                  '#f59e0b',
-                  index,
-                  items.length,
-                  chartRef,
-                  setTooltipState,
-                )}
-
-                {renderStackSegment(
-                  item.resolved,
-                  total,
-                  'resolved',
-                  'Resolu',
-                  '#2bb8c9',
-                  index,
-                  items.length,
-                  chartRef,
-                  setTooltipState,
-                )}
-
-                {renderStackSegment(
-                  item.closed,
-                  total,
-                  'closed',
-                  'Clos',
-                  '#64748b',
-                  index,
-                  items.length,
-                  chartRef,
-                  setTooltipState,
-                )}
-              </div>
-
-              <span>{formatPeriodLabel(item.period)}</span>
+      <div className="reports-status-distribution-bars">
+        {items.map((item) => (
+          <div className="reports-status-distribution-row" key={item.key}>
+            <div className="reports-status-distribution-label">
+              <i
+                className={`reports-status-key reports-status-key--${item.key}`}
+              />
+              <span>{item.label}</span>
             </div>
-          );
-        })}
+
+            <div className="reports-status-distribution-track">
+              <i
+                className={`reports-status-distribution-fill reports-status-distribution-fill--${item.key}`}
+                style={
+                  {
+                    width: `${(item.count / maxCount) * 100}%`,
+                  } as CSSProperties
+                }
+              />
+            </div>
+
+            <strong>{item.count}</strong>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1160,76 +1055,6 @@ function ChartTooltip({
         ))}
       </div>
     </div>
-  );
-}
-
-function renderStackSegment(
-  value: number,
-
-  total: number,
-
-  tone: 'closed' | 'open' | 'pending' | 'progress' | 'resolved',
-  label: string,
-  color: string,
-  columnIndex: number,
-  itemCount: number,
-  chartRef: RefObject<HTMLDivElement | null>,
-  setTooltipState: Dispatch<
-    SetStateAction<{
-      align: 'left' | 'right';
-      index: number;
-      left: string;
-      segment: {
-        color: string;
-        label: string;
-        value: number;
-      };
-      top: string;
-    } | null>
-  >,
-) {
-  if (value <= 0 || total <= 0) {
-    return null;
-  }
-
-  return (
-    <span
-      className={`reports-stack-segment reports-stack-segment--${tone}`}
-      onMouseLeave={() => setTooltipState(null)}
-      onMouseMove={(event) => {
-        if (!chartRef.current) {
-          return;
-        }
-
-        const chartRect = chartRef.current.getBoundingClientRect();
-        const segmentRect = event.currentTarget.getBoundingClientRect();
-        const align = columnIndex >= itemCount - 1 ? 'right' : 'left';
-        const horizontalOffsetPx = 20;
-        const leftPx =
-          align === 'left'
-            ? segmentRect.right - chartRect.left + horizontalOffsetPx
-            : segmentRect.left - chartRect.left - horizontalOffsetPx;
-        const estimatedTooltipHeightPx = 86;
-        const topPx = clampNumber(
-          event.clientY - chartRect.top - 14,
-          56,
-          Math.max(56, chartRect.height - estimatedTooltipHeightPx),
-        );
-
-        setTooltipState({
-          align,
-          index: columnIndex,
-          left: `${leftPx}px`,
-          segment: {
-            color,
-            label,
-            value,
-          },
-          top: `${topPx}px`,
-        });
-      }}
-      style={{ height: `${(value / total) * 100}%` } as CSSProperties}
-    />
   );
 }
 
@@ -1485,6 +1310,50 @@ function getChannelDisplayName(
   )?.name;
 
   return channelName ? translateChannel(channelName) : item.name;
+}
+
+function buildStatusDistributionItems(items: ReportingBreakdownItem[]): Array<{
+  color: string;
+  count: number;
+  key: 'closed' | 'open' | 'pending' | 'progress' | 'resolved';
+  label: string;
+}> {
+  const countsByStatus = new Map(
+    items.map((item) => [item.id ?? item.name, item.count]),
+  );
+
+  return [
+    {
+      color: '#4f7fb5',
+      count: countsByStatus.get('OPEN') ?? 0,
+      key: 'open',
+      label: 'Ouvert',
+    },
+    {
+      color: '#22c55e',
+      count: countsByStatus.get('IN_PROGRESS') ?? 0,
+      key: 'progress',
+      label: 'En cours',
+    },
+    {
+      color: '#f59e0b',
+      count: countsByStatus.get('PENDING') ?? 0,
+      key: 'pending',
+      label: 'En attente',
+    },
+    {
+      color: '#2bb8c9',
+      count: countsByStatus.get('RESOLVED') ?? 0,
+      key: 'resolved',
+      label: 'Resolu',
+    },
+    {
+      color: '#64748b',
+      count: countsByStatus.get('CLOSED') ?? 0,
+      key: 'closed',
+      label: 'Clos',
+    },
+  ];
 }
 
 function buildReportingFilters(filters: ReportsFilterState): ReportingFilters {
