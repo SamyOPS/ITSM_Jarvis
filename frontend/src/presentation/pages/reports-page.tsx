@@ -10,7 +10,15 @@ import {
   useRef,
   useState,
 } from 'react';
-import { BarChart3, User, Users } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  BadgeAlert,
+  BarChart3,
+  SlidersHorizontal,
+  User,
+  Users,
+} from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 
@@ -20,7 +28,10 @@ import type { ReferentialCatalogSnapshot } from '../../domain/referentials/refer
 
 import type { TicketSummarySnapshot } from '../../domain/ticketing/ticket-summary';
 
-import { translateChannel } from '../../domain/i18n/ticketing-labels';
+import {
+  translateChannel,
+  translateTicketStatus,
+} from '../../domain/i18n/ticketing-labels';
 
 import { fetchUserDirectory } from '../../infrastructure/api/auth-api';
 
@@ -33,6 +44,7 @@ import type {
 } from '../../infrastructure/api/reporting-api';
 
 import { searchTickets } from '../../infrastructure/api/ticketing-api';
+import { navigateTo } from '../../infrastructure/routing/browser-router';
 
 type ReportsPageProps = {
   session: AuthSessionSnapshot;
@@ -66,6 +78,18 @@ type ReportsFilterState = {
 };
 
 type ReportsView = 'DASHBOARD' | 'PERSONAL' | 'GROUP';
+
+type PersonalTicketSort =
+  | 'CREATED_AT_ASC'
+  | 'CREATED_AT_DESC'
+  | 'OPERATIONAL_PRIORITY';
+
+type PersonalPlanningTask = {
+  date: string;
+  id: string;
+  time: string;
+  title: string;
+};
 
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],
@@ -101,6 +125,26 @@ const INITIAL_FILTERS: ReportsFilterState = {
   type: '',
 };
 
+const PERSONAL_TICKET_LIMIT = 8;
+const PERSONAL_PLANNING_TASKS: PersonalPlanningTask[] = [];
+const PERSONAL_TICKET_SORT_OPTIONS = [
+  {
+    icon: BadgeAlert,
+    label: 'Priorité opérationnelle',
+    value: 'OPERATIONAL_PRIORITY' as const,
+  },
+  {
+    icon: ArrowDown,
+    label: "Plus récents d'abord",
+    value: 'CREATED_AT_DESC' as const,
+  },
+  {
+    icon: ArrowUp,
+    label: "Plus anciens d'abord",
+    value: 'CREATED_AT_ASC' as const,
+  },
+];
+
 export function ReportsPage({ session }: ReportsPageProps) {
   const [activeView, setActiveView] = useState<ReportsView>('DASHBOARD');
 
@@ -114,6 +158,10 @@ export function ReportsPage({ session }: ReportsPageProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   const [tickets, setTickets] = useState<TicketSummarySnapshot[]>([]);
+
+  const [personalTickets, setPersonalTickets] = useState<
+    TicketSummarySnapshot[]
+  >([]);
 
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
 
@@ -136,25 +184,32 @@ export function ReportsPage({ session }: ReportsPageProps) {
       setErrorMessage(null);
 
       try {
-        const [nextTickets, nextCatalog, nextUsers] = await Promise.all([
-          searchTickets(session.accessToken, {
-            categoryId: normalizeOptionalText(nextFilters.categoryId),
+        const [nextTickets, nextPersonalTickets, nextCatalog, nextUsers] =
+          await Promise.all([
+            searchTickets(session.accessToken, {
+              categoryId: normalizeOptionalText(nextFilters.categoryId),
 
-            includeArchived: false,
+              includeArchived: false,
 
-            priorityId: normalizeOptionalText(nextFilters.priorityId),
+              priorityId: normalizeOptionalText(nextFilters.priorityId),
 
-            status: nextFilters.status || null,
+              status: nextFilters.status || null,
 
-            type: nextFilters.type || null,
-          }),
+              type: nextFilters.type || null,
+            }),
 
-          fetchReferentialCatalog(),
+            searchTickets(session.accessToken, {
+              includeArchived: false,
+            }),
 
-          fetchUserDirectory(session.accessToken),
-        ]);
+            fetchReferentialCatalog(),
+
+            fetchUserDirectory(session.accessToken),
+          ]);
 
         setTickets(nextTickets);
+
+        setPersonalTickets(nextPersonalTickets);
 
         setCatalog(nextCatalog);
 
@@ -301,6 +356,35 @@ export function ReportsPage({ session }: ReportsPageProps) {
       ),
 
     [scopedTickets, users],
+  );
+
+  const personalPrioritiesById = useMemo(
+    () =>
+      new Map(
+        catalog.priorities.map((priority) => [
+          priority.id,
+          { level: priority.level, name: priority.name },
+        ]),
+      ),
+    [catalog.priorities],
+  );
+
+  const assignedToMeTickets = useMemo(
+    () =>
+      buildPersonalTicketPreview(
+        personalTickets,
+        (ticket) => ticket.assignedToUserId === session.user.id,
+      ),
+    [personalTickets, session.user.id],
+  );
+
+  const createdByMeTickets = useMemo(
+    () =>
+      buildPersonalTicketPreview(
+        personalTickets,
+        (ticket) => ticket.createdByUserId === session.user.id,
+      ),
+    [personalTickets, session.user.id],
   );
 
   const reportViews = [
@@ -603,15 +687,281 @@ export function ReportsPage({ session }: ReportsPageProps) {
             </div>
           </section>
         </>
+      ) : activeView === 'PERSONAL' ? (
+        <section aria-label="Vue personnelle" className="personal-view-grid">
+          <PersonalTicketPanel
+            isLoading={isLoading}
+            onOpenTicket={(ticketId) =>
+              navigateTo(`/agent/tickets/${ticketId}`)
+            }
+            prioritiesById={personalPrioritiesById}
+            title="Assignés à moi"
+            tickets={assignedToMeTickets}
+            users={users}
+          />
+
+          <PersonalTicketPanel
+            isLoading={isLoading}
+            onOpenTicket={(ticketId) =>
+              navigateTo(`/agent/tickets/${ticketId}`)
+            }
+            prioritiesById={personalPrioritiesById}
+            title="Mes tickets créés"
+            tickets={createdByMeTickets}
+            users={users}
+          />
+
+          <PersonalPlanningPanel tasks={PERSONAL_PLANNING_TASKS} />
+        </section>
       ) : (
-        <section
-          aria-label={
-            activeView === 'PERSONAL' ? 'Vue personnelle' : 'Vue groupe'
-          }
-          className="reports-empty-view"
-        />
+        <section aria-label="Vue groupe" className="reports-empty-view" />
       )}
     </section>
+  );
+}
+
+function PersonalTicketPanel({
+  isLoading,
+  onOpenTicket,
+  prioritiesById,
+  title,
+  tickets,
+  users,
+}: {
+  isLoading: boolean;
+  onOpenTicket: (ticketId: string) => void;
+  prioritiesById: Map<string, { level: number; name: string }>;
+  title: string;
+  tickets: TicketSummarySnapshot[];
+  users: AdminUserSummary[];
+}) {
+  const [page, setPage] = useState(1);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<PersonalTicketSort>(
+    'OPERATIONAL_PRIORITY',
+  );
+  const sortMenuRef = useRef<HTMLDivElement | null>(null);
+  const sortedTickets = useMemo(
+    () => sortPersonalTickets(tickets, sortBy, prioritiesById),
+    [prioritiesById, sortBy, tickets],
+  );
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sortedTickets.length / PERSONAL_TICKET_LIMIT),
+  );
+  const visiblePage = Math.min(page, totalPages);
+  const visibleTickets = sortedTickets.slice(
+    (visiblePage - 1) * PERSONAL_TICKET_LIMIT,
+    visiblePage * PERSONAL_TICKET_LIMIT,
+  );
+
+  useEffect(() => {
+    if (!isSortMenuOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent): void {
+      if (
+        sortMenuRef.current &&
+        event.target instanceof Node &&
+        !sortMenuRef.current.contains(event.target)
+      ) {
+        setIsSortMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') {
+        setIsSortMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSortMenuOpen]);
+
+  return (
+    <article className="personal-panel personal-ticket-panel">
+      <header className="personal-panel-header">
+        <h3>{title}</h3>
+        <div className="ticket-list-toolbar">
+          <div className="ticket-list-count" aria-live="polite">
+            <strong>{tickets.length}</strong>
+            <span>tickets</span>
+          </div>
+
+          <div className="ticket-list-sort-menu" ref={sortMenuRef}>
+            <button
+              aria-expanded={isSortMenuOpen}
+              aria-haspopup="menu"
+              className={
+                isSortMenuOpen
+                  ? 'ticket-filter-trigger is-open'
+                  : 'ticket-filter-trigger'
+              }
+              onClick={() => setIsSortMenuOpen((currentState) => !currentState)}
+              type="button"
+            >
+              <span>Trier par</span>
+              <SlidersHorizontal size={18} strokeWidth={2} />
+            </button>
+
+            {isSortMenuOpen ? (
+              <div className="ticket-sort-popover" role="menu">
+                <div className="ticket-sort-popover-label">Trier par</div>
+
+                <div className="ticket-sort-option-list">
+                  {PERSONAL_TICKET_SORT_OPTIONS.map((option) => {
+                    const Icon = option.icon;
+
+                    return (
+                      <button
+                        className={
+                          sortBy === option.value
+                            ? 'ticket-sort-option is-active'
+                            : 'ticket-sort-option'
+                        }
+                        key={option.value}
+                        onClick={() => {
+                          setSortBy(option.value);
+                          setPage(1);
+                          setIsSortMenuOpen(false);
+                        }}
+                        role="menuitemradio"
+                        type="button"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="ticket-sort-option-icon"
+                        >
+                          <Icon size={16} strokeWidth={2} />
+                        </span>
+                        <span className="ticket-sort-option-copy">
+                          <strong>{option.label}</strong>
+                          <span>
+                            {sortBy === option.value
+                              ? 'Sélection actuelle'
+                              : 'Appliquer ce tri'}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </header>
+
+      {isLoading ? (
+        <p className="personal-panel-empty">Chargement des tickets...</p>
+      ) : tickets.length === 0 ? (
+        <p className="personal-panel-empty">Aucun ticket à afficher.</p>
+      ) : (
+        <div className="personal-table-scroll">
+          <div className="personal-ticket-viewport">
+            <table className="personal-ticket-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Titre</th>
+                  <th>Statut</th>
+                  <th>Demandeur</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleTickets.map((ticket) => (
+                  <tr
+                    key={ticket.id}
+                    onClick={() => onOpenTicket(ticket.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onOpenTicket(ticket.id);
+                      }
+                    }}
+                    tabIndex={0}
+                  >
+                    <td className="personal-ticket-id">
+                      {formatTicketDisplayNumber(ticket)}
+                    </td>
+                    <td className="personal-ticket-title">{ticket.title}</td>
+                    <td>
+                      <span
+                        className={`personal-status personal-status--${ticket.status.toLowerCase()}`}
+                      >
+                        <i aria-hidden="true" />
+                        {translateTicketStatus(ticket.status)}
+                      </span>
+                    </td>
+                    <td>
+                      {formatAssignedUserName(
+                        ticket.requestedForUserId ?? ticket.createdByUserId,
+                        users,
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <nav
+            aria-label={`Pagination ${title}`}
+            className="personal-ticket-pagination"
+          >
+            <button
+              disabled={visiblePage === 1}
+              onClick={() => setPage(visiblePage - 1)}
+              type="button"
+            >
+              Précédent
+            </button>
+            <span aria-current="page">{visiblePage}</span>
+            <button
+              disabled={visiblePage === totalPages}
+              onClick={() => setPage(visiblePage + 1)}
+              type="button"
+            >
+              Suivant
+            </button>
+          </nav>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function PersonalPlanningPanel({ tasks }: { tasks: PersonalPlanningTask[] }) {
+  const today = formatDateInputValue(new Date());
+  const visibleTasks = tasks.filter((task) => task.date === today);
+
+  return (
+    <article className="personal-panel personal-planning-panel">
+      <header className="personal-panel-header">
+        <h3>Votre planning</h3>
+      </header>
+
+      {visibleTasks.length === 0 ? (
+        <p className="personal-panel-empty personal-planning-empty">
+          Aucune tâche planifiée aujourd'hui.
+        </p>
+      ) : (
+        <div className="personal-task-list">
+          {visibleTasks.map((task) => (
+            <p key={task.id}>
+              <strong>{task.time}</strong>
+              {task.title}
+            </p>
+          ))}
+        </div>
+      )}
+    </article>
   );
 }
 
@@ -1434,6 +1784,129 @@ function formatDateInputValue(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+function buildPersonalTicketPreview(
+  tickets: TicketSummarySnapshot[],
+  predicate: (ticket: TicketSummarySnapshot) => boolean,
+): TicketSummarySnapshot[] {
+  return tickets.filter((ticket) => !ticket.archivedAt && predicate(ticket));
+}
+
+function sortPersonalTickets(
+  tickets: TicketSummarySnapshot[],
+  sortBy: PersonalTicketSort,
+  prioritiesById: Map<string, { level: number; name: string }>,
+): TicketSummarySnapshot[] {
+  const matchingTickets = [...tickets];
+
+  if (sortBy === 'CREATED_AT_DESC') {
+    return [...matchingTickets].sort(
+      (left, right) =>
+        personalToTimestamp(right.createdAt) -
+        personalToTimestamp(left.createdAt),
+    );
+  }
+
+  if (sortBy === 'CREATED_AT_ASC') {
+    return [...matchingTickets].sort(
+      (left, right) =>
+        personalToTimestamp(left.createdAt) -
+        personalToTimestamp(right.createdAt),
+    );
+  }
+
+  return [...matchingTickets].sort((left, right) => {
+    const leftScore = getPersonalTicketOperationalScore(left, prioritiesById);
+    const rightScore = getPersonalTicketOperationalScore(right, prioritiesById);
+
+    return (
+      leftScore.statusRank - rightScore.statusRank ||
+      leftScore.slaRank - rightScore.slaRank ||
+      leftScore.nextDueAt - rightScore.nextDueAt ||
+      rightScore.priorityLevel - leftScore.priorityLevel ||
+      leftScore.createdAt - rightScore.createdAt
+    );
+  });
+}
+
+function formatTicketDisplayNumber(ticket: TicketSummarySnapshot): string {
+  const numberSuffix = ticket.number.split('-').at(-1) ?? ticket.number;
+
+  if (ticket.type === 'INCIDENT') {
+    return `INC-${numberSuffix}`;
+  }
+
+  if (ticket.type === 'REQUEST') {
+    return `DEM-${numberSuffix}`;
+  }
+
+  return ticket.number;
+}
+
+function getPersonalTicketOperationalScore(
+  ticket: TicketSummarySnapshot,
+  prioritiesById: Map<string, { level: number; name: string }>,
+): {
+  createdAt: number;
+  nextDueAt: number;
+  priorityLevel: number;
+  slaRank: number;
+  statusRank: number;
+} {
+  return {
+    createdAt: personalToTimestamp(ticket.createdAt),
+    nextDueAt: getPersonalNextDueTimestamp(ticket),
+    priorityLevel: prioritiesById.get(ticket.priorityId)?.level ?? 0,
+    slaRank: getPersonalSlaRank(ticket),
+    statusRank: getPersonalStatusRank(ticket.status),
+  };
+}
+
+function getPersonalStatusRank(status: string): number {
+  const ranks: Record<string, number> = {
+    IN_PROGRESS: 0,
+    PENDING: 1,
+    OPEN: 2,
+    RESOLVED: 3,
+    CLOSED: 4,
+  };
+
+  return ranks[status] ?? 5;
+}
+
+function getPersonalSlaRank(ticket: TicketSummarySnapshot): number {
+  if (
+    ticket.responseSlaStatus === 'OVERDUE' ||
+    ticket.resolutionSlaStatus === 'OVERDUE'
+  ) {
+    return 0;
+  }
+
+  if (
+    ticket.responseSlaStatus === 'AT_RISK' ||
+    ticket.resolutionSlaStatus === 'AT_RISK'
+  ) {
+    return 1;
+  }
+
+  return 2;
+}
+
+function getPersonalNextDueTimestamp(ticket: TicketSummarySnapshot): number {
+  const timestamps = [ticket.responseDueAt, ticket.resolutionDueAt]
+    .map((value) =>
+      value ? personalToTimestamp(value) : Number.POSITIVE_INFINITY,
+    )
+    .filter((value) => Number.isFinite(value));
+
+  return Math.min(...timestamps, Number.POSITIVE_INFINITY);
+}
+
+function personalToTimestamp(value: string): number {
+  const timestamp = Date.parse(value);
+
+  return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
 }
 
 function normalizeOptionalText(value: string): string | null {
