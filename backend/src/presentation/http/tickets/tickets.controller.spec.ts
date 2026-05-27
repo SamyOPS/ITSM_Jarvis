@@ -363,12 +363,23 @@ describe('TicketsController', () => {
   });
 
   it('delegates ticket detail loading to the dedicated use case', async () => {
-    await expect(controller.getTicketById('ticket-1')).resolves.toEqual({
+    await expect(
+      controller.getTicketById('ticket-1', {
+        accessToken: 'token',
+        email: 'demandeur@jarvis.local',
+        id: 'user-1',
+        role: UserRole.DEMANDEUR,
+      }),
+    ).resolves.toEqual({
       priorityName: 'HIGH',
       ticket: { id: 'ticket-1', number: 'TICK-000001' },
     });
 
-    expect(getTicketById).toHaveBeenCalledWith('ticket-1');
+    expect(getTicketById).toHaveBeenCalledWith({
+      requesterUserId: 'user-1',
+      requesterUserRole: UserRole.DEMANDEUR,
+      ticketId: 'ticket-1',
+    });
   });
 
   it('delegates ticket deletion with the authenticated admin', async () => {

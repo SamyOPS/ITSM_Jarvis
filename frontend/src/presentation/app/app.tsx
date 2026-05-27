@@ -3,6 +3,7 @@ import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import {
   fetchCurrentUser,
   loginWithPassword,
+  refreshAuthSession,
 } from '../../infrastructure/api/auth-api';
 import { getFrontendRuntimeConfig } from '../../infrastructure/config/env';
 import {
@@ -179,6 +180,21 @@ function renderPage({
   }
 }
 
+async function restoreOrRefreshSession(
+  storedSession: AuthSessionSnapshot,
+): Promise<AuthSessionSnapshot> {
+  try {
+    const user = await fetchCurrentUser(storedSession.accessToken);
+
+    return {
+      ...storedSession,
+      user,
+    };
+  } catch {
+    return refreshAuthSession(storedSession.refreshToken);
+  }
+}
+
 export function App() {
   const pathname = useBrowserPath();
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
@@ -206,16 +222,11 @@ export function App() {
       }
 
       try {
-        const user = await fetchCurrentUser(storedSession.accessToken);
+        const restoredSession = await restoreOrRefreshSession(storedSession);
 
         if (cancelled) {
           return;
         }
-
-        const restoredSession = {
-          ...storedSession,
-          user,
-        };
 
         storeAuthSession(restoredSession);
         setSession(restoredSession);
@@ -269,24 +280,70 @@ export function App() {
 
     const originalFetch = window.fetch.bind(window);
     const { apiUrl } = getFrontendRuntimeConfig();
+    let refreshPromise: Promise<AuthSessionSnapshot> | null = null;
+
+    async function refreshSession(): Promise<AuthSessionSnapshot> {
+      if (!session?.refreshToken) {
+        throw new Error('Missing refresh token.');
+      }
+
+      if (!refreshPromise) {
+        refreshPromise = refreshAuthSession(session.refreshToken).then(
+          (nextSession) => {
+            storeAuthSession(nextSession);
+            setSession(nextSession);
+            setSessionState('authenticated');
+
+            return nextSession;
+          },
+        );
+      }
+
+      try {
+        return await refreshPromise;
+      } finally {
+        refreshPromise = null;
+      }
+    }
 
     window.fetch = async (input, init) => {
-      const response = await originalFetch(input, init);
       const requestUrl =
         typeof input === 'string'
           ? input
           : input instanceof Request
             ? input.url
             : input.toString();
+      const isBackendRequest = requestUrl.startsWith(apiUrl);
+      const response = await originalFetch(input, init);
 
-      if (response.status === 401 && requestUrl.startsWith(apiUrl)) {
-        clearStoredAuthSession();
-        setAuthErrorMessage(
-          'Votre session a expiré ou votre compte est désactivé.',
-        );
-        setSession(null);
-        setSessionState('anonymous');
-        navigateTo('/login');
+      if (response.status === 401 && isBackendRequest) {
+        try {
+          const nextSession = await refreshSession();
+          const headers = new Headers(
+            input instanceof Request ? input.headers : init?.headers,
+          );
+
+          headers.set('Authorization', `Bearer ${nextSession.accessToken}`);
+
+          const retryResponse = await originalFetch(input, {
+            ...init,
+            headers,
+          });
+
+          if (retryResponse.status !== 401) {
+            return retryResponse;
+          }
+
+          throw new Error('Session refresh retry failed.');
+        } catch {
+          clearStoredAuthSession();
+          setAuthErrorMessage(
+            'Votre session a expiré ou votre compte est désactivé.',
+          );
+          setSession(null);
+          setSessionState('anonymous');
+          navigateTo('/login');
+        }
       }
 
       return response;
@@ -295,7 +352,7 @@ export function App() {
     return () => {
       window.fetch = originalFetch;
     };
-  }, [sessionState]);
+  }, [session, sessionState]);
 
   async function handleLogin(email: string, password: string): Promise<void> {
     setIsLoggingIn(true);

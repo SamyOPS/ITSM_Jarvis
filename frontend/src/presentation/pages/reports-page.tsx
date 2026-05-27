@@ -2,7 +2,6 @@ import {
   type CSSProperties,
   type Dispatch,
   type FormEvent,
-  type RefObject,
   type SetStateAction,
   useCallback,
   useEffect,
@@ -10,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
+
 import {
   ArrowDown,
   ArrowUp,
@@ -38,9 +38,15 @@ import { fetchUserDirectory } from '../../infrastructure/api/auth-api';
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
 
 import type {
+  ReportingBreakdown,
   ReportingBreakdownItem,
-  ReportingStatusPeriodItem,
+  ReportingFilters,
+  ReportingOverview,
   ReportingTimelineItem,
+} from '../../infrastructure/api/reporting-api';
+import {
+  fetchReportingBreakdown,
+  fetchReportingOverview,
 } from '../../infrastructure/api/reporting-api';
 
 import { searchTickets } from '../../infrastructure/api/ticketing-api';
@@ -138,6 +144,22 @@ const PERSONAL_TICKET_SORT_OPTIONS = [
   },
 ];
 
+const EMPTY_OVERVIEW_TOTALS: ReportingOverview['totals'] = {
+  assigned: 0,
+  closed: 0,
+  incidents: 0,
+  inProgress: 0,
+  open: 0,
+  overdue: 0,
+  pending: 0,
+  requests: 0,
+  resolved: 0,
+  resolutionOverdue: 0,
+  responseOverdue: 0,
+  total: 0,
+  unassigned: 0,
+};
+
 export function ReportsPage({ session }: ReportsPageProps) {
   const [activeView, setActiveView] = useState<ReportsView>('DASHBOARD');
   const [isPlanningOpen, setIsPlanningOpen] = useState(false);
@@ -154,7 +176,9 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  const [tickets, setTickets] = useState<TicketSummarySnapshot[]>([]);
+  const [overview, setOverview] = useState<ReportingOverview | null>(null);
+
+  const [breakdown, setBreakdown] = useState<ReportingBreakdown | null>(null);
 
   const [personalTickets, setPersonalTickets] = useState<
     TicketSummarySnapshot[]
@@ -181,30 +205,34 @@ export function ReportsPage({ session }: ReportsPageProps) {
       setErrorMessage(null);
 
       try {
-        const [nextTickets, nextPersonalTickets, nextCatalog, nextUsers] =
-          await Promise.all([
-            searchTickets(session.accessToken, {
-              categoryId: normalizeOptionalText(nextFilters.categoryId),
+const reportingFilters = buildReportingFilters(nextFilters);
+        const [
+          nextOverview,
+          nextBreakdown,
+          nextPersonalTickets,
+          nextCatalog,
+          nextUsers,
+        ] = await Promise.all([
+          fetchReportingOverview(session.accessToken, reportingFilters),
+          fetchReportingBreakdown(session.accessToken, reportingFilters),
+          searchTickets(session.accessToken, {
+            includeArchived: false,
+          }),
+          fetchReferentialCatalog(),
+          session.user.role === 'DEMANDEUR'
+            ? Promise.resolve([])
+            : fetchUserDirectory(session.accessToken),
+        ]);
 
-              includeArchived: false,
+        setOverview(nextOverview);
 
-              priorityId: normalizeOptionalText(nextFilters.priorityId),
+        setBreakdown(nextBreakdown);
 
-              status: nextFilters.status || null,
+        setPersonalTickets(nextPersonalTickets);
 
-              type: nextFilters.type || null,
-            }),
+        setCatalog(nextCatalog);
 
-            searchTickets(session.accessToken, {
-              includeArchived: false,
-            }),
-
-            fetchReferentialCatalog(),
-
-            fetchUserDirectory(session.accessToken),
-          ]);
-
-        setTickets(nextTickets);
+        setUsers(nextUsers);
 
         setPersonalTickets(nextPersonalTickets);
 
@@ -282,84 +310,30 @@ export function ReportsPage({ session }: ReportsPageProps) {
     setFilters(applyPeriodPreset(INITIAL_FILTERS));
   }
 
-  const scopedTickets = useMemo(
-    () => filterTicketsForDashboard(tickets, filters, session),
-
-    [filters, session, tickets],
-  );
-
-  const overview = useMemo(
-    () => buildDashboardOverview(scopedTickets),
-
-    [scopedTickets],
-  );
-
-  const timelineItems = useMemo(
-    () => buildTicketActivityTimeline(scopedTickets),
-
-    [scopedTickets],
-  );
-
-  const statusPeriodItems = useMemo(
-    () => buildTicketStatusPeriod(scopedTickets),
-
-    [scopedTickets],
-  );
-
   const categoryWidgetItems = useMemo(
-    () =>
-      countDashboardBreakdown(
-        scopedTickets,
-
-        (ticket) => ticket.categoryId,
-
-        (categoryId) =>
-          categoryId
-            ? (catalog.categories.find((category) => category.id === categoryId)
-                ?.name ?? categoryId)
-            : 'Non definie',
-      ),
-
-    [catalog.categories, scopedTickets],
+    () => breakdown?.ticketsByCategory ?? [],
+    [breakdown],
   );
 
   const channelWidgetItems = useMemo(
     () =>
-      countDashboardBreakdown(
-        scopedTickets,
-
-        (ticket) => ticket.channelId,
-
-        (channelId) =>
-          channelId
-            ? getChannelDisplayName(
-                {
-                  count: 0,
-
-                  id: channelId,
-
-                  name: channelId,
-                },
-
-                catalog,
-              )
-            : 'Non renseigne',
-      ),
-
-    [catalog, scopedTickets],
+      (breakdown?.ticketsByChannel ?? []).map((item) => ({
+        ...item,
+        name: getChannelDisplayName(item, catalog),
+      })),
+    [breakdown, catalog],
   );
 
   const agentWidgetItems = useMemo(
-    () =>
-      countDashboardBreakdown(
-        scopedTickets,
-
-        (ticket) => ticket.assignedToUserId,
-
-        (userId) => formatAssignedUserName(userId, users),
-      ),
-
-    [scopedTickets, users],
+    () => breakdown?.ticketsByAgent ?? [],
+    [breakdown],
+  );
+  const overviewTotals = overview?.totals ?? EMPTY_OVERVIEW_TOTALS;
+  const overdueTotal = getOverviewOverdueTotal(overviewTotals);
+  const timelineItems = breakdown?.ticketActivityTimeline ?? [];
+  const statusDistributionItems = useMemo(
+    () => buildStatusDistributionItems(breakdown?.ticketsByStatus ?? []),
+    [breakdown],
   );
 
   const personalPrioritiesById = useMemo(
@@ -620,61 +594,61 @@ export function ReportsPage({ session }: ReportsPageProps) {
               <DashboardPrimaryKpiCard
                 label="Tickets"
                 tone="yellow"
-                value={formatNumber(overview.total)}
+                value={formatNumber(overviewTotals.total)}
               />
 
               <DashboardPrimaryKpiCard
                 label="Tickets en retard"
                 tone="orange"
-                value={formatNumber(overview.overdue)}
+                value={formatNumber(overdueTotal)}
               />
 
               <DashboardPrimaryKpiCard
                 label="Incidents"
                 tone="salmon"
-                value={formatNumber(overview.incidents)}
+                value={formatNumber(overviewTotals.incidents)}
               />
 
               <DashboardPrimaryKpiCard
                 label="Demandes"
                 tone="green"
-                value={formatNumber(overview.requests)}
+                value={formatNumber(overviewTotals.requests)}
               />
 
               <DashboardMiniKpiCard
-                label="Tickets entrants"
+                label="Tickets en cours"
                 tone="mint"
-                value={formatNumber(overview.total)}
+                value={formatNumber(overviewTotals.inProgress)}
               />
 
               <DashboardMiniKpiCard
                 label="Tickets assignes"
                 tone="sky"
-                value={formatNumber(overview.assigned)}
+                value={formatNumber(overviewTotals.assigned)}
               />
 
               <DashboardMiniKpiCard
                 label="Tickets resolus"
                 tone="silver"
-                value={formatNumber(overview.resolved)}
+                value={formatNumber(overviewTotals.resolved)}
               />
 
               <DashboardMiniKpiCard
                 label="Tickets non assignes"
                 tone="white"
-                value={formatNumber(overview.unassigned)}
+                value={formatNumber(overviewTotals.unassigned)}
               />
 
               <DashboardMiniKpiCard
                 label="Tickets en attente"
                 tone="amber"
-                value={formatNumber(overview.pending)}
+                value={formatNumber(overviewTotals.pending)}
               />
 
               <DashboardMiniKpiCard
                 label="Tickets fermes"
                 tone="charcoal"
-                value={formatNumber(overview.closed)}
+                value={formatNumber(overviewTotals.closed)}
               />
             </div>
 
@@ -683,8 +657,10 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 <DashboardTimelineChart items={timelineItems} />
               </DashboardPanel>
 
-              <DashboardPanel title="Statuts des tickets par mois">
-                <DashboardStackedStatusChart items={statusPeriodItems} />
+              <DashboardPanel title="Repartition des statuts">
+                <DashboardStatusDistributionChart
+                  items={statusDistributionItems}
+                />
               </DashboardPanel>
             </div>
 
@@ -1383,166 +1359,59 @@ function buildAreaSvgPath(
   return `${linePath} L ${lastPoint.x} ${baselineY} L ${firstPoint.x} ${baselineY} Z`;
 }
 
-function DashboardStackedStatusChart({
+function DashboardStatusDistributionChart({
   items,
 }: {
-  items: ReportingStatusPeriodItem[];
+  items: Array<{
+    color: string;
+    count: number;
+    key: 'closed' | 'open' | 'pending' | 'progress' | 'resolved';
+    label: string;
+  }>;
 }) {
-  const chartRef = useRef<HTMLDivElement | null>(null);
-  const [tooltipState, setTooltipState] = useState<{
-    align: 'left' | 'right';
-    index: number;
-    left: string;
-    segment: {
-      color: string;
-      label: string;
-      value: number;
-    };
-    top: string;
-  } | null>(null);
-
   if (items.length === 0) {
     return <p className="reports-chart-empty">Aucune donnee.</p>;
   }
 
-  const maxTotal = Math.max(
-    ...items.map(
-      (item) =>
-        item.open +
-        item.inProgress +
-        item.pending +
-        item.resolved +
-        item.closed,
-    ),
-
-    1,
-  );
-  const chartHeightPx = 220;
-  const activeItem = tooltipState ? items[tooltipState.index] : null;
+  const maxCount = Math.max(...items.map((item) => item.count), 1);
 
   return (
-    <div className="reports-status-period-chart" ref={chartRef}>
+    <div className="reports-status-distribution-chart">
       <div className="reports-chart-legend">
-        <span>
-          <i className="reports-status-key reports-status-key--open" />
-          Ouvert
-        </span>
-
-        <span>
-          <i className="reports-status-key reports-status-key--progress" />
-          En cours
-        </span>
-
-        <span>
-          <i className="reports-status-key reports-status-key--pending" />
-          En attente
-        </span>
-
-        <span>
-          <i className="reports-status-key reports-status-key--resolved" />
-          Resolu
-        </span>
-
-        <span>
-          <i className="reports-status-key reports-status-key--closed" />
-          Clos
-        </span>
+        {items.map((item) => (
+          <span key={item.key}>
+            <i
+              className={`reports-status-key reports-status-key--${item.key}`}
+            />
+            {item.label}
+          </span>
+        ))}
       </div>
 
-      {activeItem ? (
-        <ChartTooltip
-          align={tooltipState?.align ?? 'left'}
-          className="reports-chart-tooltip--status"
-          items={tooltipState ? [tooltipState.segment] : []}
-          left={tooltipState?.left ?? '50%'}
-          top={tooltipState?.top}
-          title={activeItem.period}
-        />
-      ) : null}
-
-      <div className="reports-status-period-columns">
-        {items.map((item, index) => {
-          const total =
-            item.open +
-            item.inProgress +
-            item.pending +
-            item.resolved +
-            item.closed;
-
-          const height = `${total <= 0 ? 0 : (total / maxTotal) * chartHeightPx}px`;
-
-          return (
-            <div className="reports-status-period-column" key={item.period}>
-              <strong>{total}</strong>
-              <div
-                className="reports-status-period-stack"
-                style={{ height } as CSSProperties}
-              >
-                {renderStackSegment(
-                  item.open,
-                  total,
-                  'open',
-                  'Ouvert',
-                  '#3b6ca8',
-                  index,
-                  items.length,
-                  chartRef,
-                  setTooltipState,
-                )}
-
-                {renderStackSegment(
-                  item.inProgress,
-                  total,
-                  'progress',
-                  'En cours',
-                  '#f1972c',
-                  index,
-                  items.length,
-                  chartRef,
-                  setTooltipState,
-                )}
-
-                {renderStackSegment(
-                  item.pending,
-                  total,
-                  'pending',
-                  'En attente',
-                  '#6bb45a',
-                  index,
-                  items.length,
-                  chartRef,
-                  setTooltipState,
-                )}
-
-                {renderStackSegment(
-                  item.resolved,
-                  total,
-                  'resolved',
-                  'Resolu',
-                  '#f2cb4d',
-                  index,
-                  items.length,
-                  chartRef,
-                  setTooltipState,
-                )}
-
-                {renderStackSegment(
-                  item.closed,
-                  total,
-                  'closed',
-                  'Clos',
-                  '#b07ca7',
-                  index,
-                  items.length,
-                  chartRef,
-                  setTooltipState,
-                )}
-              </div>
-
-              <span>{formatPeriodLabel(item.period)}</span>
+      <div className="reports-status-distribution-bars">
+        {items.map((item) => (
+          <div className="reports-status-distribution-row" key={item.key}>
+            <div className="reports-status-distribution-label">
+              <i
+                className={`reports-status-key reports-status-key--${item.key}`}
+              />
+              <span>{item.label}</span>
             </div>
-          );
-        })}
+
+            <div className="reports-status-distribution-track">
+              <i
+                className={`reports-status-distribution-fill reports-status-distribution-fill--${item.key}`}
+                style={
+                  {
+                    width: `${(item.count / maxCount) * 100}%`,
+                  } as CSSProperties
+                }
+              />
+            </div>
+
+            <strong>{item.count}</strong>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1585,76 +1454,6 @@ function ChartTooltip({
         ))}
       </div>
     </div>
-  );
-}
-
-function renderStackSegment(
-  value: number,
-
-  total: number,
-
-  tone: 'closed' | 'open' | 'pending' | 'progress' | 'resolved',
-  label: string,
-  color: string,
-  columnIndex: number,
-  itemCount: number,
-  chartRef: RefObject<HTMLDivElement | null>,
-  setTooltipState: Dispatch<
-    SetStateAction<{
-      align: 'left' | 'right';
-      index: number;
-      left: string;
-      segment: {
-        color: string;
-        label: string;
-        value: number;
-      };
-      top: string;
-    } | null>
-  >,
-) {
-  if (value <= 0 || total <= 0) {
-    return null;
-  }
-
-  return (
-    <span
-      className={`reports-stack-segment reports-stack-segment--${tone}`}
-      onMouseLeave={() => setTooltipState(null)}
-      onMouseMove={(event) => {
-        if (!chartRef.current) {
-          return;
-        }
-
-        const chartRect = chartRef.current.getBoundingClientRect();
-        const segmentRect = event.currentTarget.getBoundingClientRect();
-        const align = columnIndex >= itemCount - 1 ? 'right' : 'left';
-        const horizontalOffsetPx = 20;
-        const leftPx =
-          align === 'left'
-            ? segmentRect.right - chartRect.left + horizontalOffsetPx
-            : segmentRect.left - chartRect.left - horizontalOffsetPx;
-        const estimatedTooltipHeightPx = 86;
-        const topPx = clampNumber(
-          event.clientY - chartRect.top - 14,
-          56,
-          Math.max(56, chartRect.height - estimatedTooltipHeightPx),
-        );
-
-        setTooltipState({
-          align,
-          index: columnIndex,
-          left: `${leftPx}px`,
-          segment: {
-            color,
-            label,
-            value,
-          },
-          top: `${topPx}px`,
-        });
-      }}
-      style={{ height: `${(value / total) * 100}%` } as CSSProperties}
-    />
   );
 }
 
@@ -2007,34 +1806,14 @@ function formatUserName(user: AdminUserSummary): string {
   return fullName || user.displayName || user.email || user.id;
 }
 
-function formatAssignedUserName(
-  userId: string | null,
-
-  users: AdminUserSummary[],
-): string {
-  if (!userId) {
-    return 'Non assigne';
+function getOverviewOverdueTotal(
+  totals: ReportingOverview['totals'],
+): number | null {
+  if (typeof totals.overdue === 'number') {
+    return totals.overdue;
   }
 
-  return formatUserName(
-    users.find((user) => user.id === userId) ?? {
-      displayName: null,
-
-      email: null,
-
-      firstName: null,
-
-      groupId: null,
-
-      id: userId,
-
-      isActive: true,
-
-      lastName: null,
-
-      role: 'AGENT',
-    },
-  );
+  return Math.max(totals.responseOverdue, totals.resolutionOverdue);
 }
 
 function formatNumber(value: number | null | undefined): string {
@@ -2101,239 +1880,59 @@ function getChannelDisplayName(
   return channelName ? translateChannel(channelName) : item.name;
 }
 
-function filterTicketsForDashboard(
-  tickets: TicketSummarySnapshot[],
+function buildStatusDistributionItems(items: ReportingBreakdownItem[]): Array<{
+  color: string;
+  count: number;
+  key: 'closed' | 'open' | 'pending' | 'progress' | 'resolved';
+  label: string;
+}> {
+  const countsByStatus = new Map(
+    items.map((item) => [item.id ?? item.name, item.count]),
+  );
 
-  filters: ReportsFilterState,
-
-  session: AuthSessionSnapshot,
-): TicketSummarySnapshot[] {
-  const fromTime = getDateBoundaryTimestamp(filters.from, 'start');
-
-  const toTime = getDateBoundaryTimestamp(filters.to, 'end');
-
-  const assignedToUserId =
-    session.user.role === 'AGENT'
-      ? session.user.id
-      : normalizeOptionalText(filters.assignedToUserId);
-
-  const assignmentGroupId = normalizeOptionalText(filters.assignmentGroupId);
-
-  return tickets.filter((ticket) => {
-    const createdAtTime = new Date(ticket.createdAt).getTime();
-
-    if (
-      fromTime !== null &&
-      (Number.isNaN(createdAtTime) || createdAtTime < fromTime)
-    ) {
-      return false;
-    }
-
-    if (
-      toTime !== null &&
-      (Number.isNaN(createdAtTime) || createdAtTime > toTime)
-    ) {
-      return false;
-    }
-
-    if (assignedToUserId && ticket.assignedToUserId !== assignedToUserId) {
-      return false;
-    }
-
-    if (assignmentGroupId && ticket.assignmentGroupId !== assignmentGroupId) {
-      return false;
-    }
-
-    return true;
-  });
+  return [
+    {
+      color: '#4f7fb5',
+      count: countsByStatus.get('OPEN') ?? 0,
+      key: 'open',
+      label: 'Ouvert',
+    },
+    {
+      color: '#22c55e',
+      count: countsByStatus.get('IN_PROGRESS') ?? 0,
+      key: 'progress',
+      label: 'En cours',
+    },
+    {
+      color: '#f59e0b',
+      count: countsByStatus.get('PENDING') ?? 0,
+      key: 'pending',
+      label: 'En attente',
+    },
+    {
+      color: '#2bb8c9',
+      count: countsByStatus.get('RESOLVED') ?? 0,
+      key: 'resolved',
+      label: 'Resolu',
+    },
+    {
+      color: '#64748b',
+      count: countsByStatus.get('CLOSED') ?? 0,
+      key: 'closed',
+      label: 'Clos',
+    },
+  ];
 }
 
-function getDateBoundaryTimestamp(
-  value: string,
-
-  boundary: 'end' | 'start',
-): number | null {
-  const normalized = value.trim();
-
-  if (!normalized) {
-    return null;
-  }
-
-  const [yearText, monthText, dayText] = normalized.split('-');
-
-  const year = Number(yearText);
-
-  const month = Number(monthText);
-
-  const day = Number(dayText);
-
-  if (!year || !month || !day) {
-    return null;
-  }
-
-  const date =
-    boundary === 'start'
-      ? new Date(year, month - 1, day, 0, 0, 0, 0)
-      : new Date(year, month - 1, day, 23, 59, 59, 999);
-
-  return date.getTime();
-}
-
-function buildDashboardOverview(tickets: TicketSummarySnapshot[]) {
+function buildReportingFilters(filters: ReportsFilterState): ReportingFilters {
   return {
-    assigned: tickets.filter((ticket) => Boolean(ticket.assignedToUserId))
-      .length,
-
-    closed: tickets.filter((ticket) => ticket.status === 'CLOSED').length,
-
-    incidents: tickets.filter((ticket) => ticket.type === 'INCIDENT').length,
-
-    overdue: tickets.filter(isTicketOverdue).length,
-
-    pending: tickets.filter((ticket) => ticket.status === 'PENDING').length,
-
-    requests: tickets.filter((ticket) => ticket.type === 'REQUEST').length,
-
-    resolved: tickets.filter((ticket) => ticket.status === 'RESOLVED').length,
-
-    total: tickets.length,
-
-    unassigned: tickets.filter((ticket) => !ticket.assignedToUserId).length,
+    assignedToUserId: normalizeOptionalText(filters.assignedToUserId),
+    assignmentGroupId: normalizeOptionalText(filters.assignmentGroupId),
+    categoryId: normalizeOptionalText(filters.categoryId),
+    from: normalizeOptionalText(filters.from),
+    priorityId: normalizeOptionalText(filters.priorityId),
+    status: filters.status || null,
+    to: normalizeOptionalText(filters.to),
+    type: filters.type || null,
   };
-}
-
-function buildTicketActivityTimeline(
-  tickets: TicketSummarySnapshot[],
-): ReportingTimelineItem[] {
-  const buckets = new Map<string, ReportingTimelineItem>();
-
-  for (const ticket of tickets) {
-    const period = ticket.createdAt.slice(0, 7);
-
-    const current = buckets.get(period) ?? {
-      closed: 0,
-
-      open: 0,
-
-      overdue: 0,
-
-      period,
-
-      resolved: 0,
-    };
-
-    if (
-      ticket.status === 'OPEN' ||
-      ticket.status === 'IN_PROGRESS' ||
-      ticket.status === 'PENDING'
-    ) {
-      current.open += 1;
-    }
-
-    if (ticket.status === 'RESOLVED') {
-      current.resolved += 1;
-    }
-
-    if (ticket.status === 'CLOSED') {
-      current.closed += 1;
-    }
-
-    if (isTicketOverdue(ticket)) {
-      current.overdue += 1;
-    }
-
-    buckets.set(period, current);
-  }
-
-  return [...buckets.values()].sort((left, right) =>
-    left.period.localeCompare(right.period),
-  );
-}
-
-function buildTicketStatusPeriod(
-  tickets: TicketSummarySnapshot[],
-): ReportingStatusPeriodItem[] {
-  const buckets = new Map<string, ReportingStatusPeriodItem>();
-
-  for (const ticket of tickets) {
-    const period = ticket.createdAt.slice(0, 7);
-
-    const current = buckets.get(period) ?? {
-      closed: 0,
-
-      inProgress: 0,
-
-      open: 0,
-
-      pending: 0,
-
-      period,
-
-      resolved: 0,
-    };
-
-    if (ticket.status === 'OPEN') {
-      current.open += 1;
-    } else if (ticket.status === 'IN_PROGRESS') {
-      current.inProgress += 1;
-    } else if (ticket.status === 'PENDING') {
-      current.pending += 1;
-    } else if (ticket.status === 'RESOLVED') {
-      current.resolved += 1;
-    } else if (ticket.status === 'CLOSED') {
-      current.closed += 1;
-    }
-
-    buckets.set(period, current);
-  }
-
-  return [...buckets.values()].sort((left, right) =>
-    left.period.localeCompare(right.period),
-  );
-}
-
-function countDashboardBreakdown(
-  tickets: TicketSummarySnapshot[],
-
-  getKey: (ticket: TicketSummarySnapshot) => string | null,
-
-  getName: (key: string | null) => string,
-): ReportingBreakdownItem[] {
-  const counters = new Map<string, { count: number; id: string | null }>();
-
-  for (const ticket of tickets) {
-    const id = getKey(ticket);
-
-    const key = id ?? '__null__';
-
-    const current = counters.get(key) ?? { count: 0, id };
-
-    counters.set(key, {
-      ...current,
-
-      count: current.count + 1,
-    });
-  }
-
-  return [...counters.values()]
-
-    .map((item) => ({
-      count: item.count,
-
-      id: item.id,
-
-      name: getName(item.id),
-    }))
-
-    .sort(
-      (left, right) =>
-        right.count - left.count || left.name.localeCompare(right.name),
-    );
-}
-
-function isTicketOverdue(ticket: TicketSummarySnapshot): boolean {
-  return (
-    ticket.responseSlaStatus === 'OVERDUE' ||
-    ticket.resolutionSlaStatus === 'OVERDUE'
-  );
 }

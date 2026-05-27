@@ -608,6 +608,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     let cancelled = false;
 
     async function loadUserDirectory(): Promise<void> {
+      if (session.user.role === 'DEMANDEUR') {
+        if (!cancelled) {
+          setUserDirectory([]);
+        }
+        return;
+      }
+
       try {
         const users = await fetchUserDirectory(session.accessToken);
 
@@ -626,7 +633,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [session.accessToken]);
+  }, [session.accessToken, session.user.role]);
 
   useEffect(() => {
     setTicketPage(1);
