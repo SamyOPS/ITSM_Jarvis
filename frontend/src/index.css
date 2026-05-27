@@ -6560,24 +6560,24 @@ a {
 
 .reports-line-key--open,
 .reports-status-key--open {
-  background: #3b6ca8;
+  background: #4f7fb5;
 }
 .reports-line-key--resolved,
 .reports-status-key--resolved {
-  background: #f2cb4d;
+  background: #2bb8c9;
 }
 .reports-line-key--overdue {
   background: #d65c57;
 }
 .reports-line-key--closed,
 .reports-status-key--closed {
-  background: #b07ca7;
+  background: #64748b;
 }
 .reports-status-key--progress {
-  background: #f1972c;
+  background: #22c55e;
 }
 .reports-status-key--pending {
-  background: #6bb45a;
+  background: #f59e0b;
 }
 
 .reports-timeline-svg {
@@ -6701,6 +6701,75 @@ a {
   height: 320px;
 }
 
+.reports-status-distribution-chart {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  height: 100%;
+}
+
+.reports-status-distribution-bars {
+  display: grid;
+  gap: 14px;
+  padding-top: 6px;
+}
+
+.reports-status-distribution-row {
+  display: grid;
+  grid-template-columns: minmax(132px, 180px) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.reports-status-distribution-label {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: #17335f;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.reports-status-distribution-track {
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(219, 227, 238, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(172, 188, 209, 0.2);
+}
+
+.reports-status-distribution-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.reports-status-distribution-fill--open {
+  background: #4f7fb5;
+}
+
+.reports-status-distribution-fill--progress {
+  background: #22c55e;
+}
+
+.reports-status-distribution-fill--pending {
+  background: #f59e0b;
+}
+
+.reports-status-distribution-fill--resolved {
+  background: #2bb8c9;
+}
+
+.reports-status-distribution-fill--closed {
+  background: #64748b;
+}
+
+.reports-status-distribution-row strong {
+  color: #5c6d86;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .reports-status-period-column {
   display: grid;
   gap: 10px;
@@ -6738,19 +6807,19 @@ a {
 }
 
 .reports-stack-segment--open {
-  background: #3b6ca8;
+  background: #4f7fb5;
 }
 .reports-stack-segment--progress {
-  background: #f1972c;
+  background: #22c55e;
 }
 .reports-stack-segment--pending {
-  background: #6bb45a;
+  background: #f59e0b;
 }
 .reports-stack-segment--resolved {
-  background: #f2cb4d;
+  background: #2bb8c9;
 }
 .reports-stack-segment--closed {
-  background: #b07ca7;
+  background: #64748b;
 }
 
 .reports-dashboard-bottom {

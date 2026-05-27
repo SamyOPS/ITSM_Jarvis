@@ -8,6 +8,14 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 import { CreateAdminUserUseCase } from '../../../application/auth/use-cases/create-admin-user.use-case';
 import { DeleteAdminUserUseCase } from '../../../application/auth/use-cases/delete-admin-user.use-case';
 import {
@@ -29,23 +37,51 @@ import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
 
 class CreateAdminUserDto {
+  @IsEmail()
   email!: string;
+
+  @IsOptional()
+  @IsString()
   firstName?: string | null;
+
+  @IsOptional()
+  @IsString()
   groupId?: string | null;
+
+  @IsOptional()
+  @IsString()
   lastName?: string | null;
+
+  @IsString()
+  @MinLength(8)
   password!: string;
+
+  @IsEnum(UserRole)
   role!: UserRole;
 }
 
 class UpdateAdminUserDto {
+  @IsEmail()
   email!: string;
+
+  @IsOptional()
+  @IsString()
   firstName?: string | null;
+
+  @IsOptional()
+  @IsString()
   groupId?: string | null;
+
+  @IsOptional()
+  @IsString()
   lastName?: string | null;
+
+  @IsEnum(UserRole)
   role!: UserRole;
 }
 
 class UpdateAdminUserStatusDto {
+  @IsBoolean()
   isActive!: boolean;
 }
 
@@ -155,7 +191,9 @@ export class AuthController {
   }
 
   @Get('users')
-  @UseGuards(BearerAuthGuard)
+  @UseGuards(BearerAuthGuard, RolesGuard)
+  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  @Policies(AuthPolicy.ACCESS_AGENT_AREA)
   listUsers(): Promise<AdminUserSummary[]> {
     return this.listAdminUsersUseCase.execute();
   }
