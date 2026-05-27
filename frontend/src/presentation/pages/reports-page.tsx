@@ -1806,6 +1806,19 @@ function formatUserName(user: AdminUserSummary): string {
   return fullName || user.displayName || user.email || user.id;
 }
 
+function formatAssignedUserName(
+  userId: string | null | undefined,
+  users: AdminUserSummary[],
+): string {
+  if (!userId) {
+    return 'Non renseigne';
+  }
+
+  const user = users.find((candidate) => candidate.id === userId);
+
+  return user ? formatUserName(user) : userId;
+}
+
 function getOverviewOverdueTotal(
   totals: ReportingOverview['totals'],
 ): number | null {
