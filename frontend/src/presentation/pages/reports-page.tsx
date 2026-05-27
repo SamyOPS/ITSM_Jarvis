@@ -205,7 +205,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
       setErrorMessage(null);
 
       try {
-const reportingFilters = buildReportingFilters(nextFilters);
+        const reportingFilters = buildReportingFilters(nextFilters);
         const [
           nextOverview,
           nextBreakdown,
