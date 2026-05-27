@@ -5255,6 +5255,566 @@ a {
   background: #f4f8ff;
 }
 
+.personal-planning-open-button {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 0.84rem;
+  font-weight: 400;
+}
+
+.personal-planning-open-button:hover {
+  background: #f2f7ff;
+  border-color: rgba(158, 203, 255, 0.45);
+  color: #2b6de9;
+}
+
+.planning-page {
+  display: grid;
+  gap: 16px;
+}
+
+.planning-page-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.planning-page-header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.planning-page-header h2 {
+  margin: 0;
+  color: #17335f;
+  font-size: 1.24rem;
+  font-weight: 700;
+}
+
+.planning-page-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.planning-workspace {
+  min-height: calc(100vh - 180px);
+  overflow: hidden;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.planning-toolbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 18px;
+  min-height: 66px;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(207, 216, 234, 0.82);
+}
+
+.planning-period-controls,
+.planning-mode-tabs {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.planning-period-controls button,
+.planning-mode-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(190, 204, 226, 0.84);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #395171;
+  font-size: 0.86rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.planning-period-controls button:not(.planning-today-button) {
+  width: 38px;
+  padding: 0;
+}
+
+.planning-period-controls button:hover,
+.planning-mode-tab:hover {
+  border-color: rgba(158, 203, 255, 0.45);
+  background: #f2f7ff;
+  color: #2b6de9;
+}
+
+.planning-period-title {
+  justify-self: center;
+  color: #17335f;
+  font-size: 0.98rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.planning-mode-tab.is-active {
+  border-color: rgba(43, 109, 233, 0.28);
+  background: rgba(43, 109, 233, 0.12);
+  color: #2b6de9;
+}
+
+.planning-time-view {
+  overflow-x: auto;
+}
+
+.planning-time-header {
+  display: grid;
+  grid-template-columns: 74px repeat(7, minmax(140px, 1fr));
+  min-width: 1100px;
+  border-bottom: 1px solid rgba(207, 216, 234, 0.82);
+}
+
+.planning-day-view .planning-time-header {
+  grid-template-columns: 74px 1fr;
+  min-width: 0;
+}
+
+.planning-time-header strong {
+  padding: 12px 8px;
+  border-left: 1px solid rgba(207, 216, 234, 0.65);
+  color: #445a79;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.planning-time-header strong.is-today {
+  background: #f2f7ff;
+  color: #2b6de9;
+}
+
+.planning-time-body {
+  display: grid;
+  grid-template-columns: 74px repeat(7, minmax(140px, 1fr));
+  min-width: 1100px;
+}
+
+.planning-day-view .planning-time-body {
+  grid-template-columns: 74px 1fr;
+  min-width: 0;
+}
+
+.planning-time-scale {
+  display: grid;
+  grid-template-rows: repeat(11, 68px) 0;
+  height: 748px;
+  padding-right: 10px;
+  color: #70809a;
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.planning-time-scale span {
+  transform: translateY(-8px);
+}
+
+.planning-day-column {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(22, 34px);
+  height: 748px;
+  border-left: 1px solid rgba(207, 216, 234, 0.65);
+}
+
+.planning-slot {
+  border: 0;
+  border-bottom: 1px dashed rgba(207, 216, 234, 0.58);
+  background: transparent;
+  cursor: pointer;
+}
+
+.planning-slot:nth-child(even) {
+  border-bottom-style: solid;
+}
+
+.planning-slot:hover {
+  background: rgba(43, 109, 233, 0.06);
+}
+
+.planning-event {
+  position: absolute;
+  right: 4px;
+  left: 4px;
+  z-index: 2;
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  overflow: hidden;
+  padding: 7px 8px;
+  border: 1px solid rgba(43, 109, 233, 0.24);
+  border-left: 3px solid #2b6de9;
+  border-radius: 6px;
+  background: #e7f0ff;
+  color: #17335f;
+  text-align: left;
+  cursor: pointer;
+}
+
+.planning-event strong {
+  overflow: hidden;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planning-event span {
+  color: #576b89;
+  font-size: 0.72rem;
+}
+
+.planning-event--done {
+  border-color: rgba(43, 153, 93, 0.28);
+  border-left-color: #2b995d;
+  background: #eaf7ef;
+}
+
+.planning-month-view {
+  min-width: 860px;
+  overflow-x: auto;
+}
+
+.planning-month-header,
+.planning-month-week {
+  display: grid;
+  grid-template-columns: 54px repeat(7, minmax(110px, 1fr));
+}
+
+.planning-month-header {
+  min-height: 38px;
+  border-bottom: 1px solid rgba(207, 216, 234, 0.82);
+}
+
+.planning-month-header span,
+.planning-month-header strong {
+  padding: 10px 8px;
+  color: #536986;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.planning-month-week {
+  min-height: 112px;
+}
+
+.planning-week-number {
+  padding: 12px 8px;
+  border-bottom: 1px solid rgba(207, 216, 234, 0.65);
+  color: #697c98;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.planning-month-day {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 5px;
+  min-width: 0;
+  padding: 6px;
+  border-bottom: 1px solid rgba(207, 216, 234, 0.65);
+  border-left: 1px solid rgba(207, 216, 234, 0.65);
+}
+
+.planning-month-day > button:first-child {
+  justify-self: end;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #273c5a;
+  cursor: pointer;
+}
+
+.planning-month-day > button:first-child:hover,
+.planning-month-day > button:first-child.is-today {
+  background: rgba(43, 109, 233, 0.12);
+  color: #2b6de9;
+}
+
+.planning-month-day.is-outside {
+  background: #fafbfd;
+}
+
+.planning-month-day.is-outside > button:first-child {
+  color: #a3afc0;
+}
+
+.planning-month-day > div {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.planning-month-task {
+  display: flex;
+  gap: 5px;
+  overflow: hidden;
+  padding: 4px 5px;
+  border: 1px solid rgba(43, 109, 233, 0.24);
+  border-left: 3px solid #2b6de9;
+  border-radius: 4px;
+  background: #e7f0ff;
+  color: #17335f;
+  font-size: 0.72rem;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.planning-month-task span {
+  color: #576b89;
+}
+
+.planning-month-task.planning-event--done {
+  border-left-color: #2b995d;
+  background: #eaf7ef;
+}
+
+.planning-month-day small {
+  color: #70809a;
+  font-size: 0.7rem;
+}
+
+.planning-agenda-view {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.planning-agenda-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.planning-agenda-header h3 {
+  margin: 0;
+  color: #17335f;
+  font-size: 1rem;
+}
+
+.planning-agenda-header .primary-button,
+.planning-editor-actions .primary-button,
+.planning-delete-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 400;
+}
+
+.planning-agenda-list {
+  overflow: hidden;
+  border: 1px solid rgba(207, 216, 234, 0.82);
+  border-radius: 10px;
+}
+
+.planning-agenda-row {
+  display: grid;
+  grid-template-columns: 190px 190px minmax(160px, 1fr) 190px 84px;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  min-height: 54px;
+  padding: 0 16px;
+  border: 0;
+  border-bottom: 1px solid rgba(207, 216, 234, 0.72);
+  background: #ffffff;
+  color: #243958;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.planning-agenda-row:last-child {
+  border-bottom: 0;
+}
+
+.planning-agenda-row:hover {
+  background: #f2f7ff;
+}
+
+.planning-agenda-time {
+  color: #516783;
+}
+
+.planning-status {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #296ce0;
+  font-size: 0.76rem;
+  font-style: normal;
+  text-align: center;
+}
+
+.planning-status--done {
+  background: #eaf7ef;
+  color: #237b4b;
+}
+
+.planning-empty {
+  padding: 62px 18px;
+  color: #718099;
+  text-align: center;
+}
+
+.planning-editor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.planning-editor {
+  display: grid;
+  gap: 18px;
+  width: min(700px, 100%);
+  max-height: calc(100vh - 44px);
+  overflow-y: auto;
+  padding: 22px;
+  border: 1px solid rgba(207, 216, 234, 0.95);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.planning-editor-header,
+.planning-editor-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.planning-editor-header h3 {
+  margin: 0 0 5px;
+  color: #17335f;
+  font-size: 1.15rem;
+}
+
+.planning-editor-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.83rem;
+}
+
+.planning-editor-header > button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.planning-editor-header > button:hover {
+  border-color: rgba(158, 203, 255, 0.45);
+  background: #f2f7ff;
+  color: #2b6de9;
+}
+
+.planning-editor-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.planning-editor-form .field:first-child,
+.planning-editor-form .field:nth-child(2),
+.planning-description-field {
+  grid-column: 1 / -1;
+}
+
+.planning-editor-form textarea {
+  resize: vertical;
+}
+
+.planning-start-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 126px;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.planning-start-field legend {
+  grid-column: 1 / -1;
+  margin-bottom: 8px;
+  color: #24406c;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.planning-editor-actions {
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.planning-delete-button {
+  margin-right: auto;
+}
+
+.planning-technician-overlay {
+  z-index: 90;
+}
+
+@media (max-width: 1020px) {
+  .planning-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .planning-period-title {
+    justify-self: start;
+    grid-row: 1;
+  }
+
+  .planning-mode-tabs {
+    flex-wrap: wrap;
+  }
+
+  .planning-agenda-row {
+    grid-template-columns: 1fr;
+    gap: 5px;
+    padding: 12px 14px;
+  }
+}
+
+@media (max-width: 700px) {
+  .planning-page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .planning-editor-form {
+    grid-template-columns: 1fr;
+  }
+}
+
 .reports-hero,
 .reports-filter-band,
 .reports-kpi-card,

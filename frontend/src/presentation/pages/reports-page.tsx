@@ -45,6 +45,7 @@ import type {
 
 import { searchTickets } from '../../infrastructure/api/ticketing-api';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
+import { PlanningPage, type PlanningTask } from './planning-page';
 
 type ReportsPageProps = {
   session: AuthSessionSnapshot;
@@ -84,13 +85,6 @@ type PersonalTicketSort =
   | 'CREATED_AT_DESC'
   | 'OPERATIONAL_PRIORITY';
 
-type PersonalPlanningTask = {
-  date: string;
-  id: string;
-  time: string;
-  title: string;
-};
-
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],
 
@@ -126,7 +120,6 @@ const INITIAL_FILTERS: ReportsFilterState = {
 };
 
 const PERSONAL_TICKET_LIMIT = 8;
-const PERSONAL_PLANNING_TASKS: PersonalPlanningTask[] = [];
 const PERSONAL_TICKET_SORT_OPTIONS = [
   {
     icon: BadgeAlert,
@@ -147,6 +140,10 @@ const PERSONAL_TICKET_SORT_OPTIONS = [
 
 export function ReportsPage({ session }: ReportsPageProps) {
   const [activeView, setActiveView] = useState<ReportsView>('DASHBOARD');
+  const [isPlanningOpen, setIsPlanningOpen] = useState(false);
+  const [planningTasks, setPlanningTasks] = useState<PlanningTask[]>(() =>
+    readStoredPlanningTasks(session.user.id),
+  );
 
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
@@ -235,6 +232,13 @@ export function ReportsPage({ session }: ReportsPageProps) {
   useEffect(() => {
     void loadReports(filters);
   }, [filters, loadReports]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      getPlanningStorageKey(session.user.id),
+      JSON.stringify(planningTasks),
+    );
+  }, [planningTasks, session.user.id]);
 
   function handleFilterChange(
     field: keyof ReportsFilterState,
@@ -404,6 +408,18 @@ export function ReportsPage({ session }: ReportsPageProps) {
       label: 'Vue groupe',
     },
   ];
+
+  if (isPlanningOpen) {
+    return (
+      <PlanningPage
+        onBack={() => setIsPlanningOpen(false)}
+        onTasksChange={setPlanningTasks}
+        session={session}
+        tasks={planningTasks}
+        technicians={technicians}
+      />
+    );
+  }
 
   return (
     <section className="reports-page">
@@ -711,7 +727,10 @@ export function ReportsPage({ session }: ReportsPageProps) {
             users={users}
           />
 
-          <PersonalPlanningPanel tasks={PERSONAL_PLANNING_TASKS} />
+          <PersonalPlanningPanel
+            onOpenPlanning={() => setIsPlanningOpen(true)}
+            tasks={planningTasks}
+          />
         </section>
       ) : (
         <section aria-label="Vue groupe" className="reports-empty-view" />
@@ -937,14 +956,29 @@ function PersonalTicketPanel({
   );
 }
 
-function PersonalPlanningPanel({ tasks }: { tasks: PersonalPlanningTask[] }) {
+function PersonalPlanningPanel({
+  onOpenPlanning,
+  tasks,
+}: {
+  onOpenPlanning: () => void;
+  tasks: PlanningTask[];
+}) {
   const today = formatDateInputValue(new Date());
-  const visibleTasks = tasks.filter((task) => task.date === today);
+  const visibleTasks = tasks.filter(
+    (task) => task.start.slice(0, 10) === today,
+  );
 
   return (
     <article className="personal-panel personal-planning-panel">
       <header className="personal-panel-header">
         <h3>Votre planning</h3>
+        <button
+          className="secondary-button personal-planning-open-button"
+          onClick={onOpenPlanning}
+          type="button"
+        >
+          Voir le planning
+        </button>
       </header>
 
       {visibleTasks.length === 0 ? (
@@ -955,7 +989,7 @@ function PersonalPlanningPanel({ tasks }: { tasks: PersonalPlanningTask[] }) {
         <div className="personal-task-list">
           {visibleTasks.map((task) => (
             <p key={task.id}>
-              <strong>{task.time}</strong>
+              <strong>{formatPlanningPreviewTime(task.start)}</strong>
               {task.title}
             </p>
           ))}
@@ -1784,6 +1818,52 @@ function formatDateInputValue(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+function getPlanningStorageKey(userId: string): string {
+  return `vision:planning:${userId}`;
+}
+
+function readStoredPlanningTasks(userId: string): PlanningTask[] {
+  try {
+    const rawValue = window.localStorage.getItem(getPlanningStorageKey(userId));
+
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsedValue: unknown = JSON.parse(rawValue);
+
+    if (!Array.isArray(parsedValue)) {
+      return [];
+    }
+
+    return parsedValue.filter(isPlanningTask);
+  } catch {
+    return [];
+  }
+}
+
+function isPlanningTask(value: unknown): value is PlanningTask {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const task = value as Partial<PlanningTask>;
+
+  return (
+    typeof task.id === 'string' &&
+    typeof task.title === 'string' &&
+    typeof task.technicianId === 'string' &&
+    (task.status === 'TODO' || task.status === 'DONE') &&
+    typeof task.start === 'string' &&
+    typeof task.durationMinutes === 'number' &&
+    typeof task.description === 'string'
+  );
+}
+
+function formatPlanningPreviewTime(start: string): string {
+  return start.slice(11, 16);
 }
 
 function buildPersonalTicketPreview(
