@@ -44,6 +44,15 @@ type CiBody = {
   status: CiStatus;
   assignedUserId?: string | null;
   serialNumber?: string | null;
+  brand?: string | null;
+  model?: string | null;
+  location?: string | null;
+  purchaseDate?: string | null;
+  warrantyEndDate?: string | null;
+  ipAddress?: string | null;
+  macAddress?: string | null;
+  comment?: string | null;
+  archivedAt?: string | null;
 };
 
 @Controller('admin/referentials')
@@ -175,6 +184,15 @@ export class AdminReferentialsController {
       status: body.status,
       assignedUserId: body.assignedUserId ?? null,
       serialNumber: body.serialNumber ?? null,
+      brand: body.brand ?? null,
+      model: body.model ?? null,
+      location: body.location ?? null,
+      purchaseDate: body.purchaseDate ?? null,
+      warrantyEndDate: body.warrantyEndDate ?? null,
+      ipAddress: body.ipAddress ?? null,
+      macAddress: body.macAddress ?? null,
+      comment: body.comment ?? null,
+      archivedAt: body.archivedAt ?? null,
     });
   }
 
@@ -187,6 +205,15 @@ export class AdminReferentialsController {
       status: body.status,
       assignedUserId: body.assignedUserId ?? null,
       serialNumber: body.serialNumber ?? null,
+      brand: body.brand ?? null,
+      model: body.model ?? null,
+      location: body.location ?? null,
+      purchaseDate: body.purchaseDate ?? null,
+      warrantyEndDate: body.warrantyEndDate ?? null,
+      ipAddress: body.ipAddress ?? null,
+      macAddress: body.macAddress ?? null,
+      comment: body.comment ?? null,
+      archivedAt: body.archivedAt ?? null,
     });
   }
 

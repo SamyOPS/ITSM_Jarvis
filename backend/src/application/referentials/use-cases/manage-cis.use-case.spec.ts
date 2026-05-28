@@ -23,6 +23,15 @@ describe('ManageCisUseCase', () => {
         status: CiStatus.IN_SERVICE,
         assignedUserId: 'not-a-uuid',
         serialNumber: 'ABC-123',
+        brand: null,
+        model: null,
+        location: null,
+        purchaseDate: null,
+        warrantyEndDate: null,
+        ipAddress: null,
+        macAddress: null,
+        comment: null,
+        archivedAt: null,
       }),
     ).rejects.toThrow(BadRequestException);
 
@@ -39,6 +48,15 @@ describe('ManageCisUseCase', () => {
       status: CiStatus.IN_SERVICE,
       assignedUserId: null,
       serialNumber: 'ABC-123',
+      brand: ' Dell ',
+      model: ' Latitude 5440 ',
+      location: ' Bureau 101 ',
+      purchaseDate: '2026-05-01',
+      warrantyEndDate: '2029-05-01',
+      ipAddress: ' 10.0.0.5 ',
+      macAddress: ' AA:BB:CC:DD:EE:FF ',
+      comment: ' Poste principal ',
+      archivedAt: null,
     });
 
     expect(repository.createCi).toHaveBeenCalledWith({
@@ -47,6 +65,40 @@ describe('ManageCisUseCase', () => {
       status: CiStatus.IN_SERVICE,
       assignedUserId: null,
       serialNumber: 'ABC-123',
+      brand: 'Dell',
+      model: 'Latitude 5440',
+      location: 'Bureau 101',
+      purchaseDate: '2026-05-01',
+      warrantyEndDate: '2029-05-01',
+      ipAddress: '10.0.0.5',
+      macAddress: 'AA:BB:CC:DD:EE:FF',
+      comment: 'Poste principal',
+      archivedAt: null,
     });
+  });
+
+  it('rejects warranty dates earlier than purchase date', async () => {
+    const useCase = new ManageCisUseCase(repository as never);
+
+    await expect(
+      useCase.create({
+        name: 'Laptop N1',
+        ciTypeId: '11111111-1111-4111-8111-111111111111',
+        status: CiStatus.IN_SERVICE,
+        assignedUserId: null,
+        serialNumber: null,
+        brand: null,
+        model: null,
+        location: null,
+        purchaseDate: '2026-05-10',
+        warrantyEndDate: '2026-05-01',
+        ipAddress: null,
+        macAddress: null,
+        comment: null,
+        archivedAt: null,
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(repository.createCi).not.toHaveBeenCalled();
   });
 });
