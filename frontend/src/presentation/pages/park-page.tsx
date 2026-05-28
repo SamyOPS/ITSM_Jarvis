@@ -675,21 +675,38 @@ export function ParkPage({ section, session }: ParkPageProps) {
                 Aucun equipement ne correspond aux filtres.
               </p>
             ) : (
-              <div className="park-equipment-grid">
-                {filteredEquipment.map((ci) => (
-                  <EquipmentCard
-                    ci={ci}
-                    ciType={ciTypesById.get(ci.ciTypeId) ?? null}
-                    isDeleting={deletingEquipmentId === ci.id}
-                    key={ci.id}
-                    onDelete={() => void handleDeleteEquipment(ci)}
-                    user={
-                      ci.assignedUserId
-                        ? (usersById.get(ci.assignedUserId) ?? null)
-                        : null
-                    }
-                  />
-                ))}
+              <div className="ticket-table-scroll">
+                <table className="ticket-table park-equipment-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Equipement</th>
+                      <th>Statut</th>
+                      <th>Type</th>
+                      <th>Assigne a</th>
+                      <th>Localisation</th>
+                      <th>Serie</th>
+                      <th>Garantie</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEquipment.map((ci) => (
+                      <EquipmentRow
+                        ci={ci}
+                        ciType={ciTypesById.get(ci.ciTypeId) ?? null}
+                        isDeleting={deletingEquipmentId === ci.id}
+                        key={ci.id}
+                        onDelete={() => void handleDeleteEquipment(ci)}
+                        user={
+                          ci.assignedUserId
+                            ? (usersById.get(ci.assignedUserId) ?? null)
+                            : null
+                        }
+                      />
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </section>
@@ -733,7 +750,7 @@ export function ParkPage({ section, session }: ParkPageProps) {
   );
 }
 
-function EquipmentCard({
+function EquipmentRow({
   ci,
   ciType,
   isDeleting,
@@ -747,61 +764,44 @@ function EquipmentCard({
   user: AdminUserSummary | null;
 }) {
   return (
-    <article className="park-equipment-card">
-      <header className="park-equipment-card-header">
-        <div>
-          <h4>{ci.name}</h4>
-          <p>{buildEquipmentSubtitle(ci)}</p>
+    <tr className="ticket-table-row park-equipment-row">
+      <td>
+        <strong className="ticket-table-number">
+          <span>{formatEquipmentIdentifier(ci)}</span>
+        </strong>
+      </td>
+      <td>
+        <div className="ticket-table-primary">
+          <div className="ticket-table-title-row">
+            <strong>{ci.name}</strong>
+          </div>
+          <span>{buildEquipmentSubtitle(ci)}</span>
         </div>
+      </td>
+      <td>
         <span
-          className={`park-status-badge park-status-badge--${ci.status.toLowerCase()}`}
+          className={`ticket-status-badge ticket-status-badge--${ci.status.toLowerCase()}`}
         >
+          <i className="ticket-status-badge-icon" />
           {translateCiStatus(ci.status)}
         </span>
-      </header>
-
-      <dl className="park-equipment-meta">
-        <div>
-          <dt>Type</dt>
-          <dd>{ciType?.name ?? '-'}</dd>
-        </div>
-        <div>
-          <dt>Assigne a</dt>
-          <dd>{user ? formatUserName(user) : 'Non assigne'}</dd>
-        </div>
-        <div>
-          <dt>Localisation</dt>
-          <dd>{ci.location ?? '-'}</dd>
-        </div>
-        <div>
-          <dt>Serie</dt>
-          <dd>{ci.serialNumber ?? '-'}</dd>
-        </div>
-        <div>
-          <dt>IP</dt>
-          <dd>{ci.ipAddress ?? '-'}</dd>
-        </div>
-        <div>
-          <dt>Garantie</dt>
-          <dd>{formatDateValue(ci.warrantyEndDate)}</dd>
-        </div>
-      </dl>
-
-      {ci.comment ? (
-        <p className="park-equipment-comment">{ci.comment}</p>
-      ) : null}
-
-      <div className="park-equipment-actions">
+      </td>
+      <td>{ciType?.name ?? '-'}</td>
+      <td>{user ? formatUserName(user) : 'Non assigne'}</td>
+      <td>{ci.location ?? '-'}</td>
+      <td>{ci.serialNumber ?? '-'}</td>
+      <td>{formatDateValue(ci.warrantyEndDate)}</td>
+      <td>
         <button
-          className="danger-button"
+          className="danger-button park-table-action"
           disabled={isDeleting}
           onClick={onDelete}
           type="button"
         >
           {isDeleting ? 'Suppression...' : 'Supprimer'}
         </button>
-      </div>
-    </article>
+      </td>
+    </tr>
   );
 }
 
@@ -926,6 +926,11 @@ function ciTypeById(
 function buildEquipmentSubtitle(ci: ReferentialCi): string {
   const parts = [ci.brand, ci.model].filter(Boolean);
   return parts.length > 0 ? parts.join(' ') : 'Equipement non detaille';
+}
+
+function formatEquipmentIdentifier(ci: ReferentialCi): string {
+  const suffix = ci.id.slice(0, 8).toUpperCase();
+  return `EQ-${suffix}`;
 }
 
 function formatUserName(user: AdminUserSummary): string {
