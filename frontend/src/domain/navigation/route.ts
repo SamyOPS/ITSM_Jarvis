@@ -1,6 +1,5 @@
-﻿export type RoutePath =
+export type RoutePath =
   | '/'
-  | '/admin'
   | '/admin/groups'
   | '/admin/users'
   | '/agent'
@@ -11,6 +10,8 @@
   | '/agent/my-tickets'
   | '/agent/unassigned-tickets'
   | '/agent/tickets'
+  | '/parc/ci-types'
+  | '/parc/cis'
   | '/reports'
   | '/login';
 
@@ -73,9 +74,14 @@ export const ROUTES: RouteDefinition[] = [
     title: 'Tableau de bord',
   },
   {
-    description: 'Administration des referentiels et des parametres metier.',
-    path: '/admin',
-    title: 'test',
+    description: 'Gestion des types de CI du parc informatique.',
+    path: '/parc/ci-types',
+    title: 'Types de CI',
+  },
+  {
+    description: 'Gestion des elements du parc informatique.',
+    path: '/parc/cis',
+    title: 'Equipements',
   },
   {
     description: 'Liste des utilisateurs et de leurs roles.',

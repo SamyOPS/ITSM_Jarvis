@@ -3,7 +3,6 @@ import type { UserRole } from '../../domain/auth/user-role';
 import type { RoutePath } from '../../domain/navigation/route';
 
 const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
-  '/admin': ['ADMIN'],
   '/admin/groups': ['ADMIN'],
   '/admin/users': ['ADMIN'],
   '/agent': ['DEMANDEUR', 'AGENT', 'ADMIN'],
@@ -14,6 +13,8 @@ const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
   '/agent/requests/new': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/agent/tickets': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/agent/unassigned-tickets': ['DEMANDEUR', 'AGENT', 'ADMIN'],
+  '/parc/ci-types': ['ADMIN'],
+  '/parc/cis': ['ADMIN'],
   '/reports': ['AGENT', 'ADMIN'],
 };
 
@@ -57,7 +58,8 @@ export function getVisibleRoutes(
       '/agent/tickets',
       '/agent/my-tickets',
       '/agent/archives',
-      '/admin',
+      '/parc/cis',
+      '/parc/ci-types',
       '/admin/users',
       '/admin/groups',
       '/login',

@@ -41,7 +41,11 @@ interface AppShellProps {
   session: AuthSessionSnapshot | null;
 }
 
-type SidebarMenuId = 'administration' | 'create-ticket' | 'ticket-list';
+type SidebarMenuId =
+  | 'administration'
+  | 'create-ticket'
+  | 'parc'
+  | 'ticket-list';
 
 const administrationRouteOrder: RoutePath[] = [
   '/admin/users',
@@ -61,6 +65,8 @@ const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/agent/requests/new': FileText,
   '/agent/tickets': ListChecks,
   '/agent/unassigned-tickets': ClipboardX,
+  '/parc/ci-types': SlidersHorizontal,
+  '/parc/cis': Settings,
   '/reports': BarChart3,
 };
 
@@ -155,8 +161,13 @@ export function AppShell({
     .map((path) => visibleRoutes.find((route) => route.path === path) ?? null)
     .filter((route) => route !== null);
   const isAdministrationMenuOpen = openSidebarMenu === 'administration';
+  const isParcMenuOpen = openSidebarMenu === 'parc';
   const isTicketCreateMenuOpen = openSidebarMenu === 'create-ticket';
   const isTicketListMenuOpen = openSidebarMenu === 'ticket-list';
+  const parcRoutes = [
+    visibleRoutes.find((route) => route.path === '/parc/cis') ?? null,
+    visibleRoutes.find((route) => route.path === '/parc/ci-types') ?? null,
+  ].filter((route) => route !== null);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent): void {
@@ -412,9 +423,10 @@ export function AppShell({
             }
 
             if (
-              route.path === '/admin' ||
               route.path === '/admin/groups' ||
               route.path === '/admin/users' ||
+              route.path === '/parc/ci-types' ||
+              route.path === '/parc/cis' ||
               route.path === '/agent/archives'
             ) {
               return null;
@@ -619,6 +631,91 @@ export function AppShell({
               </button>
             );
           })}
+
+          {parcRoutes.length > 0 ? (
+            <div
+              className={
+                isParcMenuOpen
+                  ? 'workspace-nav-dropdown is-open'
+                  : 'workspace-nav-dropdown'
+              }
+            >
+              <button
+                aria-expanded={!isSidebarCollapsed && isParcMenuOpen}
+                className="workspace-nav-link"
+                onClick={() => {
+                  if (isSidebarCollapsed) {
+                    return;
+                  }
+
+                  setOpenSidebarMenu((current) =>
+                    current === 'parc' ? null : 'parc',
+                  );
+                }}
+                title="Parc"
+                type="button"
+              >
+                <span className="workspace-nav-link-icon" aria-hidden="true">
+                  <Settings size={18} strokeWidth={2} />
+                </span>
+                <strong className="workspace-nav-link-label">Parc</strong>
+                <ChevronDown
+                  className="workspace-nav-dropdown-chevron"
+                  size={16}
+                  strokeWidth={2}
+                />
+              </button>
+
+              {isParcMenuOpen ? (
+                <div className="workspace-nav-dropdown-list">
+                  {parcRoutes.map((route) => {
+                    const Icon = routeIcons[route.path] ?? Settings;
+
+                    return (
+                      <button
+                        className={
+                          isRouteActive(route.path, pathname)
+                            ? 'workspace-nav-dropdown-item is-active'
+                            : 'workspace-nav-dropdown-item'
+                        }
+                        key={route.path}
+                        onClick={() => navigateTo(route.path)}
+                        type="button"
+                      >
+                        <Icon size={15} strokeWidth={2} />
+                        {route.title}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <div className="workspace-nav-flyout">
+                <div className="workspace-nav-flyout-title">Parc</div>
+                <div className="workspace-nav-flyout-list">
+                  {parcRoutes.map((route) => {
+                    const Icon = routeIcons[route.path] ?? Settings;
+
+                    return (
+                      <button
+                        className={
+                          isRouteActive(route.path, pathname)
+                            ? 'workspace-nav-dropdown-item is-active'
+                            : 'workspace-nav-dropdown-item'
+                        }
+                        key={route.path}
+                        onClick={() => navigateTo(route.path)}
+                        type="button"
+                      >
+                        <Icon size={15} strokeWidth={2} />
+                        {route.title}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {administrationRoutes.length > 0 ? (
             <div

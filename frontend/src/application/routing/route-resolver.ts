@@ -15,7 +15,6 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
 
   if (
     pathname === '/' ||
-    pathname === '/admin' ||
     pathname === '/admin/groups' ||
     pathname === '/admin/users' ||
     pathname === '/agent' ||
@@ -26,6 +25,8 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
     pathname === '/agent/requests/new' ||
     pathname === '/agent/tickets' ||
     pathname === '/agent/unassigned-tickets' ||
+    pathname === '/parc/ci-types' ||
+    pathname === '/parc/cis' ||
     pathname === '/reports' ||
     pathname === '/login'
   ) {
