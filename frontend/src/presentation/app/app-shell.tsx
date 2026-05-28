@@ -4,7 +4,6 @@ import {
   Archive,
   BarChart3,
   ChevronDown,
-  ClipboardCheck,
   ClipboardList,
   ClipboardX,
   FileText,
@@ -59,7 +58,6 @@ const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/admin/users': User,
   '/agent': LayoutDashboard,
   '/agent/archives': Archive,
-  '/agent/assigned-to-me': ClipboardCheck,
   '/agent/incidents/new': AlertTriangle,
   '/agent/my-tickets': Ticket,
   '/agent/requests/new': FileText,
@@ -524,30 +522,6 @@ export function AppShell({
                         <ClipboardX size={15} strokeWidth={2} />
                         Non assignés
                       </button>
-                      <button
-                        className={
-                          pathname === '/agent/assigned-to-me'
-                            ? 'workspace-nav-dropdown-item is-active'
-                            : 'workspace-nav-dropdown-item'
-                        }
-                        onClick={() => navigateTo('/agent/assigned-to-me')}
-                        type="button"
-                      >
-                        <ClipboardCheck size={15} strokeWidth={2} />
-                        Assignés à moi
-                      </button>
-                      <button
-                        className={
-                          pathname === '/agent/my-tickets'
-                            ? 'workspace-nav-dropdown-item is-active'
-                            : 'workspace-nav-dropdown-item'
-                        }
-                        onClick={() => navigateTo('/agent/my-tickets')}
-                        type="button"
-                      >
-                        <Ticket size={15} strokeWidth={2} />
-                        Mes tickets créés
-                      </button>
                     </div>
                   ) : null}
 
@@ -579,30 +553,6 @@ export function AppShell({
                       >
                         <ClipboardX size={15} strokeWidth={2} />
                         Non assignés
-                      </button>
-                      <button
-                        className={
-                          pathname === '/agent/assigned-to-me'
-                            ? 'workspace-nav-dropdown-item is-active'
-                            : 'workspace-nav-dropdown-item'
-                        }
-                        onClick={() => navigateTo('/agent/assigned-to-me')}
-                        type="button"
-                      >
-                        <ClipboardCheck size={15} strokeWidth={2} />
-                        Assignés à moi
-                      </button>
-                      <button
-                        className={
-                          pathname === '/agent/my-tickets'
-                            ? 'workspace-nav-dropdown-item is-active'
-                            : 'workspace-nav-dropdown-item'
-                        }
-                        onClick={() => navigateTo('/agent/my-tickets')}
-                        type="button"
-                      >
-                        <Ticket size={15} strokeWidth={2} />
-                        Mes tickets créés
                       </button>
                     </div>
                   </div>

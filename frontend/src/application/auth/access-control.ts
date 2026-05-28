@@ -7,7 +7,6 @@ const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
   '/admin/users': ['ADMIN'],
   '/agent': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/agent/archives': ['ADMIN'],
-  '/agent/assigned-to-me': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/agent/incidents/new': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/agent/my-tickets': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/agent/requests/new': ['DEMANDEUR', 'AGENT', 'ADMIN'],

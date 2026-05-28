@@ -75,7 +75,6 @@ type AgentPageProps = {
   section:
     | 'ARCHIVES'
     | 'ARCHIVE_DETAIL'
-    | 'ASSIGNED_TO_ME'
     | 'INCIDENT_CREATE'
     | 'MY_TICKETS'
     | 'REQUEST_CREATE'
@@ -516,7 +515,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const isIncidentCreatePage = section === 'INCIDENT_CREATE';
   const isArchiveListPage = section === 'ARCHIVES';
   const isArchiveDetailPage = section === 'ARCHIVE_DETAIL';
-  const isAssignedToMePage = section === 'ASSIGNED_TO_ME';
   const isMyTicketsPage = section === 'MY_TICKETS';
   const isUnassignedTicketsPage = section === 'UNASSIGNED_TICKETS';
   const isRequestCreatePage = section === 'REQUEST_CREATE';
@@ -527,7 +525,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const showListPanel =
     isListPage ||
     isArchiveListPage ||
-    isAssignedToMePage ||
     isMyTicketsPage ||
     isUnassignedTicketsPage;
   const showDetailPanel = isDetailPage || isArchiveDetailPage;
@@ -800,10 +797,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
               ticket.createdByUserId === session.user.id ||
               ticket.requestedForUserId === session.user.id,
           );
-        } else if (isAssignedToMePage) {
-          displayedTickets = activeTickets.filter(
-            (ticket) => ticket.assignedToUserId === session.user.id,
-          );
         } else if (isUnassignedTicketsPage) {
           displayedTickets = activeTickets.filter(
             (ticket) => !ticket.assignedToUserId,
@@ -840,7 +833,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     };
   }, [
     isArchiveListPage,
-    isAssignedToMePage,
     isListPage,
     isMyTicketsPage,
     isUnassignedTicketsPage,
@@ -5138,10 +5130,6 @@ function getTicketListTitle(
     return 'Liste des tickets archives';
   }
 
-  if (section === 'ASSIGNED_TO_ME') {
-    return 'Tickets assignés à moi';
-  }
-
   if (section === 'MY_TICKETS') {
     return 'Mes tickets';
   }
@@ -5162,10 +5150,6 @@ function getTicketListDescription(section: AgentPageProps['section']): string {
     return 'Vue dediee aux tickets sortis de la liste active.';
   }
 
-  if (section === 'ASSIGNED_TO_ME') {
-    return 'Tickets actifs dont vous etes le technicien assigne.';
-  }
-
   if (section === 'MY_TICKETS') {
     return 'Tickets crees par votre compte utilisateur.';
   }
@@ -5180,10 +5164,6 @@ function getTicketListDescription(section: AgentPageProps['section']): string {
 function getTicketListEmptyMessage(section: AgentPageProps['section']): string {
   if (section === 'ARCHIVES') {
     return 'Aucun ticket archive ne correspond aux filtres actuels.';
-  }
-
-  if (section === 'ASSIGNED_TO_ME') {
-    return 'Aucun ticket assigne a votre compte ne correspond aux filtres actuels.';
   }
 
   if (section === 'MY_TICKETS') {
