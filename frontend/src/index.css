@@ -5010,6 +5010,7 @@ a {
 
 .personal-panel {
   display: grid;
+  min-width: 0;
   align-content: start;
   min-height: 276px;
   overflow: hidden;
@@ -5050,7 +5051,12 @@ a {
 .personal-ticket-panel,
 .personal-planning-panel,
 .personal-equipment-panel {
-  min-height: 362px;
+  height: 346px;
+  min-height: 346px;
+}
+
+.personal-planning-panel {
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .personal-ticket-panel .personal-panel-header {
@@ -5082,16 +5088,18 @@ a {
 }
 
 .personal-ticket-viewport {
-  height: 246px;
+  position: relative;
+  height: 230px;
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: scroll;
   scrollbar-gutter: stable;
 }
 
 .personal-equipment-viewport {
-  height: 246px;
+  position: relative;
+  height: 230px;
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: scroll;
   scrollbar-gutter: stable;
 }
 
@@ -5181,7 +5189,7 @@ a {
 }
 
 .personal-equipment-empty-row td {
-  height: 184px;
+  height: 166px;
   color: #718099 !important;
   text-align: center;
 }
@@ -5277,13 +5285,75 @@ a {
 }
 
 .personal-planning-empty {
-  padding-top: 74px;
+  padding-top: 62px;
+}
+
+.personal-planning-agenda-scroll {
+  height: 100%;
+  overflow-y: scroll;
+  padding: 10px 12px 12px;
+  box-sizing: border-box;
+  scrollbar-gutter: stable;
+}
+
+.personal-planning-agenda-list {
+  min-height: 100%;
+  width: 100%;
+}
+
+.personal-planning-panel .planning-agenda-row {
+  grid-template-columns: 124px minmax(0, 1fr) 150px 74px;
+  gap: 10px;
+  min-height: 54px;
+  padding: 0 12px;
+}
+
+.personal-planning-panel .planning-agenda-group h4 {
+  padding: 12px 14px 9px;
+}
+
+.personal-planning-panel .planning-agenda-status-toggle {
+  min-width: 66px;
+}
+
+.personal-planning-panel .planning-agenda-row {
+  background: #ffffff;
+}
+
+.personal-planning-panel .planning-agenda-row:hover {
+  background: #f7f8f9;
 }
 
 .personal-task-list {
   display: grid;
   gap: 8px;
-  padding: 18px;
+  height: 100%;
+  overflow-y: scroll;
+  padding: 16px;
+  box-sizing: border-box;
+  scrollbar-gutter: stable;
+}
+
+.personal-planning-panel .personal-panel-empty {
+  padding-block: 50px;
+}
+
+.personal-planning-panel .personal-panel-header,
+.personal-equipment-panel .personal-panel-header {
+  border-radius: 14px 14px 0 0;
+}
+
+.personal-planning-panel .personal-panel-header {
+  min-height: 54px;
+}
+
+.personal-equipment-panel .personal-table-scroll,
+.personal-ticket-panel .personal-table-scroll {
+  align-self: start;
+}
+
+.personal-planning-panel .personal-task-list {
+  align-self: stretch;
 }
 
 .personal-task-list p {
