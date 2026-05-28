@@ -374,6 +374,19 @@ export function ReportsPage({ session }: ReportsPageProps) {
     [personalTickets, session.user.id],
   );
 
+  function handlePersonalPlanningStatusToggle(taskId: string): void {
+    setPlanningTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              status: task.status === 'DONE' ? 'TODO' : 'DONE',
+            }
+          : task,
+      ),
+    );
+  }
+
   const reportViews = [
     {
       icon: BarChart3,
@@ -714,7 +727,9 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
           <PersonalPlanningPanel
             onOpenPlanning={() => setIsPlanningOpen(true)}
+            onToggleStatus={handlePersonalPlanningStatusToggle}
             tasks={planningTasks}
+            technicians={technicians}
           />
 
           <PersonalEquipmentPanel equipment={EMPTY_PERSONAL_EQUIPMENT} />
@@ -1026,15 +1041,28 @@ function PersonalEquipmentPanel({
 
 function PersonalPlanningPanel({
   onOpenPlanning,
+  onToggleStatus,
   tasks,
+  technicians,
 }: {
   onOpenPlanning: () => void;
+  onToggleStatus: (taskId: string) => void;
   tasks: PlanningTask[];
+  technicians: AdminUserSummary[];
 }) {
-  const today = formatDateInputValue(new Date());
-  const visibleTasks = tasks.filter(
-    (task) => task.start.slice(0, 10) === today,
-  );
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const todayKey = formatDateInputValue(today);
+  const tomorrowKey = formatDateInputValue(tomorrow);
+  const visibleTasks = tasks
+    .filter((task) => {
+      const taskDate = task.start.slice(0, 10);
+
+      return taskDate === todayKey || taskDate === tomorrowKey;
+    })
+    .sort((first, second) => first.start.localeCompare(second.start));
+  const taskGroups = groupPersonalPlanningTasksByDate(visibleTasks);
 
   return (
     <article className="personal-panel personal-planning-panel">
@@ -1051,16 +1079,74 @@ function PersonalPlanningPanel({
 
       {visibleTasks.length === 0 ? (
         <p className="personal-panel-empty personal-planning-empty">
-          Aucune tâche planifiée aujourd'hui.
+          Aucune tache planifiee aujourd'hui ou demain.
         </p>
       ) : (
-        <div className="personal-task-list">
-          {visibleTasks.map((task) => (
-            <p key={task.id}>
-              <strong>{formatPlanningPreviewTime(task.start)}</strong>
-              {task.title}
-            </p>
-          ))}
+        <div className="personal-planning-agenda-scroll">
+          <div className="planning-agenda-list personal-planning-agenda-list">
+            {taskGroups.map((group) => (
+              <section className="planning-agenda-group" key={group.date}>
+                <h4
+                  className={
+                    group.date === todayKey
+                      ? 'personal-planning-date is-today'
+                      : 'personal-planning-date'
+                  }
+                >
+                  {formatPersonalPlanningLongDate(
+                    parsePlanningDateTime(group.tasks[0].start),
+                  )}
+                </h4>
+                {group.tasks.map((task) => (
+                  <div
+                    className="planning-agenda-row"
+                    key={task.id}
+                    onClick={onOpenPlanning}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onOpenPlanning();
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <span className="planning-agenda-time">
+                      {formatPersonalPlanningTaskInterval(task)}
+                    </span>
+                    <span>{task.title}</span>
+                    <span>
+                      {formatPersonalPlanningTechnicianName(
+                        task.technicianId,
+                        technicians,
+                      )}
+                    </span>
+                    <button
+                      className={[
+                        'planning-status-toggle',
+                        'planning-agenda-status-toggle',
+                        task.status === 'DONE'
+                          ? 'planning-status-toggle--done'
+                          : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onToggleStatus(task.id);
+                      }}
+                      onKeyDown={(event) => {
+                        event.stopPropagation();
+                      }}
+                      type="button"
+                    >
+                      {task.status === 'DONE' ? 'Fait' : 'A faire'}
+                    </button>
+                  </div>
+                ))}
+              </section>
+            ))}
+          </div>
         </div>
       )}
     </article>
@@ -1711,6 +1797,68 @@ function formatDateInputValue(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function parsePlanningDateTime(dateTime: string): Date {
+  return new Date(dateTime);
+}
+
+function formatPersonalPlanningLongDate(date: Date): string {
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    weekday: 'long',
+    year: 'numeric',
+  }).format(date);
+}
+
+function formatPersonalPlanningClock(date: Date): string {
+  return new Intl.DateTimeFormat('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function getPersonalPlanningTaskEnd(task: PlanningTask): Date {
+  const end = new Date(task.start);
+  end.setMinutes(end.getMinutes() + task.durationMinutes);
+
+  return end;
+}
+
+function formatPersonalPlanningTaskInterval(task: PlanningTask): string {
+  const start = parsePlanningDateTime(task.start);
+  const end = getPersonalPlanningTaskEnd(task);
+
+  return `${formatPersonalPlanningClock(start)} - ${formatPersonalPlanningClock(end)}`;
+}
+
+function formatPersonalPlanningTechnicianName(
+  technicianId: string,
+  technicians: AdminUserSummary[],
+): string {
+  const technician = technicians.find((user) => user.id === technicianId);
+
+  return technician ? formatUserName(technician) : 'Technicien non renseigne';
+}
+
+function groupPersonalPlanningTasksByDate(
+  tasks: PlanningTask[],
+): Array<{ date: string; tasks: PlanningTask[] }> {
+  const groups = new Map<string, PlanningTask[]>();
+
+  tasks.forEach((task) => {
+    const date = task.start.slice(0, 10);
+    const groupedTasks = groups.get(date) ?? [];
+
+    groupedTasks.push(task);
+    groups.set(date, groupedTasks);
+  });
+
+  return Array.from(groups, ([date, groupedTasks]) => ({
+    date,
+    tasks: groupedTasks,
+  }));
+}
+
 function getPlanningStorageKey(userId: string): string {
   return `vision:planning:${userId}`;
 }
@@ -1751,10 +1899,6 @@ function isPlanningTask(value: unknown): value is PlanningTask {
     typeof task.durationMinutes === 'number' &&
     typeof task.description === 'string'
   );
-}
-
-function formatPlanningPreviewTime(start: string): string {
-  return start.slice(11, 16);
 }
 
 function buildPersonalTicketPreview(
