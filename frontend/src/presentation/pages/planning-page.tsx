@@ -1,6 +1,7 @@
 import {
   type CSSProperties,
   type Dispatch,
+  type MouseEvent,
   type SetStateAction,
   useEffect,
   useMemo,
@@ -181,6 +182,16 @@ export function PlanningPage({
     closeEditor();
   }
 
+  function toggleTaskStatus(taskId: string): void {
+    onTasksChange((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === taskId
+          ? { ...task, status: task.status === 'DONE' ? 'TODO' : 'DONE' }
+          : task,
+      ),
+    );
+  }
+
   function movePeriod(direction: -1 | 1): void {
     setAnchorDate((currentDate) => {
       if (mode === 'MONTH') {
@@ -268,6 +279,7 @@ export function PlanningPage({
             currentTime={currentTime}
             onCreate={openNewTask}
             onOpenTask={openTask}
+            onToggleStatus={toggleTaskStatus}
             segments={segments}
           />
         ) : null}
@@ -278,6 +290,7 @@ export function PlanningPage({
             currentTime={currentTime}
             onCreate={openNewTask}
             onOpenTask={openTask}
+            onToggleStatus={toggleTaskStatus}
             segments={segments}
           />
         ) : null}
@@ -294,6 +307,7 @@ export function PlanningPage({
         {mode === 'AGENDA' ? (
           <AgendaPlanningView
             onOpenTask={openTask}
+            onToggleStatus={toggleTaskStatus}
             tasks={tasks}
             technicians={technicians}
           />
@@ -327,6 +341,7 @@ function WeekPlanningView({
   currentTime,
   onCreate,
   onOpenTask,
+  onToggleStatus,
   segments,
 }: {
   anchorDate: Date;
@@ -338,6 +353,7 @@ function WeekPlanningView({
     durationMinutes?: number,
   ) => void;
   onOpenTask: (task: PlanningTask) => void;
+  onToggleStatus: (taskId: string) => void;
   segments: TaskSegment[];
 }) {
   const weekStart = startOfWeek(anchorDate);
@@ -370,6 +386,7 @@ function WeekPlanningView({
             key={formatDateInput(day)}
             onCreate={onCreate}
             onOpenTask={onOpenTask}
+            onToggleStatus={onToggleStatus}
             segments={segments.filter((segment) => isSameDay(segment.day, day))}
           />
         ))}
@@ -383,6 +400,7 @@ function DayPlanningView({
   currentTime,
   onCreate,
   onOpenTask,
+  onToggleStatus,
   segments,
 }: {
   anchorDate: Date;
@@ -394,6 +412,7 @@ function DayPlanningView({
     durationMinutes?: number,
   ) => void;
   onOpenTask: (task: PlanningTask) => void;
+  onToggleStatus: (taskId: string) => void;
   segments: TaskSegment[];
 }) {
   return (
@@ -414,6 +433,7 @@ function DayPlanningView({
           day={anchorDate}
           onCreate={onCreate}
           onOpenTask={onOpenTask}
+          onToggleStatus={onToggleStatus}
           segments={segments.filter((segment) =>
             isSameDay(segment.day, anchorDate),
           )}
@@ -445,6 +465,7 @@ function PlanningDayColumn({
   day,
   onCreate,
   onOpenTask,
+  onToggleStatus,
   segments,
 }: {
   currentTime: Date;
@@ -456,6 +477,7 @@ function PlanningDayColumn({
     durationMinutes?: number,
   ) => void;
   onOpenTask: (task: PlanningTask) => void;
+  onToggleStatus: (taskId: string) => void;
   segments: TaskSegment[];
 }) {
   const isCurrentDay = isSameDay(day, currentTime);
@@ -497,18 +519,39 @@ function PlanningDayColumn({
       ) : null}
 
       {positionedSegments.map(({ column, columnCount, segment }) => (
-        <button
-          className={`planning-event planning-event--${segment.task.status.toLowerCase()}`}
+        <div
+          className={[
+            'planning-event',
+            `planning-event--${segment.task.status.toLowerCase()}`,
+            isShortSegment(segment) ? 'planning-event--compact' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
           key={`${segment.task.id}-${segment.start.toISOString()}`}
           onClick={() => onOpenTask(segment.task)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onOpenTask(segment.task);
+            }
+          }}
+          role="button"
           style={getSegmentStyle(segment, column, columnCount)}
-          type="button"
+          tabIndex={0}
         >
+          <StatusToggleButton
+            className="planning-event-status-toggle"
+            status={segment.task.status}
+            onToggle={(event) => {
+              event.stopPropagation();
+              onToggleStatus(segment.task.id);
+            }}
+          />
           <strong>{segment.task.title}</strong>
           <span>
             {formatClock(segment.start)} - {formatClock(segment.end)}
           </span>
-        </button>
+        </div>
       ))}
     </div>
   );
@@ -624,10 +667,12 @@ function MonthPlanningView({
 
 function AgendaPlanningView({
   onOpenTask,
+  onToggleStatus,
   tasks,
   technicians,
 }: {
   onOpenTask: (task: PlanningTask) => void;
+  onToggleStatus: (taskId: string) => void;
   tasks: PlanningTask[];
   technicians: AdminUserSummary[];
 }) {
@@ -648,7 +693,7 @@ function AgendaPlanningView({
             <section className="planning-agenda-group" key={group.date}>
               <h4>{formatLongDate(parseDateTime(group.tasks[0].start))}</h4>
               {group.tasks.map((task) => (
-                <button
+                <div
                   className={
                     isSameDay(parseDateTime(task.start), new Date())
                       ? 'planning-agenda-row is-today'
@@ -656,7 +701,14 @@ function AgendaPlanningView({
                   }
                   key={task.id}
                   onClick={() => onOpenTask(task)}
-                  type="button"
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onOpenTask(task);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                 >
                   <span className="planning-agenda-time">
                     {formatTaskInterval(task)}
@@ -665,12 +717,15 @@ function AgendaPlanningView({
                   <span>
                     {formatTechnicianName(task.technicianId, technicians)}
                   </span>
-                  <i
-                    className={`planning-status planning-status--${task.status.toLowerCase()}`}
-                  >
-                    {task.status === 'DONE' ? 'Fait' : 'A faire'}
-                  </i>
-                </button>
+                  <StatusToggleButton
+                    className="planning-agenda-status-toggle"
+                    status={task.status}
+                    onToggle={(event) => {
+                      event.stopPropagation();
+                      onToggleStatus(task.id);
+                    }}
+                  />
+                </div>
               ))}
             </section>
           ))}
@@ -697,6 +752,40 @@ function groupTasksByDate(
     date,
     tasks: groupedTasks,
   }));
+}
+
+function StatusToggleButton({
+  className,
+  onToggle,
+  status,
+}: {
+  className?: string;
+  onToggle: (event: MouseEvent<HTMLButtonElement>) => void;
+  status: PlanningTask['status'];
+}) {
+  return (
+    <button
+      aria-label={
+        status === 'DONE'
+          ? 'Marquer la tache comme a faire'
+          : 'Marquer la tache comme faite'
+      }
+      className={[
+        'planning-status-toggle',
+        status === 'DONE' ? 'planning-status-toggle--done' : '',
+        className ?? '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      onClick={onToggle}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+      }}
+      type="button"
+    >
+      {status === 'DONE' ? 'Fait' : 'A faire'}
+    </button>
+  );
 }
 
 function PlanningEditor({
@@ -913,6 +1002,10 @@ function getSegmentStyle(
     top: `${(startMinutes / SLOT_MINUTES) * 34 + 2}px`,
     width: columnCount > 1 ? `calc(${100 / columnCount}% - 8px)` : undefined,
   };
+}
+
+function isShortSegment(segment: TaskSegment): boolean {
+  return differenceInMinutes(segment.end, segment.start) <= SLOT_MINUTES;
 }
 
 function buildPositionedSegments(

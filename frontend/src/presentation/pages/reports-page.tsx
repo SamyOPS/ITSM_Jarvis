@@ -91,6 +91,13 @@ type PersonalTicketSort =
   | 'CREATED_AT_DESC'
   | 'OPERATIONAL_PRIORITY';
 
+type PersonalEquipmentItem = {
+  id: string;
+  name: string;
+  serialNumber: string;
+  type: string;
+};
+
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],
 
@@ -126,6 +133,8 @@ const INITIAL_FILTERS: ReportsFilterState = {
 };
 
 const PERSONAL_TICKET_LIMIT = 8;
+const PERSONAL_EQUIPMENT_LIMIT = 8;
+const EMPTY_PERSONAL_EQUIPMENT: PersonalEquipmentItem[] = [];
 const PERSONAL_TICKET_SORT_OPTIONS = [
   {
     icon: BadgeAlert,
@@ -707,6 +716,8 @@ export function ReportsPage({ session }: ReportsPageProps) {
             onOpenPlanning={() => setIsPlanningOpen(true)}
             tasks={planningTasks}
           />
+
+          <PersonalEquipmentPanel equipment={EMPTY_PERSONAL_EQUIPMENT} />
         </section>
       ) : (
         <section aria-label="Vue groupe" className="reports-empty-view" />
@@ -928,6 +939,87 @@ function PersonalTicketPanel({
           </nav>
         </div>
       )}
+    </article>
+  );
+}
+
+function PersonalEquipmentPanel({
+  equipment,
+}: {
+  equipment: PersonalEquipmentItem[];
+}) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(
+    1,
+    Math.ceil(equipment.length / PERSONAL_EQUIPMENT_LIMIT),
+  );
+  const visiblePage = Math.min(page, totalPages);
+  const visibleEquipment = equipment.slice(
+    (visiblePage - 1) * PERSONAL_EQUIPMENT_LIMIT,
+    visiblePage * PERSONAL_EQUIPMENT_LIMIT,
+  );
+
+  return (
+    <article className="personal-panel personal-equipment-panel">
+      <header className="personal-panel-header">
+        <h3>Mon équipement</h3>
+        <div className="ticket-list-count" aria-live="polite">
+          <strong>{equipment.length}</strong>
+          <span>équipements</span>
+        </div>
+      </header>
+
+      <div className="personal-table-scroll">
+        <div className="personal-equipment-viewport">
+          <table className="personal-ticket-table personal-equipment-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nom</th>
+                <th>Type</th>
+                <th>Numéro de série</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleEquipment.length === 0 ? (
+                <tr className="personal-equipment-empty-row">
+                  <td colSpan={4}>Aucun équipement à afficher.</td>
+                </tr>
+              ) : (
+                visibleEquipment.map((item) => (
+                  <tr key={item.id}>
+                    <td className="personal-ticket-id">{item.id}</td>
+                    <td>{item.name}</td>
+                    <td>{item.type}</td>
+                    <td>{item.serialNumber}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <nav
+          aria-label="Pagination Mon équipement"
+          className="personal-ticket-pagination"
+        >
+          <button
+            disabled={visiblePage === 1}
+            onClick={() => setPage(visiblePage - 1)}
+            type="button"
+          >
+            Précédent
+          </button>
+          <span aria-current="page">{visiblePage}</span>
+          <button
+            disabled={visiblePage === totalPages}
+            onClick={() => setPage(visiblePage + 1)}
+            type="button"
+          >
+            Suivant
+          </button>
+        </nav>
+      </div>
     </article>
   );
 }
