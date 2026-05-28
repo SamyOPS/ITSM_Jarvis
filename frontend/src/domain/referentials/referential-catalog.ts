@@ -16,6 +16,15 @@ export type ReferentialCi = {
   status: string;
   assignedUserId: string | null;
   serialNumber: string | null;
+  brand: string | null;
+  model: string | null;
+  location: string | null;
+  purchaseDate: string | null;
+  warrantyEndDate: string | null;
+  ipAddress: string | null;
+  macAddress: string | null;
+  comment: string | null;
+  archivedAt: string | null;
 };
 
 export type ReferentialCiType = {

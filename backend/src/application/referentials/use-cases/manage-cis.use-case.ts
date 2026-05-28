@@ -7,6 +7,9 @@ import {
 } from '../referential-admin.commands';
 import {
   assertCiStatus,
+  assertDateOrder,
+  assertNullableDate,
+  assertNullableDateTime,
   assertNonBlank,
   assertUuidLike,
   normalizeNullableText,
@@ -20,6 +23,21 @@ export class ManageCisUseCase {
   ) {}
 
   async create(command: CreateReferentialCiCommand): Promise<ReferentialCi> {
+    const purchaseDate = assertNullableDate(
+      command.purchaseDate,
+      'purchaseDate',
+    );
+    const warrantyEndDate = assertNullableDate(
+      command.warrantyEndDate,
+      'warrantyEndDate',
+    );
+    assertDateOrder(
+      purchaseDate,
+      warrantyEndDate,
+      'purchaseDate',
+      'warrantyEndDate',
+    );
+
     return this.ciWriteRepository.createCi({
       name: assertNonBlank(command.name, 'name'),
       ciTypeId: assertUuidLike(command.ciTypeId, 'ciTypeId'),
@@ -29,10 +47,34 @@ export class ManageCisUseCase {
           ? null
           : assertUuidLike(command.assignedUserId, 'assignedUserId'),
       serialNumber: normalizeNullableText(command.serialNumber),
+      brand: normalizeNullableText(command.brand),
+      model: normalizeNullableText(command.model),
+      location: normalizeNullableText(command.location),
+      purchaseDate,
+      warrantyEndDate,
+      ipAddress: normalizeNullableText(command.ipAddress),
+      macAddress: normalizeNullableText(command.macAddress),
+      comment: normalizeNullableText(command.comment),
+      archivedAt: assertNullableDateTime(command.archivedAt, 'archivedAt'),
     });
   }
 
   async update(command: UpdateReferentialCiCommand): Promise<ReferentialCi> {
+    const purchaseDate = assertNullableDate(
+      command.purchaseDate,
+      'purchaseDate',
+    );
+    const warrantyEndDate = assertNullableDate(
+      command.warrantyEndDate,
+      'warrantyEndDate',
+    );
+    assertDateOrder(
+      purchaseDate,
+      warrantyEndDate,
+      'purchaseDate',
+      'warrantyEndDate',
+    );
+
     return this.ciWriteRepository.updateCi({
       id: assertUuidLike(command.id, 'id'),
       name: assertNonBlank(command.name, 'name'),
@@ -43,6 +85,15 @@ export class ManageCisUseCase {
           ? null
           : assertUuidLike(command.assignedUserId, 'assignedUserId'),
       serialNumber: normalizeNullableText(command.serialNumber),
+      brand: normalizeNullableText(command.brand),
+      model: normalizeNullableText(command.model),
+      location: normalizeNullableText(command.location),
+      purchaseDate,
+      warrantyEndDate,
+      ipAddress: normalizeNullableText(command.ipAddress),
+      macAddress: normalizeNullableText(command.macAddress),
+      comment: normalizeNullableText(command.comment),
+      archivedAt: assertNullableDateTime(command.archivedAt, 'archivedAt'),
     });
   }
 

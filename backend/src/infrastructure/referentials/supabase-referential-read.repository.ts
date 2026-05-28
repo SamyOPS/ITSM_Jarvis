@@ -37,6 +37,7 @@ import { ReferentialCi } from '../../domain/referentials/referential-ci';
 import { ReferentialCiType } from '../../domain/referentials/referential-ci-type';
 import { ReferentialGroup } from '../../domain/referentials/referential-group';
 import { ReferentialPriority } from '../../domain/referentials/referential-priority';
+import { type CiStatus } from '../../domain/ticketing/ci-status';
 import { PriorityName } from '../../domain/ticketing/priority-name';
 import { SupportLevel } from '../../domain/ticketing/support-level';
 import { getBackendRuntimeConfig } from '../config/app-config';
@@ -50,11 +51,20 @@ type SupabaseChannelRow = { id: string; name: string };
 type SupabaseCiTypeRow = { id: string; name: string };
 type SupabaseCiRow = {
   assigned_user_id: string | null;
+  archived_at: string | null;
+  brand: string | null;
   ci_type_id: string;
+  comment: string | null;
   id: string;
+  ip_address: string | null;
+  location: string | null;
+  mac_address: string | null;
+  model: string | null;
   name: string;
+  purchase_date: string | null;
   serial_number: string | null;
-  status: string;
+  status: CiStatus;
+  warranty_end_date: string | null;
 };
 type SupabaseGroupRow = {
   description: string | null;
@@ -184,7 +194,7 @@ export class SupabaseReferentialReadRepository
   async listCis(): Promise<ReferentialCi[]> {
     const rows = await this.fetchTable<SupabaseCiRow>(
       'cis',
-      'id,name,ci_type_id,status,assigned_user_id,serial_number',
+      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,location,purchase_date,warranty_end_date,ip_address,mac_address,comment,archived_at',
       'name.asc',
     );
     return rows.map((row) => this.mapCi(row));
@@ -200,8 +210,17 @@ export class SupabaseReferentialReadRepository
         status: command.status,
         assigned_user_id: command.assignedUserId,
         serial_number: command.serialNumber,
+        brand: command.brand,
+        model: command.model,
+        location: command.location,
+        purchase_date: command.purchaseDate,
+        warranty_end_date: command.warrantyEndDate,
+        ip_address: command.ipAddress,
+        mac_address: command.macAddress,
+        comment: command.comment,
+        archived_at: command.archivedAt,
       },
-      'id,name,ci_type_id,status,assigned_user_id,serial_number',
+      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,location,purchase_date,warranty_end_date,ip_address,mac_address,comment,archived_at',
     );
     return this.expectSingle(rows, 'cis', (row) => this.mapCi(row));
   }
@@ -216,8 +235,17 @@ export class SupabaseReferentialReadRepository
         status: command.status,
         assigned_user_id: command.assignedUserId,
         serial_number: command.serialNumber,
+        brand: command.brand,
+        model: command.model,
+        location: command.location,
+        purchase_date: command.purchaseDate,
+        warranty_end_date: command.warrantyEndDate,
+        ip_address: command.ipAddress,
+        mac_address: command.macAddress,
+        comment: command.comment,
+        archived_at: command.archivedAt,
       },
-      'id,name,ci_type_id,status,assigned_user_id,serial_number',
+      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,location,purchase_date,warranty_end_date,ip_address,mac_address,comment,archived_at',
       [{ column: 'id', value: command.id }],
     );
     return this.expectSingle(rows, 'cis', (row) => this.mapCi(row), command.id);
@@ -391,6 +419,15 @@ export class SupabaseReferentialReadRepository
       row.status,
       row.assigned_user_id,
       row.serial_number,
+      row.brand,
+      row.model,
+      row.location,
+      row.purchase_date,
+      row.warranty_end_date,
+      row.ip_address,
+      row.mac_address,
+      row.comment,
+      row.archived_at,
     );
   }
 

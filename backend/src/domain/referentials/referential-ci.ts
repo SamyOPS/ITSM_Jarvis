@@ -1,14 +1,29 @@
+import type { CiStatus } from '../ticketing/ci-status';
+
 export class ReferentialCi {
   constructor(
     public readonly id: string,
     public readonly name: string,
     public readonly ciTypeId: string,
-    public readonly status: string,
+    public readonly status: CiStatus,
     public readonly assignedUserId: string | null,
     public readonly serialNumber: string | null,
+    public readonly brand: string | null,
+    public readonly model: string | null,
+    public readonly location: string | null,
+    public readonly purchaseDate: string | null,
+    public readonly warrantyEndDate: string | null,
+    public readonly ipAddress: string | null,
+    public readonly macAddress: string | null,
+    public readonly comment: string | null,
+    public readonly archivedAt: string | null,
   ) {}
 
   isAssigned(): boolean {
     return this.assignedUserId !== null;
+  }
+
+  isArchived(): boolean {
+    return this.archivedAt !== null;
   }
 }

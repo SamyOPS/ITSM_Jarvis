@@ -72,11 +72,71 @@ export function assertPriorityName(value: PriorityName): PriorityName {
 export function assertCiStatus(value: CiStatus): CiStatus {
   if (!DEFAULT_CI_STATUSES.includes(value)) {
     throw new BadRequestException(
-      'CI status must be one of IN_SERVICE, MAINTENANCE or OUT_OF_SERVICE.',
+      'CI status must be one of IN_SERVICE, IN_STOCK, MAINTENANCE, LOST, OUT_OF_SERVICE, RETIRED or ARCHIVED.',
     );
   }
 
   return value;
+}
+
+export function assertNullableDate(
+  value: string | null | undefined,
+  fieldName: string,
+): string | null {
+  const normalized = normalizeNullableText(value);
+
+  if (normalized === null) {
+    return null;
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    throw new BadRequestException(
+      `${fieldName} must use the YYYY-MM-DD format.`,
+    );
+  }
+
+  const timestamp = Date.parse(`${normalized}T00:00:00.000Z`);
+  if (Number.isNaN(timestamp)) {
+    throw new BadRequestException(`${fieldName} must be a valid date.`);
+  }
+
+  return normalized;
+}
+
+export function assertNullableDateTime(
+  value: string | null | undefined,
+  fieldName: string,
+): string | null {
+  const normalized = normalizeNullableText(value);
+
+  if (normalized === null) {
+    return null;
+  }
+
+  if (Number.isNaN(Date.parse(normalized))) {
+    throw new BadRequestException(`${fieldName} must be a valid datetime.`);
+  }
+
+  return normalized;
+}
+
+export function assertDateOrder(
+  start: string | null,
+  end: string | null,
+  startFieldName: string,
+  endFieldName: string,
+): void {
+  if (start === null || end === null) {
+    return;
+  }
+
+  if (
+    Date.parse(`${start}T00:00:00.000Z`) > Date.parse(`${end}T00:00:00.000Z`)
+  ) {
+    throw new BadRequestException(
+      `${endFieldName} must be greater than or equal to ${startFieldName}.`,
+    );
+  }
 }
 
 export function assertPositiveInteger(

@@ -6918,6 +6918,232 @@ a {
   min-height: 260px;
 }
 
+.park-page-header {
+  margin-bottom: 8px;
+}
+
+.park-layout {
+  display: grid;
+  gap: 16px;
+}
+
+.park-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.park-summary-card,
+.park-panel,
+.park-equipment-card,
+.park-type-card {
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow);
+}
+
+.park-summary-card {
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px;
+}
+
+.park-summary-card span {
+  color: var(--primary);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.park-summary-card strong {
+  color: #17335f;
+  font-size: 1.9rem;
+  font-weight: 800;
+}
+
+.park-panel {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+}
+
+.park-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.park-panel-header h3 {
+  margin: 0 0 6px;
+  font-size: 1.18rem;
+}
+
+.park-panel-header p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.park-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.park-create-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.park-create-form-comment {
+  grid-column: 1 / -1;
+}
+
+.park-create-form-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  grid-column: 1 / -1;
+}
+
+.park-equipment-grid,
+.park-type-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.park-equipment-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.park-type-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.park-equipment-card,
+.park-type-card {
+  padding: 18px;
+}
+
+.park-equipment-card {
+  display: grid;
+  gap: 16px;
+}
+
+.park-equipment-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.park-equipment-card-header h4 {
+  margin: 0 0 6px;
+  color: #17335f;
+  font-size: 1.06rem;
+}
+
+.park-equipment-card-header p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.park-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.park-status-badge--in_service {
+  background: #d8f0dd;
+  color: #17603b;
+}
+
+.park-status-badge--in_stock {
+  background: #e7f0ff;
+  color: #1956b3;
+}
+
+.park-status-badge--maintenance {
+  background: #fff0d6;
+  color: #a05a00;
+}
+
+.park-status-badge--out_of_service,
+.park-status-badge--retired,
+.park-status-badge--archived {
+  background: #edf0f5;
+  color: #50627d;
+}
+
+.park-status-badge--lost {
+  background: #ffe1e4;
+  color: #a02d3e;
+}
+
+.park-equipment-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.park-equipment-meta div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.park-equipment-meta dt {
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.park-equipment-meta dd {
+  margin: 0;
+  overflow: hidden;
+  color: #17335f;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.park-equipment-comment {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.park-equipment-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.park-type-card {
+  display: grid;
+  gap: 8px;
+}
+
+.park-type-card strong {
+  color: #17335f;
+  font-size: 1rem;
+}
+
+.park-type-card span {
+  color: var(--text-muted);
+}
+
 .reports-donut-widget {
   display: grid;
   gap: 16px;
@@ -7018,7 +7244,12 @@ a {
   }
 
   .reports-dashboard-charts,
-  .reports-dashboard-tops {
+  .reports-dashboard-tops,
+  .park-equipment-grid,
+  .park-type-grid,
+  .park-summary,
+  .park-filter-grid,
+  .park-create-form {
     grid-template-columns: 1fr;
   }
 
@@ -7044,7 +7275,9 @@ a {
   .reports-dashboard-kpis,
   .reports-mini-kpi-grid,
   .reports-widget-grid,
-  .reports-dashboard-tops {
+  .reports-dashboard-tops,
+  .park-summary,
+  .park-equipment-meta {
     grid-template-columns: 1fr;
   }
 
