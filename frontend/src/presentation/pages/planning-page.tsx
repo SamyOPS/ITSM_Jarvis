@@ -1,13 +1,20 @@
-import { type Dispatch, type SetStateAction, useMemo, useState } from 'react';
+import {
+  type CSSProperties,
+  type Dispatch,
+  type SetStateAction,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   ArrowLeft,
   CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
   List,
   Plus,
-  Search,
   Trash2,
   X,
 } from 'lucide-react';
@@ -45,20 +52,22 @@ type TaskSegment = {
 };
 
 const DAY_START_HOUR = 8;
-const DAY_END_HOUR = 19;
+const WORKDAY_END_HOUR = 20;
 const SLOT_MINUTES = 30;
-const HOURS_IN_WORKDAY = DAY_END_HOUR - DAY_START_HOUR;
-const TECHNICIAN_PAGE_SIZE = 6;
+const PLANNING_DAY_DURATION_MINUTES = 12 * 60;
+const MONTH_DEFAULT_DURATION_MINUTES = PLANNING_DAY_DURATION_MINUTES;
+const DISPLAY_SLOT_COUNT =
+  ((WORKDAY_END_HOUR - DAY_START_HOUR) * 60) / SLOT_MINUTES;
 
 const PLANNING_MODES = [
+  { icon: Clock3, label: 'Jour', value: 'DAY' as const },
   { icon: CalendarDays, label: 'Semaine', value: 'WEEK' as const },
   { icon: CalendarDays, label: 'Mois', value: 'MONTH' as const },
-  { icon: Clock3, label: 'Jour', value: 'DAY' as const },
   { icon: List, label: 'Planning', value: 'AGENDA' as const },
 ];
 
 const DURATION_OPTIONS = Array.from(
-  { length: (48 * 60) / SLOT_MINUTES },
+  { length: (PLANNING_DAY_DURATION_MINUTES * 2) / SLOT_MINUTES },
   (_, index) => (index + 1) * SLOT_MINUTES,
 );
 
@@ -72,21 +81,35 @@ export function PlanningPage({
   const [anchorDate, setAnchorDate] = useState(() => startOfDay(new Date()));
   const [draft, setDraft] = useState<PlanningDraft | null>(null);
   const [mode, setMode] = useState<PlanningMode>('WEEK');
-  const [isTechnicianPickerOpen, setIsTechnicianPickerOpen] = useState(false);
-  const [technicianPage, setTechnicianPage] = useState(1);
-  const [technicianQuery, setTechnicianQuery] = useState('');
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const intervalId = window.setInterval(
+      () => setCurrentTime(new Date()),
+      60000,
+    );
+
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   const segments = useMemo(
     () => tasks.flatMap((task) => buildWorkingSegments(task)),
     [tasks],
   );
 
-  function openNewTask(day: Date, hour = DAY_START_HOUR, minute = 0): void {
+  function openNewTask(
+    day: Date,
+    hour = DAY_START_HOUR,
+    minute = 0,
+    durationMinutes = SLOT_MINUTES,
+  ): void {
     const selectedStart = setDateTime(day, hour, minute);
 
+    setTitleError(null);
     setDraft({
       description: '',
-      durationMinutes: SLOT_MINUTES,
+      durationMinutes,
       start: formatDateTimeInput(selectedStart),
       status: 'TODO',
       technicianId: session.user.id,
@@ -95,18 +118,26 @@ export function PlanningPage({
   }
 
   function openTask(task: PlanningTask): void {
+    setTitleError(null);
     setDraft({ ...task });
   }
 
   function closeEditor(): void {
     setDraft(null);
-    setIsTechnicianPickerOpen(false);
-    setTechnicianQuery('');
-    setTechnicianPage(1);
+    setTitleError(null);
   }
 
   function saveTask(): void {
-    if (!draft || !draft.title.trim() || !draft.technicianId) {
+    if (!draft) {
+      return;
+    }
+
+    if (!draft.title.trim()) {
+      setTitleError('Titre obligatoire');
+      return;
+    }
+
+    if (!draft.technicianId) {
       return;
     }
 
@@ -135,6 +166,7 @@ export function PlanningPage({
           )
         : [...currentTasks, nextTask];
     });
+    setAnchorDate(startOfDay(parseDateTime(nextTask.start)));
     closeEditor();
   }
 
@@ -167,27 +199,19 @@ export function PlanningPage({
     });
   }
 
-  const selectedTechnician =
-    technicians.find((technician) => technician.id === draft?.technicianId) ??
-    null;
-
   return (
     <section className="planning-page">
-      <header className="planning-page-header">
-        <button className="tdp-back-btn" onClick={onBack} type="button">
-          <ArrowLeft size={15} />
-          Retour a la vue personnelle
-        </button>
-
-        <div>
-          <h2>Planning</h2>
-          <p>Organisation des taches et interventions planifiees.</p>
-        </div>
-      </header>
-
       <section className="planning-workspace">
         <header className="planning-toolbar">
           <div className="planning-period-controls">
+            <button
+              className="tdp-back-btn planning-back-button"
+              onClick={onBack}
+              type="button"
+            >
+              <ArrowLeft size={15} />
+              Retour a la vue personnelle
+            </button>
             <button
               aria-label="Periode precedente"
               onClick={() => movePeriod(-1)}
@@ -241,6 +265,7 @@ export function PlanningPage({
         {mode === 'WEEK' ? (
           <WeekPlanningView
             anchorDate={anchorDate}
+            currentTime={currentTime}
             onCreate={openNewTask}
             onOpenTask={openTask}
             segments={segments}
@@ -250,6 +275,7 @@ export function PlanningPage({
         {mode === 'DAY' ? (
           <DayPlanningView
             anchorDate={anchorDate}
+            currentTime={currentTime}
             onCreate={openNewTask}
             onOpenTask={openTask}
             segments={segments}
@@ -267,7 +293,6 @@ export function PlanningPage({
 
         {mode === 'AGENDA' ? (
           <AgendaPlanningView
-            onCreate={() => openNewTask(anchorDate)}
             onOpenTask={openTask}
             tasks={tasks}
             technicians={technicians}
@@ -278,28 +303,19 @@ export function PlanningPage({
       {draft ? (
         <PlanningEditor
           draft={draft}
-          isTechnicianPickerOpen={isTechnicianPickerOpen}
-          onChange={setDraft}
+          onChange={(nextDraft) => {
+            setDraft(nextDraft);
+          }}
           onClose={closeEditor}
           onDelete={deleteTask}
-          onOpenTechnicianPicker={() => setIsTechnicianPickerOpen(true)}
           onSave={saveTask}
-          onTechnicianPickerClose={() => setIsTechnicianPickerOpen(false)}
-          onTechnicianSelect={(technicianId) => {
+          onTitleChange={(title) => {
             setDraft((currentDraft) =>
-              currentDraft ? { ...currentDraft, technicianId } : currentDraft,
+              currentDraft ? { ...currentDraft, title } : currentDraft,
             );
-            setIsTechnicianPickerOpen(false);
+            setTitleError(null);
           }}
-          selectedTechnician={selectedTechnician}
-          technicianPage={technicianPage}
-          technicianQuery={technicianQuery}
-          technicians={technicians}
-          onTechnicianPageChange={setTechnicianPage}
-          onTechnicianQueryChange={(query) => {
-            setTechnicianQuery(query);
-            setTechnicianPage(1);
-          }}
+          titleError={titleError}
         />
       ) : null}
     </section>
@@ -308,12 +324,19 @@ export function PlanningPage({
 
 function WeekPlanningView({
   anchorDate,
+  currentTime,
   onCreate,
   onOpenTask,
   segments,
 }: {
   anchorDate: Date;
-  onCreate: (day: Date, hour?: number, minute?: number) => void;
+  currentTime: Date;
+  onCreate: (
+    day: Date,
+    hour?: number,
+    minute?: number,
+    durationMinutes?: number,
+  ) => void;
   onOpenTask: (task: PlanningTask) => void;
   segments: TaskSegment[];
 }) {
@@ -325,7 +348,9 @@ function WeekPlanningView({
   return (
     <div className="planning-time-view planning-week-view">
       <div className="planning-time-header">
-        <span />
+        <span className="planning-time-week-label">
+          Sem. {getIsoWeekNumber(weekStart)}
+        </span>
         {days.map((day) => (
           <strong
             className={isSameDay(day, new Date()) ? 'is-today' : ''}
@@ -340,6 +365,7 @@ function WeekPlanningView({
         <TimeScale />
         {days.map((day) => (
           <PlanningDayColumn
+            currentTime={currentTime}
             day={day}
             key={formatDateInput(day)}
             onCreate={onCreate}
@@ -354,19 +380,28 @@ function WeekPlanningView({
 
 function DayPlanningView({
   anchorDate,
+  currentTime,
   onCreate,
   onOpenTask,
   segments,
 }: {
   anchorDate: Date;
-  onCreate: (day: Date, hour?: number, minute?: number) => void;
+  currentTime: Date;
+  onCreate: (
+    day: Date,
+    hour?: number,
+    minute?: number,
+    durationMinutes?: number,
+  ) => void;
   onOpenTask: (task: PlanningTask) => void;
   segments: TaskSegment[];
 }) {
   return (
     <div className="planning-time-view planning-day-view">
       <div className="planning-time-header">
-        <span />
+        <span className="planning-time-week-label">
+          Sem. {getIsoWeekNumber(anchorDate)}
+        </span>
         <strong className={isSameDay(anchorDate, new Date()) ? 'is-today' : ''}>
           {formatLongDate(anchorDate)}
         </strong>
@@ -375,6 +410,7 @@ function DayPlanningView({
       <div className="planning-time-body">
         <TimeScale />
         <PlanningDayColumn
+          currentTime={currentTime}
           day={anchorDate}
           onCreate={onCreate}
           onOpenTask={onOpenTask}
@@ -388,11 +424,16 @@ function DayPlanningView({
 }
 
 function TimeScale() {
+  const marks = Array.from(
+    { length: WORKDAY_END_HOUR - DAY_START_HOUR },
+    (_, index) => (DAY_START_HOUR + index) * 60,
+  );
+
   return (
     <div className="planning-time-scale">
-      {Array.from({ length: HOURS_IN_WORKDAY + 1 }, (_, index) => (
-        <span key={index}>
-          {String(DAY_START_HOUR + index).padStart(2, '0')}:00
+      {marks.map((minutes, index) => (
+        <span key={minutes} style={{ gridRow: index * 2 + 1 }}>
+          {formatMinutes(minutes)}
         </span>
       ))}
     </div>
@@ -400,21 +441,38 @@ function TimeScale() {
 }
 
 function PlanningDayColumn({
+  currentTime,
   day,
   onCreate,
   onOpenTask,
   segments,
 }: {
+  currentTime: Date;
   day: Date;
-  onCreate: (day: Date, hour?: number, minute?: number) => void;
+  onCreate: (
+    day: Date,
+    hour?: number,
+    minute?: number,
+    durationMinutes?: number,
+  ) => void;
   onOpenTask: (task: PlanningTask) => void;
   segments: TaskSegment[];
 }) {
-  const slotCount = HOURS_IN_WORKDAY * (60 / SLOT_MINUTES);
+  const isCurrentDay = isSameDay(day, currentTime);
+  const currentTimeStyle = isCurrentDay
+    ? getCurrentTimeIndicatorStyle(currentTime)
+    : null;
+  const positionedSegments = buildPositionedSegments(segments);
 
   return (
-    <div className="planning-day-column">
-      {Array.from({ length: slotCount }, (_, index) => {
+    <div
+      className={
+        isCurrentDay
+          ? 'planning-day-column is-current-day'
+          : 'planning-day-column'
+      }
+    >
+      {Array.from({ length: DISPLAY_SLOT_COUNT }, (_, index) => {
         const totalMinutes = DAY_START_HOUR * 60 + index * SLOT_MINUTES;
 
         return (
@@ -430,12 +488,20 @@ function PlanningDayColumn({
         );
       })}
 
-      {segments.map((segment) => (
+      {currentTimeStyle ? (
+        <span
+          aria-hidden="true"
+          className="planning-current-time-line"
+          style={currentTimeStyle}
+        />
+      ) : null}
+
+      {positionedSegments.map(({ column, columnCount, segment }) => (
         <button
           className={`planning-event planning-event--${segment.task.status.toLowerCase()}`}
           key={`${segment.task.id}-${segment.start.toISOString()}`}
           onClick={() => onOpenTask(segment.task)}
-          style={getSegmentStyle(segment)}
+          style={getSegmentStyle(segment, column, columnCount)}
           type="button"
         >
           <strong>{segment.task.title}</strong>
@@ -455,7 +521,12 @@ function MonthPlanningView({
   segments,
 }: {
   anchorDate: Date;
-  onCreate: (day: Date, hour?: number, minute?: number) => void;
+  onCreate: (
+    day: Date,
+    hour?: number,
+    minute?: number,
+    durationMinutes?: number,
+  ) => void;
   onOpenTask: (task: PlanningTask) => void;
   segments: TaskSegment[];
 }) {
@@ -487,29 +558,54 @@ function MonthPlanningView({
 
             return (
               <div
-                className={
-                  day.getMonth() === anchorDate.getMonth()
-                    ? 'planning-month-day'
-                    : 'planning-month-day is-outside'
-                }
+                className={[
+                  'planning-month-day',
+                  day.getMonth() === anchorDate.getMonth() ? '' : 'is-outside',
+                  isSameDay(day, new Date()) ? 'is-current-day' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
                 key={formatDateInput(day)}
+                onClick={() =>
+                  onCreate(
+                    day,
+                    DAY_START_HOUR,
+                    0,
+                    MONTH_DEFAULT_DURATION_MINUTES,
+                  )
+                }
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onCreate(
+                      day,
+                      DAY_START_HOUR,
+                      0,
+                      MONTH_DEFAULT_DURATION_MINUTES,
+                    );
+                  }
+                }}
+                role="button"
+                tabIndex={0}
               >
-                <button
-                  className={isSameDay(day, new Date()) ? 'is-today' : ''}
-                  onClick={() => onCreate(day)}
-                  type="button"
-                >
+                <span className={isSameDay(day, new Date()) ? 'is-today' : ''}>
                   {day.getDate()}
-                </button>
+                </span>
                 <div>
                   {daySegments.slice(0, 3).map((segment) => (
                     <button
                       className={`planning-month-task planning-event--${segment.task.status.toLowerCase()}`}
                       key={`${segment.task.id}-${segment.start.toISOString()}`}
-                      onClick={() => onOpenTask(segment.task)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onOpenTask(segment.task);
+                      }}
                       type="button"
                     >
-                      <span>{formatClock(segment.start)}</span>
+                      <span>
+                        {formatClock(segment.start)} -{' '}
+                        {formatClock(segment.end)}
+                      </span>
                       {segment.task.title}
                     </button>
                   ))}
@@ -527,12 +623,10 @@ function MonthPlanningView({
 }
 
 function AgendaPlanningView({
-  onCreate,
   onOpenTask,
   tasks,
   technicians,
 }: {
-  onCreate: () => void;
   onOpenTask: (task: PlanningTask) => void;
   tasks: PlanningTask[];
   technicians: AdminUserSummary[];
@@ -542,42 +636,43 @@ function AgendaPlanningView({
   const visibleTasks = tasks
     .filter((task) => getTaskEnd(task) >= cutoffDate)
     .sort((first, second) => first.start.localeCompare(second.start));
+  const taskGroups = groupTasksByDate(visibleTasks);
 
   return (
     <div className="planning-agenda-view">
-      <div className="planning-agenda-header">
-        <h3>Liste des taches</h3>
-        <button className="primary-button" onClick={onCreate} type="button">
-          <Plus size={16} />
-          Ajouter
-        </button>
-      </div>
-
       {visibleTasks.length === 0 ? (
         <p className="planning-empty">Aucune tache planifiee a afficher.</p>
       ) : (
         <div className="planning-agenda-list">
-          {visibleTasks.map((task) => (
-            <button
-              className="planning-agenda-row"
-              key={task.id}
-              onClick={() => onOpenTask(task)}
-              type="button"
-            >
-              <strong>{formatLongDate(parseDateTime(task.start))}</strong>
-              <span className="planning-agenda-time">
-                {formatTaskInterval(task)}
-              </span>
-              <span>{task.title}</span>
-              <span>
-                {formatTechnicianName(task.technicianId, technicians)}
-              </span>
-              <i
-                className={`planning-status planning-status--${task.status.toLowerCase()}`}
-              >
-                {task.status === 'DONE' ? 'Fait' : 'A faire'}
-              </i>
-            </button>
+          {taskGroups.map((group) => (
+            <section className="planning-agenda-group" key={group.date}>
+              <h4>{formatLongDate(parseDateTime(group.tasks[0].start))}</h4>
+              {group.tasks.map((task) => (
+                <button
+                  className={
+                    isSameDay(parseDateTime(task.start), new Date())
+                      ? 'planning-agenda-row is-today'
+                      : 'planning-agenda-row'
+                  }
+                  key={task.id}
+                  onClick={() => onOpenTask(task)}
+                  type="button"
+                >
+                  <span className="planning-agenda-time">
+                    {formatTaskInterval(task)}
+                  </span>
+                  <span>{task.title}</span>
+                  <span>
+                    {formatTechnicianName(task.technicianId, technicians)}
+                  </span>
+                  <i
+                    className={`planning-status planning-status--${task.status.toLowerCase()}`}
+                  >
+                    {task.status === 'DONE' ? 'Fait' : 'A faire'}
+                  </i>
+                </button>
+              ))}
+            </section>
           ))}
         </div>
       )}
@@ -585,39 +680,43 @@ function AgendaPlanningView({
   );
 }
 
+function groupTasksByDate(
+  tasks: PlanningTask[],
+): Array<{ date: string; tasks: PlanningTask[] }> {
+  const groups = new Map<string, PlanningTask[]>();
+
+  tasks.forEach((task) => {
+    const date = task.start.slice(0, 10);
+    const groupedTasks = groups.get(date) ?? [];
+
+    groupedTasks.push(task);
+    groups.set(date, groupedTasks);
+  });
+
+  return Array.from(groups, ([date, groupedTasks]) => ({
+    date,
+    tasks: groupedTasks,
+  }));
+}
+
 function PlanningEditor({
   draft,
-  isTechnicianPickerOpen,
   onChange,
   onClose,
   onDelete,
-  onOpenTechnicianPicker,
   onSave,
-  onTechnicianPageChange,
-  onTechnicianPickerClose,
-  onTechnicianQueryChange,
-  onTechnicianSelect,
-  selectedTechnician,
-  technicianPage,
-  technicianQuery,
-  technicians,
+  onTitleChange,
+  titleError,
 }: {
   draft: PlanningDraft;
-  isTechnicianPickerOpen: boolean;
   onChange: Dispatch<SetStateAction<PlanningDraft | null>>;
   onClose: () => void;
   onDelete: () => void;
-  onOpenTechnicianPicker: () => void;
   onSave: () => void;
-  onTechnicianPageChange: (page: number) => void;
-  onTechnicianPickerClose: () => void;
-  onTechnicianQueryChange: (query: string) => void;
-  onTechnicianSelect: (technicianId: string) => void;
-  selectedTechnician: AdminUserSummary | null;
-  technicianPage: number;
-  technicianQuery: string;
-  technicians: AdminUserSummary[];
+  onTitleChange: (title: string) => void;
+  titleError: string | null;
 }) {
+  const [isDurationMenuOpen, setIsDurationMenuOpen] = useState(false);
   const [startDate, startTime] = draft.start.split('T');
 
   return (
@@ -631,7 +730,7 @@ function PlanningEditor({
         <header className="planning-editor-header">
           <div>
             <h3>{draft.id ? 'Modifier la tache' : 'Ajouter une tache'}</h3>
-            <p>Planification sur les horaires autorises de 08:00 a 19:00.</p>
+            <p>Planification sur les horaires autorises de 08:00 a 20:00.</p>
           </div>
           <button aria-label="Fermer" onClick={onClose} type="button">
             <X size={18} />
@@ -642,68 +741,14 @@ function PlanningEditor({
           <label className="field">
             <span>Titre</span>
             <input
-              onChange={(event) =>
-                onChange({ ...draft, title: event.target.value })
-              }
+              aria-invalid={Boolean(titleError)}
+              onChange={(event) => onTitleChange(event.target.value)}
               placeholder="Titre de la tache"
               value={draft.title}
             />
-          </label>
-
-          <label className="field">
-            <span>Technicien</span>
-            <div
-              className={
-                draft.technicianId
-                  ? 'incident-lookup-field has-clear'
-                  : 'incident-lookup-field'
-              }
-            >
-              <input
-                className={draft.technicianId ? '' : 'lookup-placeholder'}
-                placeholder="Choisir le technicien"
-                readOnly
-                value={
-                  selectedTechnician
-                    ? formatUserName(selectedTechnician)
-                    : draft.technicianId
-                      ? 'Utilisateur connecte'
-                      : ''
-                }
-              />
-              {draft.technicianId ? (
-                <button
-                  aria-label="Effacer le technicien"
-                  onClick={() => onChange({ ...draft, technicianId: '' })}
-                  type="button"
-                >
-                  <X size={16} />
-                </button>
-              ) : null}
-              <button
-                aria-label="Rechercher un technicien"
-                onClick={onOpenTechnicianPicker}
-                type="button"
-              >
-                <Search size={17} />
-              </button>
-            </div>
-          </label>
-
-          <label className="field">
-            <span>Statut</span>
-            <select
-              onChange={(event) =>
-                onChange({
-                  ...draft,
-                  status: event.target.value as PlanningTask['status'],
-                })
-              }
-              value={draft.status}
-            >
-              <option value="TODO">A faire</option>
-              <option value="DONE">Fait</option>
-            </select>
+            {titleError ? (
+              <small className="field-error">{titleError}</small>
+            ) : null}
           </label>
 
           <fieldset className="planning-start-field">
@@ -721,7 +766,7 @@ function PlanningEditor({
             />
             <input
               aria-label="Heure de debut"
-              max="18:30"
+              max="19:30"
               min="08:00"
               onChange={(event) =>
                 onChange({
@@ -735,23 +780,36 @@ function PlanningEditor({
             />
           </fieldset>
 
-          <label className="field">
+          <label className="field planning-duration-field">
             <span>Duree</span>
-            <select
-              onChange={(event) =>
-                onChange({
-                  ...draft,
-                  durationMinutes: Number(event.target.value),
-                })
-              }
-              value={draft.durationMinutes}
+            <button
+              aria-expanded={isDurationMenuOpen}
+              className="planning-duration-trigger"
+              onClick={() => setIsDurationMenuOpen((isOpen) => !isOpen)}
+              type="button"
             >
-              {DURATION_OPTIONS.map((duration) => (
-                <option key={duration} value={duration}>
-                  {formatDuration(duration)}
-                </option>
-              ))}
-            </select>
+              <span>{formatDuration(draft.durationMinutes)}</span>
+              <ChevronDown size={16} />
+            </button>
+            {isDurationMenuOpen ? (
+              <div className="planning-duration-options">
+                {DURATION_OPTIONS.map((duration) => (
+                  <button
+                    className={
+                      duration === draft.durationMinutes ? 'is-selected' : ''
+                    }
+                    key={duration}
+                    onClick={() => {
+                      onChange({ ...draft, durationMinutes: duration });
+                      setIsDurationMenuOpen(false);
+                    }}
+                    type="button"
+                  >
+                    {formatDuration(duration)}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </label>
 
           <label className="field planning-description-field">
@@ -784,151 +842,6 @@ function PlanningEditor({
           </button>
         </footer>
       </section>
-
-      {isTechnicianPickerOpen ? (
-        <TechnicianPicker
-          onClose={onTechnicianPickerClose}
-          onPageChange={onTechnicianPageChange}
-          onQueryChange={onTechnicianQueryChange}
-          onSelect={onTechnicianSelect}
-          page={technicianPage}
-          query={technicianQuery}
-          selectedId={draft.technicianId}
-          technicians={technicians}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-function TechnicianPicker({
-  onClose,
-  onPageChange,
-  onQueryChange,
-  onSelect,
-  page,
-  query,
-  selectedId,
-  technicians,
-}: {
-  onClose: () => void;
-  onPageChange: (page: number) => void;
-  onQueryChange: (query: string) => void;
-  onSelect: (technicianId: string) => void;
-  page: number;
-  query: string;
-  selectedId: string;
-  technicians: AdminUserSummary[];
-}) {
-  const normalizedQuery = query.toLowerCase().trim();
-  const filteredTechnicians = technicians.filter((technician) =>
-    [formatUserName(technician), technician.email ?? '', technician.role]
-      .join(' ')
-      .toLowerCase()
-      .includes(normalizedQuery),
-  );
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredTechnicians.length / TECHNICIAN_PAGE_SIZE),
-  );
-  const visiblePage = Math.min(page, totalPages);
-  const visibleTechnicians = filteredTechnicians.slice(
-    (visiblePage - 1) * TECHNICIAN_PAGE_SIZE,
-    visiblePage * TECHNICIAN_PAGE_SIZE,
-  );
-
-  return (
-    <div className="incident-lookup-overlay planning-technician-overlay">
-      <section
-        aria-label="Selectionner un technicien"
-        aria-modal="true"
-        className="incident-lookup-dialog"
-        role="dialog"
-      >
-        <header className="incident-lookup-header">
-          <h3>Selectionner un technicien</h3>
-          <button
-            className="incident-lookup-close"
-            onClick={onClose}
-            type="button"
-          >
-            <X size={18} />
-          </button>
-        </header>
-
-        <label className="incident-lookup-search">
-          <select aria-label="Champ de recherche" defaultValue="all">
-            <option value="all">Tous</option>
-          </select>
-          <span className="incident-lookup-search-input">
-            <Search size={17} />
-            <input
-              onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Rechercher un technicien"
-              value={query}
-            />
-          </span>
-        </label>
-
-        <div className="incident-lookup-table-scroll">
-          <table className="incident-lookup-table incident-lookup-table--assignee">
-            <thead>
-              <tr>
-                <th>Nom</th>
-                <th>Role</th>
-                <th>Groupe</th>
-                <th>Email</th>
-                <th>Selection</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleTechnicians.map((technician) => (
-                <tr
-                  className={
-                    technician.id === selectedId
-                      ? 'incident-lookup-row is-selected'
-                      : 'incident-lookup-row'
-                  }
-                  key={technician.id}
-                  onClick={() => onSelect(technician.id)}
-                  tabIndex={0}
-                >
-                  <td className="incident-lookup-identity">
-                    {formatUserName(technician)}
-                  </td>
-                  <td>{technician.role}</td>
-                  <td>{technician.groupId ?? '-'}</td>
-                  <td>{technician.email ?? '-'}</td>
-                  <td>{technician.id === selectedId ? 'Selectionne' : ''}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <footer className="incident-lookup-pagination">
-          <span>{filteredTechnicians.length} technicien(s)</span>
-          <div>
-            <button
-              className="secondary-button incident-lookup-page-button"
-              disabled={visiblePage === 1}
-              onClick={() => onPageChange(visiblePage - 1)}
-              type="button"
-            >
-              Precedent
-            </button>
-            <span className="incident-lookup-current-page">{visiblePage}</span>
-            <button
-              className="secondary-button incident-lookup-page-button"
-              disabled={visiblePage === totalPages}
-              onClick={() => onPageChange(visiblePage + 1)}
-              type="button"
-            >
-              Suivant
-            </button>
-          </div>
-        </footer>
-      </section>
     </div>
   );
 }
@@ -939,7 +852,7 @@ function buildWorkingSegments(task: PlanningTask): TaskSegment[] {
   let remainingMinutes = task.durationMinutes;
 
   while (remainingMinutes > 0) {
-    const endOfWorkday = setDateTime(cursor, DAY_END_HOUR, 0);
+    const endOfWorkday = setDateTime(cursor, WORKDAY_END_HOUR, 0);
     const availableMinutes = differenceInMinutes(endOfWorkday, cursor);
     const segmentMinutes = Math.min(remainingMinutes, availableMinutes);
     const end = addMinutes(cursor, segmentMinutes);
@@ -966,7 +879,7 @@ function getTaskEnd(task: PlanningTask): Date {
 
 function normalizeWorkingStart(date: Date): Date {
   const dayStart = setDateTime(date, DAY_START_HOUR, 0);
-  const dayEnd = setDateTime(date, DAY_END_HOUR, 0);
+  const dayEnd = setDateTime(date, WORKDAY_END_HOUR, 0);
 
   if (date < dayStart) {
     return dayStart;
@@ -979,7 +892,11 @@ function normalizeWorkingStart(date: Date): Date {
   return date;
 }
 
-function getSegmentStyle(segment: TaskSegment) {
+function getSegmentStyle(
+  segment: TaskSegment,
+  column = 0,
+  columnCount = 1,
+): CSSProperties {
   const startMinutes =
     segment.start.getHours() * 60 +
     segment.start.getMinutes() -
@@ -988,7 +905,88 @@ function getSegmentStyle(segment: TaskSegment) {
 
   return {
     height: `calc(${(durationMinutes / SLOT_MINUTES) * 34}px - 4px)`,
+    left:
+      columnCount > 1
+        ? `calc(${(column / columnCount) * 100}% + 4px)`
+        : undefined,
+    right: columnCount > 1 ? 'auto' : undefined,
     top: `${(startMinutes / SLOT_MINUTES) * 34 + 2}px`,
+    width: columnCount > 1 ? `calc(${100 / columnCount}% - 8px)` : undefined,
+  };
+}
+
+function buildPositionedSegments(
+  segments: TaskSegment[],
+): Array<{ column: number; columnCount: number; segment: TaskSegment }> {
+  const sortedSegments = [...segments].sort(
+    (first, second) => first.start.getTime() - second.start.getTime(),
+  );
+  const positionedSegments: Array<{
+    column: number;
+    columnCount: number;
+    segment: TaskSegment;
+  }> = [];
+  let overlappingGroup: TaskSegment[] = [];
+  let groupEnd: Date | null = null;
+
+  function addGroup(): void {
+    if (overlappingGroup.length === 0) {
+      return;
+    }
+
+    const columnEnds: Date[] = [];
+    const groupPositions = overlappingGroup.map((segment) => {
+      const availableColumn = columnEnds.findIndex(
+        (end) => end <= segment.start,
+      );
+      const column =
+        availableColumn === -1 ? columnEnds.length : availableColumn;
+
+      columnEnds[column] = segment.end;
+
+      return { column, segment };
+    });
+    const columnCount = columnEnds.length;
+
+    positionedSegments.push(
+      ...groupPositions.map(({ column, segment }) => ({
+        column,
+        columnCount,
+        segment,
+      })),
+    );
+  }
+
+  sortedSegments.forEach((segment) => {
+    if (groupEnd && segment.start >= groupEnd) {
+      addGroup();
+      overlappingGroup = [];
+      groupEnd = null;
+    }
+
+    overlappingGroup.push(segment);
+
+    if (!groupEnd || segment.end > groupEnd) {
+      groupEnd = segment.end;
+    }
+  });
+
+  addGroup();
+
+  return positionedSegments;
+}
+
+function getCurrentTimeIndicatorStyle(date: Date) {
+  const startMinutes = DAY_START_HOUR * 60;
+  const endMinutes = WORKDAY_END_HOUR * 60;
+  const currentMinutes = date.getHours() * 60 + date.getMinutes();
+
+  if (currentMinutes < startMinutes || currentMinutes > endMinutes) {
+    return null;
+  }
+
+  return {
+    top: `${((currentMinutes - startMinutes) / SLOT_MINUTES) * 34}px`,
   };
 }
 
@@ -1136,22 +1134,24 @@ function formatPeriodTitle(date: Date, mode: PlanningMode): string {
 }
 
 function formatDuration(minutes: number): string {
-  if (minutes === 48 * 60) {
-    return '2 jours (48 h)';
-  }
-
-  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(minutes / PLANNING_DAY_DURATION_MINUTES);
+  const hours = Math.floor((minutes % PLANNING_DAY_DURATION_MINUTES) / 60);
   const remainingMinutes = minutes % 60;
+  const units: string[] = [];
 
-  if (!hours) {
-    return `${remainingMinutes} min`;
+  if (days) {
+    units.push(`${days} journée${days > 1 ? 's' : ''}`);
   }
 
-  if (!remainingMinutes) {
-    return `${hours} h`;
+  if (hours) {
+    units.push(`${hours} h`);
   }
 
-  return `${hours} h ${remainingMinutes} min`;
+  if (remainingMinutes) {
+    units.push(`${remainingMinutes} min`);
+  }
+
+  return units.join(' ') || '0 min';
 }
 
 function formatTaskInterval(task: PlanningTask): string {
