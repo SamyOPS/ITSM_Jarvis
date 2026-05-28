@@ -26,7 +26,7 @@ function buildSession(
 describe('access-control', () => {
   it('blocks protected routes when there is no session', () => {
     expect(canAccessRoute('/reports', null)).toBe(false);
-    expect(canAccessRoute('/admin', null)).toBe(false);
+    expect(canAccessRoute('/parc/cis', null)).toBe(false);
     expect(canAccessRoute('/login', null)).toBe(true);
   });
 
@@ -35,21 +35,22 @@ describe('access-control', () => {
 
     expect(canAccessRoute('/agent/tickets', session)).toBe(true);
     expect(canAccessRoute('/reports', session)).toBe(false);
-    expect(canAccessRoute('/admin', session)).toBe(false);
+    expect(canAccessRoute('/parc/cis', session)).toBe(false);
   });
 
   it('lets agent access reports but not admin', () => {
     const session = buildSession('AGENT');
 
     expect(canAccessRoute('/reports', session)).toBe(true);
-    expect(canAccessRoute('/admin', session)).toBe(false);
+    expect(canAccessRoute('/parc/cis', session)).toBe(false);
   });
 
   it('lets admin access reports and admin routes', () => {
     const session = buildSession('ADMIN');
 
     expect(canAccessRoute('/reports', session)).toBe(true);
-    expect(canAccessRoute('/admin', session)).toBe(true);
+    expect(canAccessRoute('/parc/cis', session)).toBe(true);
+    expect(canAccessRoute('/parc/ci-types', session)).toBe(true);
     expect(canAccessRoute('/admin/users', session)).toBe(true);
   });
 
@@ -70,7 +71,8 @@ describe('access-control', () => {
     const visibleRoutes = getVisibleRoutes(buildSession('ADMIN'));
 
     expect(visibleRoutes).toContain('/reports');
-    expect(visibleRoutes).toContain('/admin');
+    expect(visibleRoutes).toContain('/parc/cis');
+    expect(visibleRoutes).toContain('/parc/ci-types');
     expect(visibleRoutes).toContain('/admin/users');
     expect(visibleRoutes).not.toContain('/login');
   });

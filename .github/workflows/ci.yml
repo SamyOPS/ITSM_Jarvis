@@ -28,20 +28,6 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Debug frontend snapshot
-        run: |
-          git rev-parse HEAD
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('src/presentation/pages/admin-page.tsx')
-          print(f'FILE: {path}')
-          lines = path.read_text(encoding='utf-8').splitlines()
-          for start, end in ((1, 40), (280, 330), (920, 935)):
-              print(f'--- lines {start}-{end} ---')
-              for index in range(start, min(end, len(lines)) + 1):
-                  print(f'{index}: {lines[index - 1]}')
-          PY
-
       - name: Lint
         run: npm run lint
 

@@ -22,13 +22,13 @@ import {
   useBrowserPath,
 } from '../../infrastructure/routing/browser-router';
 import { AccessDeniedPage } from '../pages/access-denied-page';
-import { AdminPage } from '../pages/admin-page';
 import { AgentPage } from '../pages/agent-page';
 import { AppShell } from './app-shell';
 import { GroupsPage } from '../pages/groups-page';
 import { HomePage } from '../pages/home-page';
 import { LoginPage } from '../pages/login-page';
 import { NotFoundPage } from '../pages/not-found-page';
+import { ParkPage } from '../pages/park-page';
 import { ReportsPage } from '../pages/reports-page';
 import { UsersPage } from '../pages/users-page';
 
@@ -87,8 +87,18 @@ function renderPage({
       }
 
       return <HomePage />;
-    case '/admin':
-      return session ? <AdminPage session={session} /> : <NotFoundPage />;
+    case '/parc/ci-types':
+      return session ? (
+        <ParkPage section="CI_TYPES" session={session} />
+      ) : (
+        <NotFoundPage />
+      );
+    case '/parc/cis':
+      return session ? (
+        <ParkPage section="CIS" session={session} />
+      ) : (
+        <NotFoundPage />
+      );
     case '/admin/groups':
       return session ? <GroupsPage session={session} /> : <NotFoundPage />;
     case '/admin/users':
