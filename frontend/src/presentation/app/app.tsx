@@ -28,6 +28,7 @@ import { GroupsPage } from '../pages/groups-page';
 import { HomePage } from '../pages/home-page';
 import { LoginPage } from '../pages/login-page';
 import { NotFoundPage } from '../pages/not-found-page';
+import { KnowledgePage } from '../pages/knowledge-page';
 import { ParkPage } from '../pages/park-page';
 import { ReportsPage } from '../pages/reports-page';
 import { UsersPage } from '../pages/users-page';
@@ -99,6 +100,18 @@ function renderPage({
       ) : (
         <NotFoundPage />
       );
+    case '/knowledge/articles':
+      if (pathname.startsWith('/knowledge/articles/')) {
+        const articleId = pathname.replace('/knowledge/articles/', '').trim();
+
+        return session && articleId ? (
+          <KnowledgePage articleId={articleId} session={session} />
+        ) : (
+          <NotFoundPage />
+        );
+      }
+
+      return session ? <KnowledgePage session={session} /> : <NotFoundPage />;
     case '/admin/groups':
       return session ? <GroupsPage session={session} /> : <NotFoundPage />;
     case '/admin/users':

@@ -10,6 +10,7 @@ export type RoutePath =
   | '/agent/my-tickets'
   | '/agent/unassigned-tickets'
   | '/agent/tickets'
+  | '/knowledge/articles'
   | '/parc/ci-types'
   | '/parc/cis'
   | '/reports'
@@ -72,6 +73,12 @@ export const ROUTES: RouteDefinition[] = [
     description: 'Tableau de bord de suivi des tickets et KPI SLA.',
     path: '/reports',
     title: 'Tableau de bord',
+  },
+  {
+    description:
+      'Articles d aide et procedures pour resoudre les demandes courantes.',
+    path: '/knowledge/articles',
+    title: 'Base de connaissances',
   },
   {
     description: 'Gestion des types de CI du parc informatique.',
