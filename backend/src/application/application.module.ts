@@ -7,6 +7,7 @@ import { DeleteAdminUserUseCase } from './auth/use-cases/delete-admin-user.use-c
 import { GetHealthUseCase } from './health/use-cases/get-health.use-case';
 import { ListAdminUsersUseCase } from './auth/use-cases/list-admin-users.use-case';
 import { UpdateAdminUserUseCase } from './auth/use-cases/update-admin-user.use-case';
+import { UpdateAdminUserGroupsUseCase } from './auth/use-cases/update-admin-user-groups.use-case';
 import { UpdateAdminUserStatusUseCase } from './auth/use-cases/update-admin-user-status.use-case';
 import { GetReferentialCatalogUseCase } from './referentials/use-cases/get-referential-catalog.use-case';
 import { ListCategoriesUseCase } from './referentials/use-cases/list-categories.use-case';
@@ -91,6 +92,7 @@ const ticketingUseCases = [
     DeleteAdminUserUseCase,
     ListAdminUsersUseCase,
     UpdateAdminUserUseCase,
+    UpdateAdminUserGroupsUseCase,
     UpdateAdminUserStatusUseCase,
     GetAgentPerformanceReportUseCase,
     GetTicketReportingBreakdownUseCase,
@@ -106,6 +108,7 @@ const ticketingUseCases = [
     DeleteAdminUserUseCase,
     ListAdminUsersUseCase,
     UpdateAdminUserUseCase,
+    UpdateAdminUserGroupsUseCase,
     UpdateAdminUserStatusUseCase,
     GetAgentPerformanceReportUseCase,
     GetTicketReportingBreakdownUseCase,

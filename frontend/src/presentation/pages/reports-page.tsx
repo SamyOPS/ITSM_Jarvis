@@ -170,7 +170,9 @@ const EMPTY_OVERVIEW_TOTALS: ReportingOverview['totals'] = {
 };
 
 export function ReportsPage({ session }: ReportsPageProps) {
-  const [activeView, setActiveView] = useState<ReportsView>('DASHBOARD');
+  const [activeView, setActiveView] = useState<ReportsView>(() =>
+    getInitialReportsView(),
+  );
   const [isPlanningOpen, setIsPlanningOpen] = useState(false);
   const [planningTasks, setPlanningTasks] = useState<PlanningTask[]>(() =>
     readStoredPlanningTasks(session.user.id),
@@ -706,7 +708,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
           <PersonalTicketPanel
             isLoading={isLoading}
             onOpenTicket={(ticketId) =>
-              navigateTo(`/agent/tickets/${ticketId}`)
+              navigateTo(`/agent/tickets/${ticketId}?from=reports-personal`)
             }
             prioritiesById={personalPrioritiesById}
             title="Assignés à moi"
@@ -717,7 +719,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
           <PersonalTicketPanel
             isLoading={isLoading}
             onOpenTicket={(ticketId) =>
-              navigateTo(`/agent/tickets/${ticketId}`)
+              navigateTo(`/agent/tickets/${ticketId}?from=reports-personal`)
             }
             prioritiesById={personalPrioritiesById}
             title="Mes tickets créés"
@@ -1744,6 +1746,17 @@ function applyPeriodPreset(filters: ReportsFilterState): ReportsFilterState {
 
     to: range.to,
   };
+}
+
+function getInitialReportsView(): ReportsView {
+  const searchParams = new URLSearchParams(window.location.search);
+  const requestedView = searchParams.get('view');
+
+  if (requestedView === 'PERSONAL' || requestedView === 'GROUP') {
+    return requestedView;
+  }
+
+  return 'DASHBOARD';
 }
 
 function getPeriodPresetRange(preset: Exclude<PeriodPreset, ''>): {

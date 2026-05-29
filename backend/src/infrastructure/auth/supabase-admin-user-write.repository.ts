@@ -53,6 +53,7 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
       email: record.email,
       firstName: record.firstName,
       groupId: record.groupId,
+      groupIds: record.groupIds,
       id: authUserId,
       isActive: true,
       lastName: record.lastName,
@@ -85,6 +86,7 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
       email: record.email,
       firstName: record.firstName,
       groupId: record.groupId,
+      groupIds: record.groupIds,
       id: userId,
       isActive: true,
       lastName: record.lastName,
@@ -138,6 +140,35 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
     }
 
     return mapUserRow(row, row.email);
+  }
+
+  async updateUserGroups(
+    userId: string,
+    groupIds: string[],
+  ): Promise<AdminUserSummary> {
+    const config = getBackendRuntimeConfig();
+    const supabaseApiKey = config.supabaseServiceRoleKey;
+
+    if (!config.supabaseUrl || !supabaseApiKey) {
+      throw new ServiceUnavailableException(
+        'Supabase admin user group configuration is incomplete.',
+      );
+    }
+
+    await replaceUserGroups(
+      config.supabaseUrl,
+      supabaseApiKey,
+      userId,
+      groupIds,
+    );
+
+    const row = await getPublicUserById(
+      config.supabaseUrl,
+      supabaseApiKey,
+      userId,
+    );
+
+    return mapUserRow(row, row.email, groupIds);
   }
 
   async deleteUser(userId: string): Promise<void> {
@@ -322,7 +353,8 @@ async function upsertPublicUser(
     displayName: string | null;
     email: string | null;
     firstName: string | null;
-    groupId: string | null;
+    groupId?: string | null;
+    groupIds?: string[];
     id: string;
     isActive: boolean;
     lastName: string | null;
@@ -330,6 +362,19 @@ async function upsertPublicUser(
   },
 ): Promise<AdminUserSummary> {
   let response: Response;
+  const body: Record<string, unknown> = {
+    display_name: record.displayName,
+    email: record.email,
+    first_name: record.firstName,
+    id: record.id,
+    is_active: record.isActive,
+    last_name: record.lastName,
+    role: record.role,
+  };
+
+  if (record.groupId !== undefined && record.groupIds === undefined) {
+    body.group_id = record.groupId;
+  }
 
   try {
     response = await fetch(`${supabaseUrl}/rest/v1/users?on_conflict=id`, {
@@ -340,16 +385,7 @@ async function upsertPublicUser(
         'Content-Type': 'application/json',
         Prefer: 'resolution=merge-duplicates,return=representation',
       },
-      body: JSON.stringify({
-        display_name: record.displayName,
-        email: record.email,
-        first_name: record.firstName,
-        group_id: record.groupId,
-        id: record.id,
-        is_active: record.isActive,
-        last_name: record.lastName,
-        role: record.role,
-      }),
+      body: JSON.stringify(body),
     });
   } catch {
     throw new ServiceUnavailableException(
@@ -371,18 +407,150 @@ async function upsertPublicUser(
     | SupabaseUserRow;
   const row = Array.isArray(payload) ? payload[0] : payload;
 
-  return mapUserRow(row, record.email);
+  if (record.groupIds !== undefined) {
+    await replaceUserGroups(
+      supabaseUrl,
+      supabaseApiKey,
+      record.id,
+      record.groupIds,
+    );
+  }
+
+  return mapUserRow(row, record.email, record.groupIds);
+}
+
+async function getPublicUserById(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+): Promise<SupabaseUserRow> {
+  const query = new URLSearchParams({
+    id: `eq.${userId}`,
+    limit: '1',
+    select:
+      'id,email,display_name,first_name,last_name,role,group_id,is_active',
+  });
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${supabaseUrl}/rest/v1/users?${query.toString()}`, {
+      headers: {
+        apikey: supabaseApiKey,
+        Authorization: `Bearer ${supabaseApiKey}`,
+        Accept: 'application/json',
+      },
+    });
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase public user lookup is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase public user lookup returned status ${response.status}.`,
+    );
+  }
+
+  const rows = (await response.json()) as SupabaseUserRow[];
+  const row = rows[0];
+
+  if (!row) {
+    throw new BadRequestException('User does not exist.');
+  }
+
+  return row;
+}
+
+async function replaceUserGroups(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+  groupIds: string[],
+): Promise<void> {
+  let deleteResponse: Response;
+
+  try {
+    deleteResponse = await fetch(
+      `${supabaseUrl}/rest/v1/user_groups?user_id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: 'DELETE',
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          Prefer: 'return=minimal',
+        },
+      },
+    );
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase user group synchronization is unreachable.',
+    );
+  }
+
+  if (!deleteResponse.ok) {
+    const message = await deleteResponse.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase user group cleanup returned status ${deleteResponse.status}.`,
+    );
+  }
+
+  if (groupIds.length === 0) {
+    return;
+  }
+
+  for (const [index, groupId] of groupIds.entries()) {
+    let insertResponse: Response;
+
+    try {
+      insertResponse = await fetch(`${supabaseUrl}/rest/v1/user_groups`, {
+        method: 'POST',
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          group_id: groupId,
+          is_primary: index === 0,
+          user_id: userId,
+        }),
+      });
+    } catch {
+      throw new ServiceUnavailableException(
+        'Supabase user group synchronization is unreachable.',
+      );
+    }
+
+    if (!insertResponse.ok) {
+      const message = await insertResponse.text();
+
+      throw new BadRequestException(
+        message ||
+          `Supabase user group synchronization returned status ${insertResponse.status}.`,
+      );
+    }
+  }
 }
 
 function mapUserRow(
   row: SupabaseUserRow,
   email: string | null,
+  groupIds?: string[],
 ): AdminUserSummary {
   return {
     displayName: row.display_name,
     email,
     firstName: row.first_name,
-    groupId: row.group_id,
+    groupId: groupIds ? (groupIds[0] ?? null) : row.group_id,
+    groupIds: groupIds ?? (row.group_id ? [row.group_id] : []),
     id: row.id,
     isActive: row.is_active,
     lastName: row.last_name,

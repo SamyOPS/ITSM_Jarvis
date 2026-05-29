@@ -5,14 +5,10 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { ArrowLeft, Plus, RotateCcw, Search, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { UserRole } from '../../domain/auth/user-role';
-import type {
-  ReferentialCatalogSnapshot,
-  ReferentialGroup,
-} from '../../domain/referentials/referential-catalog';
 import { translateUserRole } from '../../domain/i18n/ticketing-labels';
 import {
   createAdminUser,
@@ -21,7 +17,6 @@ import {
   updateAdminUser,
   updateAdminUserStatus,
 } from '../../infrastructure/api/auth-api';
-import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
 
 type UsersPageProps = {
   session: AuthSessionSnapshot;
@@ -30,7 +25,6 @@ type UsersPageProps = {
 type UserFormState = {
   email: string;
   firstName: string;
-  groupId: string;
   lastName: string;
   password: string;
   role: UserRole;
@@ -38,36 +32,22 @@ type UserFormState = {
 
 type UserFormMode = 'create' | 'edit' | null;
 
-type UserSearchField = 'IDENTIFIER' | 'FIRST_NAME' | 'LAST_NAME' | 'GROUP';
-type UserGroupLookupSearchField = 'IDENTIFIER' | 'NAME';
+type UserSearchField = 'IDENTIFIER' | 'FIRST_NAME' | 'LAST_NAME';
 
 type UserRoleFilter = UserRole | 'ALL';
 
 const USER_ROLES: UserRole[] = ['DEMANDEUR', 'AGENT', 'ADMIN'];
 const USERS_PER_PAGE = 15;
-const USER_GROUP_LOOKUP_PAGE_SIZE = 10;
-
-const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
-  categories: [],
-  channels: [],
-  cis: [],
-  ciTypes: [],
-  groups: [],
-  priorities: [],
-};
 
 const EMPTY_USER_FORM: UserFormState = {
   email: '',
   firstName: '',
-  groupId: '',
   lastName: '',
   password: '',
   role: 'DEMANDEUR',
 };
 
 export function UsersPage({ session }: UsersPageProps) {
-  const [catalog, setCatalog] =
-    useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formState, setFormState] = useState<UserFormState>(EMPTY_USER_FORM);
   const [formMessage, setFormMessage] = useState<string | null>(null);
@@ -80,19 +60,9 @@ export function UsersPage({ session }: UsersPageProps) {
   const [searchText, setSearchText] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [showTrash, setShowTrash] = useState(false);
-  const [showGroupLookup, setShowGroupLookup] = useState(false);
   const [userPage, setUserPage] = useState(1);
-  const [userGroupLookupPage, setUserGroupLookupPage] = useState(1);
-  const [userGroupLookupSearch, setUserGroupLookupSearch] = useState('');
-  const [userGroupLookupSearchField, setUserGroupLookupSearchField] =
-    useState<UserGroupLookupSearchField>('IDENTIFIER');
   const [roleFilter, setRoleFilter] = useState<UserRoleFilter>('ALL');
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
-
-  const groupsById = useMemo(
-    () => new Map(catalog.groups.map((group) => [group.id, group])),
-    [catalog.groups],
-  );
 
   const activeUsers = users.filter((user) => user.isActive).length;
   const agentUsers = users.filter((user) => user.role === 'AGENT').length;
@@ -101,16 +71,8 @@ export function UsersPage({ session }: UsersPageProps) {
     ? (users.find((user) => user.id === selectedUserId) ?? null)
     : null;
   const filteredUsers = useMemo(
-    () =>
-      filterUsers(
-        users,
-        groupsById,
-        searchText,
-        searchField,
-        roleFilter,
-        showTrash,
-      ),
-    [groupsById, roleFilter, searchField, searchText, showTrash, users],
+    () => filterUsers(users, searchText, searchField, roleFilter, showTrash),
+    [roleFilter, searchField, searchText, showTrash, users],
   );
   const totalUserPages = Math.max(
     1,
@@ -120,39 +82,15 @@ export function UsersPage({ session }: UsersPageProps) {
     (userPage - 1) * USERS_PER_PAGE,
     userPage * USERS_PER_PAGE,
   );
-  const filteredLookupGroups = useMemo(
-    () =>
-      filterLookupGroups(
-        catalog.groups,
-        userGroupLookupSearch,
-        userGroupLookupSearchField,
-      ),
-    [catalog.groups, userGroupLookupSearch, userGroupLookupSearchField],
-  );
-  const totalUserGroupLookupPages = Math.max(
-    1,
-    Math.ceil(filteredLookupGroups.length / USER_GROUP_LOOKUP_PAGE_SIZE),
-  );
-  const paginatedLookupGroups = filteredLookupGroups.slice(
-    (userGroupLookupPage - 1) * USER_GROUP_LOOKUP_PAGE_SIZE,
-    userGroupLookupPage * USER_GROUP_LOOKUP_PAGE_SIZE,
-  );
-  const selectedFormGroup = formState.groupId
-    ? (groupsById.get(formState.groupId) ?? null)
-    : null;
 
   const loadUsers = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setErrorMessage(null);
 
     try {
-      const [nextUsers, nextCatalog] = await Promise.all([
-        fetchAdminUsers(session.accessToken),
-        fetchReferentialCatalog(),
-      ]);
+      const nextUsers = await fetchAdminUsers(session.accessToken);
 
       setUsers(nextUsers);
-      setCatalog(nextCatalog);
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -172,12 +110,6 @@ export function UsersPage({ session }: UsersPageProps) {
     setUserPage(1);
   }, [roleFilter, searchField, searchText, showTrash]);
 
-  useEffect(() => {
-    if (userGroupLookupPage > totalUserGroupLookupPages) {
-      setUserGroupLookupPage(totalUserGroupLookupPages);
-    }
-  }, [totalUserGroupLookupPages, userGroupLookupPage]);
-
   function handleFieldChange(field: keyof UserFormState, value: string): void {
     setFormState((currentState) => ({
       ...currentState,
@@ -189,14 +121,12 @@ export function UsersPage({ session }: UsersPageProps) {
   function handleSelectUser(user: AdminUserSummary): void {
     const inferredName = inferUserNameParts(user);
 
-    closeGroupLookup();
     setFormMode('edit');
     setSelectedUserId(user.id);
     setFormMessage(null);
     setFormState({
       email: user.email ?? '',
       firstName: inferredName.firstName,
-      groupId: user.groupId ?? '',
       lastName: inferredName.lastName,
       password: '',
       role: user.role,
@@ -204,7 +134,6 @@ export function UsersPage({ session }: UsersPageProps) {
   }
 
   function handleResetForm(): void {
-    closeGroupLookup();
     setFormMode(null);
     setSelectedUserId(null);
     setFormState(EMPTY_USER_FORM);
@@ -212,40 +141,10 @@ export function UsersPage({ session }: UsersPageProps) {
   }
 
   function handleOpenCreateForm(): void {
-    closeGroupLookup();
     setFormMode('create');
     setSelectedUserId(null);
     setFormState(EMPTY_USER_FORM);
     setFormMessage(null);
-  }
-
-  function openGroupLookup(): void {
-    const selectedGroupIndex = filterLookupGroups(
-      catalog.groups,
-      '',
-      'IDENTIFIER',
-    ).findIndex((group) => group.id === formState.groupId);
-
-    setShowGroupLookup(true);
-    setUserGroupLookupSearch('');
-    setUserGroupLookupSearchField('IDENTIFIER');
-    setUserGroupLookupPage(
-      selectedGroupIndex >= 0
-        ? Math.floor(selectedGroupIndex / USER_GROUP_LOOKUP_PAGE_SIZE) + 1
-        : 1,
-    );
-  }
-
-  function closeGroupLookup(): void {
-    setShowGroupLookup(false);
-    setUserGroupLookupSearch('');
-    setUserGroupLookupSearchField('IDENTIFIER');
-    setUserGroupLookupPage(1);
-  }
-
-  function handleGroupLookupSelect(group: ReferentialGroup): void {
-    handleFieldChange('groupId', group.id);
-    closeGroupLookup();
   }
 
   async function handleCreateUser(
@@ -259,7 +158,7 @@ export function UsersPage({ session }: UsersPageProps) {
       await createAdminUser(session.accessToken, {
         email: formState.email.trim(),
         firstName: normalizeOptionalText(formState.firstName),
-        groupId: normalizeOptionalText(formState.groupId),
+        groupId: null,
         lastName: normalizeOptionalText(formState.lastName),
         password: formState.password,
         role: formState.role,
@@ -291,7 +190,7 @@ export function UsersPage({ session }: UsersPageProps) {
       await updateAdminUser(session.accessToken, selectedUserId, {
         email: formState.email.trim(),
         firstName: normalizeOptionalText(formState.firstName),
-        groupId: normalizeOptionalText(formState.groupId),
+        groupId: selectedUser?.groupId ?? null,
         lastName: normalizeOptionalText(formState.lastName),
         role: formState.role,
       });
@@ -552,42 +451,6 @@ export function UsersPage({ session }: UsersPageProps) {
                     ))}
                   </select>
                 </label>
-
-                <label className="field">
-                  <span>Groupe</span>
-                  <div
-                    className={
-                      formState.groupId
-                        ? 'incident-lookup-field has-clear'
-                        : 'incident-lookup-field'
-                    }
-                  >
-                    <input
-                      className={formState.groupId ? '' : 'lookup-placeholder'}
-                      placeholder="Choisir le groupe"
-                      readOnly
-                      value={selectedFormGroup?.name ?? ''}
-                    />
-
-                    {formState.groupId ? (
-                      <button
-                        aria-label="Retirer le groupe"
-                        onClick={() => handleFieldChange('groupId', '')}
-                        type="button"
-                      >
-                        <X size={16} />
-                      </button>
-                    ) : null}
-
-                    <button
-                      aria-label="Rechercher un groupe"
-                      onClick={openGroupLookup}
-                      type="button"
-                    >
-                      <Search size={18} />
-                    </button>
-                  </div>
-                </label>
               </form>
 
               {formMessage ? (
@@ -595,147 +458,6 @@ export function UsersPage({ session }: UsersPageProps) {
               ) : null}
             </section>
           </div>
-
-          {showGroupLookup ? (
-            <div
-              aria-modal="true"
-              className="incident-lookup-overlay"
-              role="dialog"
-            >
-              <section className="incident-lookup-dialog">
-                <header className="incident-lookup-header">
-                  <div>
-                    <h3>Selectionner un groupe</h3>
-                  </div>
-
-                  <button
-                    aria-label="Fermer la selection"
-                    className="incident-lookup-close"
-                    onClick={closeGroupLookup}
-                    type="button"
-                  >
-                    <X size={18} />
-                  </button>
-                </header>
-
-                <label className="incident-lookup-search">
-                  <select
-                    aria-label="Categorie de recherche"
-                    onChange={(event) =>
-                      setUserGroupLookupSearchField(
-                        event.target.value as UserGroupLookupSearchField,
-                      )
-                    }
-                    value={userGroupLookupSearchField}
-                  >
-                    <option value="IDENTIFIER">Identifiant</option>
-                    <option value="NAME">Nom</option>
-                  </select>
-
-                  <div className="incident-lookup-search-input">
-                    <input
-                      autoFocus
-                      onChange={(event) =>
-                        setUserGroupLookupSearch(event.target.value)
-                      }
-                      placeholder="Rechercher"
-                      value={userGroupLookupSearch}
-                    />
-                  </div>
-                </label>
-
-                <div className="incident-lookup-table-scroll">
-                  <table className="incident-lookup-table">
-                    <thead>
-                      <tr>
-                        <th>Identifiant</th>
-                        <th>Nom</th>
-                        <th>Description</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {paginatedLookupGroups.length === 0 ? (
-                        <tr>
-                          <td colSpan={3}>
-                            Aucun groupe ne correspond a la recherche.
-                          </td>
-                        </tr>
-                      ) : (
-                        paginatedLookupGroups.map((group) => (
-                          <tr
-                            aria-selected={group.id === formState.groupId}
-                            className={
-                              group.id === formState.groupId
-                                ? 'incident-lookup-row is-selected'
-                                : 'incident-lookup-row'
-                            }
-                            key={group.id}
-                            onClick={() => handleGroupLookupSelect(group)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                handleGroupLookupSelect(group);
-                              }
-                            }}
-                            tabIndex={0}
-                          >
-                            <td className="incident-lookup-identity">
-                              {group.name}
-                            </td>
-                            <td>{group.name}</td>
-                            <td>{group.description ?? '-'}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <footer className="incident-lookup-pagination">
-                  <span>
-                    Page {userGroupLookupPage} sur {totalUserGroupLookupPages} -{' '}
-                    {filteredLookupGroups.length} resultat
-                    {filteredLookupGroups.length > 1 ? 's' : ''}
-                  </span>
-
-                  <div>
-                    <button
-                      className="secondary-button incident-lookup-page-button"
-                      disabled={userGroupLookupPage <= 1}
-                      onClick={() =>
-                        setUserGroupLookupPage((currentPage) =>
-                          Math.max(1, currentPage - 1),
-                        )
-                      }
-                      type="button"
-                    >
-                      Precedent
-                    </button>
-
-                    <span className="incident-lookup-current-page">
-                      {userGroupLookupPage}
-                    </span>
-
-                    <button
-                      className="secondary-button incident-lookup-page-button"
-                      disabled={
-                        userGroupLookupPage >= totalUserGroupLookupPages
-                      }
-                      onClick={() =>
-                        setUserGroupLookupPage((currentPage) =>
-                          Math.min(totalUserGroupLookupPages, currentPage + 1),
-                        )
-                      }
-                      type="button"
-                    >
-                      Suivant
-                    </button>
-                  </div>
-                </footer>
-              </section>
-            </div>
-          ) : null}
         </section>
       ) : (
         <>
@@ -802,7 +524,6 @@ export function UsersPage({ session }: UsersPageProps) {
                     <option value="IDENTIFIER">Identifiant</option>
                     <option value="FIRST_NAME">Prenom</option>
                     <option value="LAST_NAME">Nom</option>
-                    <option value="GROUP">Groupe</option>
                   </select>
 
                   <div className="ticket-list-target-search-input">
@@ -866,7 +587,6 @@ export function UsersPage({ session }: UsersPageProps) {
                         <th>Nom</th>
                         <th>Email</th>
                         <th>Role</th>
-                        <th>Groupe</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -889,7 +609,6 @@ export function UsersPage({ session }: UsersPageProps) {
                           <td>{user.lastName ?? 'Non defini'}</td>
                           <td>{user.email ?? 'Email indisponible'}</td>
                           <td>{translateUserRole(user.role)}</td>
-                          <td>{formatUserGroupName(user, groupsById)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -946,7 +665,6 @@ function normalizeOptionalText(value: string): string | null {
 
 function filterUsers(
   users: AdminUserSummary[],
-  groupsById: Map<string, { name: string }>,
   searchText: string,
   searchField: UserSearchField,
   roleFilter: UserRoleFilter,
@@ -972,9 +690,7 @@ function filterUsers(
         ? formatUserIdentifier(user)
         : searchField === 'FIRST_NAME'
           ? (user.firstName ?? '')
-          : searchField === 'LAST_NAME'
-            ? (user.lastName ?? '')
-            : formatUserGroupName(user, groupsById);
+          : (user.lastName ?? '');
 
     return normalizeSearchText(value).includes(normalizedSearch);
   });
@@ -1019,34 +735,6 @@ function formatUserIdentifier(user: AdminUserSummary): string {
     user.email ||
     user.id
   );
-}
-
-function formatUserGroupName(
-  user: AdminUserSummary,
-  groupsById: Map<string, { name: string }>,
-): string {
-  return user.groupId
-    ? (groupsById.get(user.groupId)?.name ?? user.groupId)
-    : 'Aucun groupe';
-}
-
-function filterLookupGroups(
-  groups: ReferentialGroup[],
-  searchText: string,
-  searchField: UserGroupLookupSearchField,
-): ReferentialGroup[] {
-  const normalizedSearch = normalizeSearchText(searchText);
-
-  if (!normalizedSearch) {
-    return groups;
-  }
-
-  return groups.filter((group) => {
-    const value =
-      searchField === 'IDENTIFIER' || searchField === 'NAME' ? group.name : '';
-
-    return normalizeSearchText(value).includes(normalizedSearch);
-  });
 }
 
 function mapCreateUserErrorMessage(error: unknown): string {

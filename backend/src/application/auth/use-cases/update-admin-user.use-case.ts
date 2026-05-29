@@ -10,6 +10,7 @@ export type UpdateAdminUserCommand = {
   email: string;
   firstName?: string | null;
   groupId?: string | null;
+  groupIds?: string[] | null;
   lastName?: string | null;
   role: UserRole;
   userId: string;
@@ -42,13 +43,19 @@ export class UpdateAdminUserUseCase {
       throw new BadRequestException('role is invalid.');
     }
 
+    const groupIds = normalizeGroupIds(command.groupIds, command.groupId);
+
     const record: UpdateAdminUserRecord = {
       email,
       firstName: normalizeOptionalText(command.firstName),
-      groupId: normalizeOptionalText(command.groupId),
       lastName: normalizeOptionalText(command.lastName),
       role: command.role,
     };
+
+    if (groupIds !== undefined) {
+      record.groupId = groupIds[0] ?? null;
+      record.groupIds = groupIds;
+    }
 
     return this.adminUserWriteRepository.updateUser(userId, record);
   }
@@ -60,4 +67,21 @@ function normalizeOptionalText(
   const normalized = value?.trim();
 
   return normalized ? normalized : null;
+}
+
+function normalizeGroupIds(
+  groupIds: string[] | null | undefined,
+  fallbackGroupId: string | null | undefined,
+): string[] | undefined {
+  if (groupIds !== undefined && groupIds !== null) {
+    return [...new Set(groupIds.map((id) => id.trim()).filter(Boolean))];
+  }
+
+  if (fallbackGroupId !== undefined) {
+    const groupId = normalizeOptionalText(fallbackGroupId);
+
+    return groupId ? [groupId] : [];
+  }
+
+  return undefined;
 }

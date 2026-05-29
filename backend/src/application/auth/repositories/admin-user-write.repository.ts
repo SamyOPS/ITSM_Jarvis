@@ -5,6 +5,7 @@ export type CreateAdminUserRecord = {
   email: string;
   firstName: string | null;
   groupId: string | null;
+  groupIds: string[];
   lastName: string | null;
   password: string;
   role: UserRole;
@@ -13,7 +14,8 @@ export type CreateAdminUserRecord = {
 export type UpdateAdminUserRecord = {
   email: string;
   firstName: string | null;
-  groupId: string | null;
+  groupId?: string | null;
+  groupIds?: string[];
   lastName: string | null;
   role: UserRole;
 };
@@ -26,6 +28,11 @@ export abstract class AdminUserWriteRepository {
   abstract updateUserStatus(
     userId: string,
     isActive: boolean,
+  ): Promise<AdminUserSummary>;
+
+  abstract updateUserGroups(
+    userId: string,
+    groupIds: string[],
   ): Promise<AdminUserSummary>;
 
   abstract updateUser(

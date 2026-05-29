@@ -40,6 +40,7 @@ export type AssignmentPolicyInput = {
   assignmentGroupId: string | null;
   user?: {
     groupId: string | null;
+    groupIds?: string[];
     isActive: boolean;
     role: UserRole;
   } | null;
@@ -115,11 +116,16 @@ export function assertValidAssignmentPolicy({
     throw new TicketRuleError('Assigned user must be AGENT or ADMIN.');
   }
 
-  if (!user.groupId) {
+  const userGroupIds = new Set([
+    ...(user.groupIds ?? []),
+    ...(user.groupId ? [user.groupId] : []),
+  ]);
+
+  if (userGroupIds.size === 0) {
     throw new TicketRuleError('Assigned user must belong to a support group.');
   }
 
-  if (user.groupId != assignmentGroupId) {
+  if (!userGroupIds.has(assignmentGroupId)) {
     throw new TicketRuleError(
       'Assigned user must belong to the assignment group.',
     );

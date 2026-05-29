@@ -113,6 +113,7 @@ function buildAgentPerformance(
         email: null,
         firstName: null,
         groupId: null,
+        groupIds: [],
         id: ticket.assignedToUserId,
         isActive: true,
         lastName: null,

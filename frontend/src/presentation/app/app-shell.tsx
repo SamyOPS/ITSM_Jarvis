@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Archive,
   BarChart3,
+  Bell,
   ChevronDown,
   ClipboardList,
   ClipboardX,
@@ -838,6 +839,14 @@ export function AppShell({
                 </div>
               ) : null}
             </div>
+
+            <button
+              aria-label="Notifications"
+              className="workspace-notification-button"
+              type="button"
+            >
+              <Bell size={18} strokeWidth={2} />
+            </button>
 
             <div className="workspace-profile-menu" ref={profileMenuRef}>
               <button
