@@ -208,7 +208,7 @@ export class SupabasePlanningTaskRepository implements PlanningTaskRepository {
       row.title,
       row.description,
       row.technician_id,
-      row.start_at.slice(0, 16),
+      normalizeSupabaseDateTime(row.start_at),
       row.duration_minutes,
       row.status,
       row.created_by_user_id,
@@ -222,4 +222,10 @@ export class SupabasePlanningTaskRepository implements PlanningTaskRepository {
       message || `Supabase planning table returned status ${response.status}.`,
     );
   }
+}
+
+function normalizeSupabaseDateTime(value: string): string {
+  const normalizedValue = value.replace(' ', 'T');
+
+  return normalizedValue.slice(0, 16);
 }
