@@ -368,6 +368,32 @@ a {
   position: relative;
 }
 
+.workspace-notification-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid rgba(207, 216, 234, 0.9);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #17335f;
+  box-shadow: 0 12px 28px rgba(26, 44, 78, 0.08);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    background-color 160ms ease;
+}
+
+.workspace-notification-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(25, 86, 179, 0.24);
+  box-shadow: 0 16px 34px rgba(26, 44, 78, 0.12);
+  background: #f2f7ff;
+}
+
 .workspace-ticket-menu-popover {
   position: absolute;
   top: calc(100% + 10px);
@@ -1165,6 +1191,106 @@ a {
   width: 54%;
 }
 
+.admin-group-members-card {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(207, 216, 234, 0.88);
+}
+
+.admin-group-members-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-group-members-header h4 {
+  margin: 0;
+  color: #09285a;
+  font-size: 1rem;
+}
+
+.admin-group-members-header p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.admin-group-members-scroll .ticket-table {
+  min-width: 960px;
+}
+
+.admin-group-members-table {
+  table-layout: fixed;
+}
+
+.admin-group-members-table th,
+.admin-group-members-table td {
+  vertical-align: middle;
+}
+
+.admin-group-members-table th:nth-child(1),
+.admin-group-members-table td:nth-child(1) {
+  width: 16%;
+}
+
+.admin-group-members-table th:nth-child(2),
+.admin-group-members-table td:nth-child(2),
+.admin-group-members-table th:nth-child(3),
+.admin-group-members-table td:nth-child(3) {
+  width: 14%;
+}
+
+.admin-group-members-table th:nth-child(4),
+.admin-group-members-table td:nth-child(4) {
+  width: 24%;
+}
+
+.admin-group-members-table th:nth-child(5),
+.admin-group-members-table td:nth-child(5) {
+  width: 12%;
+}
+
+.admin-group-members-table th:nth-child(6),
+.admin-group-members-table td:nth-child(6) {
+  width: 20%;
+}
+
+.admin-user-groups-table {
+  table-layout: fixed;
+}
+
+.admin-user-groups-table th,
+.admin-user-groups-table td {
+  vertical-align: middle;
+}
+
+.admin-user-groups-table th:nth-child(1),
+.admin-user-groups-table td:nth-child(1) {
+  width: 22%;
+}
+
+.admin-user-groups-table th:nth-child(2),
+.admin-user-groups-table td:nth-child(2) {
+  width: 22%;
+}
+
+.admin-user-groups-table th:nth-child(3),
+.admin-user-groups-table td:nth-child(3) {
+  width: 36%;
+}
+
+.admin-user-groups-table th:nth-child(4),
+.admin-user-groups-table td:nth-child(4) {
+  width: 20%;
+}
+
+.admin-group-remove-member-button {
+  cursor: pointer;
+}
+
 .admin-users-table .ticket-table-row.is-trash {
   background: rgba(155, 46, 61, 0.04);
 }
@@ -1205,6 +1331,10 @@ a {
 .admin-user-save-button:hover:not(:disabled) {
   background: #f2f7ff;
   border-color: rgba(158, 203, 255, 0.45);
+}
+
+.admin-group-add-button {
+  font-weight: 400;
 }
 
 .admin-detail-panel {
@@ -1952,6 +2082,28 @@ a {
   width: 22%;
 }
 
+.incident-lookup-table--group-members th:nth-child(1),
+.incident-lookup-table--group-members td:nth-child(1) {
+  width: 22%;
+}
+
+.incident-lookup-table--group-members th:nth-child(2),
+.incident-lookup-table--group-members td:nth-child(2),
+.incident-lookup-table--group-members th:nth-child(3),
+.incident-lookup-table--group-members td:nth-child(3) {
+  width: 15%;
+}
+
+.incident-lookup-table--group-members th:nth-child(4),
+.incident-lookup-table--group-members td:nth-child(4) {
+  width: 31%;
+}
+
+.incident-lookup-table--group-members th:nth-child(5),
+.incident-lookup-table--group-members td:nth-child(5) {
+  width: 17%;
+}
+
 .incident-lookup-row {
   cursor: pointer;
   transition:
@@ -2439,7 +2591,7 @@ a {
 }
 
 .ticket-table-row:hover {
-  background: rgba(239, 245, 255, 0.88);
+  background: #f7f8f9;
 }
 
 .ticket-table-primary {
@@ -5172,7 +5324,7 @@ a {
 .personal-ticket-table tbody tr:hover,
 .personal-ticket-table tbody tr:focus-visible {
   outline: none;
-  background: #f2f7ff;
+  background: #f7f8f9;
 }
 
 .personal-equipment-table tbody tr {

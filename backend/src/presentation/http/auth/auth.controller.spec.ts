@@ -5,6 +5,7 @@ import { GetAuthenticatedUserUseCase } from '../../../application/auth/use-cases
 import { GetAuthSetupUseCase } from '../../../application/auth/use-cases/get-auth-setup.use-case';
 import { ListAdminUsersUseCase } from '../../../application/auth/use-cases/list-admin-users.use-case';
 import { UpdateAdminUserUseCase } from '../../../application/auth/use-cases/update-admin-user.use-case';
+import { UpdateAdminUserGroupsUseCase } from '../../../application/auth/use-cases/update-admin-user-groups.use-case';
 import { UpdateAdminUserStatusUseCase } from '../../../application/auth/use-cases/update-admin-user-status.use-case';
 import { UserRole } from '../../../domain/auth/user-role';
 import { AuthController } from './auth.controller';
@@ -43,6 +44,12 @@ describe('AuthController', () => {
         },
         {
           provide: UpdateAdminUserUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
+          provide: UpdateAdminUserGroupsUseCase,
           useValue: {
             execute: jest.fn(),
           },
@@ -148,6 +155,9 @@ describe('AuthController', () => {
       } as unknown as UpdateAdminUserUseCase,
       {
         execute: jest.fn(),
+      } as unknown as UpdateAdminUserGroupsUseCase,
+      {
+        execute: jest.fn(),
       } as unknown as UpdateAdminUserStatusUseCase,
     );
 
@@ -186,6 +196,9 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as UpdateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserGroupsUseCase,
       {
         execute: jest.fn(),
       } as unknown as UpdateAdminUserStatusUseCase,

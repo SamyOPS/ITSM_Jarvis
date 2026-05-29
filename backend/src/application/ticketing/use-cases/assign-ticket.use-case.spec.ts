@@ -47,7 +47,8 @@ describe('AssignTicketUseCase', () => {
       });
     const updateAssignment = jest.fn().mockResolvedValue(undefined);
     const getById = jest.fn().mockResolvedValue({
-      groupId: 'group-1',
+      groupId: 'group-2',
+      groupIds: ['group-2', 'group-1'],
       id: 'agent-1',
       isActive: true,
       role: UserRole.AGENT,

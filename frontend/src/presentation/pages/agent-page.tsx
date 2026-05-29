@@ -528,13 +528,19 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     isMyTicketsPage ||
     isUnassignedTicketsPage;
   const showDetailPanel = isDetailPage || isArchiveDetailPage;
+  const detailOrigin =
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('from')
+      : null;
   const creationAttachmentFiles =
     mode === 'INCIDENT'
       ? incidentCreationAttachmentFiles
       : requestCreationAttachmentFiles;
   const detailBackPath = isArchiveDetailPage
     ? '/agent/archives'
-    : '/agent/tickets';
+    : detailOrigin === 'reports-personal'
+      ? '/reports?view=PERSONAL'
+      : '/agent/tickets';
   const searchedTickets = useMemo(
     () =>
       filterTicketsByListSearch(
@@ -1335,28 +1341,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   ): void {
     setIncidentDraft((currentDraft) => {
       if (field === 'assignedToUserId') {
-        const selectedTechnician = usersById.get(value);
-
         return {
           ...currentDraft,
 
           assignedToUserId: value,
-
-          assignmentGroupId:
-            selectedTechnician?.groupId ?? currentDraft.assignmentGroupId,
         };
       }
 
       if (field === 'assignmentGroupId') {
-        const selectedTechnician = usersById.get(currentDraft.assignedToUserId);
-
         return {
           ...currentDraft,
-
-          assignedToUserId:
-            selectedTechnician?.groupId === value
-              ? currentDraft.assignedToUserId
-              : '',
 
           assignmentGroupId: value,
         };
@@ -1385,28 +1379,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   ): void {
     setRequestDraft((currentDraft) => {
       if (field === 'assignedToUserId') {
-        const selectedTechnician = usersById.get(value);
-
         return {
           ...currentDraft,
 
           assignedToUserId: value,
-
-          assignmentGroupId:
-            selectedTechnician?.groupId ?? currentDraft.assignmentGroupId,
         };
       }
 
       if (field === 'assignmentGroupId') {
-        const selectedTechnician = usersById.get(currentDraft.assignedToUserId);
-
         return {
           ...currentDraft,
-
-          assignedToUserId:
-            selectedTechnician?.groupId === value
-              ? currentDraft.assignedToUserId
-              : '',
 
           assignmentGroupId: value,
         };
@@ -1677,18 +1659,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           showIncidentAdvancedFields &&
           (incidentAssignedToUserId || incidentAssignmentGroupId)
         ) {
-          const selectedTechnician = incidentAssignedToUserId
-            ? usersById.get(incidentAssignedToUserId)
-            : null;
-
           try {
             const updatedTicket = await assignTicket(
               session.accessToken,
               result.ticket.id,
               {
                 assignedToUserId: incidentAssignedToUserId,
-                assignmentGroupId:
-                  selectedTechnician?.groupId ?? incidentAssignmentGroupId,
+                assignmentGroupId: incidentAssignmentGroupId,
               },
             );
 
@@ -1855,18 +1832,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         showRequestAdvancedFields &&
         (requestAssignedToUserId || requestAssignmentGroupId)
       ) {
-        const selectedTechnician = requestAssignedToUserId
-          ? usersById.get(requestAssignedToUserId)
-          : null;
-
         try {
           const updatedTicket = await assignTicket(
             session.accessToken,
             result.ticket.id,
             {
               assignedToUserId: requestAssignedToUserId,
-              assignmentGroupId:
-                selectedTechnician?.groupId ?? requestAssignmentGroupId,
+              assignmentGroupId: requestAssignmentGroupId,
             },
           );
 
@@ -3424,9 +3396,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             <>
                               <option value="FIRST_NAME">Prenom</option>
                               <option value="LAST_NAME">Nom</option>
-                              {incidentLookupKind === 'ASSIGNEE' ? (
-                                <option value="GROUP">Groupe</option>
-                              ) : null}
                             </>
                           )}
                         </select>
@@ -3476,9 +3445,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 <th>Prenom</th>
                                 <th>Nom</th>
                                 <th>Email</th>
-                                {incidentLookupKind === 'ASSIGNEE' ? (
-                                  <th>Groupe</th>
-                                ) : null}
                               </tr>
                             )}
                           </thead>
@@ -3581,58 +3547,45 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               )
                             ) : paginatedIncidentLookupUsers.length === 0 ? (
                               <tr>
-                                <td
-                                  colSpan={
-                                    incidentLookupKind === 'ASSIGNEE' ? 5 : 4
-                                  }
-                                >
+                                <td colSpan={4}>
                                   Aucun utilisateur ne correspond a la
                                   recherche.
                                 </td>
                               </tr>
                             ) : (
-                              paginatedIncidentLookupUsers.map((user) => {
-                                const group = user.groupId
-                                  ? groupsById.get(user.groupId)
-                                  : null;
-
-                                return (
-                                  <tr
-                                    aria-selected={
-                                      user.id === selectedIncidentLookupUserId
+                              paginatedIncidentLookupUsers.map((user) => (
+                                <tr
+                                  aria-selected={
+                                    user.id === selectedIncidentLookupUserId
+                                  }
+                                  className={
+                                    user.id === selectedIncidentLookupUserId
+                                      ? 'incident-lookup-row is-selected'
+                                      : 'incident-lookup-row'
+                                  }
+                                  key={user.id}
+                                  onClick={() =>
+                                    handleIncidentLookupSelect(user)
+                                  }
+                                  tabIndex={0}
+                                  onKeyDown={(event) => {
+                                    if (
+                                      event.key === 'Enter' ||
+                                      event.key === ' '
+                                    ) {
+                                      event.preventDefault();
+                                      handleIncidentLookupSelect(user);
                                     }
-                                    className={
-                                      user.id === selectedIncidentLookupUserId
-                                        ? 'incident-lookup-row is-selected'
-                                        : 'incident-lookup-row'
-                                    }
-                                    key={user.id}
-                                    onClick={() =>
-                                      handleIncidentLookupSelect(user)
-                                    }
-                                    tabIndex={0}
-                                    onKeyDown={(event) => {
-                                      if (
-                                        event.key === 'Enter' ||
-                                        event.key === ' '
-                                      ) {
-                                        event.preventDefault();
-                                        handleIncidentLookupSelect(user);
-                                      }
-                                    }}
-                                  >
-                                    <td className="incident-lookup-identity">
-                                      {formatKnownUserName(user, user.id)}
-                                    </td>
-                                    <td>{user.firstName ?? 'Non renseigne'}</td>
-                                    <td>{user.lastName ?? 'Non renseigne'}</td>
-                                    <td>{user.email ?? '-'}</td>
-                                    {incidentLookupKind === 'ASSIGNEE' ? (
-                                      <td>{group?.name ?? 'Non assigne'}</td>
-                                    ) : null}
-                                  </tr>
-                                );
-                              })
+                                  }}
+                                >
+                                  <td className="incident-lookup-identity">
+                                    {formatKnownUserName(user, user.id)}
+                                  </td>
+                                  <td>{user.firstName ?? 'Non renseigne'}</td>
+                                  <td>{user.lastName ?? 'Non renseigne'}</td>
+                                  <td>{user.email ?? '-'}</td>
+                                </tr>
+                              ))
                             )}
                           </tbody>
                         </table>

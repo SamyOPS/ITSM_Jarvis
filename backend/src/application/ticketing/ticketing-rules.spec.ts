@@ -105,5 +105,20 @@ describe('ticketing rules', () => {
         }),
       ).not.toThrow();
     });
+
+    it('accepts an active agent in a secondary assignment group', () => {
+      expect(() =>
+        assertValidAssignmentPolicy({
+          assignedToUserId: 'user-1',
+          assignmentGroupId: 'group-1',
+          user: {
+            groupId: 'group-2',
+            groupIds: ['group-2', 'group-1'],
+            isActive: true,
+            role: UserRole.AGENT,
+          },
+        }),
+      ).not.toThrow();
+    });
   });
 });

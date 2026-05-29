@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import {
   IsBoolean,
+  IsArray,
   IsEmail,
   IsEnum,
   IsOptional,
@@ -25,6 +26,7 @@ import {
 import { GetAuthenticatedUserUseCase } from '../../../application/auth/use-cases/get-authenticated-user.use-case';
 import { ListAdminUsersUseCase } from '../../../application/auth/use-cases/list-admin-users.use-case';
 import { UpdateAdminUserUseCase } from '../../../application/auth/use-cases/update-admin-user.use-case';
+import { UpdateAdminUserGroupsUseCase } from '../../../application/auth/use-cases/update-admin-user-groups.use-case';
 import { UpdateAdminUserStatusUseCase } from '../../../application/auth/use-cases/update-admin-user-status.use-case';
 import { type AdminUserSummary } from '../../../domain/auth/admin-user-summary';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
@@ -47,6 +49,11 @@ class CreateAdminUserDto {
   @IsOptional()
   @IsString()
   groupId?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  groupIds?: string[] | null;
 
   @IsOptional()
   @IsString()
@@ -73,6 +80,11 @@ class UpdateAdminUserDto {
   groupId?: string | null;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  groupIds?: string[] | null;
+
+  @IsOptional()
   @IsString()
   lastName?: string | null;
 
@@ -85,6 +97,12 @@ class UpdateAdminUserStatusDto {
   isActive!: boolean;
 }
 
+class UpdateAdminUserGroupsDto {
+  @IsArray()
+  @IsString({ each: true })
+  groupIds!: string[];
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -94,6 +112,7 @@ export class AuthController {
     private readonly getAuthenticatedUserUseCase: GetAuthenticatedUserUseCase,
     private readonly listAdminUsersUseCase: ListAdminUsersUseCase,
     private readonly updateAdminUserUseCase: UpdateAdminUserUseCase,
+    private readonly updateAdminUserGroupsUseCase: UpdateAdminUserGroupsUseCase,
     private readonly updateAdminUserStatusUseCase: UpdateAdminUserStatusUseCase,
   ) {}
 
@@ -146,7 +165,8 @@ export class AuthController {
     return this.createAdminUserUseCase.execute({
       email: body.email,
       firstName: body.firstName ?? null,
-      groupId: body.groupId ?? null,
+      groupId: body.groupId,
+      groupIds: body.groupIds,
       lastName: body.lastName ?? null,
       password: body.password,
       role: body.role,
@@ -164,7 +184,8 @@ export class AuthController {
     return this.updateAdminUserUseCase.execute({
       email: body.email,
       firstName: body.firstName ?? null,
-      groupId: body.groupId ?? null,
+      groupId: body.groupId,
+      groupIds: body.groupIds,
       lastName: body.lastName ?? null,
       role: body.role,
       userId,
@@ -180,6 +201,20 @@ export class AuthController {
     @Body() body: UpdateAdminUserStatusDto,
   ): Promise<AdminUserSummary> {
     return this.updateAdminUserStatusUseCase.execute(userId, body.isActive);
+  }
+
+  @Patch('admin/users/:userId/groups')
+  @UseGuards(BearerAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
+  updateAdminUserGroups(
+    @Param('userId') userId: string,
+    @Body() body: UpdateAdminUserGroupsDto,
+  ): Promise<AdminUserSummary> {
+    return this.updateAdminUserGroupsUseCase.execute({
+      groupIds: body.groupIds,
+      userId,
+    });
   }
 
   @Delete('admin/users/:userId')

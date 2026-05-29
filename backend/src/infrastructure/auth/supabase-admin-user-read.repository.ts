@@ -21,6 +21,11 @@ type SupabaseAuthUsersPayload = {
   }>;
 };
 
+type SupabaseUserGroupRow = {
+  group_id: string;
+  user_id: string;
+};
+
 @Injectable()
 export class SupabaseAdminUserReadRepository implements AdminUserReadRepository {
   async listUsers(): Promise<AdminUserSummary[]> {
@@ -70,12 +75,17 @@ export class SupabaseAdminUserReadRepository implements AdminUserReadRepository 
       config.supabaseUrl,
       supabaseApiKey,
     );
+    const groupIdsByUserId = await listGroupIdsByUserId(
+      config.supabaseUrl,
+      supabaseApiKey,
+    );
 
     return rows.map((row) => ({
       displayName: row.display_name,
       email: emailsByUserId.get(row.id) ?? null,
       firstName: row.first_name,
       groupId: row.group_id,
+      groupIds: getUserGroupIds(row, groupIdsByUserId),
       id: row.id,
       isActive: row.is_active,
       lastName: row.last_name,
@@ -116,6 +126,62 @@ async function listAuthEmailsByUserId(
   }
 
   return emailsByUserId;
+}
+
+async function listGroupIdsByUserId(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+): Promise<Map<string, string[]>> {
+  const query = new URLSearchParams({
+    order: 'is_primary.desc,created_at.asc',
+    select: 'user_id,group_id',
+  });
+
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/user_groups?${query.toString()}`,
+      {
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          Accept: 'application/json',
+        },
+      },
+    );
+  } catch {
+    return new Map();
+  }
+
+  if (!response.ok) {
+    return new Map();
+  }
+
+  const rows = (await response.json()) as SupabaseUserGroupRow[];
+  const groupIdsByUserId = new Map<string, string[]>();
+
+  for (const row of rows) {
+    groupIdsByUserId.set(row.user_id, [
+      ...(groupIdsByUserId.get(row.user_id) ?? []),
+      row.group_id,
+    ]);
+  }
+
+  return groupIdsByUserId;
+}
+
+function getUserGroupIds(
+  row: SupabaseAdminUserRow,
+  groupIdsByUserId: Map<string, string[]>,
+): string[] {
+  const groupIds = [...(groupIdsByUserId.get(row.id) ?? [])];
+
+  if (row.group_id && !groupIds.includes(row.group_id)) {
+    groupIds.unshift(row.group_id);
+  }
+
+  return groupIds;
 }
 
 function resolveUserRole(role: string): UserRole {

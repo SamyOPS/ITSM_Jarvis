@@ -108,7 +108,8 @@ export async function fetchAdminUsers(
 export type CreateAdminUserPayload = {
   email: string;
   firstName: string | null;
-  groupId: string | null;
+  groupId?: string | null;
+  groupIds?: string[] | null;
   lastName: string | null;
   password: string;
   role: UserRole;
@@ -117,7 +118,8 @@ export type CreateAdminUserPayload = {
 export type UpdateAdminUserPayload = {
   email: string;
   firstName: string | null;
-  groupId: string | null;
+  groupId?: string | null;
+  groupIds?: string[] | null;
   lastName: string | null;
   role: UserRole;
 };
@@ -197,6 +199,34 @@ export async function updateAdminUserStatus(
     throw new Error(
       message ||
         `Admin user status update failed with status ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as AdminUserSummary;
+}
+
+export async function updateAdminUserGroups(
+  accessToken: string,
+  userId: string,
+  groupIds: string[],
+): Promise<AdminUserSummary> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/auth/admin/users/${userId}/groups`, {
+    method: 'PATCH',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ groupIds }),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message ||
+        `Admin user groups update failed with status ${response.status}`,
     );
   }
 
