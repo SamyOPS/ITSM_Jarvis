@@ -5,18 +5,24 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { ArrowLeft, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, RotateCcw, Trash2, X } from 'lucide-react';
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { UserRole } from '../../domain/auth/user-role';
 import { translateUserRole } from '../../domain/i18n/ticketing-labels';
+import type {
+  ReferentialCatalogSnapshot,
+  ReferentialGroup,
+} from '../../domain/referentials/referential-catalog';
 import {
   createAdminUser,
   deleteAdminUser,
   fetchAdminUsers,
   updateAdminUser,
+  updateAdminUserGroups,
   updateAdminUserStatus,
 } from '../../infrastructure/api/auth-api';
+import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
 
 type UsersPageProps = {
   session: AuthSessionSnapshot;
@@ -36,8 +42,20 @@ type UserSearchField = 'IDENTIFIER' | 'FIRST_NAME' | 'LAST_NAME';
 
 type UserRoleFilter = UserRole | 'ALL';
 
+type UserGroupSearchField = 'DESCRIPTION' | 'IDENTIFIER' | 'NAME';
+
 const USER_ROLES: UserRole[] = ['DEMANDEUR', 'AGENT', 'ADMIN'];
 const USERS_PER_PAGE = 15;
+const USER_GROUPS_PER_PAGE = 5;
+
+const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
+  categories: [],
+  channels: [],
+  cis: [],
+  ciTypes: [],
+  groups: [],
+  priorities: [],
+};
 
 const EMPTY_USER_FORM: UserFormState = {
   email: '',
@@ -48,14 +66,22 @@ const EMPTY_USER_FORM: UserFormState = {
 };
 
 export function UsersPage({ session }: UsersPageProps) {
+  const [catalog, setCatalog] =
+    useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formState, setFormState] = useState<UserFormState>(EMPTY_USER_FORM);
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [formMode, setFormMode] = useState<UserFormMode>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isGroupPickerOpen, setIsGroupPickerOpen] = useState(false);
+  const [isMembershipSaving, setIsMembershipSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [groupLookupPage, setGroupLookupPage] = useState(1);
+  const [groupLookupSearch, setGroupLookupSearch] = useState('');
+  const [groupLookupSearchField, setGroupLookupSearchField] =
+    useState<UserGroupSearchField>('IDENTIFIER');
   const [searchField, setSearchField] = useState<UserSearchField>('IDENTIFIER');
   const [searchText, setSearchText] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -82,15 +108,54 @@ export function UsersPage({ session }: UsersPageProps) {
     (userPage - 1) * USERS_PER_PAGE,
     userPage * USERS_PER_PAGE,
   );
+  const selectedUserGroupIds = useMemo(
+    () => (selectedUser ? getUserGroupIds(selectedUser) : []),
+    [selectedUser],
+  );
+  const selectedUserGroups = useMemo(
+    () =>
+      selectedUserGroupIds
+        .map((groupId) => catalog.groups.find((group) => group.id === groupId))
+        .filter((group): group is ReferentialGroup => Boolean(group)),
+    [catalog.groups, selectedUserGroupIds],
+  );
+  const availableGroups = useMemo(
+    () =>
+      filterUserLookupGroups(
+        catalog.groups.filter(
+          (group) => !selectedUserGroupIds.includes(group.id),
+        ),
+        groupLookupSearch,
+        groupLookupSearchField,
+      ),
+    [
+      catalog.groups,
+      groupLookupSearch,
+      groupLookupSearchField,
+      selectedUserGroupIds,
+    ],
+  );
+  const totalGroupLookupPages = Math.max(
+    1,
+    Math.ceil(availableGroups.length / USER_GROUPS_PER_PAGE),
+  );
+  const paginatedAvailableGroups = availableGroups.slice(
+    (groupLookupPage - 1) * USER_GROUPS_PER_PAGE,
+    groupLookupPage * USER_GROUPS_PER_PAGE,
+  );
 
   const loadUsers = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setErrorMessage(null);
 
     try {
-      const nextUsers = await fetchAdminUsers(session.accessToken);
+      const [nextUsers, nextCatalog] = await Promise.all([
+        fetchAdminUsers(session.accessToken),
+        fetchReferentialCatalog(),
+      ]);
 
       setUsers(nextUsers);
+      setCatalog(nextCatalog);
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -110,6 +175,12 @@ export function UsersPage({ session }: UsersPageProps) {
     setUserPage(1);
   }, [roleFilter, searchField, searchText, showTrash]);
 
+  useEffect(() => {
+    if (groupLookupPage > totalGroupLookupPages) {
+      setGroupLookupPage(totalGroupLookupPages);
+    }
+  }, [groupLookupPage, totalGroupLookupPages]);
+
   function handleFieldChange(field: keyof UserFormState, value: string): void {
     setFormState((currentState) => ({
       ...currentState,
@@ -124,6 +195,9 @@ export function UsersPage({ session }: UsersPageProps) {
     setFormMode('edit');
     setSelectedUserId(user.id);
     setFormMessage(null);
+    setIsGroupPickerOpen(false);
+    setGroupLookupPage(1);
+    setGroupLookupSearch('');
     setFormState({
       email: user.email ?? '',
       firstName: inferredName.firstName,
@@ -138,6 +212,9 @@ export function UsersPage({ session }: UsersPageProps) {
     setSelectedUserId(null);
     setFormState(EMPTY_USER_FORM);
     setFormMessage(null);
+    setIsGroupPickerOpen(false);
+    setGroupLookupPage(1);
+    setGroupLookupSearch('');
   }
 
   function handleOpenCreateForm(): void {
@@ -145,6 +222,9 @@ export function UsersPage({ session }: UsersPageProps) {
     setSelectedUserId(null);
     setFormState(EMPTY_USER_FORM);
     setFormMessage(null);
+    setIsGroupPickerOpen(false);
+    setGroupLookupPage(1);
+    setGroupLookupSearch('');
   }
 
   async function handleCreateUser(
@@ -291,7 +371,76 @@ export function UsersPage({ session }: UsersPageProps) {
     }
   }
 
-  const isSubmitting = isCreating || isDeleting || isUpdating;
+  async function handleAddUserGroup(group: ReferentialGroup): Promise<void> {
+    if (!selectedUser) {
+      return;
+    }
+
+    const nextGroupIds = [...getUserGroupIds(selectedUser), group.id];
+    const didUpdate = await updateUserGroups(selectedUser, nextGroupIds);
+
+    if (didUpdate) {
+      setIsGroupPickerOpen(false);
+      setGroupLookupPage(1);
+      setGroupLookupSearch('');
+    }
+  }
+
+  async function handleRemoveUserGroup(groupId: string): Promise<void> {
+    if (!selectedUser) {
+      return;
+    }
+
+    await updateUserGroups(
+      selectedUser,
+      getUserGroupIds(selectedUser).filter(
+        (currentGroupId) => currentGroupId !== groupId,
+      ),
+    );
+  }
+
+  async function updateUserGroups(
+    user: AdminUserSummary,
+    nextGroupIds: string[],
+  ): Promise<boolean> {
+    setIsMembershipSaving(true);
+    setFormMessage(null);
+
+    try {
+      const updatedUser = await updateAdminUserGroups(
+        session.accessToken,
+        user.id,
+        nextGroupIds,
+      );
+
+      setUsers((currentUsers) =>
+        currentUsers.map((currentUser) =>
+          currentUser.id === user.id
+            ? {
+                ...updatedUser,
+                groupId: nextGroupIds[0] ?? null,
+                groupIds: nextGroupIds,
+              }
+            : currentUser,
+        ),
+      );
+
+      return true;
+    } catch (error) {
+      setFormMessage(
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue lors de la modification des groupes de l'utilisateur",
+      );
+
+      return false;
+    } finally {
+      setIsMembershipSaving(false);
+    }
+  }
+
+  const isSubmitting =
+    isCreating || isDeleting || isUpdating || isMembershipSaving;
   const userFormId = 'admin-user-form';
   const rootClassName = formMode
     ? 'panel admin-detail-panel referentials-panel admin-users-page'
@@ -372,11 +521,12 @@ export function UsersPage({ session }: UsersPageProps) {
                       ? 'Modifier un compte'
                       : 'Ajouter un compte'}
                   </h3>
-                  <p>
-                    {selectedUserId
-                      ? 'Modifie les informations principales du compte selectionne.'
-                      : 'Ajoute un utilisateur dans Supabase Auth et dans le repertoire applicatif.'}
-                  </p>
+                  {selectedUserId ? null : (
+                    <p>
+                      Ajoute un utilisateur dans Supabase Auth et dans le
+                      repertoire applicatif.
+                    </p>
+                  )}
                 </div>
               </header>
 
@@ -389,17 +539,19 @@ export function UsersPage({ session }: UsersPageProps) {
                     : void handleCreateUser(event)
                 }
               >
-                <label className="field">
-                  <span>Email</span>
-                  <input
-                    onChange={(event) =>
-                      handleFieldChange('email', event.target.value)
-                    }
-                    required
-                    type="email"
-                    value={formState.email}
-                  />
-                </label>
+                {selectedUserId ? null : (
+                  <label className="field">
+                    <span>Email</span>
+                    <input
+                      onChange={(event) =>
+                        handleFieldChange('email', event.target.value)
+                      }
+                      required
+                      type="email"
+                      value={formState.email}
+                    />
+                  </label>
+                )}
 
                 {selectedUserId ? null : (
                   <label className="field">
@@ -416,25 +568,29 @@ export function UsersPage({ session }: UsersPageProps) {
                   </label>
                 )}
 
-                <label className="field">
-                  <span>Prenom</span>
-                  <input
-                    onChange={(event) =>
-                      handleFieldChange('firstName', event.target.value)
-                    }
-                    value={formState.firstName}
-                  />
-                </label>
+                {selectedUserId ? null : (
+                  <label className="field">
+                    <span>Prenom</span>
+                    <input
+                      onChange={(event) =>
+                        handleFieldChange('firstName', event.target.value)
+                      }
+                      value={formState.firstName}
+                    />
+                  </label>
+                )}
 
-                <label className="field">
-                  <span>Nom</span>
-                  <input
-                    onChange={(event) =>
-                      handleFieldChange('lastName', event.target.value)
-                    }
-                    value={formState.lastName}
-                  />
-                </label>
+                {selectedUserId ? null : (
+                  <label className="field">
+                    <span>Nom</span>
+                    <input
+                      onChange={(event) =>
+                        handleFieldChange('lastName', event.target.value)
+                      }
+                      value={formState.lastName}
+                    />
+                  </label>
+                )}
 
                 <label className="field">
                   <span>Role</span>
@@ -455,6 +611,226 @@ export function UsersPage({ session }: UsersPageProps) {
 
               {formMessage ? (
                 <p className="referentials-feedback">{formMessage}</p>
+              ) : null}
+
+              {selectedUser ? (
+                <section className="admin-group-members-card">
+                  <header className="admin-group-members-header">
+                    <div>
+                      <h4>Groupes de l'utilisateur</h4>
+                    </div>
+
+                    <div className="ticket-list-toolbar">
+                      <div className="ticket-list-count" aria-live="polite">
+                        <strong>{selectedUserGroups.length}</strong>
+                        <span>groupes</span>
+                      </div>
+
+                      <button
+                        className="primary-button admin-user-save-button admin-group-add-button"
+                        disabled={isMembershipSaving}
+                        onClick={() => {
+                          setIsGroupPickerOpen(true);
+                          setGroupLookupPage(1);
+                        }}
+                        type="button"
+                      >
+                        <Plus
+                          size={16}
+                          strokeWidth={2.3}
+                          style={{ marginRight: 8 }}
+                        />
+                        Ajouter
+                      </button>
+                    </div>
+                  </header>
+
+                  {isGroupPickerOpen ? (
+                    <div
+                      aria-modal="true"
+                      className="incident-lookup-overlay"
+                      role="dialog"
+                    >
+                      <section className="incident-lookup-dialog">
+                        <header className="incident-lookup-header">
+                          <h3>Selectionner un groupe</h3>
+
+                          <button
+                            aria-label="Fermer"
+                            className="incident-lookup-close"
+                            onClick={() => setIsGroupPickerOpen(false)}
+                            type="button"
+                          >
+                            <X size={18} strokeWidth={2.1} />
+                          </button>
+                        </header>
+
+                        <label className="incident-lookup-search">
+                          <select
+                            aria-label="Champ de recherche"
+                            onChange={(event) => {
+                              setGroupLookupSearchField(
+                                event.target.value as UserGroupSearchField,
+                              );
+                              setGroupLookupPage(1);
+                            }}
+                            value={groupLookupSearchField}
+                          >
+                            <option value="IDENTIFIER">Identifiant</option>
+                            <option value="NAME">Nom</option>
+                            <option value="DESCRIPTION">Description</option>
+                          </select>
+
+                          <div className="incident-lookup-search-input">
+                            <input
+                              autoFocus
+                              onChange={(event) => {
+                                setGroupLookupSearch(event.target.value);
+                                setGroupLookupPage(1);
+                              }}
+                              placeholder="Rechercher"
+                              type="search"
+                              value={groupLookupSearch}
+                            />
+                          </div>
+                        </label>
+
+                        <div className="incident-lookup-table-scroll">
+                          <table className="incident-lookup-table">
+                            <thead>
+                              <tr>
+                                <th>Identifiant</th>
+                                <th>Nom</th>
+                                <th>Description</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {paginatedAvailableGroups.length === 0 ? (
+                                <tr>
+                                  <td colSpan={3}>
+                                    Aucun groupe ne correspond a la recherche.
+                                  </td>
+                                </tr>
+                              ) : (
+                                paginatedAvailableGroups.map((group) => (
+                                  <tr
+                                    className="incident-lookup-row"
+                                    key={group.id}
+                                    onClick={() =>
+                                      void handleAddUserGroup(group)
+                                    }
+                                    onKeyDown={(event) => {
+                                      if (
+                                        event.key === 'Enter' ||
+                                        event.key === ' '
+                                      ) {
+                                        event.preventDefault();
+                                        void handleAddUserGroup(group);
+                                      }
+                                    }}
+                                    tabIndex={0}
+                                  >
+                                    <td className="incident-lookup-identity">
+                                      {group.name}
+                                    </td>
+                                    <td>{group.name}</td>
+                                    <td>{group.description ?? '-'}</td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <footer className="incident-lookup-pagination">
+                          <p>
+                            Page {groupLookupPage} sur {totalGroupLookupPages} -{' '}
+                            {availableGroups.length} resultats
+                          </p>
+
+                          <div>
+                            <button
+                              className="secondary-button incident-lookup-page-button"
+                              disabled={groupLookupPage === 1}
+                              onClick={() =>
+                                setGroupLookupPage((current) =>
+                                  Math.max(1, current - 1),
+                                )
+                              }
+                              type="button"
+                            >
+                              Precedent
+                            </button>
+                            <span className="incident-lookup-current-page">
+                              {groupLookupPage}
+                            </span>
+                            <button
+                              className="secondary-button incident-lookup-page-button"
+                              disabled={
+                                groupLookupPage === totalGroupLookupPages
+                              }
+                              onClick={() =>
+                                setGroupLookupPage((current) =>
+                                  Math.min(totalGroupLookupPages, current + 1),
+                                )
+                              }
+                              type="button"
+                            >
+                              Suivant
+                            </button>
+                          </div>
+                        </footer>
+                      </section>
+                    </div>
+                  ) : null}
+
+                  <div className="ticket-table-scroll admin-group-members-scroll">
+                    <table className="ticket-table admin-user-groups-table">
+                      <thead>
+                        <tr>
+                          <th>Identifiant</th>
+                          <th>Nom</th>
+                          <th>Description</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedUserGroups.length === 0 ? (
+                          <tr>
+                            <td colSpan={4}>
+                              Aucun groupe pour cet utilisateur.
+                            </td>
+                          </tr>
+                        ) : (
+                          selectedUserGroups.map((group) => (
+                            <tr key={group.id}>
+                              <td>
+                                <div className="admin-users-identifier">
+                                  {group.name}
+                                </div>
+                              </td>
+                              <td>{group.name}</td>
+                              <td>{group.description ?? '-'}</td>
+                              <td>
+                                <button
+                                  className="admin-user-delete-button admin-group-remove-member-button"
+                                  disabled={isMembershipSaving}
+                                  onClick={() =>
+                                    void handleRemoveUserGroup(group.id)
+                                  }
+                                  type="button"
+                                >
+                                  <Trash2 size={15} strokeWidth={2.2} />
+                                  Retirer du groupe
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
               ) : null}
             </section>
           </div>
@@ -698,6 +1074,45 @@ function filterUsers(
 
 function normalizeSearchText(value: string): string {
   return value.trim().toLocaleLowerCase('fr-FR');
+}
+
+function getUserGroupIds(user: AdminUserSummary): string[] {
+  const groupIds = user.groupIds ?? [];
+
+  if (user.groupId && !groupIds.includes(user.groupId)) {
+    return [user.groupId, ...groupIds];
+  }
+
+  return groupIds;
+}
+
+function filterUserLookupGroups(
+  groups: ReferentialGroup[],
+  searchText: string,
+  searchField: UserGroupSearchField,
+): ReferentialGroup[] {
+  const normalizedSearch = normalizeSearchText(searchText);
+
+  if (!normalizedSearch) {
+    return groups;
+  }
+
+  return groups.filter((group) =>
+    normalizeSearchText(
+      getUserLookupGroupSearchValue(group, searchField),
+    ).includes(normalizedSearch),
+  );
+}
+
+function getUserLookupGroupSearchValue(
+  group: ReferentialGroup,
+  searchField: UserGroupSearchField,
+): string {
+  if (searchField === 'NAME' || searchField === 'IDENTIFIER') {
+    return group.name;
+  }
+
+  return group.description ?? '';
 }
 
 function inferUserNameParts(user: AdminUserSummary): {

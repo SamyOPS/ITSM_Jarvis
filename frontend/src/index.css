@@ -1258,6 +1258,35 @@ a {
   width: 20%;
 }
 
+.admin-user-groups-table {
+  table-layout: fixed;
+}
+
+.admin-user-groups-table th,
+.admin-user-groups-table td {
+  vertical-align: middle;
+}
+
+.admin-user-groups-table th:nth-child(1),
+.admin-user-groups-table td:nth-child(1) {
+  width: 22%;
+}
+
+.admin-user-groups-table th:nth-child(2),
+.admin-user-groups-table td:nth-child(2) {
+  width: 22%;
+}
+
+.admin-user-groups-table th:nth-child(3),
+.admin-user-groups-table td:nth-child(3) {
+  width: 36%;
+}
+
+.admin-user-groups-table th:nth-child(4),
+.admin-user-groups-table td:nth-child(4) {
+  width: 20%;
+}
+
 .admin-group-remove-member-button {
   cursor: pointer;
 }
