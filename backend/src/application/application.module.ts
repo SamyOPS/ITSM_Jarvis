@@ -24,8 +24,10 @@ import { ManageGroupsUseCase } from './referentials/use-cases/manage-groups.use-
 import { ManagePrioritiesUseCase } from './referentials/use-cases/manage-priorities.use-case';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 import { CreateKnowledgeArticleUseCase } from './knowledge/use-cases/create-knowledge-article.use-case';
+import { DeleteKnowledgeArticleUseCase } from './knowledge/use-cases/delete-knowledge-article.use-case';
 import { GetKnowledgeArticleUseCase } from './knowledge/use-cases/get-knowledge-article.use-case';
 import { ListKnowledgeArticlesUseCase } from './knowledge/use-cases/list-knowledge-articles.use-case';
+import { UpdateKnowledgeArticleUseCase } from './knowledge/use-cases/update-knowledge-article.use-case';
 import { CreatePlanningTaskUseCase } from './planning/use-cases/create-planning-task.use-case';
 import { DeletePlanningTaskUseCase } from './planning/use-cases/delete-planning-task.use-case';
 import { ListPlanningTasksUseCase } from './planning/use-cases/list-planning-tasks.use-case';
@@ -98,8 +100,10 @@ const planningUseCases = [
 
 const knowledgeUseCases = [
   CreateKnowledgeArticleUseCase,
+  DeleteKnowledgeArticleUseCase,
   GetKnowledgeArticleUseCase,
   ListKnowledgeArticlesUseCase,
+  UpdateKnowledgeArticleUseCase,
 ];
 
 @Module({

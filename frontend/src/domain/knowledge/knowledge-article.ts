@@ -18,3 +18,10 @@ export type CreateKnowledgeArticlePayload = {
   status: KnowledgeArticleStatus;
   title: string;
 };
+
+export type UpdateKnowledgeArticlePayload = {
+  category: string;
+  content: string;
+  status: KnowledgeArticleStatus;
+  title: string;
+};
