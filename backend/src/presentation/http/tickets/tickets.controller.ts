@@ -42,14 +42,14 @@ import { BearerAuthGuard } from '../auth/bearer-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
-import type { AddTicketAttachmentDto } from './add-ticket-attachment.dto';
-import type { AddTicketCommentDto } from './add-ticket-comment.dto';
-import type { AssignTicketDto } from './assign-ticket.dto';
-import type { ChangeTicketPriorityDto } from './change-ticket-priority.dto';
-import type { ChangeTicketStatusDto } from './change-ticket-status.dto';
-import type { CreateIncidentDto } from './create-incident.dto';
-import type { CreateRequestDto } from './create-request.dto';
-import type { UpdateTicketDto } from './update-ticket.dto';
+import { AddTicketAttachmentDto } from './add-ticket-attachment.dto';
+import { AddTicketCommentDto } from './add-ticket-comment.dto';
+import { AssignTicketDto } from './assign-ticket.dto';
+import { ChangeTicketPriorityDto } from './change-ticket-priority.dto';
+import { ChangeTicketStatusDto } from './change-ticket-status.dto';
+import { CreateIncidentDto } from './create-incident.dto';
+import { CreateRequestDto } from './create-request.dto';
+import { UpdateTicketDto } from './update-ticket.dto';
 
 type SearchTicketsQueryDto = {
   assignedToUserId?: string;
