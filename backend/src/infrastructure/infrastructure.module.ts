@@ -14,6 +14,7 @@ import { ReferentialGroupReadRepository } from '../application/referentials/repo
 import { ReferentialGroupWriteRepository } from '../application/referentials/repositories/referential-group-write.repository';
 import { ReferentialPriorityReadRepository } from '../application/referentials/repositories/referential-priority-read.repository';
 import { ReferentialPriorityWriteRepository } from '../application/referentials/repositories/referential-priority-write.repository';
+import { PlanningTaskRepository } from '../application/planning/repositories/planning-task.repository';
 import { TicketAttachmentReadRepository } from '../application/ticketing/repositories/ticket-attachment-read.repository';
 import { TicketAttachmentWriteRepository } from '../application/ticketing/repositories/ticket-attachment-write.repository';
 import { TicketCommentReadRepository } from '../application/ticketing/repositories/ticket-comment-read.repository';
@@ -27,6 +28,7 @@ import { SupabaseAdminUserWriteRepository } from './auth/supabase-admin-user-wri
 import { SupabaseTokenValidatorService } from './auth/supabase-token-validator.service';
 import { SupabaseUserAssignmentProfileRepository } from './auth/supabase-user-assignment-profile.repository';
 import { SupabaseReferentialReadRepository } from './referentials/supabase-referential-read.repository';
+import { SupabasePlanningTaskRepository } from './planning/supabase-planning-task.repository';
 import { SupabaseTicketWriteRepository } from './ticketing/supabase-ticket-write.repository';
 
 const referentialRepositoryBindings = [
@@ -54,8 +56,13 @@ const referentialRepositoryBindings = [
     SupabaseAdminUserWriteRepository,
     SupabaseUserAssignmentProfileRepository,
     SupabaseReferentialReadRepository,
+    SupabasePlanningTaskRepository,
     SupabaseTicketWriteRepository,
     ...referentialRepositoryBindings,
+    {
+      provide: PlanningTaskRepository,
+      useExisting: SupabasePlanningTaskRepository,
+    },
     {
       provide: TicketWriteRepository,
       useExisting: SupabaseTicketWriteRepository,
@@ -107,6 +114,7 @@ const referentialRepositoryBindings = [
     AdminUserReadRepository,
     AdminUserWriteRepository,
     UserAssignmentProfileRepository,
+    PlanningTaskRepository,
     TicketReadRepository,
     TicketWriteRepository,
     TicketCommentReadRepository,
