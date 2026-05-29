@@ -5,6 +5,8 @@ import { AuthController } from './http/auth/auth.controller';
 import { BearerAuthGuard } from './http/auth/bearer-auth.guard';
 import { RolesGuard } from './http/auth/roles.guard';
 import { HealthController } from './http/health/health.controller';
+import { KnowledgeController } from './http/knowledge/knowledge.controller';
+import { PlanningController } from './http/planning/planning.controller';
 import { AdminReferentialsController } from './http/referentials/admin-referentials.controller';
 import { ReferentialsController } from './http/referentials/referentials.controller';
 import { ReportsController } from './http/reports/reports.controller';
@@ -17,6 +19,8 @@ import { TicketsController } from './http/tickets/tickets.controller';
     AuthController,
     ReferentialsController,
     AdminReferentialsController,
+    KnowledgeController,
+    PlanningController,
     ReportsController,
     TicketsController,
   ],

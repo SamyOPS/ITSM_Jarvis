@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+
 import {
   ArrowLeft,
   CalendarDays,
@@ -21,23 +22,26 @@ import {
 } from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
+
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 
-export type PlanningTask = {
-  description: string;
-  durationMinutes: number;
-  id: string;
-  start: string;
-  status: 'DONE' | 'TODO';
-  technicianId: string;
-  title: string;
-};
+import type { PlanningTask } from '../../domain/planning/planning-task';
 
 type PlanningPageProps = {
   onBack: () => void;
-  onTasksChange: Dispatch<SetStateAction<PlanningTask[]>>;
+
+  onDeleteTask: (taskId: string) => Promise<void> | void;
+
+  onSaveTask: (
+    task: PlanningTask,
+  ) => Promise<PlanningTask | void> | PlanningTask | void;
+
+  onToggleTaskStatus: (taskId: string) => Promise<void> | void;
+
   session: AuthSessionSnapshot;
+
   tasks: PlanningTask[];
+
   technicians: AdminUserSummary[];
 };
 
@@ -47,47 +51,72 @@ type PlanningDraft = Omit<PlanningTask, 'id'> & { id?: string };
 
 type TaskSegment = {
   day: Date;
+
   end: Date;
+
   start: Date;
+
   task: PlanningTask;
 };
 
 const DAY_START_HOUR = 8;
+
 const WORKDAY_END_HOUR = 20;
+
 const SLOT_MINUTES = 30;
+
 const PLANNING_DAY_DURATION_MINUTES = 12 * 60;
+
 const MONTH_DEFAULT_DURATION_MINUTES = PLANNING_DAY_DURATION_MINUTES;
+
 const DISPLAY_SLOT_COUNT =
   ((WORKDAY_END_HOUR - DAY_START_HOUR) * 60) / SLOT_MINUTES;
 
 const PLANNING_MODES = [
   { icon: Clock3, label: 'Jour', value: 'DAY' as const },
+
   { icon: CalendarDays, label: 'Semaine', value: 'WEEK' as const },
+
   { icon: CalendarDays, label: 'Mois', value: 'MONTH' as const },
+
   { icon: List, label: 'Planning', value: 'AGENDA' as const },
 ];
 
 const DURATION_OPTIONS = Array.from(
   { length: (PLANNING_DAY_DURATION_MINUTES * 2) / SLOT_MINUTES },
+
   (_, index) => (index + 1) * SLOT_MINUTES,
 );
 
 export function PlanningPage({
   onBack,
-  onTasksChange,
+
+  onDeleteTask,
+
+  onSaveTask,
+
+  onToggleTaskStatus,
+
   session,
+
   tasks,
+
   technicians,
 }: PlanningPageProps) {
   const [anchorDate, setAnchorDate] = useState(() => startOfDay(new Date()));
+
   const [draft, setDraft] = useState<PlanningDraft | null>(null);
+
   const [mode, setMode] = useState<PlanningMode>('WEEK');
+
   const [titleError, setTitleError] = useState<string | null>(null);
+
   const [currentTime, setCurrentTime] = useState(() => new Date());
 
   useEffect(() => {
     const intervalId = window.setInterval(
       () => setCurrentTime(new Date()),
+
       60000,
     );
 
@@ -96,45 +125,58 @@ export function PlanningPage({
 
   const segments = useMemo(
     () => tasks.flatMap((task) => buildWorkingSegments(task)),
+
     [tasks],
   );
 
   function openNewTask(
     day: Date,
+
     hour = DAY_START_HOUR,
+
     minute = 0,
+
     durationMinutes = SLOT_MINUTES,
   ): void {
     const selectedStart = setDateTime(day, hour, minute);
 
     setTitleError(null);
+
     setDraft({
       description: '',
+
       durationMinutes,
+
       start: formatDateTimeInput(selectedStart),
+
       status: 'TODO',
+
       technicianId: session.user.id,
+
       title: '',
     });
   }
 
   function openTask(task: PlanningTask): void {
     setTitleError(null);
+
     setDraft({ ...task });
   }
 
   function closeEditor(): void {
     setDraft(null);
+
     setTitleError(null);
   }
 
-  function saveTask(): void {
+  async function saveTask(): Promise<void> {
     if (!draft) {
       return;
     }
 
     if (!draft.title.trim()) {
       setTitleError('Titre obligatoire');
+
       return;
     }
 
@@ -150,46 +192,39 @@ export function PlanningPage({
 
     const nextTask: PlanningTask = {
       description: draft.description.trim(),
+
       durationMinutes: draft.durationMinutes,
+
       id: draft.id ?? window.crypto.randomUUID(),
+
       start: formatDateTimeInput(normalizeWorkingStart(parsedStart)),
+
       status: draft.status,
+
       technicianId: draft.technicianId,
+
       title: draft.title.trim(),
     };
 
-    onTasksChange((currentTasks) => {
-      const taskExists = currentTasks.some((task) => task.id === nextTask.id);
+    await onSaveTask(nextTask);
 
-      return taskExists
-        ? currentTasks.map((task) =>
-            task.id === nextTask.id ? nextTask : task,
-          )
-        : [...currentTasks, nextTask];
-    });
     setAnchorDate(startOfDay(parseDateTime(nextTask.start)));
+
     closeEditor();
   }
 
-  function deleteTask(): void {
+  async function deleteTask(): Promise<void> {
     if (!draft?.id) {
       return;
     }
 
-    onTasksChange((currentTasks) =>
-      currentTasks.filter((task) => task.id !== draft.id),
-    );
+    await onDeleteTask(draft.id);
+
     closeEditor();
   }
 
   function toggleTaskStatus(taskId: string): void {
-    onTasksChange((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId
-          ? { ...task, status: task.status === 'DONE' ? 'TODO' : 'DONE' }
-          : task,
-      ),
-    );
+    void onToggleTaskStatus(taskId);
   }
 
   function movePeriod(direction: -1 | 1): void {
@@ -197,7 +232,9 @@ export function PlanningPage({
       if (mode === 'MONTH') {
         return new Date(
           currentDate.getFullYear(),
+
           currentDate.getMonth() + direction,
+
           1,
         );
       }
@@ -223,6 +260,7 @@ export function PlanningPage({
               <ArrowLeft size={15} />
               Retour a la vue personnelle
             </button>
+
             <button
               aria-label="Periode precedente"
               onClick={() => movePeriod(-1)}
@@ -230,6 +268,7 @@ export function PlanningPage({
             >
               <ChevronLeft size={18} />
             </button>
+
             <button
               className="planning-today-button"
               onClick={() => setAnchorDate(startOfDay(new Date()))}
@@ -237,6 +276,7 @@ export function PlanningPage({
             >
               Aujourd'hui
             </button>
+
             <button
               aria-label="Periode suivante"
               onClick={() => movePeriod(1)}
@@ -266,6 +306,7 @@ export function PlanningPage({
                   type="button"
                 >
                   <Icon size={15} />
+
                   {option.label}
                 </button>
               );
@@ -327,6 +368,7 @@ export function PlanningPage({
             setDraft((currentDraft) =>
               currentDraft ? { ...currentDraft, title } : currentDraft,
             );
+
             setTitleError(null);
           }}
           titleError={titleError}
@@ -338,25 +380,39 @@ export function PlanningPage({
 
 function WeekPlanningView({
   anchorDate,
+
   currentTime,
+
   onCreate,
+
   onOpenTask,
+
   onToggleStatus,
+
   segments,
 }: {
   anchorDate: Date;
+
   currentTime: Date;
+
   onCreate: (
     day: Date,
+
     hour?: number,
+
     minute?: number,
+
     durationMinutes?: number,
   ) => void;
+
   onOpenTask: (task: PlanningTask) => void;
+
   onToggleStatus: (taskId: string) => void;
+
   segments: TaskSegment[];
 }) {
   const weekStart = startOfWeek(anchorDate);
+
   const days = Array.from({ length: 7 }, (_, index) =>
     addDays(weekStart, index),
   );
@@ -367,6 +423,7 @@ function WeekPlanningView({
         <span className="planning-time-week-label">
           Sem. {getIsoWeekNumber(weekStart)}
         </span>
+
         {days.map((day) => (
           <strong
             className={isSameDay(day, new Date()) ? 'is-today' : ''}
@@ -379,6 +436,7 @@ function WeekPlanningView({
 
       <div className="planning-time-body">
         <TimeScale />
+
         {days.map((day) => (
           <PlanningDayColumn
             currentTime={currentTime}
@@ -397,22 +455,35 @@ function WeekPlanningView({
 
 function DayPlanningView({
   anchorDate,
+
   currentTime,
+
   onCreate,
+
   onOpenTask,
+
   onToggleStatus,
+
   segments,
 }: {
   anchorDate: Date;
+
   currentTime: Date;
+
   onCreate: (
     day: Date,
+
     hour?: number,
+
     minute?: number,
+
     durationMinutes?: number,
   ) => void;
+
   onOpenTask: (task: PlanningTask) => void;
+
   onToggleStatus: (taskId: string) => void;
+
   segments: TaskSegment[];
 }) {
   return (
@@ -421,6 +492,7 @@ function DayPlanningView({
         <span className="planning-time-week-label">
           Sem. {getIsoWeekNumber(anchorDate)}
         </span>
+
         <strong className={isSameDay(anchorDate, new Date()) ? 'is-today' : ''}>
           {formatLongDate(anchorDate)}
         </strong>
@@ -428,6 +500,7 @@ function DayPlanningView({
 
       <div className="planning-time-body">
         <TimeScale />
+
         <PlanningDayColumn
           currentTime={currentTime}
           day={anchorDate}
@@ -446,6 +519,7 @@ function DayPlanningView({
 function TimeScale() {
   const marks = Array.from(
     { length: WORKDAY_END_HOUR - DAY_START_HOUR },
+
     (_, index) => (DAY_START_HOUR + index) * 60,
   );
 
@@ -462,28 +536,43 @@ function TimeScale() {
 
 function PlanningDayColumn({
   currentTime,
+
   day,
+
   onCreate,
+
   onOpenTask,
+
   onToggleStatus,
+
   segments,
 }: {
   currentTime: Date;
+
   day: Date;
+
   onCreate: (
     day: Date,
+
     hour?: number,
+
     minute?: number,
+
     durationMinutes?: number,
   ) => void;
+
   onOpenTask: (task: PlanningTask) => void;
+
   onToggleStatus: (taskId: string) => void;
+
   segments: TaskSegment[];
 }) {
   const isCurrentDay = isSameDay(day, currentTime);
+
   const currentTimeStyle = isCurrentDay
     ? getCurrentTimeIndicatorStyle(currentTime)
     : null;
+
   const positionedSegments = buildPositionedSegments(segments);
 
   return (
@@ -522,16 +611,21 @@ function PlanningDayColumn({
         <div
           className={[
             'planning-event',
+
             `planning-event--${segment.task.status.toLowerCase()}`,
+
             isShortSegment(segment) ? 'planning-event--compact' : '',
           ]
+
             .filter(Boolean)
+
             .join(' ')}
           key={`${segment.task.id}-${segment.start.toISOString()}`}
           onClick={() => onOpenTask(segment.task)}
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault();
+
               onOpenTask(segment.task);
             }
           }}
@@ -544,10 +638,13 @@ function PlanningDayColumn({
             status={segment.task.status}
             onToggle={(event) => {
               event.stopPropagation();
+
               onToggleStatus(segment.task.id);
             }}
           />
+
           <strong>{segment.task.title}</strong>
+
           <span>
             {formatClock(segment.start)} - {formatClock(segment.end)}
           </span>
@@ -559,18 +656,27 @@ function PlanningDayColumn({
 
 function MonthPlanningView({
   anchorDate,
+
   onCreate,
+
   onOpenTask,
+
   segments,
 }: {
   anchorDate: Date;
+
   onCreate: (
     day: Date,
+
     hour?: number,
+
     minute?: number,
+
     durationMinutes?: number,
   ) => void;
+
   onOpenTask: (task: PlanningTask) => void;
+
   segments: TaskSegment[];
 }) {
   const monthWeeks = buildMonthWeeks(anchorDate);
@@ -579,6 +685,7 @@ function MonthPlanningView({
     <div className="planning-month-view">
       <div className="planning-month-header">
         <span>Sem.</span>
+
         {['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'].map(
           (weekday) => (
             <strong key={weekday}>{weekday}</strong>
@@ -591,9 +698,12 @@ function MonthPlanningView({
           <strong className="planning-week-number">
             {getIsoWeekNumber(week[0])}
           </strong>
+
           {week.map((day) => {
             const daySegments = segments
+
               .filter((segment) => isSameDay(segment.day, day))
+
               .sort(
                 (first, second) =>
                   first.start.getTime() - second.start.getTime(),
@@ -603,27 +713,38 @@ function MonthPlanningView({
               <div
                 className={[
                   'planning-month-day',
+
                   day.getMonth() === anchorDate.getMonth() ? '' : 'is-outside',
+
                   isSameDay(day, new Date()) ? 'is-current-day' : '',
                 ]
+
                   .filter(Boolean)
+
                   .join(' ')}
                 key={formatDateInput(day)}
                 onClick={() =>
                   onCreate(
                     day,
+
                     DAY_START_HOUR,
+
                     0,
+
                     MONTH_DEFAULT_DURATION_MINUTES,
                   )
                 }
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
+
                     onCreate(
                       day,
+
                       DAY_START_HOUR,
+
                       0,
+
                       MONTH_DEFAULT_DURATION_MINUTES,
                     );
                   }
@@ -634,6 +755,7 @@ function MonthPlanningView({
                 <span className={isSameDay(day, new Date()) ? 'is-today' : ''}>
                   {day.getDate()}
                 </span>
+
                 <div>
                   {daySegments.slice(0, 3).map((segment) => (
                     <button
@@ -641,6 +763,7 @@ function MonthPlanningView({
                       key={`${segment.task.id}-${segment.start.toISOString()}`}
                       onClick={(event) => {
                         event.stopPropagation();
+
                         onOpenTask(segment.task);
                       }}
                       type="button"
@@ -649,9 +772,11 @@ function MonthPlanningView({
                         {formatClock(segment.start)} -{' '}
                         {formatClock(segment.end)}
                       </span>
+
                       {segment.task.title}
                     </button>
                   ))}
+
                   {daySegments.length > 3 ? (
                     <small>+ {daySegments.length - 3} autre(s)</small>
                   ) : null}
@@ -667,20 +792,31 @@ function MonthPlanningView({
 
 function AgendaPlanningView({
   onOpenTask,
+
   onToggleStatus,
+
   tasks,
+
   technicians,
 }: {
   onOpenTask: (task: PlanningTask) => void;
+
   onToggleStatus: (taskId: string) => void;
+
   tasks: PlanningTask[];
+
   technicians: AdminUserSummary[];
 }) {
   const cutoffDate = new Date();
+
   cutoffDate.setDate(cutoffDate.getDate() - 1);
+
   const visibleTasks = tasks
+
     .filter((task) => getTaskEnd(task) >= cutoffDate)
+
     .sort((first, second) => first.start.localeCompare(second.start));
+
   const taskGroups = groupTasksByDate(visibleTasks);
 
   return (
@@ -692,6 +828,7 @@ function AgendaPlanningView({
           {taskGroups.map((group) => (
             <section className="planning-agenda-group" key={group.date}>
               <h4>{formatLongDate(parseDateTime(group.tasks[0].start))}</h4>
+
               {group.tasks.map((task) => (
                 <div
                   className={
@@ -704,6 +841,7 @@ function AgendaPlanningView({
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
+
                       onOpenTask(task);
                     }
                   }}
@@ -713,15 +851,19 @@ function AgendaPlanningView({
                   <span className="planning-agenda-time">
                     {formatTaskInterval(task)}
                   </span>
+
                   <span>{task.title}</span>
+
                   <span>
                     {formatTechnicianName(task.technicianId, technicians)}
                   </span>
+
                   <StatusToggleButton
                     className="planning-agenda-status-toggle"
                     status={task.status}
                     onToggle={(event) => {
                       event.stopPropagation();
+
                       onToggleStatus(task.id);
                     }}
                   />
@@ -742,25 +884,32 @@ function groupTasksByDate(
 
   tasks.forEach((task) => {
     const date = task.start.slice(0, 10);
+
     const groupedTasks = groups.get(date) ?? [];
 
     groupedTasks.push(task);
+
     groups.set(date, groupedTasks);
   });
 
   return Array.from(groups, ([date, groupedTasks]) => ({
     date,
+
     tasks: groupedTasks,
   }));
 }
 
 function StatusToggleButton({
   className,
+
   onToggle,
+
   status,
 }: {
   className?: string;
+
   onToggle: (event: MouseEvent<HTMLButtonElement>) => void;
+
   status: PlanningTask['status'];
 }) {
   return (
@@ -772,10 +921,14 @@ function StatusToggleButton({
       }
       className={[
         'planning-status-toggle',
+
         status === 'DONE' ? 'planning-status-toggle--done' : '',
+
         className ?? '',
       ]
+
         .filter(Boolean)
+
         .join(' ')}
       onClick={onToggle}
       onKeyDown={(event) => {
@@ -790,22 +943,35 @@ function StatusToggleButton({
 
 function PlanningEditor({
   draft,
+
   onChange,
+
   onClose,
+
   onDelete,
+
   onSave,
+
   onTitleChange,
+
   titleError,
 }: {
   draft: PlanningDraft;
+
   onChange: Dispatch<SetStateAction<PlanningDraft | null>>;
+
   onClose: () => void;
+
   onDelete: () => void;
+
   onSave: () => void;
+
   onTitleChange: (title: string) => void;
+
   titleError: string | null;
 }) {
   const [isDurationMenuOpen, setIsDurationMenuOpen] = useState(false);
+
   const [startDate, startTime] = draft.start.split('T');
 
   return (
@@ -819,8 +985,10 @@ function PlanningEditor({
         <header className="planning-editor-header">
           <div>
             <h3>{draft.id ? 'Modifier la tache' : 'Ajouter une tache'}</h3>
+
             <p>Planification sur les horaires autorises de 08:00 a 20:00.</p>
           </div>
+
           <button aria-label="Fermer" onClick={onClose} type="button">
             <X size={18} />
           </button>
@@ -829,12 +997,14 @@ function PlanningEditor({
         <div className="planning-editor-form">
           <label className="field">
             <span>Titre</span>
+
             <input
               aria-invalid={Boolean(titleError)}
               onChange={(event) => onTitleChange(event.target.value)}
               placeholder="Titre de la tache"
               value={draft.title}
             />
+
             {titleError ? (
               <small className="field-error">{titleError}</small>
             ) : null}
@@ -842,17 +1012,20 @@ function PlanningEditor({
 
           <fieldset className="planning-start-field">
             <legend>Date de debut</legend>
+
             <input
               aria-label="Date de debut"
               onChange={(event) =>
                 onChange({
                   ...draft,
+
                   start: `${event.target.value}T${startTime}`,
                 })
               }
               type="date"
               value={startDate}
             />
+
             <input
               aria-label="Heure de debut"
               max="19:30"
@@ -860,6 +1033,7 @@ function PlanningEditor({
               onChange={(event) =>
                 onChange({
                   ...draft,
+
                   start: `${startDate}T${event.target.value}`,
                 })
               }
@@ -871,6 +1045,7 @@ function PlanningEditor({
 
           <label className="field planning-duration-field">
             <span>Duree</span>
+
             <button
               aria-expanded={isDurationMenuOpen}
               className="planning-duration-trigger"
@@ -878,8 +1053,10 @@ function PlanningEditor({
               type="button"
             >
               <span>{formatDuration(draft.durationMinutes)}</span>
+
               <ChevronDown size={16} />
             </button>
+
             {isDurationMenuOpen ? (
               <div className="planning-duration-options">
                 {DURATION_OPTIONS.map((duration) => (
@@ -890,6 +1067,7 @@ function PlanningEditor({
                     key={duration}
                     onClick={() => {
                       onChange({ ...draft, durationMinutes: duration });
+
                       setIsDurationMenuOpen(false);
                     }}
                     type="button"
@@ -903,6 +1081,7 @@ function PlanningEditor({
 
           <label className="field planning-description-field">
             <span>Description</span>
+
             <textarea
               onChange={(event) =>
                 onChange({ ...draft, description: event.target.value })
@@ -925,8 +1104,10 @@ function PlanningEditor({
               Supprimer
             </button>
           ) : null}
+
           <button className="primary-button" onClick={onSave} type="button">
             <Plus size={16} />
+
             {draft.id ? 'Enregistrer' : 'Ajouter'}
           </button>
         </footer>
@@ -937,23 +1118,32 @@ function PlanningEditor({
 
 function buildWorkingSegments(task: PlanningTask): TaskSegment[] {
   const segments: TaskSegment[] = [];
+
   let cursor = normalizeWorkingStart(parseDateTime(task.start));
+
   let remainingMinutes = task.durationMinutes;
 
   while (remainingMinutes > 0) {
     const endOfWorkday = setDateTime(cursor, WORKDAY_END_HOUR, 0);
+
     const availableMinutes = differenceInMinutes(endOfWorkday, cursor);
+
     const segmentMinutes = Math.min(remainingMinutes, availableMinutes);
+
     const end = addMinutes(cursor, segmentMinutes);
 
     segments.push({
       day: startOfDay(cursor),
+
       end,
+
       start: cursor,
+
       task,
     });
 
     remainingMinutes -= segmentMinutes;
+
     cursor = setDateTime(addDays(cursor, 1), DAY_START_HOUR, 0);
   }
 
@@ -968,6 +1158,7 @@ function getTaskEnd(task: PlanningTask): Date {
 
 function normalizeWorkingStart(date: Date): Date {
   const dayStart = setDateTime(date, DAY_START_HOUR, 0);
+
   const dayEnd = setDateTime(date, WORKDAY_END_HOUR, 0);
 
   if (date < dayStart) {
@@ -983,23 +1174,30 @@ function normalizeWorkingStart(date: Date): Date {
 
 function getSegmentStyle(
   segment: TaskSegment,
+
   column = 0,
+
   columnCount = 1,
 ): CSSProperties {
   const startMinutes =
     segment.start.getHours() * 60 +
     segment.start.getMinutes() -
     DAY_START_HOUR * 60;
+
   const durationMinutes = differenceInMinutes(segment.end, segment.start);
 
   return {
     height: `calc(${(durationMinutes / SLOT_MINUTES) * 34}px - 4px)`,
+
     left:
       columnCount > 1
         ? `calc(${(column / columnCount) * 100}% + 4px)`
         : undefined,
+
     right: columnCount > 1 ? 'auto' : undefined,
+
     top: `${(startMinutes / SLOT_MINUTES) * 34 + 2}px`,
+
     width: columnCount > 1 ? `calc(${100 / columnCount}% - 8px)` : undefined,
   };
 }
@@ -1014,12 +1212,17 @@ function buildPositionedSegments(
   const sortedSegments = [...segments].sort(
     (first, second) => first.start.getTime() - second.start.getTime(),
   );
+
   const positionedSegments: Array<{
     column: number;
+
     columnCount: number;
+
     segment: TaskSegment;
   }> = [];
+
   let overlappingGroup: TaskSegment[] = [];
+
   let groupEnd: Date | null = null;
 
   function addGroup(): void {
@@ -1028,10 +1231,12 @@ function buildPositionedSegments(
     }
 
     const columnEnds: Date[] = [];
+
     const groupPositions = overlappingGroup.map((segment) => {
       const availableColumn = columnEnds.findIndex(
         (end) => end <= segment.start,
       );
+
       const column =
         availableColumn === -1 ? columnEnds.length : availableColumn;
 
@@ -1039,12 +1244,15 @@ function buildPositionedSegments(
 
       return { column, segment };
     });
+
     const columnCount = columnEnds.length;
 
     positionedSegments.push(
       ...groupPositions.map(({ column, segment }) => ({
         column,
+
         columnCount,
+
         segment,
       })),
     );
@@ -1053,7 +1261,9 @@ function buildPositionedSegments(
   sortedSegments.forEach((segment) => {
     if (groupEnd && segment.start >= groupEnd) {
       addGroup();
+
       overlappingGroup = [];
+
       groupEnd = null;
     }
 
@@ -1071,7 +1281,9 @@ function buildPositionedSegments(
 
 function getCurrentTimeIndicatorStyle(date: Date) {
   const startMinutes = DAY_START_HOUR * 60;
+
   const endMinutes = WORKDAY_END_HOUR * 60;
+
   const currentMinutes = date.getHours() * 60 + date.getMinutes();
 
   if (currentMinutes < startMinutes || currentMinutes > endMinutes) {
@@ -1085,13 +1297,19 @@ function getCurrentTimeIndicatorStyle(date: Date) {
 
 function buildMonthWeeks(anchorDate: Date): Date[][] {
   const firstDay = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
+
   const lastDay = new Date(
     anchorDate.getFullYear(),
+
     anchorDate.getMonth() + 1,
+
     0,
   );
+
   const firstWeekStart = startOfWeek(firstDay);
+
   const lastWeekEnd = addDays(startOfWeek(lastDay), 6);
+
   const weeks: Date[][] = [];
 
   for (
@@ -1109,6 +1327,7 @@ function getIsoWeekNumber(date: Date): number {
   const utcDate = new Date(
     Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
   );
+
   const dayNumber = utcDate.getUTCDay() || 7;
 
   utcDate.setUTCDate(utcDate.getUTCDate() + 4 - dayNumber);
@@ -1149,9 +1368,13 @@ function differenceInMinutes(end: Date, start: Date): number {
 function setDateTime(date: Date, hour: number, minute: number): Date {
   return new Date(
     date.getFullYear(),
+
     date.getMonth(),
+
     date.getDate(),
+
     hour,
+
     minute,
   );
 }
@@ -1162,7 +1385,9 @@ function isSameDay(first: Date, second: Date): boolean {
 
 function parseDateTime(dateTime: string): Date {
   const [dateValue, timeValue] = dateTime.split('T');
+
   const [year, month, date] = dateValue.split('-').map(Number);
+
   const [hour, minute] = timeValue.split(':').map(Number);
 
   return new Date(year, month - 1, date, hour, minute);
@@ -1174,6 +1399,7 @@ function formatDateTimeInput(date: Date): string {
 
 function formatDateInput(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
+
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${date.getFullYear()}-${month}-${day}`;
@@ -1190,8 +1416,11 @@ function formatMinutes(minutes: number): string {
 function formatLongDate(date: Date): string {
   return new Intl.DateTimeFormat('fr-FR', {
     day: 'numeric',
+
     month: 'long',
+
     weekday: 'long',
+
     year: 'numeric',
   }).format(date);
 }
@@ -1199,7 +1428,9 @@ function formatLongDate(date: Date): string {
 function formatWeekdayDate(date: Date): string {
   return new Intl.DateTimeFormat('fr-FR', {
     day: '2-digit',
+
     month: '2-digit',
+
     weekday: 'short',
   }).format(date);
 }
@@ -1207,6 +1438,7 @@ function formatWeekdayDate(date: Date): string {
 function formatPeriodTitle(date: Date, mode: PlanningMode): string {
   if (mode === 'WEEK') {
     const weekStart = startOfWeek(date);
+
     const weekEnd = addDays(weekStart, 6);
 
     return `${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(weekStart)} - ${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }).format(weekEnd)}`;
@@ -1215,6 +1447,7 @@ function formatPeriodTitle(date: Date, mode: PlanningMode): string {
   if (mode === 'MONTH') {
     return new Intl.DateTimeFormat('fr-FR', {
       month: 'long',
+
       year: 'numeric',
     }).format(date);
   }
@@ -1228,8 +1461,11 @@ function formatPeriodTitle(date: Date, mode: PlanningMode): string {
 
 function formatDuration(minutes: number): string {
   const days = Math.floor(minutes / PLANNING_DAY_DURATION_MINUTES);
+
   const hours = Math.floor((minutes % PLANNING_DAY_DURATION_MINUTES) / 60);
+
   const remainingMinutes = minutes % 60;
+
   const units: string[] = [];
 
   if (days) {
@@ -1249,6 +1485,7 @@ function formatDuration(minutes: number): string {
 
 function formatTaskInterval(task: PlanningTask): string {
   const start = parseDateTime(task.start);
+
   const end = getTaskEnd(task);
 
   return `${formatClock(start)} - ${formatClock(end)} (${formatDuration(task.durationMinutes)})`;
@@ -1256,6 +1493,7 @@ function formatTaskInterval(task: PlanningTask): string {
 
 function formatTechnicianName(
   technicianId: string,
+
   technicians: AdminUserSummary[],
 ): string {
   const technician = technicians.find((user) => user.id === technicianId);

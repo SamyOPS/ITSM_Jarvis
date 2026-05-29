@@ -24,6 +24,8 @@ import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 
+import type { PlanningTask } from '../../domain/planning/planning-task';
+
 import type { ReferentialCatalogSnapshot } from '../../domain/referentials/referential-catalog';
 
 import type { TicketSummarySnapshot } from '../../domain/ticketing/ticket-summary';
@@ -35,6 +37,13 @@ import {
 
 import { fetchUserDirectory } from '../../infrastructure/api/auth-api';
 
+import {
+  createPlanningTask,
+  deletePlanningTask,
+  fetchPlanningTasks,
+  updatePlanningTask,
+} from '../../infrastructure/api/planning-api';
+
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
 
 import type {
@@ -44,14 +53,17 @@ import type {
   ReportingOverview,
   ReportingTimelineItem,
 } from '../../infrastructure/api/reporting-api';
+
 import {
   fetchReportingBreakdown,
   fetchReportingOverview,
 } from '../../infrastructure/api/reporting-api';
 
 import { searchTickets } from '../../infrastructure/api/ticketing-api';
+
 import { navigateTo } from '../../infrastructure/routing/browser-router';
-import { PlanningPage, type PlanningTask } from './planning-page';
+
+import { PlanningPage } from './planning-page';
 
 type ReportsPageProps = {
   session: AuthSessionSnapshot;
@@ -93,8 +105,11 @@ type PersonalTicketSort =
 
 type PersonalEquipmentItem = {
   id: string;
+
   name: string;
+
   serialNumber: string;
+
   type: string;
 };
 
@@ -133,39 +148,62 @@ const INITIAL_FILTERS: ReportsFilterState = {
 };
 
 const PERSONAL_TICKET_LIMIT = 8;
+
 const PERSONAL_EQUIPMENT_LIMIT = 8;
+
 const EMPTY_PERSONAL_EQUIPMENT: PersonalEquipmentItem[] = [];
+
 const PERSONAL_TICKET_SORT_OPTIONS = [
   {
     icon: BadgeAlert,
+
     label: 'Priorité opérationnelle',
+
     value: 'OPERATIONAL_PRIORITY' as const,
   },
+
   {
     icon: ArrowDown,
+
     label: "Plus récents d'abord",
+
     value: 'CREATED_AT_DESC' as const,
   },
+
   {
     icon: ArrowUp,
+
     label: "Plus anciens d'abord",
+
     value: 'CREATED_AT_ASC' as const,
   },
 ];
 
 const EMPTY_OVERVIEW_TOTALS: ReportingOverview['totals'] = {
   assigned: 0,
+
   closed: 0,
+
   incidents: 0,
+
   inProgress: 0,
+
   open: 0,
+
   overdue: 0,
+
   pending: 0,
+
   requests: 0,
+
   resolved: 0,
+
   resolutionOverdue: 0,
+
   responseOverdue: 0,
+
   total: 0,
+
   unassigned: 0,
 };
 
@@ -174,9 +212,8 @@ export function ReportsPage({ session }: ReportsPageProps) {
     getInitialReportsView(),
   );
   const [isPlanningOpen, setIsPlanningOpen] = useState(false);
-  const [planningTasks, setPlanningTasks] = useState<PlanningTask[]>(() =>
-    readStoredPlanningTasks(session.user.id),
-  );
+
+  const [planningTasks, setPlanningTasks] = useState<PlanningTask[]>([]);
 
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
@@ -217,19 +254,34 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
       try {
         const reportingFilters = buildReportingFilters(nextFilters);
+
         const [
           nextOverview,
+
           nextBreakdown,
+
           nextPersonalTickets,
+
           nextCatalog,
+
+          nextPlanningTasks,
+
           nextUsers,
         ] = await Promise.all([
           fetchReportingOverview(session.accessToken, reportingFilters),
+
           fetchReportingBreakdown(session.accessToken, reportingFilters),
+
           searchTickets(session.accessToken, {
             includeArchived: false,
           }),
+
           fetchReferentialCatalog(),
+
+          session.user.role === 'DEMANDEUR'
+            ? Promise.resolve([])
+            : fetchPlanningTasks(session.accessToken).catch(() => []),
+
           session.user.role === 'DEMANDEUR'
             ? Promise.resolve([])
             : fetchUserDirectory(session.accessToken),
@@ -243,11 +295,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
         setCatalog(nextCatalog);
 
-        setUsers(nextUsers);
-
-        setPersonalTickets(nextPersonalTickets);
-
-        setCatalog(nextCatalog);
+        setPlanningTasks(nextPlanningTasks);
 
         setUsers(nextUsers);
       } catch (error) {
@@ -271,13 +319,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
   useEffect(() => {
     void loadReports(filters);
   }, [filters, loadReports]);
-
-  useEffect(() => {
-    window.localStorage.setItem(
-      getPlanningStorageKey(session.user.id),
-      JSON.stringify(planningTasks),
-    );
-  }, [planningTasks, session.user.id]);
 
   function handleFilterChange(
     field: keyof ReportsFilterState,
@@ -323,6 +364,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
   const categoryWidgetItems = useMemo(
     () => breakdown?.ticketsByCategory ?? [],
+
     [breakdown],
   );
 
@@ -330,20 +372,28 @@ export function ReportsPage({ session }: ReportsPageProps) {
     () =>
       (breakdown?.ticketsByChannel ?? []).map((item) => ({
         ...item,
+
         name: getChannelDisplayName(item, catalog),
       })),
+
     [breakdown, catalog],
   );
 
   const agentWidgetItems = useMemo(
     () => breakdown?.ticketsByAgent ?? [],
+
     [breakdown],
   );
+
   const overviewTotals = overview?.totals ?? EMPTY_OVERVIEW_TOTALS;
+
   const overdueTotal = getOverviewOverdueTotal(overviewTotals);
+
   const timelineItems = breakdown?.ticketActivityTimeline ?? [];
+
   const statusDistributionItems = useMemo(
     () => buildStatusDistributionItems(breakdown?.ticketsByStatus ?? []),
+
     [breakdown],
   );
 
@@ -352,9 +402,11 @@ export function ReportsPage({ session }: ReportsPageProps) {
       new Map(
         catalog.priorities.map((priority) => [
           priority.id,
+
           { level: priority.level, name: priority.name },
         ]),
       ),
+
     [catalog.priorities],
   );
 
@@ -362,8 +414,10 @@ export function ReportsPage({ session }: ReportsPageProps) {
     () =>
       buildPersonalTicketPreview(
         personalTickets,
+
         (ticket) => ticket.assignedToUserId === session.user.id,
       ),
+
     [personalTickets, session.user.id],
   );
 
@@ -371,38 +425,93 @@ export function ReportsPage({ session }: ReportsPageProps) {
     () =>
       buildPersonalTicketPreview(
         personalTickets,
+
         (ticket) => ticket.createdByUserId === session.user.id,
       ),
+
     [personalTickets, session.user.id],
   );
 
-  function handlePersonalPlanningStatusToggle(taskId: string): void {
-    setPlanningTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              status: task.status === 'DONE' ? 'TODO' : 'DONE',
-            }
-          : task,
-      ),
+  async function handlePlanningTaskSave(task: PlanningTask): Promise<void> {
+    const payload = {
+      description: task.description,
+
+      durationMinutes: task.durationMinutes,
+
+      start: task.start,
+
+      status: task.status,
+
+      technicianId: task.technicianId,
+
+      title: task.title,
+    };
+
+    const existingTask = planningTasks.find(
+      (currentTask) => currentTask.id === task.id,
     );
+
+    const savedTask = existingTask
+      ? await updatePlanningTask(session.accessToken, task.id, payload)
+      : await createPlanningTask(session.accessToken, payload);
+
+    setPlanningTasks((currentTasks) =>
+      existingTask
+        ? currentTasks.map((currentTask) =>
+            currentTask.id === savedTask.id ? savedTask : currentTask,
+          )
+        : [...currentTasks, savedTask],
+    );
+  }
+
+  async function handlePlanningTaskDelete(taskId: string): Promise<void> {
+    await deletePlanningTask(session.accessToken, taskId);
+
+    setPlanningTasks((currentTasks) =>
+      currentTasks.filter((task) => task.id !== taskId),
+    );
+  }
+
+  async function handlePersonalPlanningStatusToggle(
+    taskId: string,
+  ): Promise<void> {
+    const task = planningTasks.find((currentTask) => currentTask.id === taskId);
+
+    if (!task) {
+      return;
+    }
+
+    const nextTask = {
+      ...task,
+
+      status: task.status === 'DONE' ? ('TODO' as const) : ('DONE' as const),
+    };
+
+    await handlePlanningTaskSave(nextTask);
   }
 
   const reportViews = [
     {
       icon: BarChart3,
+
       key: 'DASHBOARD' as const,
+
       label: 'Tableau de bord',
     },
+
     {
       icon: User,
+
       key: 'PERSONAL' as const,
+
       label: 'Vue personnelle',
     },
+
     {
       icon: Users,
+
       key: 'GROUP' as const,
+
       label: 'Vue groupe',
     },
   ];
@@ -411,7 +520,9 @@ export function ReportsPage({ session }: ReportsPageProps) {
     return (
       <PlanningPage
         onBack={() => setIsPlanningOpen(false)}
-        onTasksChange={setPlanningTasks}
+        onDeleteTask={handlePlanningTaskDelete}
+        onSaveTask={handlePlanningTaskSave}
+        onToggleTaskStatus={handlePersonalPlanningStatusToggle}
         session={session}
         tasks={planningTasks}
         technicians={technicians}
@@ -441,6 +552,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
               type="button"
             >
               <Icon aria-hidden="true" className="reports-view-tab-icon" />
+
               <span>{view.label}</span>
             </button>
           );
@@ -745,36 +857,56 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
 function PersonalTicketPanel({
   isLoading,
+
   onOpenTicket,
+
   prioritiesById,
+
   title,
+
   tickets,
+
   users,
 }: {
   isLoading: boolean;
+
   onOpenTicket: (ticketId: string) => void;
+
   prioritiesById: Map<string, { level: number; name: string }>;
+
   title: string;
+
   tickets: TicketSummarySnapshot[];
+
   users: AdminUserSummary[];
 }) {
   const [page, setPage] = useState(1);
+
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+
   const [sortBy, setSortBy] = useState<PersonalTicketSort>(
     'OPERATIONAL_PRIORITY',
   );
+
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
+
   const sortedTickets = useMemo(
     () => sortPersonalTickets(tickets, sortBy, prioritiesById),
+
     [prioritiesById, sortBy, tickets],
   );
+
   const totalPages = Math.max(
     1,
+
     Math.ceil(sortedTickets.length / PERSONAL_TICKET_LIMIT),
   );
+
   const visiblePage = Math.min(page, totalPages);
+
   const visibleTickets = sortedTickets.slice(
     (visiblePage - 1) * PERSONAL_TICKET_LIMIT,
+
     visiblePage * PERSONAL_TICKET_LIMIT,
   );
 
@@ -800,10 +932,12 @@ function PersonalTicketPanel({
     }
 
     document.addEventListener('mousedown', handlePointerDown);
+
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
+
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isSortMenuOpen]);
@@ -812,9 +946,11 @@ function PersonalTicketPanel({
     <article className="personal-panel personal-ticket-panel">
       <header className="personal-panel-header">
         <h3>{title}</h3>
+
         <div className="ticket-list-toolbar">
           <div className="ticket-list-count" aria-live="polite">
             <strong>{tickets.length}</strong>
+
             <span>tickets</span>
           </div>
 
@@ -831,6 +967,7 @@ function PersonalTicketPanel({
               type="button"
             >
               <span>Trier par</span>
+
               <SlidersHorizontal size={18} strokeWidth={2} />
             </button>
 
@@ -852,7 +989,9 @@ function PersonalTicketPanel({
                         key={option.value}
                         onClick={() => {
                           setSortBy(option.value);
+
                           setPage(1);
+
                           setIsSortMenuOpen(false);
                         }}
                         role="menuitemradio"
@@ -864,8 +1003,10 @@ function PersonalTicketPanel({
                         >
                           <Icon size={16} strokeWidth={2} />
                         </span>
+
                         <span className="ticket-sort-option-copy">
                           <strong>{option.label}</strong>
+
                           <span>
                             {sortBy === option.value
                               ? 'Sélection actuelle'
@@ -893,11 +1034,15 @@ function PersonalTicketPanel({
               <thead>
                 <tr>
                   <th>ID</th>
+
                   <th>Titre</th>
+
                   <th>Statut</th>
+
                   <th>Demandeur</th>
                 </tr>
               </thead>
+
               <tbody>
                 {visibleTickets.map((ticket) => (
                   <tr
@@ -906,6 +1051,7 @@ function PersonalTicketPanel({
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
+
                         onOpenTicket(ticket.id);
                       }
                     }}
@@ -914,18 +1060,23 @@ function PersonalTicketPanel({
                     <td className="personal-ticket-id">
                       {formatTicketDisplayNumber(ticket)}
                     </td>
+
                     <td className="personal-ticket-title">{ticket.title}</td>
+
                     <td>
                       <span
                         className={`personal-status personal-status--${ticket.status.toLowerCase()}`}
                       >
                         <i aria-hidden="true" />
+
                         {translateTicketStatus(ticket.status)}
                       </span>
                     </td>
+
                     <td>
                       {formatAssignedUserName(
                         ticket.requestedForUserId ?? ticket.createdByUserId,
+
                         users,
                       )}
                     </td>
@@ -934,6 +1085,7 @@ function PersonalTicketPanel({
               </tbody>
             </table>
           </div>
+
           <nav
             aria-label={`Pagination ${title}`}
             className="personal-ticket-pagination"
@@ -945,7 +1097,9 @@ function PersonalTicketPanel({
             >
               Précédent
             </button>
+
             <span aria-current="page">{visiblePage}</span>
+
             <button
               disabled={visiblePage === totalPages}
               onClick={() => setPage(visiblePage + 1)}
@@ -966,13 +1120,18 @@ function PersonalEquipmentPanel({
   equipment: PersonalEquipmentItem[];
 }) {
   const [page, setPage] = useState(1);
+
   const totalPages = Math.max(
     1,
+
     Math.ceil(equipment.length / PERSONAL_EQUIPMENT_LIMIT),
   );
+
   const visiblePage = Math.min(page, totalPages);
+
   const visibleEquipment = equipment.slice(
     (visiblePage - 1) * PERSONAL_EQUIPMENT_LIMIT,
+
     visiblePage * PERSONAL_EQUIPMENT_LIMIT,
   );
 
@@ -980,8 +1139,10 @@ function PersonalEquipmentPanel({
     <article className="personal-panel personal-equipment-panel">
       <header className="personal-panel-header">
         <h3>Mon équipement</h3>
+
         <div className="ticket-list-count" aria-live="polite">
           <strong>{equipment.length}</strong>
+
           <span>équipements</span>
         </div>
       </header>
@@ -992,11 +1153,15 @@ function PersonalEquipmentPanel({
             <thead>
               <tr>
                 <th>ID</th>
+
                 <th>Nom</th>
+
                 <th>Type</th>
+
                 <th>Numéro de série</th>
               </tr>
             </thead>
+
             <tbody>
               {visibleEquipment.length === 0 ? (
                 <tr className="personal-equipment-empty-row">
@@ -1006,8 +1171,11 @@ function PersonalEquipmentPanel({
                 visibleEquipment.map((item) => (
                   <tr key={item.id}>
                     <td className="personal-ticket-id">{item.id}</td>
+
                     <td>{item.name}</td>
+
                     <td>{item.type}</td>
+
                     <td>{item.serialNumber}</td>
                   </tr>
                 ))
@@ -1027,7 +1195,9 @@ function PersonalEquipmentPanel({
           >
             Précédent
           </button>
+
           <span aria-current="page">{visiblePage}</span>
+
           <button
             disabled={visiblePage === totalPages}
             onClick={() => setPage(visiblePage + 1)}
@@ -1043,33 +1213,48 @@ function PersonalEquipmentPanel({
 
 function PersonalPlanningPanel({
   onOpenPlanning,
+
   onToggleStatus,
+
   tasks,
+
   technicians,
 }: {
   onOpenPlanning: () => void;
-  onToggleStatus: (taskId: string) => void;
+
+  onToggleStatus: (taskId: string) => Promise<void> | void;
+
   tasks: PlanningTask[];
+
   technicians: AdminUserSummary[];
 }) {
   const today = new Date();
+
   const tomorrow = new Date(today);
+
   tomorrow.setDate(tomorrow.getDate() + 1);
+
   const todayKey = formatDateInputValue(today);
+
   const tomorrowKey = formatDateInputValue(tomorrow);
+
   const visibleTasks = tasks
+
     .filter((task) => {
       const taskDate = task.start.slice(0, 10);
 
       return taskDate === todayKey || taskDate === tomorrowKey;
     })
+
     .sort((first, second) => first.start.localeCompare(second.start));
+
   const taskGroups = groupPersonalPlanningTasksByDate(visibleTasks);
 
   return (
     <article className="personal-panel personal-planning-panel">
       <header className="personal-panel-header">
         <h3>Votre planning</h3>
+
         <button
           className="secondary-button personal-planning-open-button"
           onClick={onOpenPlanning}
@@ -1099,6 +1284,7 @@ function PersonalPlanningPanel({
                     parsePlanningDateTime(group.tasks[0].start),
                   )}
                 </h4>
+
                 {group.tasks.map((task) => (
                   <div
                     className="planning-agenda-row"
@@ -1107,6 +1293,7 @@ function PersonalPlanningPanel({
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
+
                         onOpenPlanning();
                       }
                     }}
@@ -1116,25 +1303,34 @@ function PersonalPlanningPanel({
                     <span className="planning-agenda-time">
                       {formatPersonalPlanningTaskInterval(task)}
                     </span>
+
                     <span>{task.title}</span>
+
                     <span>
                       {formatPersonalPlanningTechnicianName(
                         task.technicianId,
+
                         technicians,
                       )}
                     </span>
+
                     <button
                       className={[
                         'planning-status-toggle',
+
                         'planning-agenda-status-toggle',
+
                         task.status === 'DONE'
                           ? 'planning-status-toggle--done'
                           : '',
                       ]
+
                         .filter(Boolean)
+
                         .join(' ')}
                       onClick={(event) => {
                         event.stopPropagation();
+
                         onToggleStatus(task.id);
                       }}
                       onKeyDown={(event) => {
@@ -1232,10 +1428,14 @@ function DashboardMiniKpiCard({
 function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
   const [tooltipState, setTooltipState] = useState<{
     align: 'center' | 'left' | 'right';
+
     index: number;
+
     left: string;
+
     top: string;
   } | null>(null);
+
   const hideTooltip = () => setTooltipState(null);
 
   if (items.length === 0) {
@@ -1243,60 +1443,92 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
   }
 
   const width = 820;
+
   const height = 304;
+
   const paddingLeft = 52;
+
   const paddingRight = 18;
+
   const paddingTop = 14;
+
   const paddingBottom = 18;
 
   const maxValue = Math.max(
     ...items.flatMap((item) => [
       item.open,
+
       item.resolved,
+
       item.overdue,
+
       item.closed,
     ]),
+
     1,
   );
+
   const chartWidth = width - paddingLeft - paddingRight;
+
   const chartHeight = height - paddingTop - paddingBottom;
+
   const baselineY = paddingTop + chartHeight;
+
   const activeItem = tooltipState ? items[tooltipState.index] : null;
+
   const yTicks = Array.from({ length: 6 }, (_, index) =>
     Math.round((maxValue / 5) * (5 - index)),
   );
+
   const series = [
     {
       key: 'open' as const,
+
       color: '#4f7fb5',
+
       fill: 'rgba(79, 127, 181, 0.14)',
+
       label: 'Ouverts',
     },
+
     {
       key: 'resolved' as const,
+
       color: '#f09a34',
+
       fill: 'rgba(240, 154, 52, 0.12)',
+
       label: 'Resolus',
     },
+
     {
       key: 'overdue' as const,
+
       color: '#e55d59',
+
       fill: 'rgba(229, 93, 89, 0.1)',
+
       label: 'En retard',
     },
+
     {
       key: 'closed' as const,
+
       color: '#7cc3c6',
+
       fill: 'rgba(124, 195, 198, 0.1)',
+
       label: 'Clos',
     },
   ];
+
   return (
     <div className="reports-timeline-card" onMouseLeave={hideTooltip}>
       <div className="reports-chart-legend">
         {series.map((item) => (
           <span key={item.key}>
             <i className={`reports-line-key reports-line-key--${item.key}`} />
+
             {item.label}
           </span>
         ))}
@@ -1315,6 +1547,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
                 y1={y}
                 y2={y}
               />
+
               <text
                 className="reports-grid-label"
                 x={paddingLeft - 10}
@@ -1329,17 +1562,29 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
         {series.map((item) =>
           renderTimelineSeries(
             items,
+
             item.key,
+
             maxValue,
+
             chartWidth,
+
             chartHeight,
+
             paddingLeft,
+
             paddingTop,
+
             baselineY,
+
             item.color,
+
             item.fill,
+
             setTooltipState,
+
             items.length,
+
             hideTooltip,
           ),
         )}
@@ -1352,22 +1597,33 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
           items={[
             {
               color: '#4f7fb5',
+
               label: 'Ouverts',
+
               value: activeItem.open,
             },
+
             {
               color: '#f09a34',
+
               label: 'Resolus',
+
               value: activeItem.resolved,
             },
+
             {
               color: '#e55d59',
+
               label: 'En retard',
+
               value: activeItem.overdue,
             },
+
             {
               color: '#7cc3c6',
+
               label: 'Clos',
+
               value: activeItem.closed,
             },
           ]}
@@ -1388,47 +1644,72 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
 
 function renderTimelineSeries(
   items: ReportingTimelineItem[],
+
   key: 'closed' | 'open' | 'overdue' | 'resolved',
+
   maxValue: number,
+
   chartWidth: number,
+
   chartHeight: number,
+
   paddingLeft: number,
+
   paddingTop: number,
+
   baselineY: number,
+
   color: string,
+
   fill: string,
+
   setTooltipState: Dispatch<
     SetStateAction<{
       align: 'center' | 'left' | 'right';
+
       index: number;
+
       left: string;
+
       top: string;
     } | null>
   >,
+
   itemCount: number,
+
   hideTooltip: () => void,
 ) {
   const points = buildTimelinePoints(
     items,
+
     key,
+
     maxValue,
+
     chartWidth,
+
     chartHeight,
+
     paddingLeft,
+
     paddingTop,
   );
+
   const linePath = buildSmoothSvgPath(points);
+
   const areaPath = buildAreaSvgPath(points, baselineY);
 
   return (
     <g key={key}>
       <path className="reports-area-path" d={areaPath} fill={fill} />
+
       <path
         className="reports-line-path"
         d={linePath}
         fill="none"
         stroke={color}
       />
+
       {points.map((point, index) => (
         <g key={`${key}-${index}`}>
           <circle
@@ -1447,23 +1728,32 @@ function renderTimelineSeries(
               }
 
               const containerRect = container.getBoundingClientRect();
+
               const align = index >= itemCount - 1 ? 'right' : 'left';
+
               const topPx = clampNumber(
                 event.clientY - containerRect.top - 16,
+
                 52,
+
                 Math.max(52, containerRect.height - 160),
               );
+
               const horizontalOffsetPx = align === 'left' ? 28 : -28;
 
               setTooltipState({
                 align,
+
                 index,
+
                 left: `${point.x + horizontalOffsetPx}px`,
+
                 top: `${topPx}px`,
               });
             }}
             r="16"
           />
+
           <circle
             className="reports-line-point"
             cx={point.x}
@@ -1479,17 +1769,24 @@ function renderTimelineSeries(
 
 function buildTimelinePoints(
   items: ReportingTimelineItem[],
+
   key: 'closed' | 'open' | 'overdue' | 'resolved',
+
   maxValue: number,
+
   chartWidth: number,
+
   chartHeight: number,
+
   paddingLeft: number,
+
   paddingTop: number,
 ): Array<{ x: number; y: number }> {
   const denominator = Math.max(1, items.length - 1);
 
   return items.map((item, index) => {
     const x = paddingLeft + (chartWidth / denominator) * index;
+
     const y =
       paddingTop +
       chartHeight -
@@ -1512,10 +1809,15 @@ function buildSmoothSvgPath(points: Array<{ x: number; y: number }>): string {
 
   for (let index = 1; index < points.length; index += 1) {
     const previous = points[index - 1];
+
     const current = points[index];
+
     const distanceX = current.x - previous.x;
+
     const tension = 0.32;
+
     const controlX1 = previous.x + distanceX * tension;
+
     const controlX2 = current.x - distanceX * tension;
 
     path += ` C ${controlX1} ${previous.y}, ${controlX2} ${current.y}, ${current.x} ${current.y}`;
@@ -1526,6 +1828,7 @@ function buildSmoothSvgPath(points: Array<{ x: number; y: number }>): string {
 
 function buildAreaSvgPath(
   points: Array<{ x: number; y: number }>,
+
   baselineY: number,
 ): string {
   if (points.length === 0) {
@@ -1533,7 +1836,9 @@ function buildAreaSvgPath(
   }
 
   const linePath = buildSmoothSvgPath(points);
+
   const firstPoint = points[0];
+
   const lastPoint = points[points.length - 1];
 
   return `${linePath} L ${lastPoint.x} ${baselineY} L ${firstPoint.x} ${baselineY} Z`;
@@ -1544,8 +1849,11 @@ function DashboardStatusDistributionChart({
 }: {
   items: Array<{
     color: string;
+
     count: number;
+
     key: 'closed' | 'open' | 'pending' | 'progress' | 'resolved';
+
     label: string;
   }>;
 }) {
@@ -1563,6 +1871,7 @@ function DashboardStatusDistributionChart({
             <i
               className={`reports-status-key reports-status-key--${item.key}`}
             />
+
             {item.label}
           </span>
         ))}
@@ -1575,6 +1884,7 @@ function DashboardStatusDistributionChart({
               <i
                 className={`reports-status-key reports-status-key--${item.key}`}
               />
+
               <span>{item.label}</span>
             </div>
 
@@ -1599,17 +1909,27 @@ function DashboardStatusDistributionChart({
 
 function ChartTooltip({
   align = 'center',
+
   className,
+
   items,
+
   left,
+
   top,
+
   title,
 }: {
   align?: 'center' | 'left' | 'right';
+
   className?: string;
+
   items: Array<{ color: string; label: string; value: number }>;
+
   left: string;
+
   top?: string;
+
   title: string;
 }) {
   return (
@@ -1622,13 +1942,16 @@ function ChartTooltip({
       style={{ left, top } as CSSProperties}
     >
       <strong>{formatTooltipPeriod(title)}</strong>
+
       <div className="reports-chart-tooltip-list">
         {items.map((item) => (
           <div className="reports-chart-tooltip-row" key={item.label}>
             <span>
               <i style={{ background: item.color } as CSSProperties} />
+
               {item.label}
             </span>
+
             <b>{formatNumber(item.value)}</b>
           </div>
         ))}
@@ -1765,9 +2088,12 @@ function getPeriodPresetRange(preset: Exclude<PeriodPreset, ''>): {
   to: string;
 } {
   const today = new Date();
+
   const endOfToday = new Date(
     today.getFullYear(),
+
     today.getMonth(),
+
     today.getDate(),
   );
 
@@ -1776,6 +2102,7 @@ function getPeriodPresetRange(preset: Exclude<PeriodPreset, ''>): {
       from: formatDateInputValue(
         new Date(endOfToday.getFullYear(), endOfToday.getMonth() - 2, 1),
       ),
+
       to: formatDateInputValue(endOfToday),
     };
   }
@@ -1785,17 +2112,20 @@ function getPeriodPresetRange(preset: Exclude<PeriodPreset, ''>): {
       from: formatDateInputValue(
         new Date(endOfToday.getFullYear(), endOfToday.getMonth() - 5, 1),
       ),
+
       to: formatDateInputValue(endOfToday),
     };
   }
 
   const days = preset === 'LAST_7_DAYS' ? 6 : 29;
+
   const start = new Date(endOfToday);
 
   start.setDate(start.getDate() - days);
 
   return {
     from: formatDateInputValue(start),
+
     to: formatDateInputValue(endOfToday),
   };
 }
@@ -1817,8 +2147,11 @@ function parsePlanningDateTime(dateTime: string): Date {
 function formatPersonalPlanningLongDate(date: Date): string {
   return new Intl.DateTimeFormat('fr-FR', {
     day: 'numeric',
+
     month: 'long',
+
     weekday: 'long',
+
     year: 'numeric',
   }).format(date);
 }
@@ -1826,12 +2159,14 @@ function formatPersonalPlanningLongDate(date: Date): string {
 function formatPersonalPlanningClock(date: Date): string {
   return new Intl.DateTimeFormat('fr-FR', {
     hour: '2-digit',
+
     minute: '2-digit',
   }).format(date);
 }
 
 function getPersonalPlanningTaskEnd(task: PlanningTask): Date {
   const end = new Date(task.start);
+
   end.setMinutes(end.getMinutes() + task.durationMinutes);
 
   return end;
@@ -1839,6 +2174,7 @@ function getPersonalPlanningTaskEnd(task: PlanningTask): Date {
 
 function formatPersonalPlanningTaskInterval(task: PlanningTask): string {
   const start = parsePlanningDateTime(task.start);
+
   const end = getPersonalPlanningTaskEnd(task);
 
   return `${formatPersonalPlanningClock(start)} - ${formatPersonalPlanningClock(end)}`;
@@ -1846,6 +2182,7 @@ function formatPersonalPlanningTaskInterval(task: PlanningTask): string {
 
 function formatPersonalPlanningTechnicianName(
   technicianId: string,
+
   technicians: AdminUserSummary[],
 ): string {
   const technician = technicians.find((user) => user.id === technicianId);
@@ -1860,62 +2197,24 @@ function groupPersonalPlanningTasksByDate(
 
   tasks.forEach((task) => {
     const date = task.start.slice(0, 10);
+
     const groupedTasks = groups.get(date) ?? [];
 
     groupedTasks.push(task);
+
     groups.set(date, groupedTasks);
   });
 
   return Array.from(groups, ([date, groupedTasks]) => ({
     date,
+
     tasks: groupedTasks,
   }));
 }
 
-function getPlanningStorageKey(userId: string): string {
-  return `vision:planning:${userId}`;
-}
-
-function readStoredPlanningTasks(userId: string): PlanningTask[] {
-  try {
-    const rawValue = window.localStorage.getItem(getPlanningStorageKey(userId));
-
-    if (!rawValue) {
-      return [];
-    }
-
-    const parsedValue: unknown = JSON.parse(rawValue);
-
-    if (!Array.isArray(parsedValue)) {
-      return [];
-    }
-
-    return parsedValue.filter(isPlanningTask);
-  } catch {
-    return [];
-  }
-}
-
-function isPlanningTask(value: unknown): value is PlanningTask {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  const task = value as Partial<PlanningTask>;
-
-  return (
-    typeof task.id === 'string' &&
-    typeof task.title === 'string' &&
-    typeof task.technicianId === 'string' &&
-    (task.status === 'TODO' || task.status === 'DONE') &&
-    typeof task.start === 'string' &&
-    typeof task.durationMinutes === 'number' &&
-    typeof task.description === 'string'
-  );
-}
-
 function buildPersonalTicketPreview(
   tickets: TicketSummarySnapshot[],
+
   predicate: (ticket: TicketSummarySnapshot) => boolean,
 ): TicketSummarySnapshot[] {
   return tickets.filter((ticket) => !ticket.archivedAt && predicate(ticket));
@@ -1923,7 +2222,9 @@ function buildPersonalTicketPreview(
 
 function sortPersonalTickets(
   tickets: TicketSummarySnapshot[],
+
   sortBy: PersonalTicketSort,
+
   prioritiesById: Map<string, { level: number; name: string }>,
 ): TicketSummarySnapshot[] {
   const matchingTickets = [...tickets];
@@ -1946,6 +2247,7 @@ function sortPersonalTickets(
 
   return [...matchingTickets].sort((left, right) => {
     const leftScore = getPersonalTicketOperationalScore(left, prioritiesById);
+
     const rightScore = getPersonalTicketOperationalScore(right, prioritiesById);
 
     return (
@@ -1974,19 +2276,28 @@ function formatTicketDisplayNumber(ticket: TicketSummarySnapshot): string {
 
 function getPersonalTicketOperationalScore(
   ticket: TicketSummarySnapshot,
+
   prioritiesById: Map<string, { level: number; name: string }>,
 ): {
   createdAt: number;
+
   nextDueAt: number;
+
   priorityLevel: number;
+
   slaRank: number;
+
   statusRank: number;
 } {
   return {
     createdAt: personalToTimestamp(ticket.createdAt),
+
     nextDueAt: getPersonalNextDueTimestamp(ticket),
+
     priorityLevel: prioritiesById.get(ticket.priorityId)?.level ?? 0,
+
     slaRank: getPersonalSlaRank(ticket),
+
     statusRank: getPersonalStatusRank(ticket.status),
   };
 }
@@ -1994,9 +2305,13 @@ function getPersonalTicketOperationalScore(
 function getPersonalStatusRank(status: string): number {
   const ranks: Record<string, number> = {
     IN_PROGRESS: 0,
+
     PENDING: 1,
+
     OPEN: 2,
+
     RESOLVED: 3,
+
     CLOSED: 4,
   };
 
@@ -2023,9 +2338,11 @@ function getPersonalSlaRank(ticket: TicketSummarySnapshot): number {
 
 function getPersonalNextDueTimestamp(ticket: TicketSummarySnapshot): number {
   const timestamps = [ticket.responseDueAt, ticket.resolutionDueAt]
+
     .map((value) =>
       value ? personalToTimestamp(value) : Number.POSITIVE_INFINITY,
     )
+
     .filter((value) => Number.isFinite(value));
 
   return Math.min(...timestamps, Number.POSITIVE_INFINITY);
@@ -2057,6 +2374,7 @@ function formatUserName(user: AdminUserSummary): string {
 
 function formatAssignedUserName(
   userId: string | null | undefined,
+
   users: AdminUserSummary[],
 ): string {
   if (!userId) {
@@ -2087,6 +2405,7 @@ function formatChartValue(value: number): string {
     return (
       new Intl.NumberFormat('fr-FR', {
         maximumFractionDigits: 1,
+
         minimumFractionDigits: value % 1000 === 0 ? 0 : 1,
       }).format(value / 1000) + 'K'
     );
@@ -2104,6 +2423,7 @@ function formatTooltipPeriod(value: string): string {
 
   return new Intl.DateTimeFormat('fr-FR', {
     month: '2-digit',
+
     year: 'numeric',
   }).format(date);
 }
@@ -2144,8 +2464,11 @@ function getChannelDisplayName(
 
 function buildStatusDistributionItems(items: ReportingBreakdownItem[]): Array<{
   color: string;
+
   count: number;
+
   key: 'closed' | 'open' | 'pending' | 'progress' | 'resolved';
+
   label: string;
 }> {
   const countsByStatus = new Map(
@@ -2155,32 +2478,51 @@ function buildStatusDistributionItems(items: ReportingBreakdownItem[]): Array<{
   return [
     {
       color: '#4f7fb5',
+
       count: countsByStatus.get('OPEN') ?? 0,
+
       key: 'open',
+
       label: 'Ouvert',
     },
+
     {
       color: '#22c55e',
+
       count: countsByStatus.get('IN_PROGRESS') ?? 0,
+
       key: 'progress',
+
       label: 'En cours',
     },
+
     {
       color: '#f59e0b',
+
       count: countsByStatus.get('PENDING') ?? 0,
+
       key: 'pending',
+
       label: 'En attente',
     },
+
     {
       color: '#2bb8c9',
+
       count: countsByStatus.get('RESOLVED') ?? 0,
+
       key: 'resolved',
+
       label: 'Resolu',
     },
+
     {
       color: '#64748b',
+
       count: countsByStatus.get('CLOSED') ?? 0,
+
       key: 'closed',
+
       label: 'Clos',
     },
   ];
@@ -2189,12 +2531,19 @@ function buildStatusDistributionItems(items: ReportingBreakdownItem[]): Array<{
 function buildReportingFilters(filters: ReportsFilterState): ReportingFilters {
   return {
     assignedToUserId: normalizeOptionalText(filters.assignedToUserId),
+
     assignmentGroupId: normalizeOptionalText(filters.assignmentGroupId),
+
     categoryId: normalizeOptionalText(filters.categoryId),
+
     from: normalizeOptionalText(filters.from),
+
     priorityId: normalizeOptionalText(filters.priorityId),
+
     status: filters.status || null,
+
     to: normalizeOptionalText(filters.to),
+
     type: filters.type || null,
   };
 }
