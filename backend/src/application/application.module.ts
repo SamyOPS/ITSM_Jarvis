@@ -22,6 +22,9 @@ import { ManageCiTypesUseCase } from './referentials/use-cases/manage-ci-types.u
 import { ManageGroupsUseCase } from './referentials/use-cases/manage-groups.use-case';
 import { ManagePrioritiesUseCase } from './referentials/use-cases/manage-priorities.use-case';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
+import { CreateKnowledgeArticleUseCase } from './knowledge/use-cases/create-knowledge-article.use-case';
+import { GetKnowledgeArticleUseCase } from './knowledge/use-cases/get-knowledge-article.use-case';
+import { ListKnowledgeArticlesUseCase } from './knowledge/use-cases/list-knowledge-articles.use-case';
 import { CreatePlanningTaskUseCase } from './planning/use-cases/create-planning-task.use-case';
 import { DeletePlanningTaskUseCase } from './planning/use-cases/delete-planning-task.use-case';
 import { ListPlanningTasksUseCase } from './planning/use-cases/list-planning-tasks.use-case';
@@ -92,6 +95,12 @@ const planningUseCases = [
   UpdatePlanningTaskUseCase,
 ];
 
+const knowledgeUseCases = [
+  CreateKnowledgeArticleUseCase,
+  GetKnowledgeArticleUseCase,
+  ListKnowledgeArticlesUseCase,
+];
+
 @Module({
   imports: [ScheduleModule.forRoot(), InfrastructureModule],
   providers: [
@@ -106,6 +115,7 @@ const planningUseCases = [
     GetAgentPerformanceReportUseCase,
     GetTicketReportingBreakdownUseCase,
     GetTicketReportingOverviewUseCase,
+    ...knowledgeUseCases,
     ...planningUseCases,
     ...referentialUseCases,
     ...ticketingUseCases,
@@ -122,6 +132,7 @@ const planningUseCases = [
     GetAgentPerformanceReportUseCase,
     GetTicketReportingBreakdownUseCase,
     GetTicketReportingOverviewUseCase,
+    ...knowledgeUseCases,
     ...planningUseCases,
     ...referentialUseCases,
     ...ticketingUseCases,

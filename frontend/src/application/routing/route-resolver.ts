@@ -13,6 +13,10 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
     return routeMap.get('/agent/tickets') ?? null;
   }
 
+  if (pathname.startsWith('/knowledge/articles/')) {
+    return routeMap.get('/knowledge/articles') ?? null;
+  }
+
   if (
     pathname === '/' ||
     pathname === '/admin/groups' ||
@@ -24,6 +28,7 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
     pathname === '/agent/requests/new' ||
     pathname === '/agent/tickets' ||
     pathname === '/agent/unassigned-tickets' ||
+    pathname === '/knowledge/articles' ||
     pathname === '/parc/ci-types' ||
     pathname === '/parc/cis' ||
     pathname === '/reports' ||

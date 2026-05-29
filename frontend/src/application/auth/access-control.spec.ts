@@ -34,6 +34,7 @@ describe('access-control', () => {
     const session = buildSession('DEMANDEUR');
 
     expect(canAccessRoute('/agent/tickets', session)).toBe(true);
+    expect(canAccessRoute('/knowledge/articles', session)).toBe(true);
     expect(canAccessRoute('/reports', session)).toBe(false);
     expect(canAccessRoute('/parc/cis', session)).toBe(false);
   });
@@ -64,7 +65,7 @@ describe('access-control', () => {
   it('shows the reduced visible route set for demandeur', () => {
     const visibleRoutes = getVisibleRoutes(buildSession('DEMANDEUR'));
 
-    expect(visibleRoutes).toEqual(['/agent/tickets']);
+    expect(visibleRoutes).toEqual(['/knowledge/articles', '/agent/tickets']);
   });
 
   it('shows reports and admin routes for admin', () => {
