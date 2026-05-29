@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   type CreateKnowledgeArticleRecord,
+  type UpdateKnowledgeArticleRecord,
   KnowledgeArticleRepository,
 } from '../../application/knowledge/repositories/knowledge-article.repository';
 import { KnowledgeArticle } from '../../domain/knowledge/knowledge-article';
@@ -63,6 +64,44 @@ export class SupabaseKnowledgeArticleRepository implements KnowledgeArticleRepos
     });
 
     return this.expectSingle(rows);
+  }
+
+  async updateArticle(
+    id: string,
+    command: UpdateKnowledgeArticleRecord,
+  ): Promise<KnowledgeArticle> {
+    const url = this.buildUrl([{ column: 'id', value: id }]);
+    const response = await this.executeRequest(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({
+        category: command.category,
+        content: command.content,
+        status: command.status,
+        title: command.title,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+
+    if (!response.ok) {
+      await this.throwSupabaseError(response);
+    }
+
+    const rows = (await response.json()) as SupabaseKnowledgeArticleRow[];
+    return this.expectSingle(rows);
+  }
+
+  async deleteArticle(id: string): Promise<void> {
+    const url = this.buildUrl([{ column: 'id', value: id }]);
+    url.searchParams.delete('select');
+    const response = await this.executeRequest(url, { method: 'DELETE' });
+
+    if (!response.ok) {
+      await this.throwSupabaseError(response);
+    }
   }
 
   private async fetchRows(

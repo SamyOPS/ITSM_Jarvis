@@ -1,6 +1,7 @@
 import type {
   CreateKnowledgeArticlePayload,
   KnowledgeArticle,
+  UpdateKnowledgeArticlePayload,
 } from '../../domain/knowledge/knowledge-article';
 import { getFrontendRuntimeConfig } from '../config/env';
 
@@ -37,6 +38,30 @@ export async function createKnowledgeArticle(
   );
 }
 
+export async function updateKnowledgeArticle(
+  accessToken: string,
+  articleId: string,
+  payload: UpdateKnowledgeArticlePayload,
+): Promise<KnowledgeArticle> {
+  return requestKnowledge<KnowledgeArticle>(
+    `/knowledge/articles/${articleId}`,
+    accessToken,
+    {
+      body: JSON.stringify(payload),
+      method: 'PATCH',
+    },
+  );
+}
+
+export async function deleteKnowledgeArticle(
+  accessToken: string,
+  articleId: string,
+): Promise<void> {
+  await requestKnowledgeVoid(`/knowledge/articles/${articleId}`, accessToken, {
+    method: 'DELETE',
+  });
+}
+
 async function requestKnowledge<T>(
   path: string,
   accessToken: string,
@@ -58,9 +83,33 @@ async function requestKnowledge<T>(
 
     throw new Error(
       message ||
-        `Le chargement de la base de connaissances a echoue avec le statut ${response.status}`,
+        `Le chargement de la base de connaissances a échoué avec le statut ${response.status}`,
     );
   }
 
   return (await response.json()) as T;
+}
+
+async function requestKnowledgeVoid(
+  path: string,
+  accessToken: string,
+  init?: RequestInit,
+): Promise<void> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}${path}`, {
+    ...init,
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message || `L'opération a échoué avec le statut ${response.status}`,
+    );
+  }
 }
