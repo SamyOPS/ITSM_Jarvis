@@ -376,7 +376,10 @@ export function UsersPage({ session }: UsersPageProps) {
       return;
     }
 
-    const nextGroupIds = [...getUserGroupIds(selectedUser), group.id];
+    const nextGroupIds = normalizeUserGroupIds([
+      ...getUserGroupIds(selectedUser),
+      group.id,
+    ]);
     const didUpdate = await updateUserGroups(selectedUser, nextGroupIds);
 
     if (didUpdate) {
@@ -393,8 +396,10 @@ export function UsersPage({ session }: UsersPageProps) {
 
     await updateUserGroups(
       selectedUser,
-      getUserGroupIds(selectedUser).filter(
-        (currentGroupId) => currentGroupId !== groupId,
+      normalizeUserGroupIds(
+        getUserGroupIds(selectedUser).filter(
+          (currentGroupId) => currentGroupId !== groupId,
+        ),
       ),
     );
   }
@@ -403,6 +408,8 @@ export function UsersPage({ session }: UsersPageProps) {
     user: AdminUserSummary,
     nextGroupIds: string[],
   ): Promise<boolean> {
+    const normalizedGroupIds = normalizeUserGroupIds(nextGroupIds);
+
     setIsMembershipSaving(true);
     setFormMessage(null);
 
@@ -410,7 +417,7 @@ export function UsersPage({ session }: UsersPageProps) {
       const updatedUser = await updateAdminUserGroups(
         session.accessToken,
         user.id,
-        nextGroupIds,
+        normalizedGroupIds,
       );
 
       setUsers((currentUsers) =>
@@ -418,8 +425,8 @@ export function UsersPage({ session }: UsersPageProps) {
           currentUser.id === user.id
             ? {
                 ...updatedUser,
-                groupId: nextGroupIds[0] ?? null,
-                groupIds: nextGroupIds,
+                groupId: normalizedGroupIds[0] ?? null,
+                groupIds: normalizedGroupIds,
               }
             : currentUser,
         ),
@@ -1080,10 +1087,16 @@ function getUserGroupIds(user: AdminUserSummary): string[] {
   const groupIds = user.groupIds ?? [];
 
   if (user.groupId && !groupIds.includes(user.groupId)) {
-    return [user.groupId, ...groupIds];
+    return normalizeUserGroupIds([user.groupId, ...groupIds]);
   }
 
-  return groupIds;
+  return normalizeUserGroupIds(groupIds);
+}
+
+function normalizeUserGroupIds(groupIds: string[]): string[] {
+  return [...new Set(groupIds.map((groupId) => groupId.trim()))].filter(
+    Boolean,
+  );
 }
 
 function filterUserLookupGroups(
