@@ -10,5 +10,6 @@ export class PlanningTask {
     public readonly durationMinutes: number,
     public readonly status: PlanningTaskStatus,
     public readonly createdByUserId: string,
+    public readonly groupId: string | null,
   ) {}
 }

@@ -540,7 +540,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     ? '/agent/archives'
     : detailOrigin === 'reports-personal'
       ? '/reports?view=PERSONAL'
-      : '/agent/tickets';
+      : detailOrigin === 'reports-group'
+        ? '/reports?view=GROUP'
+        : '/agent/tickets';
   const searchedTickets = useMemo(
     () =>
       filterTicketsByListSearch(

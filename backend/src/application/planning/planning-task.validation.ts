@@ -12,6 +12,7 @@ import {
 export type PlanningTaskInput = {
   description?: unknown;
   durationMinutes?: unknown;
+  groupId?: unknown;
   start?: unknown;
   status?: unknown;
   technicianId?: unknown;
@@ -21,6 +22,7 @@ export type PlanningTaskInput = {
 export type ValidPlanningTaskInput = {
   description: string;
   durationMinutes: number;
+  groupId: string | null;
   start: string;
   status: PlanningTaskStatus;
   technicianId: string;
@@ -38,6 +40,7 @@ export function validatePlanningTaskInput(
   const start = normalizeRequiredText(input.start, 'start');
   const description = normalizeOptionalText(input.description);
   const durationMinutes = normalizeDuration(input.durationMinutes);
+  const groupId = normalizeOptionalId(input.groupId, 'groupId');
   const status = normalizeStatus(input.status);
 
   if (Number.isNaN(Date.parse(start))) {
@@ -47,6 +50,7 @@ export function validatePlanningTaskInput(
   return {
     description,
     durationMinutes,
+    groupId,
     start,
     status,
     technicianId,
@@ -58,12 +62,24 @@ export function assertPlanningTaskWriteAccess(
   userId: string,
   userRole: UserRole,
   technicianId: string,
+  groupId: string | null,
+  actorGroupIds: string[] = [],
+  technicianGroupIds: string[] = [],
 ): void {
   if (userRole === UserRole.ADMIN) {
     return;
   }
 
   if (userRole === UserRole.AGENT && technicianId === userId) {
+    return;
+  }
+
+  if (
+    userRole === UserRole.AGENT &&
+    groupId &&
+    actorGroupIds.includes(groupId) &&
+    technicianGroupIds.includes(groupId)
+  ) {
     return;
   }
 
@@ -104,6 +120,20 @@ function normalizeOptionalText(value: unknown): string {
   }
 
   return value.trim();
+}
+
+function normalizeOptionalId(value: unknown, field: string): string | null {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    throw new BadRequestException(`${field} must be a string.`);
+  }
+
+  const normalized = value.trim();
+
+  return normalized ? normalized : null;
 }
 
 function normalizeDuration(value: unknown): number {

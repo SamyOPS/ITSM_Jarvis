@@ -2,6 +2,7 @@ export type PlanningTask = {
   createdByUserId?: string;
   description: string;
   durationMinutes: number;
+  groupId?: string | null;
   id: string;
   start: string;
   status: 'DONE' | 'TODO';

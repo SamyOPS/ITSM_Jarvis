@@ -14,8 +14,19 @@ export class DeletePlanningTaskUseCase {
     const existingTask = assertExistingPlanningTask(
       await this.repository.findTaskById(id),
     );
+    const [actorGroupIds, technicianGroupIds] = await Promise.all([
+      this.repository.listGroupIdsForUser(userId),
+      this.repository.listGroupIdsForUser(existingTask.technicianId),
+    ]);
 
-    assertPlanningTaskWriteAccess(userId, userRole, existingTask.technicianId);
+    assertPlanningTaskWriteAccess(
+      userId,
+      userRole,
+      existingTask.technicianId,
+      existingTask.groupId,
+      actorGroupIds,
+      technicianGroupIds,
+    );
 
     await this.repository.deleteTask(id);
   }

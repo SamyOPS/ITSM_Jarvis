@@ -15,6 +15,7 @@ type SupabasePlanningTaskRow = {
   created_by_user_id: string;
   description: string;
   duration_minutes: number;
+  group_id: string | null;
   id: string;
   start_at: string;
   status: 'DONE' | 'TODO';
@@ -25,7 +26,7 @@ type SupabasePlanningTaskRow = {
 type MutationFilter = { column: string; value: string };
 
 const PLANNING_TASK_SELECT =
-  'id,title,description,technician_id,start_at,duration_minutes,status,created_by_user_id';
+  'id,title,description,technician_id,group_id,start_at,duration_minutes,status,created_by_user_id';
 
 @Injectable()
 export class SupabasePlanningTaskRepository implements PlanningTaskRepository {
@@ -43,6 +44,47 @@ export class SupabasePlanningTaskRepository implements PlanningTaskRepository {
     return rows.map((row) => this.mapRow(row));
   }
 
+  async listTasksForTechnicianAndGroups(
+    technicianId: string,
+  ): Promise<PlanningTask[]> {
+    const groupIds = await this.listGroupIdsForUser(technicianId);
+
+    if (groupIds.length === 0) {
+      return this.listTasksForTechnician(technicianId);
+    }
+
+    const rows = await this.fetchRowsForTechnicianAndGroups(
+      technicianId,
+      groupIds,
+    );
+
+    return rows.map((row) => this.mapRow(row));
+  }
+
+  async listGroupIdsForUser(userId: string): Promise<string[]> {
+    const config = getBackendRuntimeConfig();
+
+    if (!config.supabaseUrl) {
+      throw new ServiceUnavailableException(
+        'Supabase planning configuration is incomplete on the backend.',
+      );
+    }
+
+    const url = new URL(`${config.supabaseUrl}/rest/v1/user_groups`);
+    url.searchParams.set('select', 'group_id');
+    url.searchParams.set('user_id', `eq.${userId}`);
+
+    const response = await this.executeRequest(url);
+
+    if (!response.ok) {
+      await this.throwSupabaseError(response);
+    }
+
+    const rows = (await response.json()) as Array<{ group_id: string }>;
+
+    return [...new Set(rows.map((row) => row.group_id).filter(Boolean))];
+  }
+
   async findTaskById(id: string): Promise<PlanningTask | null> {
     const rows = await this.fetchRows([{ column: 'id', value: id }]);
 
@@ -54,6 +96,7 @@ export class SupabasePlanningTaskRepository implements PlanningTaskRepository {
       created_by_user_id: command.createdByUserId,
       description: command.description,
       duration_minutes: command.durationMinutes,
+      group_id: command.groupId,
       start_at: command.start,
       status: command.status,
       technician_id: command.technicianId,
@@ -69,6 +112,7 @@ export class SupabasePlanningTaskRepository implements PlanningTaskRepository {
       {
         description: command.description,
         duration_minutes: command.durationMinutes,
+        group_id: command.groupId,
         start_at: command.start,
         status: command.status,
         technician_id: command.technicianId,
@@ -103,6 +147,27 @@ export class SupabasePlanningTaskRepository implements PlanningTaskRepository {
   ): Promise<SupabasePlanningTaskRow[]> {
     const url = this.buildUrl(filters);
     url.searchParams.set('order', 'start_at.asc');
+
+    const response = await this.executeRequest(url);
+
+    if (!response.ok) {
+      await this.throwSupabaseError(response);
+    }
+
+    return (await response.json()) as SupabasePlanningTaskRow[];
+  }
+
+  private async fetchRowsForTechnicianAndGroups(
+    technicianId: string,
+
+    groupIds: string[],
+  ): Promise<SupabasePlanningTaskRow[]> {
+    const url = this.buildUrl();
+    url.searchParams.set('order', 'start_at.asc');
+    url.searchParams.set(
+      'or',
+      `(technician_id.eq.${technicianId},group_id.in.(${groupIds.join(',')}))`,
+    );
 
     const response = await this.executeRequest(url);
 
@@ -212,6 +277,7 @@ export class SupabasePlanningTaskRepository implements PlanningTaskRepository {
       row.duration_minutes,
       row.status,
       row.created_by_user_id,
+      row.group_id,
     );
   }
 
