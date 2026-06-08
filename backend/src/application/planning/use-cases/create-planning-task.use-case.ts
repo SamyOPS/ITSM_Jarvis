@@ -12,17 +12,24 @@ import { PlanningTaskRepository } from '../repositories/planning-task.repository
 export class CreatePlanningTaskUseCase {
   constructor(private readonly repository: PlanningTaskRepository) {}
 
-  execute(
+  async execute(
     input: PlanningTaskInput,
     userId: string,
     userRole: UserRole,
   ): Promise<PlanningTask> {
     const validatedInput = validatePlanningTaskInput(input);
+    const [actorGroupIds, technicianGroupIds] = await Promise.all([
+      this.repository.listGroupIdsForUser(userId),
+      this.repository.listGroupIdsForUser(validatedInput.technicianId),
+    ]);
 
     assertPlanningTaskWriteAccess(
       userId,
       userRole,
       validatedInput.technicianId,
+      validatedInput.groupId,
+      actorGroupIds,
+      technicianGroupIds,
     );
 
     return this.repository.createTask({

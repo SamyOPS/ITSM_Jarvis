@@ -24,6 +24,7 @@ import { RolesGuard } from '../auth/roles.guard';
 type PlanningTaskBodyDto = {
   description?: unknown;
   durationMinutes?: unknown;
+  groupId?: unknown;
   start?: unknown;
   status?: unknown;
   technicianId?: unknown;

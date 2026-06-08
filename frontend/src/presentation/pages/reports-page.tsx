@@ -113,6 +113,20 @@ type PersonalEquipmentItem = {
   type: string;
 };
 
+type GroupChatMessage = {
+  authorName: string;
+
+  body: string;
+
+  createdAt: string;
+
+  id: string;
+};
+
+type ReportsPlanningContext =
+  | { type: 'GROUP'; groupId: string }
+  | { type: 'PERSONAL' };
+
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],
 
@@ -150,6 +164,8 @@ const INITIAL_FILTERS: ReportsFilterState = {
 const PERSONAL_TICKET_LIMIT = 8;
 
 const PERSONAL_EQUIPMENT_LIMIT = 8;
+
+const GROUP_TICKET_LIMIT = 8;
 
 const EMPTY_PERSONAL_EQUIPMENT: PersonalEquipmentItem[] = [];
 
@@ -211,7 +227,9 @@ export function ReportsPage({ session }: ReportsPageProps) {
   const [activeView, setActiveView] = useState<ReportsView>(() =>
     getInitialReportsView(),
   );
-  const [isPlanningOpen, setIsPlanningOpen] = useState(false);
+
+  const [planningContext, setPlanningContext] =
+    useState<ReportsPlanningContext | null>(null);
 
   const [planningTasks, setPlanningTasks] = useState<PlanningTask[]>([]);
 
@@ -233,6 +251,14 @@ export function ReportsPage({ session }: ReportsPageProps) {
   >([]);
 
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
+
+  const [selectedGroupId, setSelectedGroupId] = useState('');
+
+  const [groupChatDraft, setGroupChatDraft] = useState('');
+
+  const [groupChatMessages, setGroupChatMessages] = useState<
+    GroupChatMessage[]
+  >([]);
 
   const technicians = useMemo(
     () =>
@@ -432,11 +458,101 @@ export function ReportsPage({ session }: ReportsPageProps) {
     [personalTickets, session.user.id],
   );
 
+  const currentUserSummary = useMemo(
+    () => users.find((user) => user.id === session.user.id) ?? null,
+
+    [session.user.id, users],
+  );
+
+  const availableReportGroups = useMemo(() => {
+    const currentUserGroupIds = currentUserSummary
+      ? getUserGroupIds(currentUserSummary)
+      : [];
+
+    return catalog.groups.filter((group) =>
+      currentUserGroupIds.includes(group.id),
+    );
+  }, [catalog.groups, currentUserSummary]);
+
+  useEffect(() => {
+    if (availableReportGroups.length === 0) {
+      if (selectedGroupId) {
+        setSelectedGroupId('');
+      }
+
+      return;
+    }
+
+    if (!availableReportGroups.some((group) => group.id === selectedGroupId)) {
+      setSelectedGroupId(availableReportGroups[0].id);
+    }
+  }, [availableReportGroups, selectedGroupId]);
+
+  useEffect(() => {
+    if (!selectedGroupId) {
+      setGroupChatMessages([]);
+
+      return;
+    }
+
+    setGroupChatMessages(readStoredGroupChatMessages(selectedGroupId));
+  }, [selectedGroupId]);
+
+  const selectedReportGroup = useMemo(
+    () =>
+      availableReportGroups.find((group) => group.id === selectedGroupId) ??
+      null,
+
+    [availableReportGroups, selectedGroupId],
+  );
+
+  const groupTickets = useMemo(
+    () =>
+      personalTickets.filter(
+        (ticket) =>
+          !ticket.archivedAt && ticket.assignmentGroupId === selectedGroupId,
+      ),
+
+    [personalTickets, selectedGroupId],
+  );
+
+  const unassignedGroupTickets = useMemo(
+    () => groupTickets.filter((ticket) => !ticket.assignedToUserId),
+
+    [groupTickets],
+  );
+
+  const groupMembers = useMemo(
+    () =>
+      technicians.filter((technician) =>
+        isUserMemberOfGroup(technician, selectedGroupId),
+      ),
+
+    [selectedGroupId, technicians],
+  );
+
+  const groupPlanningTasks = useMemo(
+    () => planningTasks.filter((task) => task.groupId === selectedGroupId),
+
+    [planningTasks, selectedGroupId],
+  );
+
+  const personalPlanningTasks = useMemo(
+    () =>
+      planningTasks.filter(
+        (task) => !task.groupId && task.technicianId === session.user.id,
+      ),
+
+    [planningTasks, session.user.id],
+  );
+
   async function handlePlanningTaskSave(task: PlanningTask): Promise<void> {
     const payload = {
       description: task.description,
 
       durationMinutes: task.durationMinutes,
+
+      groupId: task.groupId ?? null,
 
       start: task.start,
 
@@ -490,6 +606,36 @@ export function ReportsPage({ session }: ReportsPageProps) {
     await handlePlanningTaskSave(nextTask);
   }
 
+  function handleGroupChatSubmit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+
+    const body = groupChatDraft.trim();
+
+    if (!selectedGroupId || !body) {
+      return;
+    }
+
+    const nextMessage: GroupChatMessage = {
+      authorName: formatSessionUserName(session),
+
+      body,
+
+      createdAt: new Date().toISOString(),
+
+      id: crypto.randomUUID(),
+    };
+
+    setGroupChatMessages((currentMessages) => {
+      const nextMessages = [...currentMessages, nextMessage];
+
+      writeStoredGroupChatMessages(selectedGroupId, nextMessages);
+
+      return nextMessages;
+    });
+
+    setGroupChatDraft('');
+  }
+
   const reportViews = [
     {
       icon: BarChart3,
@@ -516,16 +662,34 @@ export function ReportsPage({ session }: ReportsPageProps) {
     },
   ];
 
-  if (isPlanningOpen) {
+  if (planningContext) {
+    const isGroupPlanning = planningContext.type === 'GROUP';
+    const planningGroupId = isGroupPlanning ? planningContext.groupId : null;
+    const planningGroupUsers = isGroupPlanning ? groupMembers : technicians;
+    const defaultTechnicianId = planningGroupUsers.some(
+      (user) => user.id === session.user.id,
+    )
+      ? session.user.id
+      : (planningGroupUsers[0]?.id ?? session.user.id);
+
     return (
       <PlanningPage
-        onBack={() => setIsPlanningOpen(false)}
+        backLabel={
+          isGroupPlanning
+            ? 'Retour a la vue groupe'
+            : 'Retour a la vue personnelle'
+        }
+        defaultTechnicianId={defaultTechnicianId}
+        groupId={planningGroupId}
+        groupUsers={planningGroupUsers}
+        onBack={() => setPlanningContext(null)}
         onDeleteTask={handlePlanningTaskDelete}
         onSaveTask={handlePlanningTaskSave}
         onToggleTaskStatus={handlePersonalPlanningStatusToggle}
         session={session}
-        tasks={planningTasks}
+        tasks={isGroupPlanning ? groupPlanningTasks : personalPlanningTasks}
         technicians={technicians}
+        variant={isGroupPlanning ? 'GROUP' : 'PERSONAL'}
       />
     );
   }
@@ -840,16 +1004,88 @@ export function ReportsPage({ session }: ReportsPageProps) {
           />
 
           <PersonalPlanningPanel
-            onOpenPlanning={() => setIsPlanningOpen(true)}
+            onOpenPlanning={() => setPlanningContext({ type: 'PERSONAL' })}
             onToggleStatus={handlePersonalPlanningStatusToggle}
-            tasks={planningTasks}
+            tasks={personalPlanningTasks}
             technicians={technicians}
           />
 
           <PersonalEquipmentPanel equipment={EMPTY_PERSONAL_EQUIPMENT} />
         </section>
       ) : (
-        <section aria-label="Vue groupe" className="reports-empty-view" />
+        <section aria-label="Vue groupe" className="group-view">
+          <div className="group-view-selector">
+            <label className="field">
+              <span>Groupe</span>
+
+              <select
+                disabled={availableReportGroups.length === 0}
+                onChange={(event) => setSelectedGroupId(event.target.value)}
+                value={selectedGroupId}
+              >
+                {availableReportGroups.length === 0 ? (
+                  <option value="">Aucun groupe disponible</option>
+                ) : (
+                  availableReportGroups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </label>
+          </div>
+
+          {selectedReportGroup ? (
+            <div className="personal-view-grid group-view-grid">
+              <GroupTicketPanel
+                isLoading={isLoading}
+                onOpenTicket={(ticketId) =>
+                  navigateTo(`/agent/tickets/${ticketId}?from=reports-group`)
+                }
+                prioritiesById={personalPrioritiesById}
+                title="Tickets assignes au groupe"
+                tickets={groupTickets}
+                users={users}
+              />
+
+              <GroupTicketPanel
+                isLoading={isLoading}
+                onOpenTicket={(ticketId) =>
+                  navigateTo(`/agent/tickets/${ticketId}?from=reports-group`)
+                }
+                prioritiesById={personalPrioritiesById}
+                title="Tickets du groupe non assignes"
+                tickets={unassignedGroupTickets}
+                users={users}
+              />
+
+              <GroupPlanningPanel
+                onOpenPlanning={() =>
+                  setPlanningContext({
+                    groupId: selectedReportGroup.id,
+
+                    type: 'GROUP',
+                  })
+                }
+                onToggleStatus={handlePersonalPlanningStatusToggle}
+                tasks={groupPlanningTasks}
+                technicians={groupMembers}
+              />
+
+              <GroupChatPanel
+                draft={groupChatDraft}
+                messages={groupChatMessages}
+                onDraftChange={setGroupChatDraft}
+                onSubmit={handleGroupChatSubmit}
+              />
+            </div>
+          ) : (
+            <p className="reports-empty-view group-view-empty">
+              Aucun groupe n'est rattache a votre compte.
+            </p>
+          )}
+        </section>
       )}
     </section>
   );
@@ -1347,6 +1583,462 @@ function PersonalPlanningPanel({
           </div>
         </div>
       )}
+    </article>
+  );
+}
+
+function GroupTicketPanel({
+  isLoading,
+
+  onOpenTicket,
+
+  prioritiesById,
+
+  tickets,
+
+  title,
+
+  users,
+}: {
+  isLoading: boolean;
+
+  onOpenTicket: (ticketId: string) => void;
+
+  prioritiesById: Map<string, { level: number; name: string }>;
+
+  tickets: TicketSummarySnapshot[];
+
+  title: string;
+
+  users: AdminUserSummary[];
+}) {
+  const [page, setPage] = useState(1);
+
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+
+  const [sortBy, setSortBy] = useState<PersonalTicketSort>(
+    'OPERATIONAL_PRIORITY',
+  );
+
+  const sortMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const sortedTickets = useMemo(
+    () => sortPersonalTickets(tickets, sortBy, prioritiesById),
+
+    [prioritiesById, sortBy, tickets],
+  );
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sortedTickets.length / GROUP_TICKET_LIMIT),
+  );
+
+  const visiblePage = Math.min(page, totalPages);
+
+  const visibleTickets = sortedTickets.slice(
+    (visiblePage - 1) * GROUP_TICKET_LIMIT,
+
+    visiblePage * GROUP_TICKET_LIMIT,
+  );
+
+  useEffect(() => {
+    if (!isSortMenuOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent): void {
+      if (
+        sortMenuRef.current &&
+        event.target instanceof Node &&
+        !sortMenuRef.current.contains(event.target)
+      ) {
+        setIsSortMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') {
+        setIsSortMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown);
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSortMenuOpen]);
+
+  return (
+    <article className="personal-panel personal-ticket-panel group-ticket-panel">
+      <header className="personal-panel-header">
+        <h3>{title}</h3>
+
+        <div className="ticket-list-toolbar">
+          <div className="ticket-list-count" aria-live="polite">
+            <strong>{tickets.length}</strong>
+
+            <span>tickets</span>
+          </div>
+
+          <div className="ticket-list-sort-menu" ref={sortMenuRef}>
+            <button
+              aria-expanded={isSortMenuOpen}
+              aria-haspopup="menu"
+              className={
+                isSortMenuOpen
+                  ? 'ticket-filter-trigger is-open'
+                  : 'ticket-filter-trigger'
+              }
+              onClick={() => setIsSortMenuOpen((currentState) => !currentState)}
+              type="button"
+            >
+              <span>Trier par</span>
+
+              <SlidersHorizontal size={18} strokeWidth={2} />
+            </button>
+
+            {isSortMenuOpen ? (
+              <div className="ticket-sort-popover" role="menu">
+                <div className="ticket-sort-popover-label">Trier par</div>
+
+                <div className="ticket-sort-option-list">
+                  {PERSONAL_TICKET_SORT_OPTIONS.map((option) => {
+                    const Icon = option.icon;
+
+                    return (
+                      <button
+                        className={
+                          sortBy === option.value
+                            ? 'ticket-sort-option is-active'
+                            : 'ticket-sort-option'
+                        }
+                        key={option.value}
+                        onClick={() => {
+                          setSortBy(option.value);
+
+                          setPage(1);
+
+                          setIsSortMenuOpen(false);
+                        }}
+                        role="menuitemradio"
+                        type="button"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="ticket-sort-option-icon"
+                        >
+                          <Icon size={16} strokeWidth={2} />
+                        </span>
+
+                        <span className="ticket-sort-option-copy">
+                          <strong>{option.label}</strong>
+
+                          <span>
+                            {sortBy === option.value
+                              ? 'Selection actuelle'
+                              : 'Appliquer ce tri'}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </header>
+
+      {isLoading ? (
+        <p className="personal-panel-empty">Chargement des tickets...</p>
+      ) : tickets.length === 0 ? (
+        <p className="personal-panel-empty">Aucun ticket a afficher.</p>
+      ) : (
+        <div className="personal-table-scroll">
+          <div className="personal-ticket-viewport">
+            <table className="personal-ticket-table group-ticket-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+
+                  <th>Titre</th>
+
+                  <th>Statut</th>
+
+                  <th>Demandeur</th>
+
+                  <th>Assigne a</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {visibleTickets.map((ticket) => (
+                  <tr
+                    key={ticket.id}
+                    onClick={() => onOpenTicket(ticket.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+
+                        onOpenTicket(ticket.id);
+                      }
+                    }}
+                    tabIndex={0}
+                  >
+                    <td className="personal-ticket-id">
+                      {formatTicketDisplayNumber(ticket)}
+                    </td>
+
+                    <td className="personal-ticket-title">{ticket.title}</td>
+
+                    <td>
+                      <span
+                        className={`personal-status personal-status--${ticket.status.toLowerCase()}`}
+                      >
+                        <i aria-hidden="true" />
+
+                        {translateTicketStatus(ticket.status)}
+                      </span>
+                    </td>
+
+                    <td>
+                      {formatAssignedUserName(
+                        ticket.requestedForUserId ?? ticket.createdByUserId,
+
+                        users,
+                      )}
+                    </td>
+
+                    <td>
+                      {formatAssignedUserName(ticket.assignedToUserId, users)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <nav
+            aria-label={`Pagination ${title}`}
+            className="personal-ticket-pagination"
+          >
+            <button
+              disabled={visiblePage === 1}
+              onClick={() => setPage(visiblePage - 1)}
+              type="button"
+            >
+              Precedent
+            </button>
+
+            <span aria-current="page">{visiblePage}</span>
+
+            <button
+              disabled={visiblePage === totalPages}
+              onClick={() => setPage(visiblePage + 1)}
+              type="button"
+            >
+              Suivant
+            </button>
+          </nav>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function GroupPlanningPanel({
+  onOpenPlanning,
+
+  onToggleStatus,
+
+  tasks,
+
+  technicians,
+}: {
+  onOpenPlanning: () => void;
+
+  onToggleStatus: (taskId: string) => Promise<void> | void;
+
+  tasks: PlanningTask[];
+
+  technicians: AdminUserSummary[];
+}) {
+  const today = new Date();
+
+  const tomorrow = new Date(today);
+
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const todayKey = formatDateInputValue(today);
+
+  const tomorrowKey = formatDateInputValue(tomorrow);
+
+  const visibleTasks = tasks
+
+    .filter((task) => {
+      const taskDate = task.start.slice(0, 10);
+
+      return taskDate === todayKey || taskDate === tomorrowKey;
+    })
+
+    .sort((first, second) => first.start.localeCompare(second.start));
+
+  const taskGroups = groupPersonalPlanningTasksByDate(visibleTasks);
+
+  return (
+    <article className="personal-panel personal-planning-panel group-planning-panel">
+      <header className="personal-panel-header">
+        <h3>Planning de groupe</h3>
+
+        <button
+          className="secondary-button personal-planning-open-button"
+          onClick={onOpenPlanning}
+          type="button"
+        >
+          Voir le planning
+        </button>
+      </header>
+
+      {visibleTasks.length === 0 ? (
+        <p className="personal-panel-empty personal-planning-empty">
+          Aucune tache de groupe aujourd'hui ou demain.
+        </p>
+      ) : (
+        <div className="personal-planning-agenda-scroll">
+          <div className="planning-agenda-list personal-planning-agenda-list">
+            {taskGroups.map((group) => (
+              <section className="planning-agenda-group" key={group.date}>
+                <h4 className="personal-planning-date">
+                  {formatPersonalPlanningLongDate(
+                    parsePlanningDateTime(group.tasks[0].start),
+                  )}
+                </h4>
+
+                {group.tasks.map((task) => (
+                  <div
+                    className="planning-agenda-row"
+                    key={task.id}
+                    onClick={onOpenPlanning}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+
+                        onOpenPlanning();
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <span className="planning-agenda-time">
+                      {formatPersonalPlanningTaskInterval(task)}
+                    </span>
+
+                    <span>{task.title}</span>
+
+                    <span>
+                      {formatPersonalPlanningTechnicianName(
+                        task.technicianId,
+
+                        technicians,
+                      )}
+                    </span>
+
+                    <button
+                      className={[
+                        'planning-status-toggle',
+
+                        'planning-agenda-status-toggle',
+
+                        task.status === 'DONE'
+                          ? 'planning-status-toggle--done'
+                          : '',
+                      ]
+
+                        .filter(Boolean)
+
+                        .join(' ')}
+                      onClick={(event) => {
+                        event.stopPropagation();
+
+                        onToggleStatus(task.id);
+                      }}
+                      onKeyDown={(event) => {
+                        event.stopPropagation();
+                      }}
+                      type="button"
+                    >
+                      {task.status === 'DONE' ? 'Fait' : 'A faire'}
+                    </button>
+                  </div>
+                ))}
+              </section>
+            ))}
+          </div>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function GroupChatPanel({
+  draft,
+
+  messages,
+
+  onDraftChange,
+
+  onSubmit,
+}: {
+  draft: string;
+
+  messages: GroupChatMessage[];
+
+  onDraftChange: (value: string) => void;
+
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <article className="personal-panel group-chat-panel">
+      <header className="personal-panel-header">
+        <h3>Chat box de groupe</h3>
+      </header>
+
+      <div className="group-chat-messages" aria-live="polite">
+        {messages.length === 0 ? (
+          <p className="personal-panel-empty group-chat-empty">
+            Aucun message pour ce groupe.
+          </p>
+        ) : (
+          messages.map((message) => (
+            <div className="group-chat-message" key={message.id}>
+              <div>
+                <strong>{message.authorName}</strong>
+
+                <span>{formatGroupChatTimestamp(message.createdAt)}</span>
+              </div>
+
+              <p>{message.body}</p>
+            </div>
+          ))
+        )}
+      </div>
+
+      <form className="group-chat-form" onSubmit={onSubmit}>
+        <input
+          onChange={(event) => onDraftChange(event.target.value)}
+          placeholder="Ecrire un message au groupe..."
+          value={draft}
+        />
+
+        <button className="primary-button" disabled={!draft.trim()}>
+          Envoyer
+        </button>
+      </form>
     </article>
   );
 }
@@ -2140,6 +2832,87 @@ function formatDateInputValue(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function getUserGroupIds(user: AdminUserSummary): string[] {
+  const groupIds = new Set<string>();
+
+  user.groupIds?.forEach((groupId) => {
+    if (groupId) {
+      groupIds.add(groupId);
+    }
+  });
+
+  if (user.groupId) {
+    groupIds.add(user.groupId);
+  }
+
+  return Array.from(groupIds);
+}
+
+function isUserMemberOfGroup(
+  user: AdminUserSummary,
+
+  groupId: string,
+): boolean {
+  if (!groupId) {
+    return false;
+  }
+
+  return getUserGroupIds(user).includes(groupId);
+}
+
+function getGroupChatStorageKey(groupId: string): string {
+  return `vision:group-chat:${groupId}`;
+}
+
+function readStoredGroupChatMessages(groupId: string): GroupChatMessage[] {
+  try {
+    const rawValue = window.localStorage.getItem(
+      getGroupChatStorageKey(groupId),
+    );
+
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsedValue: unknown = JSON.parse(rawValue);
+
+    if (!Array.isArray(parsedValue)) {
+      return [];
+    }
+
+    return parsedValue.filter(isGroupChatMessage);
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredGroupChatMessages(
+  groupId: string,
+
+  messages: GroupChatMessage[],
+): void {
+  window.localStorage.setItem(
+    getGroupChatStorageKey(groupId),
+
+    JSON.stringify(messages.slice(-100)),
+  );
+}
+
+function isGroupChatMessage(value: unknown): value is GroupChatMessage {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const message = value as Partial<GroupChatMessage>;
+
+  return (
+    typeof message.authorName === 'string' &&
+    typeof message.body === 'string' &&
+    typeof message.createdAt === 'string' &&
+    typeof message.id === 'string'
+  );
+}
+
 function parsePlanningDateTime(dateTime: string): Date {
   return new Date(dateTime);
 }
@@ -2372,6 +3145,18 @@ function formatUserName(user: AdminUserSummary): string {
   return fullName || user.displayName || user.email || user.id;
 }
 
+function formatSessionUserName(session: AuthSessionSnapshot): string {
+  const fullName = [session.user.firstName, session.user.lastName]
+
+    .filter(Boolean)
+
+    .join(' ')
+
+    .trim();
+
+  return fullName || session.user.email;
+}
+
 function formatAssignedUserName(
   userId: string | null | undefined,
 
@@ -2384,6 +3169,24 @@ function formatAssignedUserName(
   const user = users.find((candidate) => candidate.id === userId);
 
   return user ? formatUserName(user) : userId;
+}
+
+function formatGroupChatTimestamp(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+
+    hour: '2-digit',
+
+    minute: '2-digit',
+
+    month: '2-digit',
+  }).format(date);
 }
 
 function getOverviewOverdueTotal(

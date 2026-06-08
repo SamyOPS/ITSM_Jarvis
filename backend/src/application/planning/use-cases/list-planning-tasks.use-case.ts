@@ -12,6 +12,6 @@ export class ListPlanningTasksUseCase {
       return this.repository.listTasks();
     }
 
-    return this.repository.listTasksForTechnician(userId);
+    return this.repository.listTasksForTechnicianAndGroups(userId);
   }
 }

@@ -17,6 +17,7 @@ import {
   Clock3,
   List,
   Plus,
+  Search,
   Trash2,
   X,
 } from 'lucide-react';
@@ -28,6 +29,14 @@ import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { PlanningTask } from '../../domain/planning/planning-task';
 
 type PlanningPageProps = {
+  backLabel?: string;
+
+  defaultTechnicianId?: string;
+
+  groupId?: string | null;
+
+  groupUsers?: AdminUserSummary[];
+
   onBack: () => void;
 
   onDeleteTask: (taskId: string) => Promise<void> | void;
@@ -43,6 +52,8 @@ type PlanningPageProps = {
   tasks: PlanningTask[];
 
   technicians: AdminUserSummary[];
+
+  variant?: 'GROUP' | 'PERSONAL';
 };
 
 type PlanningMode = 'DAY' | 'MONTH' | 'AGENDA' | 'WEEK';
@@ -91,6 +102,10 @@ const DURATION_OPTIONS = Array.from(
 export function PlanningPage({
   onBack,
 
+  backLabel = 'Retour a la vue personnelle',
+
+  defaultTechnicianId,
+
   onDeleteTask,
 
   onSaveTask,
@@ -102,6 +117,12 @@ export function PlanningPage({
   tasks,
 
   technicians,
+
+  groupId = null,
+
+  groupUsers = technicians,
+
+  variant = 'PERSONAL',
 }: PlanningPageProps) {
   const [anchorDate, setAnchorDate] = useState(() => startOfDay(new Date()));
 
@@ -147,11 +168,13 @@ export function PlanningPage({
 
       durationMinutes,
 
+      groupId,
+
       start: formatDateTimeInput(selectedStart),
 
       status: 'TODO',
 
-      technicianId: session.user.id,
+      technicianId: defaultTechnicianId ?? session.user.id,
 
       title: '',
     });
@@ -204,6 +227,8 @@ export function PlanningPage({
       technicianId: draft.technicianId,
 
       title: draft.title.trim(),
+
+      groupId: variant === 'GROUP' ? groupId : null,
     };
 
     await onSaveTask(nextTask);
@@ -258,7 +283,7 @@ export function PlanningPage({
               type="button"
             >
               <ArrowLeft size={15} />
-              Retour a la vue personnelle
+              {backLabel}
             </button>
 
             <button
@@ -358,6 +383,7 @@ export function PlanningPage({
       {draft ? (
         <PlanningEditor
           draft={draft}
+          groupUsers={groupUsers}
           onChange={(nextDraft) => {
             setDraft(nextDraft);
           }}
@@ -371,6 +397,7 @@ export function PlanningPage({
 
             setTitleError(null);
           }}
+          showUserField={variant === 'GROUP'}
           titleError={titleError}
         />
       ) : null}
@@ -944,6 +971,8 @@ function StatusToggleButton({
 function PlanningEditor({
   draft,
 
+  groupUsers,
+
   onChange,
 
   onClose,
@@ -954,9 +983,13 @@ function PlanningEditor({
 
   onTitleChange,
 
+  showUserField,
+
   titleError,
 }: {
   draft: PlanningDraft;
+
+  groupUsers: AdminUserSummary[];
 
   onChange: Dispatch<SetStateAction<PlanningDraft | null>>;
 
@@ -968,11 +1001,23 @@ function PlanningEditor({
 
   onTitleChange: (title: string) => void;
 
+  showUserField: boolean;
+
   titleError: string | null;
 }) {
   const [isDurationMenuOpen, setIsDurationMenuOpen] = useState(false);
 
+  const [isUserPickerOpen, setIsUserPickerOpen] = useState(false);
+
+  const [userSearch, setUserSearch] = useState('');
+
   const [startDate, startTime] = draft.start.split('T');
+
+  const selectedUser = groupUsers.find(
+    (user) => user.id === draft.technicianId,
+  );
+
+  const filteredUsers = filterPlanningUsers(groupUsers, userSearch);
 
   return (
     <div className="planning-editor-overlay">
@@ -1009,6 +1054,31 @@ function PlanningEditor({
               <small className="field-error">{titleError}</small>
             ) : null}
           </label>
+
+          {showUserField ? (
+            <label className="field planning-user-field">
+              <span>Utilisateur</span>
+
+              <div className="planning-user-trigger">
+                <input
+                  readOnly
+                  value={
+                    selectedUser
+                      ? formatUserName(selectedUser)
+                      : 'Utilisateur non renseigne'
+                  }
+                />
+
+                <button
+                  aria-label="Selectionner un utilisateur"
+                  onClick={() => setIsUserPickerOpen(true)}
+                  type="button"
+                >
+                  <Search size={18} />
+                </button>
+              </div>
+            </label>
+          ) : null}
 
           <fieldset className="planning-start-field">
             <legend>Date de debut</legend>
@@ -1112,6 +1182,81 @@ function PlanningEditor({
           </button>
         </footer>
       </section>
+
+      {showUserField && isUserPickerOpen ? (
+        <section
+          aria-label="Selectionner un utilisateur"
+          aria-modal="true"
+          className="planning-user-picker"
+          role="dialog"
+        >
+          <header className="planning-user-picker-header">
+            <h3>Selectionner un utilisateur</h3>
+
+            <button
+              aria-label="Fermer"
+              onClick={() => setIsUserPickerOpen(false)}
+              type="button"
+            >
+              <X size={18} />
+            </button>
+          </header>
+
+          <div className="planning-user-picker-search">
+            <Search size={17} />
+
+            <input
+              onChange={(event) => setUserSearch(event.target.value)}
+              placeholder="Rechercher"
+              value={userSearch}
+            />
+          </div>
+
+          <div className="planning-user-picker-table-scroll">
+            <table className="planning-user-picker-table">
+              <thead>
+                <tr>
+                  <th>Identifiant</th>
+
+                  <th>Prenom</th>
+
+                  <th>Nom</th>
+
+                  <th>Email</th>
+
+                  <th>Role</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredUsers.map((user) => (
+                  <tr
+                    className={
+                      user.id === draft.technicianId ? 'is-selected' : ''
+                    }
+                    key={user.id}
+                    onClick={() => {
+                      onChange({ ...draft, technicianId: user.id });
+
+                      setIsUserPickerOpen(false);
+                    }}
+                  >
+                    <td>{formatUserName(user)}</td>
+
+                    <td>{user.firstName || '-'}</td>
+
+                    <td>{user.lastName || '-'}</td>
+
+                    <td>{user.email || '-'}</td>
+
+                    <td>{user.role}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
@@ -1499,6 +1644,35 @@ function formatTechnicianName(
   const technician = technicians.find((user) => user.id === technicianId);
 
   return technician ? formatUserName(technician) : 'Technicien non renseigne';
+}
+
+function filterPlanningUsers(
+  users: AdminUserSummary[],
+
+  search: string,
+): AdminUserSummary[] {
+  const normalizedSearch = search.trim().toLowerCase();
+
+  if (!normalizedSearch) {
+    return users;
+  }
+
+  return users.filter((user) =>
+    [
+      formatUserName(user),
+
+      user.firstName ?? '',
+
+      user.lastName ?? '',
+
+      user.email ?? '',
+
+      user.role,
+    ]
+      .join(' ')
+      .toLowerCase()
+      .includes(normalizedSearch),
+  );
 }
 
 function formatUserName(user: AdminUserSummary): string {
