@@ -3936,6 +3936,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               <th>Demandeur</th>
                               <th>Assigné à</th>
                               <th>Catégorie</th>
+                              <th>Groupe</th>
                               <th>TTR</th>
                             </tr>
                           </thead>
@@ -3990,6 +3991,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 <td>
                                   {categoriesById.get(ticket.categoryId)
                                     ?.name ?? 'Non définie'}
+                                </td>
+                                <td>
+                                  {ticket.assignmentGroupId
+                                    ? (groupsById.get(ticket.assignmentGroupId)
+                                        ?.name ?? ticket.assignmentGroupId)
+                                    : 'aucun'}
                                 </td>
                                 <td>
                                   <div className="ticket-resolution-cell">

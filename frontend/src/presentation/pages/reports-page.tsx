@@ -1041,6 +1041,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
                   navigateTo(`/agent/tickets/${ticketId}?from=reports-group`)
                 }
                 prioritiesById={personalPrioritiesById}
+                showAssignedTo
                 title="Tickets assignes au groupe"
                 tickets={groupTickets}
                 users={users}
@@ -1052,6 +1053,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
                   navigateTo(`/agent/tickets/${ticketId}?from=reports-group`)
                 }
                 prioritiesById={personalPrioritiesById}
+                showAssignedTo={false}
                 title="Tickets du groupe non assignes"
                 tickets={unassignedGroupTickets}
                 users={users}
@@ -1591,6 +1593,8 @@ function GroupTicketPanel({
 
   prioritiesById,
 
+  showAssignedTo = true,
+
   tickets,
 
   title,
@@ -1602,6 +1606,8 @@ function GroupTicketPanel({
   onOpenTicket: (ticketId: string) => void;
 
   prioritiesById: Map<string, { level: number; name: string }>;
+
+  showAssignedTo?: boolean;
 
   tickets: TicketSummarySnapshot[];
 
@@ -1769,7 +1775,7 @@ function GroupTicketPanel({
 
                   <th>Demandeur</th>
 
-                  <th>Assigne a</th>
+                  {showAssignedTo ? <th>Assigne a</th> : null}
                 </tr>
               </thead>
 
@@ -1811,9 +1817,11 @@ function GroupTicketPanel({
                       )}
                     </td>
 
-                    <td>
-                      {formatAssignedUserName(ticket.assignedToUserId, users)}
-                    </td>
+                    {showAssignedTo ? (
+                      <td>
+                        {formatAssignedUserName(ticket.assignedToUserId, users)}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
