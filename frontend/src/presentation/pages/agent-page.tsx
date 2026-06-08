@@ -1191,6 +1191,42 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       ),
     [assignmentDraft.assignmentGroupId, technicians],
   );
+  const selectedTicketPriorityName =
+    selectedTicketDetail?.priorityName ??
+    (selectedTicketDetail
+      ? (prioritiesById.get(selectedTicketDetail.ticket.priorityId)?.name ??
+        null)
+      : null);
+  const selectedTicketPriorityLabel = selectedTicketPriorityName
+    ? translatePriority(selectedTicketPriorityName)
+    : 'Priorite non definie';
+  const selectedTicketPriorityModifier =
+    selectedTicketPriorityName?.toLowerCase() ?? 'undefined';
+  const selectedTicketAuthorLabel = selectedTicketDetail
+    ? formatKnownUserName(
+        usersById.get(selectedTicketDetail.ticket.createdByUserId),
+        selectedTicketDetail.ticket.createdByUserId,
+      )
+    : '';
+  const selectedTicketRequesterLabel = selectedTicketDetail?.ticket
+    .requestedForUserId
+    ? formatKnownUserName(
+        usersById.get(selectedTicketDetail.ticket.requestedForUserId),
+        selectedTicketDetail.ticket.requestedForUserId,
+      )
+    : 'Non renseigne';
+  const selectedTicketAssigneeLabel = selectedTicketDetail?.ticket
+    .assignedToUserId
+    ? formatKnownUserName(
+        usersById.get(selectedTicketDetail.ticket.assignedToUserId),
+        selectedTicketDetail.ticket.assignedToUserId,
+      )
+    : 'Non assigne';
+  const selectedTicketAssignmentGroupLabel = selectedTicketDetail?.ticket
+    .assignmentGroupId
+    ? (groupsById.get(selectedTicketDetail.ticket.assignmentGroupId)?.name ??
+      selectedTicketDetail.ticket.assignmentGroupId)
+    : 'Non affecte';
 
   const selectedCreationAssignmentGroupId =
     mode === 'INCIDENT'
@@ -4172,7 +4208,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           )}
                         </span>
 
-                        <span className="tdp-badge tdp-badge--priority">
+                        <span
+                          className={`tdp-badge tdp-badge--priority tdp-badge--priority-${selectedTicketPriorityModifier}`}
+                        >
                           {selectedTicketDetail.priorityName
                             ? translatePriority(
                                 selectedTicketDetail.priorityName,
@@ -4197,711 +4235,787 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       </div>
                     </div>
 
-                    <div className="tdp-card">
-                      <div className="tdp-card-header">
-                        <h3 className="tdp-card-title">Description</h3>
+                    <div className="tdp-summary-grid">
+                      <div className="tdp-summary-item">
+                        <span>Priorite</span>
+                        <strong>{selectedTicketPriorityLabel}</strong>
                       </div>
 
-                      {isEditingInfo && canEditTicket ? (
-                        <textarea
-                          className="tdp-description-edit"
-                          onChange={(event) =>
-                            handleTicketEditFieldChange(
-                              'description',
-                              event.target.value,
-                            )
+                      <div className="tdp-summary-item">
+                        <span>Auteur</span>
+                        <strong>{selectedTicketAuthorLabel}</strong>
+                      </div>
+
+                      <div className="tdp-summary-item">
+                        <span>Demandeur</span>
+                        <strong
+                          className={
+                            selectedTicketDetail.ticket.requestedForUserId
+                              ? undefined
+                              : 'tdp-missing'
                           }
-                          rows={4}
-                          value={ticketEditDraft.description}
-                        />
-                      ) : (
-                        <p className="tdp-description">
-                          {selectedTicketDetail.ticket.description}
-                        </p>
-                      )}
+                        >
+                          {selectedTicketRequesterLabel}
+                        </strong>
+                      </div>
+
+                      <div className="tdp-summary-item">
+                        <span>Assigne</span>
+                        <strong
+                          className={
+                            selectedTicketDetail.ticket.assignedToUserId
+                              ? undefined
+                              : 'tdp-missing'
+                          }
+                        >
+                          {selectedTicketAssigneeLabel}
+                        </strong>
+                      </div>
+
+                      <div className="tdp-summary-item">
+                        <span>Groupe</span>
+                        <strong
+                          className={
+                            selectedTicketDetail.ticket.assignmentGroupId
+                              ? undefined
+                              : 'tdp-missing'
+                          }
+                        >
+                          {selectedTicketAssignmentGroupLabel}
+                        </strong>
+                      </div>
                     </div>
 
-                    <div className="tdp-card">
-                      <div className="tdp-card-header">
-                        <h3 className="tdp-card-title">Informations</h3>
-
-                        {!isEditingInfo &&
-                        (canEditTicket || canManageTicket) ? (
-                          <button
-                            className="tdp-edit-toggle-btn"
-                            onClick={() => setIsEditingInfo(true)}
-                            type="button"
-                          >
-                            Modifier
-                          </button>
-                        ) : isEditingInfo ? (
-                          <div className="tdp-edit-header-actions">
-                            <button
-                              className="tdp-save-btn"
-                              disabled={isSavingInfo}
-                              onClick={() => void handleSaveInfoEdits()}
-                              type="button"
-                            >
-                              {isSavingInfo ? 'Sauvegarde...' : 'Sauvegarder'}
-                            </button>
-
-                            <button
-                              className="tdp-cancel-btn"
-                              disabled={isSavingInfo}
-                              onClick={handleCancelEditInfo}
-                              type="button"
-                            >
-                              Annuler
-                            </button>
+                    <div className="tdp-detail-grid">
+                      <div className="tdp-card tdp-card--description">
+                        <div className="tdp-card-header">
+                          <div>
+                            <h3 className="tdp-card-title">Description</h3>
+                            <p className="tdp-card-subtitle">
+                              Contexte et informations communiquees.
+                            </p>
                           </div>
-                        ) : null}
+                        </div>
+
+                        {isEditingInfo && canEditTicket ? (
+                          <textarea
+                            className="tdp-description-edit"
+                            onChange={(event) =>
+                              handleTicketEditFieldChange(
+                                'description',
+                                event.target.value,
+                              )
+                            }
+                            rows={4}
+                            value={ticketEditDraft.description}
+                          />
+                        ) : (
+                          <p className="tdp-description">
+                            {selectedTicketDetail.ticket.description}
+                          </p>
+                        )}
                       </div>
 
-                      <div className="tdp-info-grid">
-                        <div className="tdp-info-item">
-                          <span>Catégorie</span>
+                      <div className="tdp-card tdp-card--info">
+                        <div className="tdp-card-header">
+                          <div>
+                            <h3 className="tdp-card-title">Informations</h3>
+                            <p className="tdp-card-subtitle">
+                              Qualification, affectation et contexte du ticket.
+                            </p>
+                          </div>
 
-                          {isEditingInfo && canEditTicket ? (
-                            <select
-                              onChange={(event) =>
-                                handleTicketEditFieldChange(
-                                  'categoryId',
-                                  event.target.value,
-                                )
-                              }
-                              value={ticketEditDraft.categoryId}
+                          {!isEditingInfo &&
+                          (canEditTicket || canManageTicket) ? (
+                            <button
+                              className="tdp-edit-toggle-btn"
+                              onClick={() => setIsEditingInfo(true)}
+                              type="button"
                             >
-                              <option value="">Choisir une catégorie</option>
+                              Modifier
+                            </button>
+                          ) : isEditingInfo ? (
+                            <div className="tdp-edit-header-actions">
+                              <button
+                                className="tdp-save-btn"
+                                disabled={isSavingInfo}
+                                onClick={() => void handleSaveInfoEdits()}
+                                type="button"
+                              >
+                                {isSavingInfo ? 'Sauvegarde...' : 'Sauvegarder'}
+                              </button>
 
-                              {catalog.categories.map((category) => (
-                                <option key={category.id} value={category.id}>
-                                  {category.name}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <strong>
-                              {categoriesById.get(
-                                selectedTicketDetail.ticket.categoryId,
-                              )?.name ?? 'Non définie'}
-                            </strong>
-                          )}
+                              <button
+                                className="tdp-cancel-btn"
+                                disabled={isSavingInfo}
+                                onClick={handleCancelEditInfo}
+                                type="button"
+                              >
+                                Annuler
+                              </button>
+                            </div>
+                          ) : null}
                         </div>
 
-                        <div className="tdp-info-item">
-                          <span>Canal</span>
-
-                          {isEditingInfo && canEditTicket ? (
-                            <select
-                              onChange={(event) =>
-                                handleTicketEditFieldChange(
-                                  'channelId',
-                                  event.target.value,
-                                )
-                              }
-                              value={ticketEditDraft.channelId}
-                            >
-                              <option value="">Non renseigné</option>
-
-                              {catalog.channels.map((channel) => (
-                                <option key={channel.id} value={channel.id}>
-                                  {translateChannel(channel.name)}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <strong>
-                              {selectedTicketDetail.ticket.channelId
-                                ? translateChannel(
-                                    channelsById.get(
-                                      selectedTicketDetail.ticket.channelId,
-                                    )?.name ??
-                                      selectedTicketDetail.ticket.channelId,
-                                  )
-                                : 'Non renseigné'}
-                            </strong>
-                          )}
-                        </div>
-
-                        <div className="tdp-info-item">
-                          <span>Équipement concerné</span>
-
-                          {isEditingInfo && canEditTicket ? (
-                            <select
-                              onChange={(event) =>
-                                handleTicketEditFieldChange(
-                                  'ciId',
-                                  event.target.value,
-                                )
-                              }
-                              value={ticketEditDraft.ciId}
-                            >
-                              <option value="">Non renseigné</option>
-
-                              {catalog.cis.map((ci) => (
-                                <option key={ci.id} value={ci.id}>
-                                  {ci.name}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <strong>
-                              {selectedTicketDetail.ticket.ciId
-                                ? (cisById.get(selectedTicketDetail.ticket.ciId)
-                                    ?.name ?? selectedTicketDetail.ticket.ciId)
-                                : 'Non renseigné'}
-                            </strong>
-                          )}
-                        </div>
-
-                        <div className="tdp-info-item">
-                          <span>{"Groupe d'affectation"}</span>
-
-                          {isEditingInfo && canManageTicket ? (
-                            <select
-                              onChange={(event) =>
-                                handleAssignmentFieldChange(
-                                  'assignmentGroupId',
-                                  event.target.value,
-                                )
-                              }
-                              value={assignmentDraft.assignmentGroupId}
-                            >
-                              <option value="">Aucun groupe</option>
-
-                              {catalog.groups.map((group) => (
-                                <option key={group.id} value={group.id}>
-                                  {group.name}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <strong>
-                              {selectedTicketDetail.ticket.assignmentGroupId
-                                ? (groupsById.get(
-                                    selectedTicketDetail.ticket
-                                      .assignmentGroupId,
-                                  )?.name ??
-                                  selectedTicketDetail.ticket.assignmentGroupId)
-                                : 'Non affecté'}
-                            </strong>
-                          )}
-                        </div>
-
-                        <div className="tdp-info-item">
-                          <span>Agent assigné</span>
-
-                          {isEditingInfo && canManageTicket ? (
-                            <select
-                              onChange={(event) =>
-                                handleAssignmentFieldChange(
-                                  'assignedToUserId',
-                                  event.target.value,
-                                )
-                              }
-                              value={assignmentDraft.assignedToUserId}
-                            >
-                              <option value="">Aucun technicien</option>
-
-                              {assignableTechnicians.map((technician) => (
-                                <option
-                                  key={technician.id}
-                                  value={technician.id}
-                                >
-                                  {formatKnownUserName(
-                                    technician,
-                                    technician.id,
-                                  )}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <strong>
-                              {selectedTicketDetail.ticket.assignedToUserId
-                                ? formatKnownUserName(
-                                    usersById.get(
-                                      selectedTicketDetail.ticket
-                                        .assignedToUserId,
-                                    ),
-                                    selectedTicketDetail.ticket
-                                      .assignedToUserId,
-                                  )
-                                : 'Non assigné'}
-                            </strong>
-                          )}
-                        </div>
-
-                        {selectedTicketDetail.ticket.requestedForUserId ||
-                        (isEditingInfo && canEditTicket) ? (
+                        <div className="tdp-info-grid">
                           <div className="tdp-info-item">
-                            <span>Demandeur</span>
+                            <span>Catégorie</span>
 
                             {isEditingInfo && canEditTicket ? (
                               <select
                                 onChange={(event) =>
                                   handleTicketEditFieldChange(
-                                    'requestedForUserId',
+                                    'categoryId',
                                     event.target.value,
                                   )
                                 }
-                                value={ticketEditDraft.requestedForUserId}
+                                value={ticketEditDraft.categoryId}
                               >
-                                <option value="">Non renseigné</option>
+                                <option value="">Choisir une catégorie</option>
 
-                                {userDirectory
-                                  .filter((user) => user.isActive)
-                                  .map((user) => (
-                                    <option key={user.id} value={user.id}>
-                                      {formatKnownUserName(user, user.id)}
-                                    </option>
-                                  ))}
+                                {catalog.categories.map((category) => (
+                                  <option key={category.id} value={category.id}>
+                                    {category.name}
+                                  </option>
+                                ))}
                               </select>
                             ) : (
                               <strong>
-                                {formatKnownUserName(
-                                  usersById.get(
-                                    selectedTicketDetail.ticket
-                                      .requestedForUserId!,
-                                  ),
-                                  selectedTicketDetail.ticket
-                                    .requestedForUserId!,
-                                )}
+                                {categoriesById.get(
+                                  selectedTicketDetail.ticket.categoryId,
+                                )?.name ?? 'Non définie'}
                               </strong>
                             )}
                           </div>
-                        ) : null}
 
-                        {selectedTicketDetail.incident ? (
-                          <>
-                            <div className="tdp-info-item">
-                              <span>Impact</span>
-                              {isEditingInfo && canEditTicket ? (
-                                <select
-                                  onChange={(event) =>
-                                    handleTicketEditFieldChange(
-                                      'impact',
-                                      event.target.value as IncidentSeverity,
-                                    )
-                                  }
-                                  value={ticketEditDraft.impact}
-                                >
-                                  {INCIDENT_SEVERITIES.map((severity) => (
-                                    <option key={severity} value={severity}>
-                                      {translateIncidentSeverity(severity)}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                <strong>
-                                  {translateIncidentSeverity(
-                                    selectedTicketDetail.incident.impact,
-                                  )}
-                                </strong>
-                              )}
-                            </div>
-
-                            <div className="tdp-info-item">
-                              <span>Urgence</span>
-                              {isEditingInfo && canEditTicket ? (
-                                <select
-                                  onChange={(event) =>
-                                    handleTicketEditFieldChange(
-                                      'urgency',
-                                      event.target.value as IncidentSeverity,
-                                    )
-                                  }
-                                  value={ticketEditDraft.urgency}
-                                >
-                                  {INCIDENT_SEVERITIES.map((severity) => (
-                                    <option key={severity} value={severity}>
-                                      {translateIncidentSeverity(severity)}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                <strong>
-                                  {translateIncidentSeverity(
-                                    selectedTicketDetail.incident.urgency,
-                                  )}
-                                </strong>
-                              )}
-                            </div>
+                          <div className="tdp-info-item">
+                            <span>Canal</span>
 
                             {isEditingInfo && canEditTicket ? (
-                              <div className="tdp-info-item tdp-info-item--full">
-                                <span>Cause racine</span>
-                                <textarea
-                                  onChange={(event) =>
-                                    handleTicketEditFieldChange(
-                                      'rootCause',
-                                      event.target.value,
-                                    )
-                                  }
-                                  placeholder="Cause racine"
-                                  rows={3}
-                                  value={ticketEditDraft.rootCause}
-                                />
-                              </div>
-                            ) : selectedTicketDetail.incident.rootCause ? (
-                              <div className="tdp-info-item tdp-info-item--full">
-                                <span>Cause racine</span>
-                                <strong>
-                                  {selectedTicketDetail.incident.rootCause}
-                                </strong>
-                              </div>
-                            ) : null}
-
-                            {isEditingInfo && canEditTicket ? (
-                              <div className="tdp-info-item tdp-info-item--full">
-                                <span>Contournement</span>
-                                <textarea
-                                  onChange={(event) =>
-                                    handleTicketEditFieldChange(
-                                      'workaround',
-                                      event.target.value,
-                                    )
-                                  }
-                                  placeholder="Contournement"
-                                  rows={3}
-                                  value={ticketEditDraft.workaround}
-                                />
-                              </div>
-                            ) : selectedTicketDetail.incident.workaround ? (
-                              <div className="tdp-info-item tdp-info-item--full">
-                                <span>Contournement</span>
-                                <strong>
-                                  {selectedTicketDetail.incident.workaround}
-                                </strong>
-                              </div>
-                            ) : null}
-                          </>
-                        ) : null}
-
-                        {selectedTicketDetail.request ? (
-                          <>
-                            <div className="tdp-info-item">
-                              <span>Type de demande</span>
-                              <strong>
-                                {translateRequestType(
-                                  selectedTicketDetail.request.requestType,
-                                )}
-                              </strong>
-                            </div>
-
-                            <div className="tdp-info-item">
-                              <span>Approbation</span>
-                              <strong>
-                                {selectedTicketDetail.request.approvalStatus ??
-                                  'Non d?finie'}
-                              </strong>
-                            </div>
-                          </>
-                        ) : null}
-                      </div>
-
-                      {detailActionErrorMessage ? (
-                        <p className="tdp-form-error">
-                          {detailActionErrorMessage}
-                        </p>
-                      ) : null}
-
-                      {detailActionSuccessMessage ? (
-                        <p className="tdp-form-success">
-                          {detailActionSuccessMessage}
-                        </p>
-                      ) : null}
-                    </div>
-
-                    <div className="tdp-card">
-                      <div className="tdp-card-header">
-                        <h3 className="tdp-card-title">Conversation</h3>
-                        <span className="tdp-tab-count">
-                          {selectedTicketComments.length}
-                        </span>
-                      </div>
-
-                      {isLoadingComments ? (
-                        <p className="tdp-state">
-                          Chargement des commentaires...
-                        </p>
-                      ) : loadCommentsErrorMessage ? (
-                        <p className="tdp-state tdp-state--error">
-                          {loadCommentsErrorMessage}
-                        </p>
-                      ) : selectedTicketComments.length === 0 ? (
-                        <p className="tdp-empty">
-                          Aucun commentaire pour ce ticket.
-                        </p>
-                      ) : (
-                        <div className="tdp-comment-thread">
-                          {selectedTicketComments.map((comment) => {
-                            const canDeleteComment = canDeleteTicketComment(
-                              session.user.role,
-                              session.user.id,
-                              comment.authorUserId,
-                            );
-                            const initial =
-                              formatKnownUserName(
-                                usersById.get(comment.authorUserId),
-                                comment.authorUserId,
-                              )
-                                .charAt(0)
-                                .toUpperCase() || '?';
-
-                            return (
-                              <div
-                                className={
-                                  comment.isInternal
-                                    ? 'tdp-comment tdp-comment--internal'
-                                    : 'tdp-comment'
+                              <select
+                                onChange={(event) =>
+                                  handleTicketEditFieldChange(
+                                    'channelId',
+                                    event.target.value,
+                                  )
                                 }
-                                key={comment.id}
+                                value={ticketEditDraft.channelId}
                               >
-                                <div className="tdp-comment-avatar">
-                                  {initial}
+                                <option value="">Non renseigné</option>
+
+                                {catalog.channels.map((channel) => (
+                                  <option key={channel.id} value={channel.id}>
+                                    {translateChannel(channel.name)}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <strong>
+                                {selectedTicketDetail.ticket.channelId
+                                  ? translateChannel(
+                                      channelsById.get(
+                                        selectedTicketDetail.ticket.channelId,
+                                      )?.name ??
+                                        selectedTicketDetail.ticket.channelId,
+                                    )
+                                  : 'Non renseigné'}
+                              </strong>
+                            )}
+                          </div>
+
+                          <div className="tdp-info-item">
+                            <span>Équipement concerné</span>
+
+                            {isEditingInfo && canEditTicket ? (
+                              <select
+                                onChange={(event) =>
+                                  handleTicketEditFieldChange(
+                                    'ciId',
+                                    event.target.value,
+                                  )
+                                }
+                                value={ticketEditDraft.ciId}
+                              >
+                                <option value="">Non renseigné</option>
+
+                                {catalog.cis.map((ci) => (
+                                  <option key={ci.id} value={ci.id}>
+                                    {ci.name}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <strong>
+                                {selectedTicketDetail.ticket.ciId
+                                  ? (cisById.get(
+                                      selectedTicketDetail.ticket.ciId,
+                                    )?.name ?? selectedTicketDetail.ticket.ciId)
+                                  : 'Non renseigné'}
+                              </strong>
+                            )}
+                          </div>
+
+                          <div className="tdp-info-item">
+                            <span>{"Groupe d'affectation"}</span>
+
+                            {isEditingInfo && canManageTicket ? (
+                              <select
+                                onChange={(event) =>
+                                  handleAssignmentFieldChange(
+                                    'assignmentGroupId',
+                                    event.target.value,
+                                  )
+                                }
+                                value={assignmentDraft.assignmentGroupId}
+                              >
+                                <option value="">Aucun groupe</option>
+
+                                {catalog.groups.map((group) => (
+                                  <option key={group.id} value={group.id}>
+                                    {group.name}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <strong>
+                                {selectedTicketDetail.ticket.assignmentGroupId
+                                  ? (groupsById.get(
+                                      selectedTicketDetail.ticket
+                                        .assignmentGroupId,
+                                    )?.name ??
+                                    selectedTicketDetail.ticket
+                                      .assignmentGroupId)
+                                  : 'Non affecté'}
+                              </strong>
+                            )}
+                          </div>
+
+                          <div className="tdp-info-item">
+                            <span>Agent assigné</span>
+
+                            {isEditingInfo && canManageTicket ? (
+                              <select
+                                onChange={(event) =>
+                                  handleAssignmentFieldChange(
+                                    'assignedToUserId',
+                                    event.target.value,
+                                  )
+                                }
+                                value={assignmentDraft.assignedToUserId}
+                              >
+                                <option value="">Aucun technicien</option>
+
+                                {assignableTechnicians.map((technician) => (
+                                  <option
+                                    key={technician.id}
+                                    value={technician.id}
+                                  >
+                                    {formatKnownUserName(
+                                      technician,
+                                      technician.id,
+                                    )}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <strong>
+                                {selectedTicketDetail.ticket.assignedToUserId
+                                  ? formatKnownUserName(
+                                      usersById.get(
+                                        selectedTicketDetail.ticket
+                                          .assignedToUserId,
+                                      ),
+                                      selectedTicketDetail.ticket
+                                        .assignedToUserId,
+                                    )
+                                  : 'Non assigné'}
+                              </strong>
+                            )}
+                          </div>
+
+                          {selectedTicketDetail.ticket.requestedForUserId ||
+                          (isEditingInfo && canEditTicket) ? (
+                            <div className="tdp-info-item">
+                              <span>Demandeur</span>
+
+                              {isEditingInfo && canEditTicket ? (
+                                <select
+                                  onChange={(event) =>
+                                    handleTicketEditFieldChange(
+                                      'requestedForUserId',
+                                      event.target.value,
+                                    )
+                                  }
+                                  value={ticketEditDraft.requestedForUserId}
+                                >
+                                  <option value="">Non renseigné</option>
+
+                                  {userDirectory
+                                    .filter((user) => user.isActive)
+                                    .map((user) => (
+                                      <option key={user.id} value={user.id}>
+                                        {formatKnownUserName(user, user.id)}
+                                      </option>
+                                    ))}
+                                </select>
+                              ) : (
+                                <strong>
+                                  {formatKnownUserName(
+                                    usersById.get(
+                                      selectedTicketDetail.ticket
+                                        .requestedForUserId!,
+                                    ),
+                                    selectedTicketDetail.ticket
+                                      .requestedForUserId!,
+                                  )}
+                                </strong>
+                              )}
+                            </div>
+                          ) : null}
+
+                          {selectedTicketDetail.incident ? (
+                            <>
+                              <div className="tdp-info-item">
+                                <span>Impact</span>
+                                {isEditingInfo && canEditTicket ? (
+                                  <select
+                                    onChange={(event) =>
+                                      handleTicketEditFieldChange(
+                                        'impact',
+                                        event.target.value as IncidentSeverity,
+                                      )
+                                    }
+                                    value={ticketEditDraft.impact}
+                                  >
+                                    {INCIDENT_SEVERITIES.map((severity) => (
+                                      <option key={severity} value={severity}>
+                                        {translateIncidentSeverity(severity)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <strong>
+                                    {translateIncidentSeverity(
+                                      selectedTicketDetail.incident.impact,
+                                    )}
+                                  </strong>
+                                )}
+                              </div>
+
+                              <div className="tdp-info-item">
+                                <span>Urgence</span>
+                                {isEditingInfo && canEditTicket ? (
+                                  <select
+                                    onChange={(event) =>
+                                      handleTicketEditFieldChange(
+                                        'urgency',
+                                        event.target.value as IncidentSeverity,
+                                      )
+                                    }
+                                    value={ticketEditDraft.urgency}
+                                  >
+                                    {INCIDENT_SEVERITIES.map((severity) => (
+                                      <option key={severity} value={severity}>
+                                        {translateIncidentSeverity(severity)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <strong>
+                                    {translateIncidentSeverity(
+                                      selectedTicketDetail.incident.urgency,
+                                    )}
+                                  </strong>
+                                )}
+                              </div>
+
+                              {isEditingInfo && canEditTicket ? (
+                                <div className="tdp-info-item tdp-info-item--full">
+                                  <span>Cause racine</span>
+                                  <textarea
+                                    onChange={(event) =>
+                                      handleTicketEditFieldChange(
+                                        'rootCause',
+                                        event.target.value,
+                                      )
+                                    }
+                                    placeholder="Cause racine"
+                                    rows={3}
+                                    value={ticketEditDraft.rootCause}
+                                  />
                                 </div>
+                              ) : selectedTicketDetail.incident.rootCause ? (
+                                <div className="tdp-info-item tdp-info-item--full">
+                                  <span>Cause racine</span>
+                                  <strong>
+                                    {selectedTicketDetail.incident.rootCause}
+                                  </strong>
+                                </div>
+                              ) : null}
 
-                                <div className="tdp-comment-body">
-                                  <div className="tdp-comment-header">
-                                    <strong>
-                                      {formatKnownUserName(
-                                        usersById.get(comment.authorUserId),
-                                        comment.authorUserId,
-                                      )}
-                                    </strong>
+                              {isEditingInfo && canEditTicket ? (
+                                <div className="tdp-info-item tdp-info-item--full">
+                                  <span>Contournement</span>
+                                  <textarea
+                                    onChange={(event) =>
+                                      handleTicketEditFieldChange(
+                                        'workaround',
+                                        event.target.value,
+                                      )
+                                    }
+                                    placeholder="Contournement"
+                                    rows={3}
+                                    value={ticketEditDraft.workaround}
+                                  />
+                                </div>
+                              ) : selectedTicketDetail.incident.workaround ? (
+                                <div className="tdp-info-item tdp-info-item--full">
+                                  <span>Contournement</span>
+                                  <strong>
+                                    {selectedTicketDetail.incident.workaround}
+                                  </strong>
+                                </div>
+                              ) : null}
+                            </>
+                          ) : null}
 
-                                    <span>
-                                      {formatTicketDate(comment.createdAt)}
-                                    </span>
+                          {selectedTicketDetail.request ? (
+                            <>
+                              <div className="tdp-info-item">
+                                <span>Type de demande</span>
+                                <strong>
+                                  {translateRequestType(
+                                    selectedTicketDetail.request.requestType,
+                                  )}
+                                </strong>
+                              </div>
 
-                                    <span
-                                      className={
-                                        comment.isInternal
-                                          ? 'tdp-comment-badge tdp-comment-badge--internal'
-                                          : 'tdp-comment-badge'
-                                      }
-                                    >
-                                      {comment.isInternal
-                                        ? 'Interne'
-                                        : 'Public'}
-                                    </span>
+                              <div className="tdp-info-item">
+                                <span>Approbation</span>
+                                <strong>
+                                  {selectedTicketDetail.request
+                                    .approvalStatus ?? 'Non d?finie'}
+                                </strong>
+                              </div>
+                            </>
+                          ) : null}
+                        </div>
 
-                                    {canDeleteComment ? (
-                                      <button
-                                        className="tdp-delete-btn"
-                                        disabled={
-                                          deletingCommentId === comment.id
+                        {detailActionErrorMessage ? (
+                          <p className="tdp-form-error">
+                            {detailActionErrorMessage}
+                          </p>
+                        ) : null}
+
+                        {detailActionSuccessMessage ? (
+                          <p className="tdp-form-success">
+                            {detailActionSuccessMessage}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div className="tdp-card tdp-card--conversation">
+                        <div className="tdp-card-header">
+                          <div>
+                            <h3 className="tdp-card-title">Conversation</h3>
+                            <p className="tdp-card-subtitle">
+                              Commentaires, pieces jointes et suivi du
+                              traitement.
+                            </p>
+                          </div>
+                          <span className="tdp-tab-count">
+                            {selectedTicketComments.length}
+                          </span>
+                        </div>
+
+                        {isLoadingComments ? (
+                          <p className="tdp-state">
+                            Chargement des commentaires...
+                          </p>
+                        ) : loadCommentsErrorMessage ? (
+                          <p className="tdp-state tdp-state--error">
+                            {loadCommentsErrorMessage}
+                          </p>
+                        ) : selectedTicketComments.length === 0 ? (
+                          <p className="tdp-empty">
+                            Aucun commentaire pour ce ticket.
+                          </p>
+                        ) : (
+                          <div className="tdp-comment-thread">
+                            {selectedTicketComments.map((comment) => {
+                              const canDeleteComment = canDeleteTicketComment(
+                                session.user.role,
+                                session.user.id,
+                                comment.authorUserId,
+                              );
+                              const initial =
+                                formatKnownUserName(
+                                  usersById.get(comment.authorUserId),
+                                  comment.authorUserId,
+                                )
+                                  .charAt(0)
+                                  .toUpperCase() || '?';
+
+                              return (
+                                <div
+                                  className={
+                                    comment.isInternal
+                                      ? 'tdp-comment tdp-comment--internal'
+                                      : 'tdp-comment'
+                                  }
+                                  key={comment.id}
+                                >
+                                  <div className="tdp-comment-avatar">
+                                    {initial}
+                                  </div>
+
+                                  <div className="tdp-comment-body">
+                                    <div className="tdp-comment-header">
+                                      <strong>
+                                        {formatKnownUserName(
+                                          usersById.get(comment.authorUserId),
+                                          comment.authorUserId,
+                                        )}
+                                      </strong>
+
+                                      <span>
+                                        {formatTicketDate(comment.createdAt)}
+                                      </span>
+
+                                      <span
+                                        className={
+                                          comment.isInternal
+                                            ? 'tdp-comment-badge tdp-comment-badge--internal'
+                                            : 'tdp-comment-badge'
                                         }
+                                      >
+                                        {comment.isInternal
+                                          ? 'Interne'
+                                          : 'Public'}
+                                      </span>
+
+                                      {canDeleteComment ? (
+                                        <button
+                                          className="tdp-delete-btn"
+                                          disabled={
+                                            deletingCommentId === comment.id
+                                          }
+                                          onClick={() =>
+                                            void handleDeleteComment(comment.id)
+                                          }
+                                          type="button"
+                                        >
+                                          {deletingCommentId === comment.id
+                                            ? 'Suppression...'
+                                            : 'Supprimer'}
+                                        </button>
+                                      ) : null}
+                                    </div>
+
+                                    <p className="tdp-comment-text">
+                                      {comment.body}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {selectedTicketAttachments.length > 0 ? (
+                          <div className="tdp-attachment-section">
+                            <p className="tdp-subsection-label">
+                              Pièces jointes ({selectedTicketAttachments.length}
+                              )
+                            </p>
+
+                            {isLoadingAttachments ? (
+                              <p className="tdp-state">
+                                Chargement des pièces jointes...
+                              </p>
+                            ) : loadAttachmentsErrorMessage ? (
+                              <p className="tdp-state tdp-state--error">
+                                {loadAttachmentsErrorMessage}
+                              </p>
+                            ) : (
+                              <div className="tdp-attachment-list">
+                                {selectedTicketAttachments.map((attachment) => (
+                                  <div
+                                    className="tdp-attachment-item"
+                                    key={attachment.id}
+                                  >
+                                    <div className="tdp-attachment-info">
+                                      <strong>{attachment.fileName}</strong>
+
+                                      <span>
+                                        Ajouté le{' '}
+                                        {formatTicketDate(attachment.createdAt)}{' '}
+                                        · {formatFileSize(attachment.sizeBytes)}
+                                      </span>
+                                    </div>
+
+                                    <div className="tdp-attachment-actions">
+                                      <button
+                                        className="secondary-button"
                                         onClick={() =>
-                                          void handleDeleteComment(comment.id)
+                                          void handleDownloadAttachment(
+                                            attachment,
+                                          )
                                         }
                                         type="button"
                                       >
-                                        {deletingCommentId === comment.id
+                                        Télécharger
+                                      </button>
+
+                                      <button
+                                        className="tdp-delete-btn"
+                                        disabled={
+                                          deletingAttachmentId === attachment.id
+                                        }
+                                        onClick={() =>
+                                          void handleDeleteAttachment(
+                                            attachment,
+                                          )
+                                        }
+                                        type="button"
+                                      >
+                                        {deletingAttachmentId === attachment.id
                                           ? 'Suppression...'
                                           : 'Supprimer'}
                                       </button>
-                                    ) : null}
+                                    </div>
                                   </div>
-
-                                  <p className="tdp-comment-text">
-                                    {comment.body}
-                                  </p>
-                                </div>
+                                ))}
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {selectedTicketAttachments.length > 0 ? (
-                        <div className="tdp-attachment-section">
-                          <p className="tdp-subsection-label">
-                            Pièces jointes ({selectedTicketAttachments.length})
-                          </p>
-
-                          {isLoadingAttachments ? (
-                            <p className="tdp-state">
-                              Chargement des pièces jointes...
-                            </p>
-                          ) : loadAttachmentsErrorMessage ? (
-                            <p className="tdp-state tdp-state--error">
-                              {loadAttachmentsErrorMessage}
-                            </p>
-                          ) : (
-                            <div className="tdp-attachment-list">
-                              {selectedTicketAttachments.map((attachment) => (
-                                <div
-                                  className="tdp-attachment-item"
-                                  key={attachment.id}
-                                >
-                                  <div className="tdp-attachment-info">
-                                    <strong>{attachment.fileName}</strong>
-
-                                    <span>
-                                      Ajouté le{' '}
-                                      {formatTicketDate(attachment.createdAt)} ·{' '}
-                                      {formatFileSize(attachment.sizeBytes)}
-                                    </span>
-                                  </div>
-
-                                  <div className="tdp-attachment-actions">
-                                    <button
-                                      className="secondary-button"
-                                      onClick={() =>
-                                        void handleDownloadAttachment(
-                                          attachment,
-                                        )
-                                      }
-                                      type="button"
-                                    >
-                                      Télécharger
-                                    </button>
-
-                                    <button
-                                      className="tdp-delete-btn"
-                                      disabled={
-                                        deletingAttachmentId === attachment.id
-                                      }
-                                      onClick={() =>
-                                        void handleDeleteAttachment(attachment)
-                                      }
-                                      type="button"
-                                    >
-                                      {deletingAttachmentId === attachment.id
-                                        ? 'Suppression...'
-                                        : 'Supprimer'}
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ) : null}
-
-                      <hr className="tdp-divider" />
-                      <div className="tdp-reply-area">
-                        <form
-                          className="tdp-reply-comment-form"
-                          onSubmit={handleCommentSubmit}
-                        >
-                          <label className="field">
-                            <span>Commentaire</span>
-
-                            <textarea
-                              className="tdp-reply-textarea"
-                              onChange={(event) =>
-                                handleCommentBodyChange(event.target.value)
-                              }
-                              placeholder="Ajoute une note utile au traitement du ticket."
-                              rows={4}
-                              value={commentDraft.body}
-                            />
-                          </label>
-
-                          <div className="tdp-reply-footer">
-                            {canCreateInternalComments ? (
-                              <label className="tdp-toggle">
-                                <input
-                                  checked={commentDraft.isInternal}
-                                  onChange={(event) =>
-                                    handleCommentInternalToggle(
-                                      event.target.checked,
-                                    )
-                                  }
-                                  type="checkbox"
-                                />
-                                <span>Note interne</span>
-                              </label>
-                            ) : (
-                              <span className="tdp-form-hint">
-                                Les notes internes sont r?serv?es aux agents et
-                                admins.
-                              </span>
                             )}
-
-                            <button
-                              className="secondary-button"
-                              disabled={isSubmittingComment}
-                            >
-                              {isSubmittingComment ? 'Envoi...' : 'Publier'}
-                            </button>
                           </div>
+                        ) : null}
 
-                          {commentErrorMessage ? (
-                            <p className="tdp-form-error">
-                              {commentErrorMessage}
-                            </p>
-                          ) : null}
+                        <hr className="tdp-divider" />
+                        <div className="tdp-reply-area">
+                          <form
+                            className="tdp-reply-comment-form"
+                            onSubmit={handleCommentSubmit}
+                          >
+                            <label className="field">
+                              <span>Commentaire</span>
 
-                          {commentSuccessMessage ? (
-                            <p className="tdp-form-success">
-                              {commentSuccessMessage}
-                            </p>
-                          ) : null}
-                        </form>
+                              <textarea
+                                className="tdp-reply-textarea"
+                                onChange={(event) =>
+                                  handleCommentBodyChange(event.target.value)
+                                }
+                                placeholder="Ajoute une note utile au traitement du ticket."
+                                rows={4}
+                                value={commentDraft.body}
+                              />
+                            </label>
 
-                        <form
-                          className="tdp-reply-attachment-form"
-                          onSubmit={handleAttachmentSubmit}
-                        >
-                          <div className="field">
-                            <span>Pièces jointes</span>
-
-                            <div className="ticket-upload-zone tdp-upload-zone">
-                              <div className="ticket-upload-actions">
-                                <label className="ticket-upload-button">
-                                  Choisir un fichier
+                            <div className="tdp-reply-footer">
+                              {canCreateInternalComments ? (
+                                <label className="tdp-toggle">
                                   <input
-                                    accept="*/*"
-                                    key={attachmentInputKey}
+                                    checked={commentDraft.isInternal}
                                     onChange={(event) =>
-                                      handleAttachmentSelection(
-                                        event.target.files?.[0] ?? null,
+                                      handleCommentInternalToggle(
+                                        event.target.checked,
                                       )
                                     }
-                                    type="file"
+                                    type="checkbox"
                                   />
+                                  <span>Note interne</span>
                                 </label>
-
-                                <span className="ticket-upload-note">
-                                  {attachmentDraft.file
-                                    ? `${attachmentDraft.file.name} (${formatFileSize(attachmentDraft.file.size)})`
-                                    : 'Aucun fichier sélectionné'}
+                              ) : (
+                                <span className="tdp-form-hint">
+                                  Les notes internes sont r?serv?es aux agents
+                                  et admins.
                                 </span>
-                              </div>
+                              )}
 
-                              <div className="ticket-upload-note ticket-upload-note--stacked">
-                                <span>
-                                  Formats acceptés : PDF, PNG, JPG, DOCX.
-                                </span>
-                                <span>2 Mo max par fichier.</span>
+                              <button
+                                className="secondary-button"
+                                disabled={isSubmittingComment}
+                              >
+                                {isSubmittingComment ? 'Envoi...' : 'Publier'}
+                              </button>
+                            </div>
+
+                            {commentErrorMessage ? (
+                              <p className="tdp-form-error">
+                                {commentErrorMessage}
+                              </p>
+                            ) : null}
+
+                            {commentSuccessMessage ? (
+                              <p className="tdp-form-success">
+                                {commentSuccessMessage}
+                              </p>
+                            ) : null}
+                          </form>
+
+                          <form
+                            className="tdp-reply-attachment-form"
+                            onSubmit={handleAttachmentSubmit}
+                          >
+                            <div className="field">
+                              <span>Pièces jointes</span>
+
+                              <div className="ticket-upload-zone tdp-upload-zone">
+                                <div className="ticket-upload-actions">
+                                  <label className="ticket-upload-button">
+                                    Choisir un fichier
+                                    <input
+                                      accept="*/*"
+                                      key={attachmentInputKey}
+                                      onChange={(event) =>
+                                        handleAttachmentSelection(
+                                          event.target.files?.[0] ?? null,
+                                        )
+                                      }
+                                      type="file"
+                                    />
+                                  </label>
+
+                                  <span className="ticket-upload-note">
+                                    {attachmentDraft.file
+                                      ? `${attachmentDraft.file.name} (${formatFileSize(attachmentDraft.file.size)})`
+                                      : 'Aucun fichier sélectionné'}
+                                  </span>
+                                </div>
+
+                                <div className="ticket-upload-note ticket-upload-note--stacked">
+                                  <span>
+                                    Formats acceptés : PDF, PNG, JPG, DOCX.
+                                  </span>
+                                  <span>2 Mo max par fichier.</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          <div className="tdp-reply-footer tdp-reply-footer--end">
-                            <button
-                              className="secondary-button"
-                              disabled={isSubmittingAttachment}
-                            >
-                              {isSubmittingAttachment ? 'Envoi...' : 'Joindre'}
-                            </button>
-                          </div>
+                            <div className="tdp-reply-footer tdp-reply-footer--end">
+                              <button
+                                className="secondary-button"
+                                disabled={isSubmittingAttachment}
+                              >
+                                {isSubmittingAttachment
+                                  ? 'Envoi...'
+                                  : 'Joindre'}
+                              </button>
+                            </div>
 
-                          {attachmentErrorMessage ? (
-                            <p className="tdp-form-error">
-                              {attachmentErrorMessage}
-                            </p>
-                          ) : null}
+                            {attachmentErrorMessage ? (
+                              <p className="tdp-form-error">
+                                {attachmentErrorMessage}
+                              </p>
+                            ) : null}
 
-                          {attachmentSuccessMessage ? (
-                            <p className="tdp-form-success">
-                              {attachmentSuccessMessage}
-                            </p>
-                          ) : null}
-                        </form>
+                            {attachmentSuccessMessage ? (
+                              <p className="tdp-form-success">
+                                {attachmentSuccessMessage}
+                              </p>
+                            ) : null}
+                          </form>
+                        </div>
                       </div>
                     </div>
                   </div>
