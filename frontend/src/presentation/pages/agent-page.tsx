@@ -3985,7 +3985,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                         usersById.get(ticket.assignedToUserId),
                                         ticket.assignedToUserId,
                                       )
-                                    : 'Non assigné'}
+                                    : 'aucun'}
                                 </td>
                                 <td>
                                   {categoriesById.get(ticket.categoryId)
@@ -4428,7 +4428,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     selectedTicketDetail.ticket
                                       .assignedToUserId,
                                   )
-                                : 'Non assigné'}
+                                : 'aucun'}
                             </strong>
                           )}
                         </div>

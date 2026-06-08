@@ -5869,6 +5869,20 @@ a {
   max-width: calc(100% - 84px);
 }
 
+.planning-event--compact .planning-event-user {
+  display: none;
+}
+
+.planning-event-user {
+  overflow: hidden;
+  color: #2b5d9f !important;
+  font-size: 0.68rem !important;
+  font-weight: 700;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .planning-event strong {
   overflow: hidden;
   font-size: 0.78rem;
@@ -5978,8 +5992,8 @@ a {
 }
 
 .planning-month-task {
-  display: flex;
-  gap: 6px;
+  display: grid;
+  gap: 2px;
   overflow: hidden;
   padding: 4px 5px;
   border: 1px solid rgba(43, 109, 233, 0.24);
@@ -5995,8 +6009,26 @@ a {
 }
 
 .planning-month-task span {
-  flex-shrink: 0;
   color: #576b89;
+}
+
+.planning-month-task small {
+  overflow: hidden;
+  color: #2b5d9f;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planning-month-task strong {
+  overflow: hidden;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .planning-month-task.planning-event--done {
@@ -6088,6 +6120,23 @@ a {
 
 .planning-agenda-time {
   color: #516783;
+}
+
+.planning-agenda-task-title {
+  display: grid;
+  gap: 2px;
+}
+
+.planning-agenda-task-title small {
+  color: #2b5d9f;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.planning-agenda-task-title strong {
+  color: #243958;
+  font-size: 0.86rem;
+  font-weight: 600;
 }
 
 .planning-status-toggle {

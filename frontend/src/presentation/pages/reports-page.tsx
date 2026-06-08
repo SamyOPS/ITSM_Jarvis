@@ -538,10 +538,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
   );
 
   const personalPlanningTasks = useMemo(
-    () =>
-      planningTasks.filter(
-        (task) => !task.groupId && task.technicianId === session.user.id,
-      ),
+    () => planningTasks.filter((task) => task.technicianId === session.user.id),
 
     [planningTasks, session.user.id],
   );
@@ -3163,7 +3160,7 @@ function formatAssignedUserName(
   users: AdminUserSummary[],
 ): string {
   if (!userId) {
-    return 'Non renseigne';
+    return 'aucun';
   }
 
   const user = users.find((candidate) => candidate.id === userId);

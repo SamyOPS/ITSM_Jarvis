@@ -347,6 +347,7 @@ export function PlanningPage({
             onOpenTask={openTask}
             onToggleStatus={toggleTaskStatus}
             segments={segments}
+            technicians={technicians}
           />
         ) : null}
 
@@ -358,6 +359,7 @@ export function PlanningPage({
             onOpenTask={openTask}
             onToggleStatus={toggleTaskStatus}
             segments={segments}
+            technicians={technicians}
           />
         ) : null}
 
@@ -367,6 +369,7 @@ export function PlanningPage({
             onCreate={openNewTask}
             onOpenTask={openTask}
             segments={segments}
+            technicians={technicians}
           />
         ) : null}
 
@@ -417,6 +420,8 @@ function WeekPlanningView({
   onToggleStatus,
 
   segments,
+
+  technicians,
 }: {
   anchorDate: Date;
 
@@ -437,6 +442,8 @@ function WeekPlanningView({
   onToggleStatus: (taskId: string) => void;
 
   segments: TaskSegment[];
+
+  technicians: AdminUserSummary[];
 }) {
   const weekStart = startOfWeek(anchorDate);
 
@@ -473,6 +480,7 @@ function WeekPlanningView({
             onOpenTask={onOpenTask}
             onToggleStatus={onToggleStatus}
             segments={segments.filter((segment) => isSameDay(segment.day, day))}
+            technicians={technicians}
           />
         ))}
       </div>
@@ -492,6 +500,8 @@ function DayPlanningView({
   onToggleStatus,
 
   segments,
+
+  technicians,
 }: {
   anchorDate: Date;
 
@@ -512,6 +522,8 @@ function DayPlanningView({
   onToggleStatus: (taskId: string) => void;
 
   segments: TaskSegment[];
+
+  technicians: AdminUserSummary[];
 }) {
   return (
     <div className="planning-time-view planning-day-view">
@@ -537,6 +549,7 @@ function DayPlanningView({
           segments={segments.filter((segment) =>
             isSameDay(segment.day, anchorDate),
           )}
+          technicians={technicians}
         />
       </div>
     </div>
@@ -573,6 +586,8 @@ function PlanningDayColumn({
   onToggleStatus,
 
   segments,
+
+  technicians,
 }: {
   currentTime: Date;
 
@@ -593,6 +608,8 @@ function PlanningDayColumn({
   onToggleStatus: (taskId: string) => void;
 
   segments: TaskSegment[];
+
+  technicians: AdminUserSummary[];
 }) {
   const isCurrentDay = isSameDay(day, currentTime);
 
@@ -670,6 +687,10 @@ function PlanningDayColumn({
             }}
           />
 
+          <span className="planning-event-user">
+            {formatAssignedUserLabel(segment.task.technicianId, technicians)}
+          </span>
+
           <strong>{segment.task.title}</strong>
 
           <span>
@@ -689,6 +710,8 @@ function MonthPlanningView({
   onOpenTask,
 
   segments,
+
+  technicians,
 }: {
   anchorDate: Date;
 
@@ -705,6 +728,8 @@ function MonthPlanningView({
   onOpenTask: (task: PlanningTask) => void;
 
   segments: TaskSegment[];
+
+  technicians: AdminUserSummary[];
 }) {
   const monthWeeks = buildMonthWeeks(anchorDate);
 
@@ -800,7 +825,15 @@ function MonthPlanningView({
                         {formatClock(segment.end)}
                       </span>
 
-                      {segment.task.title}
+                      <small>
+                        {formatAssignedUserLabel(
+                          segment.task.technicianId,
+
+                          technicians,
+                        )}
+                      </small>
+
+                      <strong>{segment.task.title}</strong>
                     </button>
                   ))}
 
@@ -879,10 +912,12 @@ function AgendaPlanningView({
                     {formatTaskInterval(task)}
                   </span>
 
-                  <span>{task.title}</span>
+                  <span className="planning-agenda-task-title">
+                    <strong>{task.title}</strong>
+                  </span>
 
                   <span>
-                    {formatTechnicianName(task.technicianId, technicians)}
+                    {formatAssignedUserLabel(task.technicianId, technicians)}
                   </span>
 
                   <StatusToggleButton
@@ -1636,14 +1671,28 @@ function formatTaskInterval(task: PlanningTask): string {
   return `${formatClock(start)} - ${formatClock(end)} (${formatDuration(task.durationMinutes)})`;
 }
 
-function formatTechnicianName(
+function formatAssignedUserLabel(
   technicianId: string,
 
   technicians: AdminUserSummary[],
 ): string {
   const technician = technicians.find((user) => user.id === technicianId);
 
-  return technician ? formatUserName(technician) : 'Technicien non renseigne';
+  if (!technician) {
+    return 'Utilisateur';
+  }
+
+  const fullName = [technician.firstName, technician.lastName]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+
+  return (
+    fullName ||
+    technician.displayName ||
+    technician.email?.split('@')[0] ||
+    'Utilisateur'
+  );
 }
 
 function filterPlanningUsers(
