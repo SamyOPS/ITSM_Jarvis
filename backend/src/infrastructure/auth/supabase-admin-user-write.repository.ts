@@ -30,6 +30,12 @@ type SupabaseUserRow = {
   role: string;
 };
 
+type SupabaseUserGroupRow = {
+  group_id: string;
+  id: string;
+  is_primary: boolean;
+};
+
 @Injectable()
 export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepository {
   async createUser(record: CreateAdminUserRecord): Promise<AdminUserSummary> {
@@ -472,11 +478,133 @@ async function replaceUserGroups(
   userId: string,
   groupIds: string[],
 ): Promise<void> {
-  let deleteResponse: Response;
+  const normalizedGroupIds = [
+    ...new Set(groupIds.map((id) => id.trim()).filter(Boolean)),
+  ];
+  const existingRows = await getUserGroupRows(
+    supabaseUrl,
+    supabaseApiKey,
+    userId,
+  );
+  const nextGroupIdSet = new Set(normalizedGroupIds);
+  const existingGroupIdSet = new Set(existingRows.map((row) => row.group_id));
+
+  for (const row of existingRows) {
+    if (!nextGroupIdSet.has(row.group_id)) {
+      await deleteUserGroupRow(supabaseUrl, supabaseApiKey, row.id);
+    }
+  }
+
+  for (const groupId of normalizedGroupIds) {
+    if (!existingGroupIdSet.has(groupId)) {
+      await insertUserGroupRow(supabaseUrl, supabaseApiKey, userId, groupId);
+    }
+  }
+
+  await updatePublicUserPrimaryGroup(
+    supabaseUrl,
+    supabaseApiKey,
+    userId,
+    normalizedGroupIds[0] ?? null,
+  );
+
+  await synchronizeUserGroupPrimaryFlags(
+    supabaseUrl,
+    supabaseApiKey,
+    userId,
+    normalizedGroupIds[0] ?? null,
+  );
+}
+
+async function getUserGroupRows(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+): Promise<SupabaseUserGroupRow[]> {
+  const query = new URLSearchParams({
+    select: 'id,group_id,is_primary',
+    user_id: `eq.${userId}`,
+  });
+  let response: Response;
 
   try {
-    deleteResponse = await fetch(
-      `${supabaseUrl}/rest/v1/user_groups?user_id=eq.${encodeURIComponent(userId)}`,
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/user_groups?${query.toString()}`,
+      {
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          Accept: 'application/json',
+        },
+      },
+    );
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase user group lookup is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase user group lookup returned status ${response.status}.`,
+    );
+  }
+
+  return (await response.json()) as SupabaseUserGroupRow[];
+}
+
+async function insertUserGroupRow(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+  groupId: string,
+): Promise<void> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${supabaseUrl}/rest/v1/user_groups`, {
+      method: 'POST',
+      headers: {
+        apikey: supabaseApiKey,
+        Authorization: `Bearer ${supabaseApiKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        group_id: groupId,
+        is_primary: false,
+        user_id: userId,
+      }),
+    });
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase user group creation is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase user group creation returned status ${response.status}.`,
+    );
+  }
+}
+
+async function deleteUserGroupRow(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userGroupId: string,
+): Promise<void> {
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/user_groups?id=eq.${encodeURIComponent(userGroupId)}`,
       {
         method: 'DELETE',
         headers: {
@@ -488,29 +616,105 @@ async function replaceUserGroups(
     );
   } catch {
     throw new ServiceUnavailableException(
-      'Supabase user group synchronization is unreachable.',
+      'Supabase user group deletion is unreachable.',
     );
   }
 
-  if (!deleteResponse.ok) {
-    const message = await deleteResponse.text();
+  if (!response.ok) {
+    const message = await response.text();
 
     throw new BadRequestException(
       message ||
-        `Supabase user group cleanup returned status ${deleteResponse.status}.`,
+        `Supabase user group deletion returned status ${response.status}.`,
     );
   }
+}
 
-  if (groupIds.length === 0) {
+async function synchronizeUserGroupPrimaryFlags(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+  primaryGroupId: string | null,
+): Promise<void> {
+  await updateUserGroupPrimaryFlag(
+    supabaseUrl,
+    supabaseApiKey,
+    userId,
+    primaryGroupId,
+    false,
+  );
+  await updateUserGroupPrimaryFlag(
+    supabaseUrl,
+    supabaseApiKey,
+    userId,
+    primaryGroupId,
+    true,
+  );
+}
+
+async function updateUserGroupPrimaryFlag(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+  primaryGroupId: string | null,
+  isPrimary: boolean,
+): Promise<void> {
+  if (!primaryGroupId && isPrimary) {
     return;
   }
 
-  for (const [index, groupId] of groupIds.entries()) {
-    let insertResponse: Response;
+  const groupFilter = isPrimary
+    ? `group_id=eq.${encodeURIComponent(primaryGroupId ?? '')}`
+    : primaryGroupId
+      ? `group_id=neq.${encodeURIComponent(primaryGroupId)}`
+      : 'group_id=not.is.null';
+  let response: Response;
 
-    try {
-      insertResponse = await fetch(`${supabaseUrl}/rest/v1/user_groups`, {
-        method: 'POST',
+  try {
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/user_groups?user_id=eq.${encodeURIComponent(userId)}&${groupFilter}`,
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          is_primary: isPrimary,
+        }),
+      },
+    );
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase user group primary flag synchronization is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase user group primary flag synchronization returned status ${response.status}.`,
+    );
+  }
+}
+
+async function updatePublicUserPrimaryGroup(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+  groupId: string | null,
+): Promise<void> {
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: 'PATCH',
         headers: {
           apikey: supabaseApiKey,
           Authorization: `Bearer ${supabaseApiKey}`,
@@ -519,24 +723,22 @@ async function replaceUserGroups(
         },
         body: JSON.stringify({
           group_id: groupId,
-          is_primary: index === 0,
-          user_id: userId,
         }),
-      });
-    } catch {
-      throw new ServiceUnavailableException(
-        'Supabase user group synchronization is unreachable.',
-      );
-    }
+      },
+    );
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase public user primary group synchronization is unreachable.',
+    );
+  }
 
-    if (!insertResponse.ok) {
-      const message = await insertResponse.text();
+  if (!response.ok) {
+    const message = await response.text();
 
-      throw new BadRequestException(
-        message ||
-          `Supabase user group synchronization returned status ${insertResponse.status}.`,
-      );
-    }
+    throw new BadRequestException(
+      message ||
+        `Supabase public user primary group synchronization returned status ${response.status}.`,
+    );
   }
 }
 
