@@ -538,10 +538,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
   );
 
   const personalPlanningTasks = useMemo(
-    () =>
-      planningTasks.filter(
-        (task) => !task.groupId && task.technicianId === session.user.id,
-      ),
+    () => planningTasks.filter((task) => task.technicianId === session.user.id),
 
     [planningTasks, session.user.id],
   );
@@ -1044,6 +1041,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
                   navigateTo(`/agent/tickets/${ticketId}?from=reports-group`)
                 }
                 prioritiesById={personalPrioritiesById}
+                showAssignedTo
                 title="Tickets assignes au groupe"
                 tickets={groupTickets}
                 users={users}
@@ -1055,6 +1053,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
                   navigateTo(`/agent/tickets/${ticketId}?from=reports-group`)
                 }
                 prioritiesById={personalPrioritiesById}
+                showAssignedTo={false}
                 title="Tickets du groupe non assignes"
                 tickets={unassignedGroupTickets}
                 users={users}
@@ -1594,6 +1593,8 @@ function GroupTicketPanel({
 
   prioritiesById,
 
+  showAssignedTo = true,
+
   tickets,
 
   title,
@@ -1605,6 +1606,8 @@ function GroupTicketPanel({
   onOpenTicket: (ticketId: string) => void;
 
   prioritiesById: Map<string, { level: number; name: string }>;
+
+  showAssignedTo?: boolean;
 
   tickets: TicketSummarySnapshot[];
 
@@ -1772,7 +1775,7 @@ function GroupTicketPanel({
 
                   <th>Demandeur</th>
 
-                  <th>Assigne a</th>
+                  {showAssignedTo ? <th>Assigne a</th> : null}
                 </tr>
               </thead>
 
@@ -1814,9 +1817,11 @@ function GroupTicketPanel({
                       )}
                     </td>
 
-                    <td>
-                      {formatAssignedUserName(ticket.assignedToUserId, users)}
-                    </td>
+                    {showAssignedTo ? (
+                      <td>
+                        {formatAssignedUserName(ticket.assignedToUserId, users)}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -3163,7 +3168,7 @@ function formatAssignedUserName(
   users: AdminUserSummary[],
 ): string {
   if (!userId) {
-    return 'Non renseigne';
+    return 'aucun';
   }
 
   const user = users.find((candidate) => candidate.id === userId);
