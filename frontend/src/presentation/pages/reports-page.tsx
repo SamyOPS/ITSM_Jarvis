@@ -15,6 +15,8 @@ import {
   ArrowUp,
   BadgeAlert,
   BarChart3,
+  ChevronLeft,
+  ChevronRight,
   SlidersHorizontal,
   User,
   Users,
@@ -116,12 +118,16 @@ type PersonalEquipmentItem = {
 type GroupChatMessage = {
   authorName: string;
 
+  authorUserId?: string;
+
   body: string;
 
   createdAt: string;
 
   id: string;
 };
+
+const GROUP_MEMBER_COLOR_COUNT = 12;
 
 type ReportsPlanningContext =
   | { type: 'GROUP'; groupId: string }
@@ -253,6 +259,14 @@ export function ReportsPage({ session }: ReportsPageProps) {
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
 
   const [selectedGroupId, setSelectedGroupId] = useState('');
+
+  const groupSelectorTrackRef = useRef<HTMLDivElement | null>(null);
+
+  const [groupSelectorScrollState, setGroupSelectorScrollState] = useState({
+    canScrollLeft: false,
+
+    canScrollRight: false,
+  });
 
   const [groupChatDraft, setGroupChatDraft] = useState('');
 
@@ -487,6 +501,125 @@ export function ReportsPage({ session }: ReportsPageProps) {
     );
   }, [catalog.groups, currentUserSummary]);
 
+  const updateGroupSelectorScrollState = useCallback(() => {
+    const track = groupSelectorTrackRef.current;
+
+    if (!track) {
+      setGroupSelectorScrollState({
+        canScrollLeft: false,
+
+        canScrollRight: false,
+      });
+
+      return;
+    }
+
+    const maxScrollLeft = track.scrollWidth - track.clientWidth;
+
+    setGroupSelectorScrollState({
+      canScrollLeft: track.scrollLeft > 2,
+
+      canScrollRight: track.scrollLeft < maxScrollLeft - 2,
+    });
+  }, []);
+
+  const scrollGroupSelector = useCallback(
+    (direction: 'LEFT' | 'RIGHT') => {
+      const track = groupSelectorTrackRef.current;
+
+      if (!track) {
+        return;
+      }
+
+      const groupItems = Array.from(
+        track.querySelectorAll<HTMLElement>('.group-view-selector-item'),
+      );
+
+      const currentScrollLeft = track.scrollLeft;
+
+      const targetItem =
+        direction === 'RIGHT'
+          ? groupItems.find(
+              (item) =>
+                item.offsetLeft + item.offsetWidth >
+                currentScrollLeft + track.clientWidth + 1,
+            )
+          : groupItems
+              .slice()
+              .reverse()
+              .find((item) => item.offsetLeft < currentScrollLeft - 1);
+
+      const maxScrollLeft = track.scrollWidth - track.clientWidth;
+
+      const nextScrollLeft =
+        direction === 'RIGHT'
+          ? (targetItem?.offsetLeft ?? maxScrollLeft)
+          : Math.max(
+              0,
+              targetItem
+                ? targetItem.offsetLeft +
+                    targetItem.offsetWidth -
+                    track.clientWidth
+                : 0,
+            );
+
+      track.scrollTo({
+        behavior: 'smooth',
+
+        left: Math.min(Math.max(nextScrollLeft, 0), maxScrollLeft),
+      });
+    },
+
+    [],
+  );
+
+  useEffect(() => {
+    if (activeView !== 'GROUP') {
+      setGroupSelectorScrollState({
+        canScrollLeft: false,
+
+        canScrollRight: false,
+      });
+
+      return;
+    }
+
+    updateGroupSelectorScrollState();
+
+    const animationFrameId = window.requestAnimationFrame(
+      updateGroupSelectorScrollState,
+    );
+
+    const track = groupSelectorTrackRef.current;
+
+    if (!track) {
+      window.cancelAnimationFrame(animationFrameId);
+
+      return;
+    }
+
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(updateGroupSelectorScrollState);
+
+    resizeObserver?.observe(track);
+
+    window.addEventListener('resize', updateGroupSelectorScrollState);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+
+      resizeObserver?.disconnect();
+
+      window.removeEventListener('resize', updateGroupSelectorScrollState);
+    };
+  }, [
+    activeView,
+    availableReportGroups.length,
+    updateGroupSelectorScrollState,
+  ]);
+
   useEffect(() => {
     if (availableReportGroups.length === 0) {
       if (selectedGroupId) {
@@ -627,6 +760,8 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
     const nextMessage: GroupChatMessage = {
       authorName: formatSessionUserName(session),
+
+      authorUserId: session.user.id,
 
       body,
 
@@ -1024,26 +1159,54 @@ export function ReportsPage({ session }: ReportsPageProps) {
         </section>
       ) : (
         <section aria-label="Vue groupe" className="group-view">
-          <div className="group-view-selector">
-            <label className="field">
-              <span>Groupe</span>
+          <div className="group-view-selector" aria-label="Selection du groupe">
+            <button
+              aria-label="Voir les groupes precedents"
+              className="group-view-selector-arrow"
+              disabled={!groupSelectorScrollState.canScrollLeft}
+              onClick={() => scrollGroupSelector('LEFT')}
+              type="button"
+            >
+              <ChevronLeft size={18} strokeWidth={2} />
+            </button>
 
-              <select
-                disabled={availableReportGroups.length === 0}
-                onChange={(event) => setSelectedGroupId(event.target.value)}
-                value={selectedGroupId}
-              >
-                {availableReportGroups.length === 0 ? (
-                  <option value="">Aucun groupe disponible</option>
-                ) : (
-                  availableReportGroups.map((group) => (
-                    <option key={group.id} value={group.id}>
-                      {group.name}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
+            <div
+              className="group-view-selector-track"
+              onScroll={updateGroupSelectorScrollState}
+              ref={groupSelectorTrackRef}
+            >
+              {availableReportGroups.length === 0 ? (
+                <span className="group-view-selector-empty">
+                  Aucun groupe disponible
+                </span>
+              ) : (
+                availableReportGroups.map((group) => (
+                  <button
+                    aria-pressed={selectedGroupId === group.id}
+                    className={
+                      selectedGroupId === group.id
+                        ? 'group-view-selector-item is-active'
+                        : 'group-view-selector-item'
+                    }
+                    key={group.id}
+                    onClick={() => setSelectedGroupId(group.id)}
+                    type="button"
+                  >
+                    {group.name}
+                  </button>
+                ))
+              )}
+            </div>
+
+            <button
+              aria-label="Voir les groupes suivants"
+              className="group-view-selector-arrow"
+              disabled={!groupSelectorScrollState.canScrollRight}
+              onClick={() => scrollGroupSelector('RIGHT')}
+              type="button"
+            >
+              <ChevronRight size={18} strokeWidth={2} />
+            </button>
           </div>
 
           {selectedReportGroup ? (
@@ -1086,7 +1249,9 @@ export function ReportsPage({ session }: ReportsPageProps) {
               />
 
               <GroupChatPanel
+                currentUserId={session.user.id}
                 draft={groupChatDraft}
+                groupMembers={groupMembers}
                 messages={groupChatMessages}
                 onDraftChange={setGroupChatDraft}
                 onSubmit={handleGroupChatSubmit}
@@ -2004,7 +2169,11 @@ function GroupPlanningPanel({
 }
 
 function GroupChatPanel({
+  currentUserId,
+
   draft,
+
+  groupMembers,
 
   messages,
 
@@ -2012,7 +2181,11 @@ function GroupChatPanel({
 
   onSubmit,
 }: {
+  currentUserId: string;
+
   draft: string;
+
+  groupMembers: AdminUserSummary[];
 
   messages: GroupChatMessage[];
 
@@ -2033,7 +2206,19 @@ function GroupChatPanel({
           </p>
         ) : (
           messages.map((message) => (
-            <div className="group-chat-message" key={message.id}>
+            <div
+              className={[
+                'group-chat-message',
+                getGroupMemberColorClass(
+                  getGroupChatAuthorUserId(message, groupMembers),
+                  groupMembers,
+                  currentUserId,
+                ),
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              key={message.id}
+            >
               <div>
                 <strong>{message.authorName}</strong>
 
@@ -3187,6 +3372,46 @@ function formatAssignedUserName(
   const user = users.find((candidate) => candidate.id === userId);
 
   return user ? formatUserName(user) : userId;
+}
+
+function getGroupMemberColorClass(
+  userId: string | undefined,
+
+  users: AdminUserSummary[],
+
+  currentUserId: string,
+): string {
+  if (!userId || userId === currentUserId) {
+    return '';
+  }
+
+  const sortedUsers = [...users]
+    .filter((user) => user.id !== currentUserId)
+    .sort((first, second) =>
+      formatUserName(first).localeCompare(formatUserName(second), 'fr', {
+        sensitivity: 'base',
+      }),
+    );
+
+  const userIndex = sortedUsers.findIndex((user) => user.id === userId);
+
+  if (userIndex < 0) {
+    return 'planning-user-color-1';
+  }
+
+  return `planning-user-color-${(userIndex % GROUP_MEMBER_COLOR_COUNT) + 1}`;
+}
+
+function getGroupChatAuthorUserId(
+  message: GroupChatMessage,
+
+  users: AdminUserSummary[],
+): string | undefined {
+  if (message.authorUserId) {
+    return message.authorUserId;
+  }
+
+  return users.find((user) => formatUserName(user) === message.authorName)?.id;
 }
 
 function formatGroupChatTimestamp(value: string): string {

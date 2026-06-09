@@ -318,7 +318,8 @@ const INITIAL_ATTACHMENT_DRAFT: AttachmentDraftState = {
 
 const TICKET_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
 const INCIDENT_LOOKUP_PAGE_SIZE = 10;
-const TICKETS_PER_PAGE = 15;
+const TICKETS_PER_PAGE = 12;
+const TICKET_TITLE_MAX_LENGTH = 40;
 const TICKET_SORT_OPTIONS = [
   {
     value: 'OPERATIONAL_PRIORITY' as const,
@@ -1341,6 +1342,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     value: string,
   ): void {
+    if (field === 'title' && value.length > TICKET_TITLE_MAX_LENGTH) {
+      setIncidentValidationErrors((currentErrors) => ({
+        ...currentErrors,
+
+        title: '40 caracteres max.',
+      }));
+
+      return;
+    }
+
     setIncidentDraft((currentDraft) => {
       if (field === 'assignedToUserId') {
         return {
@@ -1379,6 +1390,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     value: string,
   ): void {
+    if (field === 'title' && value.length > TICKET_TITLE_MAX_LENGTH) {
+      setRequestValidationErrors((currentErrors) => ({
+        ...currentErrors,
+
+        title: '40 caracteres max.',
+      }));
+
+      return;
+    }
+
     setRequestDraft((currentDraft) => {
       if (field === 'assignedToUserId') {
         return {
@@ -1983,6 +2004,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     field: keyof TicketEditDraftState,
     value: string,
   ): void {
+    if (field === 'title' && value.length > TICKET_TITLE_MAX_LENGTH) {
+      setDetailActionErrorMessage('40 caracteres max.');
+
+      return;
+    }
+
     setTicketEditDraft((currentDraft) => ({
       ...currentDraft,
       [field]: value,
@@ -1994,6 +2021,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   async function handleSaveInfoEdits(): Promise<void> {
     if (!selectedTicketDetail || (!canEditTicket && !canManageTicket)) {
+      return;
+    }
+
+    if (ticketEditDraft.title.trim().length > TICKET_TITLE_MAX_LENGTH) {
+      setDetailActionErrorMessage('40 caracteres max.');
+
       return;
     }
 
@@ -4931,6 +4964,8 @@ function validateIncidentDraft(
 
   if (!draft.title.trim()) {
     errors.title = 'Le titre est obligatoire.';
+  } else if (draft.title.trim().length > TICKET_TITLE_MAX_LENGTH) {
+    errors.title = '40 caracteres max.';
   }
 
   if (!draft.description.trim()) {
@@ -4959,6 +4994,8 @@ function validateRequestDraft(
 
   if (!draft.title.trim()) {
     errors.title = 'Le titre est obligatoire.';
+  } else if (draft.title.trim().length > TICKET_TITLE_MAX_LENGTH) {
+    errors.title = '40 caracteres max.';
   }
 
   if (!draft.description.trim()) {

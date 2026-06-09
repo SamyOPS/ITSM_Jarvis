@@ -42,7 +42,8 @@ type GroupFormState = {
   name: string;
 };
 
-const GROUPS_PER_PAGE = 15;
+const GROUPS_PER_PAGE = 12;
+const GROUP_NAME_MAX_LENGTH = 40;
 const MEMBERS_PER_PAGE = 5;
 
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
@@ -171,6 +172,12 @@ export function GroupsPage({ session }: GroupsPageProps) {
   }, [memberPage, totalMemberPages]);
 
   function handleFieldChange(field: keyof GroupFormState, value: string): void {
+    if (field === 'name' && value.length > GROUP_NAME_MAX_LENGTH) {
+      setFormMessage('40 caracteres max.');
+
+      return;
+    }
+
     setFormState((currentState) => ({
       ...currentState,
       [field]: value,
@@ -221,13 +228,22 @@ export function GroupsPage({ session }: GroupsPageProps) {
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
-    setIsSaving(true);
     setFormMessage(null);
+
+    const groupName = formState.name.trim();
+
+    if (groupName.length > GROUP_NAME_MAX_LENGTH) {
+      setFormMessage('40 caracteres max.');
+
+      return;
+    }
+
+    setIsSaving(true);
 
     const payload = {
       description: formState.description.trim() || null,
       level: selectedGroup?.level ?? null,
-      name: formState.name.trim(),
+      name: groupName,
     };
 
     try {
