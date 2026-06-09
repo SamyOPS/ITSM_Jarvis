@@ -611,6 +611,26 @@ a {
   font-weight: 700;
 }
 
+.login-forgot-button {
+  width: fit-content;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--brand-blue);
+  font-weight: 700;
+}
+
+.login-forgot-button:hover {
+  text-decoration: underline;
+}
+
+.login-forgot-form {
+  border: 1px solid var(--line-strong);
+  border-radius: 20px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
 .login-demo-section {
   display: grid;
   gap: 16px;

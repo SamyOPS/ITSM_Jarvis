@@ -3,6 +3,7 @@ import { type FormEvent, useState } from 'react';
 type LoginPageProps = {
   errorMessage: string | null;
   isBusy: boolean;
+  onPasswordResetRequest: (email: string) => Promise<void>;
   onSubmit: (email: string, password: string) => Promise<void>;
 };
 
@@ -30,13 +31,43 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   },
 ];
 
-export function LoginPage({ errorMessage, isBusy, onSubmit }: LoginPageProps) {
+export function LoginPage({
+  errorMessage,
+  isBusy,
+  onPasswordResetRequest,
+  onSubmit,
+}: LoginPageProps) {
   const [email, setEmail] = useState(DEMO_ACCOUNTS[0].email);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotMessage, setForgotMessage] = useState<string | null>(null);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [isForgotBusy, setIsForgotBusy] = useState(false);
   const [password, setPassword] = useState(DEMO_ACCOUNTS[0].password);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await onSubmit(email, password);
+  }
+
+  async function handleForgotSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsForgotBusy(true);
+    setForgotMessage(null);
+
+    try {
+      await onPasswordResetRequest(forgotEmail.trim());
+      setForgotMessage(
+        'Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.',
+      );
+    } catch (error) {
+      setForgotMessage(
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue lors de l'envoi du lien.",
+      );
+    } finally {
+      setIsForgotBusy(false);
+    }
   }
 
   function applyDemoAccount(account: DemoAccount): void {
@@ -104,6 +135,49 @@ export function LoginPage({ errorMessage, isBusy, onSubmit }: LoginPageProps) {
             <p className="ticket-form-error">{errorMessage}</p>
           ) : null}
         </form>
+
+        <button
+          className="login-forgot-button"
+          onClick={() => {
+            setForgotMode((current) => !current);
+            setForgotEmail(email);
+            setForgotMessage(null);
+          }}
+          type="button"
+        >
+          Mot de passe oublié ?
+        </button>
+
+        {forgotMode ? (
+          <form
+            className="login-form login-forgot-form"
+            onSubmit={(event) => void handleForgotSubmit(event)}
+          >
+            <label className="field">
+              <span>Email du compte</span>
+              <input
+                autoComplete="email"
+                onChange={(event) => setForgotEmail(event.target.value)}
+                placeholder="nom@jarvis.fr"
+                required
+                type="email"
+                value={forgotEmail}
+              />
+            </label>
+
+            <button
+              className="secondary-button"
+              disabled={isForgotBusy}
+              type="submit"
+            >
+              {isForgotBusy ? 'Envoi en cours...' : 'Envoyer le lien'}
+            </button>
+
+            {forgotMessage ? (
+              <p className="ticket-form-helper">{forgotMessage}</p>
+            ) : null}
+          </form>
+        ) : null}
 
         <div className="login-demo-section">
           <div className="login-demo-heading">
