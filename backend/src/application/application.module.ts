@@ -6,6 +6,7 @@ import { CreateAdminUserUseCase } from './auth/use-cases/create-admin-user.use-c
 import { DeleteAdminUserUseCase } from './auth/use-cases/delete-admin-user.use-case';
 import { GetHealthUseCase } from './health/use-cases/get-health.use-case';
 import { ListAdminUsersUseCase } from './auth/use-cases/list-admin-users.use-case';
+import { RegisterRequesterUseCase } from './auth/use-cases/register-requester.use-case';
 import { UpdateAdminUserUseCase } from './auth/use-cases/update-admin-user.use-case';
 import { UpdateAdminUserGroupsUseCase } from './auth/use-cases/update-admin-user-groups.use-case';
 import { UpdateAdminUserStatusUseCase } from './auth/use-cases/update-admin-user-status.use-case';
@@ -115,6 +116,7 @@ const knowledgeUseCases = [
     CreateAdminUserUseCase,
     DeleteAdminUserUseCase,
     ListAdminUsersUseCase,
+    RegisterRequesterUseCase,
     UpdateAdminUserUseCase,
     UpdateAdminUserGroupsUseCase,
     UpdateAdminUserStatusUseCase,
@@ -133,6 +135,7 @@ const knowledgeUseCases = [
     CreateAdminUserUseCase,
     DeleteAdminUserUseCase,
     ListAdminUsersUseCase,
+    RegisterRequesterUseCase,
     UpdateAdminUserUseCase,
     UpdateAdminUserGroupsUseCase,
     UpdateAdminUserStatusUseCase,

@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from 'react';
+import { navigateTo } from '../../infrastructure/routing/browser-router';
 
 type LoginPageProps = {
   errorMessage: string | null;
@@ -178,6 +179,14 @@ export function LoginPage({
             ) : null}
           </form>
         ) : null}
+
+        <button
+          className="login-forgot-button"
+          onClick={() => navigateTo('/register')}
+          type="button"
+        >
+          Créer un compte demandeur
+        </button>
 
         <div className="login-demo-section">
           <div className="login-demo-heading">

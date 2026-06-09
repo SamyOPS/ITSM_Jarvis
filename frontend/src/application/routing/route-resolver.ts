@@ -33,6 +33,7 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
     pathname === '/parc/cis' ||
     pathname === '/reports' ||
     pathname === '/login' ||
+    pathname === '/register' ||
     pathname === '/auth/reset-password'
   ) {
     return routeMap.get(pathname) ?? null;

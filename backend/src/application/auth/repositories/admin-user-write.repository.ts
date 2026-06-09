@@ -3,6 +3,7 @@ import { UserRole } from '../../../domain/auth/user-role';
 
 export type CreateAdminUserRecord = {
   email: string;
+  emailConfirmed?: boolean;
   firstName: string | null;
   groupId: string | null;
   groupIds: string[];

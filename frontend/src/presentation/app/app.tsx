@@ -32,6 +32,7 @@ import { NotFoundPage } from '../pages/not-found-page';
 import { KnowledgePage } from '../pages/knowledge-page';
 import { ParkPage } from '../pages/park-page';
 import { ReportsPage } from '../pages/reports-page';
+import { RegisterPage } from '../pages/register-page';
 import { ResetPasswordPage } from '../pages/reset-password-page';
 import { UsersPage } from '../pages/users-page';
 
@@ -202,6 +203,8 @@ function renderPage({
       );
     case '/auth/reset-password':
       return <ResetPasswordPage onPasswordUpdated={onPasswordUpdated} />;
+    case '/register':
+      return <RegisterPage />;
     default:
       return <NotFoundPage />;
   }
@@ -299,6 +302,7 @@ export function App() {
       sessionState === 'anonymous' &&
       !isLoggingIn &&
       pathname !== '/login' &&
+      pathname !== '/register' &&
       pathname !== '/auth/reset-password'
     ) {
       navigateTo('/login');
@@ -400,9 +404,7 @@ export function App() {
     } catch (error) {
       setSession(null);
       setSessionState('anonymous');
-      setAuthErrorMessage(
-        error instanceof Error ? error.message : 'Erreur de connexion inconnue',
-      );
+      setAuthErrorMessage(mapLoginErrorMessage(error));
     } finally {
       setIsLoggingIn(false);
     }
@@ -446,4 +448,22 @@ export function App() {
       })}
     </AppShell>
   );
+}
+
+function mapLoginErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return 'Erreur de connexion inconnue';
+  }
+
+  const normalizedMessage = error.message.toLowerCase();
+
+  if (
+    normalizedMessage.includes('email not confirmed') ||
+    normalizedMessage.includes('email_not_confirmed') ||
+    normalizedMessage.includes('not confirmed')
+  ) {
+    return 'Votre email n’est pas encore confirmé. Vérifiez votre boîte mail avant de vous connecter.';
+  }
+
+  return error.message;
 }

@@ -14,6 +14,7 @@ export type RoutePath =
   | '/parc/cis'
   | '/reports'
   | '/login'
+  | '/register'
   | '/auth/reset-password';
 
 export interface RouteDefinition {
@@ -99,6 +100,11 @@ export const ROUTES: RouteDefinition[] = [
     description: 'Connexion a la plateforme.',
     path: '/login',
     title: 'Connexion',
+  },
+  {
+    description: 'Creation d un compte demandeur.',
+    path: '/register',
+    title: 'Inscription',
   },
   {
     description: 'Definition d un nouveau mot de passe.',
