@@ -2193,41 +2193,75 @@ function GroupChatPanel({
 
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const messagesRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const messagesElement = messagesRef.current;
+
+    if (!messagesElement) {
+      return;
+    }
+
+    messagesElement.scrollTop = messagesElement.scrollHeight;
+  }, [messages.length]);
+
   return (
     <article className="personal-panel group-chat-panel">
       <header className="personal-panel-header">
         <h3>Chat box de groupe</h3>
       </header>
 
-      <div className="group-chat-messages" aria-live="polite">
+      <div className="group-chat-messages" aria-live="polite" ref={messagesRef}>
         {messages.length === 0 ? (
           <p className="personal-panel-empty group-chat-empty">
             Aucun message pour ce groupe.
           </p>
         ) : (
-          messages.map((message) => (
-            <div
-              className={[
-                'group-chat-message',
-                getGroupMemberColorClass(
-                  getGroupChatAuthorUserId(message, groupMembers),
-                  groupMembers,
-                  currentUserId,
-                ),
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              key={message.id}
-            >
-              <div>
-                <strong>{message.authorName}</strong>
+          messages.map((message) => {
+            const authorUserId = getGroupChatAuthorUserId(
+              message,
+              groupMembers,
+            );
+            const author = authorUserId
+              ? groupMembers.find((user) => user.id === authorUserId)
+              : null;
+            const isOwnMessage = authorUserId === currentUserId;
+            const colorClass = getGroupMemberColorClass(
+              authorUserId,
+              groupMembers,
+              currentUserId,
+            );
+            const authorName = author
+              ? formatUserName(author)
+              : message.authorName;
 
-                <span>{formatGroupChatTimestamp(message.createdAt)}</span>
+            return (
+              <div
+                className={[
+                  'group-chat-message-row',
+                  isOwnMessage ? 'is-own' : '',
+                  colorClass,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                key={message.id}
+              >
+                <span className="group-chat-avatar">
+                  {formatGroupChatInitials(authorName)}
+                </span>
+
+                <div className="group-chat-message">
+                  <div className="group-chat-message-meta">
+                    <strong>{isOwnMessage ? 'Vous' : authorName}</strong>
+
+                    <span>{formatGroupChatTimestamp(message.createdAt)}</span>
+                  </div>
+
+                  <p>{message.body}</p>
+                </div>
               </div>
-
-              <p>{message.body}</p>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -3412,6 +3446,22 @@ function getGroupChatAuthorUserId(
   }
 
   return users.find((user) => formatUserName(user) === message.authorName)?.id;
+}
+
+function formatGroupChatInitials(value: string): string {
+  const normalizedParts = value.trim().split(/\s+/).filter(Boolean);
+
+  if (normalizedParts.length === 0) {
+    return '?';
+  }
+
+  if (normalizedParts.length === 1) {
+    return normalizedParts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${normalizedParts[0][0] ?? ''}${
+    normalizedParts[normalizedParts.length - 1][0] ?? ''
+  }`.toUpperCase();
 }
 
 function formatGroupChatTimestamp(value: string): string {
