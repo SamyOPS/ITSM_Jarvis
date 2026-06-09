@@ -49,6 +49,56 @@ export async function refreshAuthSession(
   return buildAuthSessionFromTokenResponse(response);
 }
 
+export async function requestPasswordReset(email: string): Promise<void> {
+  const supabaseConfig = getFrontendSupabaseConfig();
+  const redirectTo = `${window.location.origin}/auth/reset-password`;
+  const response = await fetch(
+    `${supabaseConfig.url}/auth/v1/recover?redirect_to=${encodeURIComponent(
+      redirectTo,
+    )}`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: supabaseConfig.anonKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    },
+  );
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message || `Password reset request failed with status ${response.status}`,
+    );
+  }
+}
+
+export async function updatePasswordWithRecoveryToken(
+  accessToken: string,
+  password: string,
+): Promise<void> {
+  const supabaseConfig = getFrontendSupabaseConfig();
+  const response = await fetch(`${supabaseConfig.url}/auth/v1/user`, {
+    method: 'PUT',
+    headers: {
+      apikey: supabaseConfig.anonKey,
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ password }),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message || `Password update failed with status ${response.status}`,
+    );
+  }
+}
+
 export async function fetchCurrentUser(
   accessToken: string,
 ): Promise<AuthenticatedUser> {

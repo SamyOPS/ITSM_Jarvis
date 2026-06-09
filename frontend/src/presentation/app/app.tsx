@@ -3,6 +3,7 @@ import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import {
   fetchCurrentUser,
   loginWithPassword,
+  requestPasswordReset,
   refreshAuthSession,
 } from '../../infrastructure/api/auth-api';
 import { getFrontendRuntimeConfig } from '../../infrastructure/config/env';
@@ -31,6 +32,7 @@ import { NotFoundPage } from '../pages/not-found-page';
 import { KnowledgePage } from '../pages/knowledge-page';
 import { ParkPage } from '../pages/park-page';
 import { ReportsPage } from '../pages/reports-page';
+import { ResetPasswordPage } from '../pages/reset-password-page';
 import { UsersPage } from '../pages/users-page';
 
 type SessionState = 'anonymous' | 'authenticated' | 'loading' | 'restoring';
@@ -39,6 +41,8 @@ type RenderPageParams = {
   authErrorMessage: string | null;
   isLoggingIn: boolean;
   onLogin: (email: string, password: string) => Promise<void>;
+  onPasswordResetRequest: (email: string) => Promise<void>;
+  onPasswordUpdated: () => void;
   pathname: string;
   session: AuthSessionSnapshot | null;
   sessionState: SessionState;
@@ -48,6 +52,8 @@ function renderPage({
   authErrorMessage,
   isLoggingIn,
   onLogin,
+  onPasswordResetRequest,
+  onPasswordUpdated,
   pathname,
   session,
   sessionState,
@@ -73,6 +79,7 @@ function renderPage({
         <LoginPage
           errorMessage={authErrorMessage}
           isBusy={isLoggingIn || sessionState === 'loading'}
+          onPasswordResetRequest={onPasswordResetRequest}
           onSubmit={onLogin}
         />
       );
@@ -189,9 +196,12 @@ function renderPage({
         <LoginPage
           errorMessage={authErrorMessage}
           isBusy={isLoggingIn || sessionState === 'loading'}
+          onPasswordResetRequest={onPasswordResetRequest}
           onSubmit={onLogin}
         />
       );
+    case '/auth/reset-password':
+      return <ResetPasswordPage onPasswordUpdated={onPasswordUpdated} />;
     default:
       return <NotFoundPage />;
   }
@@ -285,7 +295,12 @@ export function App() {
   }, [pathname, session, sessionState]);
 
   useEffect(() => {
-    if (sessionState === 'anonymous' && !isLoggingIn && pathname !== '/login') {
+    if (
+      sessionState === 'anonymous' &&
+      !isLoggingIn &&
+      pathname !== '/login' &&
+      pathname !== '/auth/reset-password'
+    ) {
       navigateTo('/login');
     }
   }, [isLoggingIn, pathname, sessionState]);
@@ -393,6 +408,17 @@ export function App() {
     }
   }
 
+  async function handlePasswordResetRequest(email: string): Promise<void> {
+    await requestPasswordReset(email);
+  }
+
+  function handlePasswordUpdated(): void {
+    clearStoredAuthSession();
+    setAuthErrorMessage(null);
+    setSession(null);
+    setSessionState('anonymous');
+  }
+
   function handleLogout(): void {
     clearStoredAuthSession();
     setAuthErrorMessage(null);
@@ -412,6 +438,8 @@ export function App() {
         authErrorMessage,
         isLoggingIn,
         onLogin: handleLogin,
+        onPasswordResetRequest: handlePasswordResetRequest,
+        onPasswordUpdated: handlePasswordUpdated,
         pathname,
         session,
         sessionState,
