@@ -41,6 +41,7 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
   async createUser(record: CreateAdminUserRecord): Promise<AdminUserSummary> {
     const config = getBackendRuntimeConfig();
     const supabaseApiKey = config.supabaseServiceRoleKey;
+    const shouldConfirmEmail = record.emailConfirmed ?? true;
 
     if (!config.supabaseUrl || !supabaseApiKey) {
       throw new ServiceUnavailableException(
@@ -48,11 +49,19 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
       );
     }
 
-    const authUserId = await createSupabaseAuthUser(
-      config.supabaseUrl,
-      supabaseApiKey,
-      record,
-    );
+    if (!shouldConfirmEmail && !config.supabaseAnonKey) {
+      throw new ServiceUnavailableException(
+        'Supabase requester signup configuration is incomplete.',
+      );
+    }
+
+    const authUserId = shouldConfirmEmail
+      ? await createSupabaseAuthUser(config.supabaseUrl, supabaseApiKey, record)
+      : await signUpSupabaseAuthUser(
+          config.supabaseUrl,
+          config.supabaseAnonKey,
+          record,
+        );
 
     return upsertPublicUser(config.supabaseUrl, supabaseApiKey, {
       displayName: buildDisplayName(record),
@@ -239,6 +248,58 @@ async function createSupabaseAuthUser(
   if (!userId) {
     throw new ServiceUnavailableException(
       'Supabase auth user creation did not return a user id.',
+    );
+  }
+
+  return userId;
+}
+
+async function signUpSupabaseAuthUser(
+  supabaseUrl: string,
+  supabaseAnonKey: string,
+  record: CreateAdminUserRecord,
+): Promise<string> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${supabaseUrl}/auth/v1/signup`, {
+      method: 'POST',
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        data: {
+          first_name: record.firstName,
+          last_name: record.lastName,
+          role: record.role,
+        },
+        email: record.email,
+        password: record.password,
+      }),
+    });
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase requester signup is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase requester signup returned status ${response.status}.`,
+    );
+  }
+
+  const payload = (await response.json()) as SupabaseCreatedAuthUser;
+  const userId = payload.id ?? payload.user?.id;
+
+  if (!userId) {
+    throw new ServiceUnavailableException(
+      'Supabase requester signup did not return a user id.',
     );
   }
 

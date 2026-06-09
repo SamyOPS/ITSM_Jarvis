@@ -29,7 +29,12 @@ export async function loginWithPassword(
   const response = await fetchSupabaseToken('password', { email, password });
 
   if (!response.ok) {
-    throw new Error(`Supabase login failed with status ${response.status}`);
+    throw new Error(
+      await readApiErrorMessage(
+        response,
+        `Supabase login failed with status ${response.status}`,
+      ),
+    );
   }
 
   return buildAuthSessionFromTokenResponse(response);
@@ -43,7 +48,12 @@ export async function refreshAuthSession(
   });
 
   if (!response.ok) {
-    throw new Error(`Supabase refresh failed with status ${response.status}`);
+    throw new Error(
+      await readApiErrorMessage(
+        response,
+        `Supabase refresh failed with status ${response.status}`,
+      ),
+    );
   }
 
   return buildAuthSessionFromTokenResponse(response);
@@ -165,6 +175,13 @@ export type CreateAdminUserPayload = {
   role: UserRole;
 };
 
+export type RegisterRequesterPayload = {
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  password: string;
+};
+
 export type UpdateAdminUserPayload = {
   email: string;
   firstName: string | null;
@@ -194,6 +211,30 @@ export async function createAdminUser(
 
     throw new Error(
       message || `Admin user creation failed with status ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as AdminUserSummary;
+}
+
+export async function registerRequester(
+  payload: RegisterRequesterPayload,
+): Promise<AdminUserSummary> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/auth/register`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message || `Requester registration failed with status ${response.status}`,
     );
   }
 
@@ -379,4 +420,29 @@ function fetchSupabaseToken(
     },
     body: JSON.stringify(payload),
   });
+}
+
+async function readApiErrorMessage(
+  response: Response,
+  fallbackMessage: string,
+): Promise<string> {
+  const rawMessage = await response.text();
+
+  if (!rawMessage) {
+    return fallbackMessage;
+  }
+
+  try {
+    const payload = JSON.parse(rawMessage) as {
+      error_description?: string;
+      message?: string;
+      msg?: string;
+    };
+
+    return (
+      payload.error_description ?? payload.message ?? payload.msg ?? rawMessage
+    );
+  } catch {
+    return rawMessage;
+  }
 }

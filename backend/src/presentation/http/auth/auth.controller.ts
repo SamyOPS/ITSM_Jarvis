@@ -25,6 +25,7 @@ import {
 } from '../../../application/auth/use-cases/get-auth-setup.use-case';
 import { GetAuthenticatedUserUseCase } from '../../../application/auth/use-cases/get-authenticated-user.use-case';
 import { ListAdminUsersUseCase } from '../../../application/auth/use-cases/list-admin-users.use-case';
+import { RegisterRequesterUseCase } from '../../../application/auth/use-cases/register-requester.use-case';
 import { UpdateAdminUserUseCase } from '../../../application/auth/use-cases/update-admin-user.use-case';
 import { UpdateAdminUserGroupsUseCase } from '../../../application/auth/use-cases/update-admin-user-groups.use-case';
 import { UpdateAdminUserStatusUseCase } from '../../../application/auth/use-cases/update-admin-user-status.use-case';
@@ -103,6 +104,23 @@ class UpdateAdminUserGroupsDto {
   groupIds!: string[];
 }
 
+class RegisterRequesterDto {
+  @IsEmail()
+  email!: string;
+
+  @IsOptional()
+  @IsString()
+  firstName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  lastName?: string | null;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -111,6 +129,7 @@ export class AuthController {
     private readonly getAuthSetupUseCase: GetAuthSetupUseCase,
     private readonly getAuthenticatedUserUseCase: GetAuthenticatedUserUseCase,
     private readonly listAdminUsersUseCase: ListAdminUsersUseCase,
+    private readonly registerRequesterUseCase: RegisterRequesterUseCase,
     private readonly updateAdminUserUseCase: UpdateAdminUserUseCase,
     private readonly updateAdminUserGroupsUseCase: UpdateAdminUserGroupsUseCase,
     private readonly updateAdminUserStatusUseCase: UpdateAdminUserStatusUseCase,
@@ -119,6 +138,18 @@ export class AuthController {
   @Get('setup')
   getSetup(): AuthSetupSnapshot {
     return this.getAuthSetupUseCase.execute();
+  }
+
+  @Post('register')
+  registerRequester(
+    @Body() body: RegisterRequesterDto,
+  ): Promise<AdminUserSummary> {
+    return this.registerRequesterUseCase.execute({
+      email: body.email,
+      firstName: body.firstName ?? null,
+      lastName: body.lastName ?? null,
+      password: body.password,
+    });
   }
 
   @Get('me')
