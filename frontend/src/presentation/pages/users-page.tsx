@@ -394,6 +394,14 @@ export function UsersPage({ session }: UsersPageProps) {
       return;
     }
 
+    const shouldRemove = window.confirm(
+      'Voulez-vous vraiment retirer du groupe ?',
+    );
+
+    if (!shouldRemove) {
+      return;
+    }
+
     await updateUserGroups(
       selectedUser,
       normalizeUserGroupIds(

@@ -311,6 +311,14 @@ export function GroupsPage({ session }: GroupsPageProps) {
       return;
     }
 
+    const shouldRemove = window.confirm(
+      'Voulez-vous vraiment retirer du groupe ?',
+    );
+
+    if (!shouldRemove) {
+      return;
+    }
+
     const nextGroupIds = getUserGroupIds(user).filter(
       (groupId) => groupId !== selectedGroupId,
     );
