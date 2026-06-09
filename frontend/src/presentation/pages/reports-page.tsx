@@ -346,6 +346,19 @@ export function ReportsPage({ session }: ReportsPageProps) {
     void loadReports(filters);
   }, [filters, loadReports]);
 
+  useEffect(() => {
+    function showDashboardView(): void {
+      setPlanningContext(null);
+      setActiveView('DASHBOARD');
+    }
+
+    window.addEventListener('reports:show-dashboard', showDashboardView);
+
+    return () => {
+      window.removeEventListener('reports:show-dashboard', showDashboardView);
+    };
+  }, []);
+
   function handleFilterChange(
     field: keyof ReportsFilterState,
 
