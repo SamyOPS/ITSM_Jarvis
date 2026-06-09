@@ -133,6 +133,22 @@ function getUserDisplayName(session: AuthSessionSnapshot | null): string {
   return fullName || session.user.email;
 }
 
+function navigateToHomeDashboard(homeRoute: RoutePath, pathname: string): void {
+  if (homeRoute !== '/reports') {
+    navigateTo(homeRoute);
+
+    return;
+  }
+
+  if (pathname === '/reports') {
+    window.dispatchEvent(new CustomEvent('reports:show-dashboard'));
+
+    return;
+  }
+
+  navigateTo('/reports');
+}
+
 export function AppShell({
   children,
   isAuthenticated,
@@ -783,7 +799,7 @@ export function AppShell({
                   ? 'workspace-home-link is-active'
                   : 'workspace-home-link'
               }
-              onClick={() => navigateTo(homeRoute)}
+              onClick={() => navigateToHomeDashboard(homeRoute, pathname)}
               type="button"
             >
               <House
