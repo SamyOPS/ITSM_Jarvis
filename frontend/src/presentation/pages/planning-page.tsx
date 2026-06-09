@@ -99,6 +99,8 @@ const DURATION_OPTIONS = Array.from(
   (_, index) => (index + 1) * SLOT_MINUTES,
 );
 
+const GROUP_PLANNING_COLOR_COUNT = 12;
+
 export function PlanningPage({
   onBack,
 
@@ -343,6 +345,8 @@ export function PlanningPage({
           <WeekPlanningView
             anchorDate={anchorDate}
             currentTime={currentTime}
+            currentUserId={session.user.id}
+            isGroupPlanning={variant === 'GROUP'}
             onCreate={openNewTask}
             onOpenTask={openTask}
             onToggleStatus={toggleTaskStatus}
@@ -355,6 +359,8 @@ export function PlanningPage({
           <DayPlanningView
             anchorDate={anchorDate}
             currentTime={currentTime}
+            currentUserId={session.user.id}
+            isGroupPlanning={variant === 'GROUP'}
             onCreate={openNewTask}
             onOpenTask={openTask}
             onToggleStatus={toggleTaskStatus}
@@ -366,6 +372,8 @@ export function PlanningPage({
         {mode === 'MONTH' ? (
           <MonthPlanningView
             anchorDate={anchorDate}
+            currentUserId={session.user.id}
+            isGroupPlanning={variant === 'GROUP'}
             onCreate={openNewTask}
             onOpenTask={openTask}
             segments={segments}
@@ -375,6 +383,8 @@ export function PlanningPage({
 
         {mode === 'AGENDA' ? (
           <AgendaPlanningView
+            currentUserId={session.user.id}
+            isGroupPlanning={variant === 'GROUP'}
             onOpenTask={openTask}
             onToggleStatus={toggleTaskStatus}
             tasks={tasks}
@@ -413,6 +423,10 @@ function WeekPlanningView({
 
   currentTime,
 
+  currentUserId,
+
+  isGroupPlanning,
+
   onCreate,
 
   onOpenTask,
@@ -426,6 +440,10 @@ function WeekPlanningView({
   anchorDate: Date;
 
   currentTime: Date;
+
+  currentUserId: string;
+
+  isGroupPlanning: boolean;
 
   onCreate: (
     day: Date,
@@ -474,7 +492,9 @@ function WeekPlanningView({
         {days.map((day) => (
           <PlanningDayColumn
             currentTime={currentTime}
+            currentUserId={currentUserId}
             day={day}
+            isGroupPlanning={isGroupPlanning}
             key={formatDateInput(day)}
             onCreate={onCreate}
             onOpenTask={onOpenTask}
@@ -493,6 +513,10 @@ function DayPlanningView({
 
   currentTime,
 
+  currentUserId,
+
+  isGroupPlanning,
+
   onCreate,
 
   onOpenTask,
@@ -506,6 +530,10 @@ function DayPlanningView({
   anchorDate: Date;
 
   currentTime: Date;
+
+  currentUserId: string;
+
+  isGroupPlanning: boolean;
 
   onCreate: (
     day: Date,
@@ -542,7 +570,9 @@ function DayPlanningView({
 
         <PlanningDayColumn
           currentTime={currentTime}
+          currentUserId={currentUserId}
           day={anchorDate}
+          isGroupPlanning={isGroupPlanning}
           onCreate={onCreate}
           onOpenTask={onOpenTask}
           onToggleStatus={onToggleStatus}
@@ -577,7 +607,11 @@ function TimeScale() {
 function PlanningDayColumn({
   currentTime,
 
+  currentUserId,
+
   day,
+
+  isGroupPlanning,
 
   onCreate,
 
@@ -591,7 +625,11 @@ function PlanningDayColumn({
 }: {
   currentTime: Date;
 
+  currentUserId: string;
+
   day: Date;
+
+  isGroupPlanning: boolean;
 
   onCreate: (
     day: Date,
@@ -658,6 +696,13 @@ function PlanningDayColumn({
 
             `planning-event--${segment.task.status.toLowerCase()}`,
 
+            getGroupPlanningColorClass(
+              segment.task.technicianId,
+              technicians,
+              currentUserId,
+              isGroupPlanning,
+            ),
+
             isShortSegment(segment) ? 'planning-event--compact' : '',
           ]
 
@@ -705,6 +750,10 @@ function PlanningDayColumn({
 function MonthPlanningView({
   anchorDate,
 
+  currentUserId,
+
+  isGroupPlanning,
+
   onCreate,
 
   onOpenTask,
@@ -714,6 +763,10 @@ function MonthPlanningView({
   technicians,
 }: {
   anchorDate: Date;
+
+  currentUserId: string;
+
+  isGroupPlanning: boolean;
 
   onCreate: (
     day: Date,
@@ -811,7 +864,22 @@ function MonthPlanningView({
                 <div>
                   {daySegments.slice(0, 3).map((segment) => (
                     <button
-                      className={`planning-month-task planning-event--${segment.task.status.toLowerCase()}`}
+                      className={[
+                        'planning-month-task',
+
+                        `planning-event--${segment.task.status.toLowerCase()}`,
+
+                        getGroupPlanningColorClass(
+                          segment.task.technicianId,
+                          technicians,
+                          currentUserId,
+                          isGroupPlanning,
+                        ),
+                      ]
+
+                        .filter(Boolean)
+
+                        .join(' ')}
                       key={`${segment.task.id}-${segment.start.toISOString()}`}
                       onClick={(event) => {
                         event.stopPropagation();
@@ -851,6 +919,10 @@ function MonthPlanningView({
 }
 
 function AgendaPlanningView({
+  currentUserId,
+
+  isGroupPlanning,
+
   onOpenTask,
 
   onToggleStatus,
@@ -859,6 +931,10 @@ function AgendaPlanningView({
 
   technicians,
 }: {
+  currentUserId: string;
+
+  isGroupPlanning: boolean;
+
   onOpenTask: (task: PlanningTask) => void;
 
   onToggleStatus: (taskId: string) => void;
@@ -891,11 +967,24 @@ function AgendaPlanningView({
 
               {group.tasks.map((task) => (
                 <div
-                  className={
+                  className={[
+                    'planning-agenda-row',
+
                     isSameDay(parseDateTime(task.start), new Date())
-                      ? 'planning-agenda-row is-today'
-                      : 'planning-agenda-row'
-                  }
+                      ? 'is-today'
+                      : '',
+
+                    getGroupPlanningColorClass(
+                      task.technicianId,
+                      technicians,
+                      currentUserId,
+                      isGroupPlanning,
+                    ),
+                  ]
+
+                    .filter(Boolean)
+
+                    .join(' ')}
                   key={task.id}
                   onClick={() => onOpenTask(task)}
                   onKeyDown={(event) => {
@@ -1099,7 +1188,7 @@ function PlanningEditor({
                   readOnly
                   value={
                     selectedUser
-                      ? formatUserName(selectedUser)
+                      ? formatPlanningUserIdentifier(selectedUser)
                       : 'Utilisateur non renseigne'
                   }
                 />
@@ -1276,7 +1365,7 @@ function PlanningEditor({
                       setIsUserPickerOpen(false);
                     }}
                   >
-                    <td>{formatUserName(user)}</td>
+                    <td>{formatPlanningUserIdentifier(user)}</td>
 
                     <td>{user.firstName || '-'}</td>
 
@@ -1682,17 +1771,45 @@ function formatAssignedUserLabel(
     return 'Utilisateur';
   }
 
-  const fullName = [technician.firstName, technician.lastName]
-    .filter(Boolean)
-    .join(' ')
-    .trim();
+  return formatPlanningUserIdentifier(technician);
+}
 
-  return (
-    fullName ||
-    technician.displayName ||
-    technician.email?.split('@')[0] ||
-    'Utilisateur'
+function getGroupPlanningColorClass(
+  technicianId: string,
+
+  technicians: AdminUserSummary[],
+
+  currentUserId: string,
+
+  isGroupPlanning: boolean,
+): string {
+  if (!isGroupPlanning || technicianId === currentUserId) {
+    return '';
+  }
+
+  const sortedTechnicians = [...technicians]
+    .filter((technician) => technician.id !== currentUserId)
+    .sort((first, second) =>
+      formatPlanningUserIdentifier(first).localeCompare(
+        formatPlanningUserIdentifier(second),
+
+        'fr',
+
+        { sensitivity: 'base' },
+      ),
+    );
+
+  const technicianIndex = sortedTechnicians.findIndex(
+    (technician) => technician.id === technicianId,
   );
+
+  if (technicianIndex < 0) {
+    return 'planning-user-color-1';
+  }
+
+  return `planning-user-color-${
+    (technicianIndex % GROUP_PLANNING_COLOR_COUNT) + 1
+  }`;
 }
 
 function filterPlanningUsers(
@@ -1709,6 +1826,8 @@ function filterPlanningUsers(
   return users.filter((user) =>
     [
       formatUserName(user),
+
+      formatPlanningUserIdentifier(user),
 
       user.firstName ?? '',
 
@@ -1728,4 +1847,13 @@ function formatUserName(user: AdminUserSummary): string {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
 
   return user.displayName || fullName || user.email || user.id;
+}
+
+function formatPlanningUserIdentifier(user: AdminUserSummary): string {
+  const fullName = [user.firstName, user.lastName]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+
+  return fullName || user.displayName || user.email || user.id;
 }

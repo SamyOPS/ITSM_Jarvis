@@ -45,7 +45,7 @@ type UserRoleFilter = UserRole | 'ALL';
 type UserGroupSearchField = 'DESCRIPTION' | 'IDENTIFIER' | 'NAME';
 
 const USER_ROLES: UserRole[] = ['DEMANDEUR', 'AGENT', 'ADMIN'];
-const USERS_PER_PAGE = 15;
+const USERS_PER_PAGE = 12;
 const USER_GROUPS_PER_PAGE = 5;
 
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
@@ -391,6 +391,14 @@ export function UsersPage({ session }: UsersPageProps) {
 
   async function handleRemoveUserGroup(groupId: string): Promise<void> {
     if (!selectedUser) {
+      return;
+    }
+
+    const shouldRemove = window.confirm(
+      'Voulez-vous vraiment retirer du groupe ?',
+    );
+
+    if (!shouldRemove) {
       return;
     }
 
