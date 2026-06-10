@@ -40,6 +40,12 @@ import {
 import { fetchUserDirectory } from '../../infrastructure/api/auth-api';
 
 import {
+  createGroupChatMessage,
+  fetchGroupChatMessages,
+  type GroupChatMessageSnapshot,
+} from '../../infrastructure/api/group-chat-api';
+
+import {
   createPlanningTask,
   deletePlanningTask,
   fetchPlanningTasks,
@@ -123,6 +129,8 @@ type GroupChatMessage = {
   body: string;
 
   createdAt: string;
+
+  groupId: string;
 
   id: string;
 };
@@ -635,14 +643,47 @@ export function ReportsPage({ session }: ReportsPageProps) {
   }, [availableReportGroups, selectedGroupId]);
 
   useEffect(() => {
-    if (!selectedGroupId) {
+    if (activeView !== 'GROUP' || !selectedGroupId) {
       setGroupChatMessages([]);
 
       return;
     }
 
-    setGroupChatMessages(readStoredGroupChatMessages(selectedGroupId));
-  }, [selectedGroupId]);
+    let isCancelled = false;
+
+    async function loadGroupChatMessages(): Promise<void> {
+      try {
+        const nextMessages = await fetchGroupChatMessages(
+          session.accessToken,
+          selectedGroupId,
+        );
+
+        if (!isCancelled) {
+          setGroupChatMessages(nextMessages.map(mapGroupChatMessageSnapshot));
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : 'Erreur inconnue lors du chargement du chat de groupe',
+          );
+        }
+      }
+    }
+
+    void loadGroupChatMessages();
+
+    const intervalId = window.setInterval(
+      () => void loadGroupChatMessages(),
+      10000,
+    );
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [activeView, selectedGroupId, session.accessToken]);
 
   const selectedReportGroup = useMemo(
     () =>
@@ -749,7 +790,9 @@ export function ReportsPage({ session }: ReportsPageProps) {
     await handlePlanningTaskSave(nextTask);
   }
 
-  function handleGroupChatSubmit(event: FormEvent<HTMLFormElement>): void {
+  async function handleGroupChatSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> {
     event.preventDefault();
 
     const body = groupChatDraft.trim();
@@ -758,27 +801,27 @@ export function ReportsPage({ session }: ReportsPageProps) {
       return;
     }
 
-    const nextMessage: GroupChatMessage = {
-      authorName: formatSessionUserName(session),
-
-      authorUserId: session.user.id,
-
-      body,
-
-      createdAt: new Date().toISOString(),
-
-      id: crypto.randomUUID(),
-    };
-
-    setGroupChatMessages((currentMessages) => {
-      const nextMessages = [...currentMessages, nextMessage];
-
-      writeStoredGroupChatMessages(selectedGroupId, nextMessages);
-
-      return nextMessages;
-    });
-
     setGroupChatDraft('');
+
+    try {
+      const nextMessage = await createGroupChatMessage(
+        session.accessToken,
+        selectedGroupId,
+        body,
+      );
+
+      setGroupChatMessages((currentMessages) => [
+        ...currentMessages,
+        mapGroupChatMessageSnapshot(nextMessage),
+      ]);
+    } catch (error) {
+      setGroupChatDraft(body);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue lors de l'envoi du message",
+      );
+    }
   }
 
   const reportViews = [
@@ -2191,7 +2234,7 @@ function GroupChatPanel({
 
   onDraftChange: (value: string) => void;
 
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void> | void;
 }) {
   const messagesRef = useRef<HTMLDivElement | null>(null);
 
@@ -3097,57 +3140,17 @@ function isUserMemberOfGroup(
   return getUserGroupIds(user).includes(groupId);
 }
 
-function getGroupChatStorageKey(groupId: string): string {
-  return `vision:group-chat:${groupId}`;
-}
-
-function readStoredGroupChatMessages(groupId: string): GroupChatMessage[] {
-  try {
-    const rawValue = window.localStorage.getItem(
-      getGroupChatStorageKey(groupId),
-    );
-
-    if (!rawValue) {
-      return [];
-    }
-
-    const parsedValue: unknown = JSON.parse(rawValue);
-
-    if (!Array.isArray(parsedValue)) {
-      return [];
-    }
-
-    return parsedValue.filter(isGroupChatMessage);
-  } catch {
-    return [];
-  }
-}
-
-function writeStoredGroupChatMessages(
-  groupId: string,
-
-  messages: GroupChatMessage[],
-): void {
-  window.localStorage.setItem(
-    getGroupChatStorageKey(groupId),
-
-    JSON.stringify(messages.slice(-100)),
-  );
-}
-
-function isGroupChatMessage(value: unknown): value is GroupChatMessage {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  const message = value as Partial<GroupChatMessage>;
-
-  return (
-    typeof message.authorName === 'string' &&
-    typeof message.body === 'string' &&
-    typeof message.createdAt === 'string' &&
-    typeof message.id === 'string'
-  );
+function mapGroupChatMessageSnapshot(
+  message: GroupChatMessageSnapshot,
+): GroupChatMessage {
+  return {
+    authorName: '',
+    authorUserId: message.authorUserId,
+    body: message.body,
+    createdAt: message.createdAt,
+    groupId: message.groupId,
+    id: message.id,
+  };
 }
 
 function parsePlanningDateTime(dateTime: string): Date {
@@ -3380,18 +3383,6 @@ function formatUserName(user: AdminUserSummary): string {
     .trim();
 
   return fullName || user.displayName || user.email || user.id;
-}
-
-function formatSessionUserName(session: AuthSessionSnapshot): string {
-  const fullName = [session.user.firstName, session.user.lastName]
-
-    .filter(Boolean)
-
-    .join(' ')
-
-    .trim();
-
-  return fullName || session.user.email;
 }
 
 function formatAssignedUserName(

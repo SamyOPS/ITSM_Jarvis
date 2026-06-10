@@ -10,6 +10,8 @@ import { RegisterRequesterUseCase } from './auth/use-cases/register-requester.us
 import { UpdateAdminUserUseCase } from './auth/use-cases/update-admin-user.use-case';
 import { UpdateAdminUserGroupsUseCase } from './auth/use-cases/update-admin-user-groups.use-case';
 import { UpdateAdminUserStatusUseCase } from './auth/use-cases/update-admin-user-status.use-case';
+import { CreateGroupChatMessageUseCase } from './group-chat/use-cases/create-group-chat-message.use-case';
+import { ListGroupChatMessagesUseCase } from './group-chat/use-cases/list-group-chat-messages.use-case';
 import { GetReferentialCatalogUseCase } from './referentials/use-cases/get-referential-catalog.use-case';
 import { ListCategoriesUseCase } from './referentials/use-cases/list-categories.use-case';
 import { ListChannelsUseCase } from './referentials/use-cases/list-channels.use-case';
@@ -107,6 +109,11 @@ const knowledgeUseCases = [
   UpdateKnowledgeArticleUseCase,
 ];
 
+const groupChatUseCases = [
+  CreateGroupChatMessageUseCase,
+  ListGroupChatMessagesUseCase,
+];
+
 @Module({
   imports: [ScheduleModule.forRoot(), InfrastructureModule],
   providers: [
@@ -123,6 +130,7 @@ const knowledgeUseCases = [
     GetAgentPerformanceReportUseCase,
     GetTicketReportingBreakdownUseCase,
     GetTicketReportingOverviewUseCase,
+    ...groupChatUseCases,
     ...knowledgeUseCases,
     ...planningUseCases,
     ...referentialUseCases,
@@ -142,6 +150,7 @@ const knowledgeUseCases = [
     GetAgentPerformanceReportUseCase,
     GetTicketReportingBreakdownUseCase,
     GetTicketReportingOverviewUseCase,
+    ...groupChatUseCases,
     ...knowledgeUseCases,
     ...planningUseCases,
     ...referentialUseCases,

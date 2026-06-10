@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AdminUserReadRepository } from '../application/auth/repositories/admin-user-read.repository';
 import { AdminUserWriteRepository } from '../application/auth/repositories/admin-user-write.repository';
 import { UserAssignmentProfileRepository } from '../application/auth/repositories/user-assignment-profile.repository';
+import { GroupChatMessageRepository } from '../application/group-chat/repositories/group-chat-message.repository';
 import { ReferentialCategoryReadRepository } from '../application/referentials/repositories/referential-category-read.repository';
 import { ReferentialCategoryWriteRepository } from '../application/referentials/repositories/referential-category-write.repository';
 import { ReferentialChannelReadRepository } from '../application/referentials/repositories/referential-channel-read.repository';
@@ -28,6 +29,7 @@ import { SupabaseAdminUserReadRepository } from './auth/supabase-admin-user-read
 import { SupabaseAdminUserWriteRepository } from './auth/supabase-admin-user-write.repository';
 import { SupabaseTokenValidatorService } from './auth/supabase-token-validator.service';
 import { SupabaseUserAssignmentProfileRepository } from './auth/supabase-user-assignment-profile.repository';
+import { SupabaseGroupChatMessageRepository } from './group-chat/supabase-group-chat-message.repository';
 import { SupabaseReferentialReadRepository } from './referentials/supabase-referential-read.repository';
 import { SupabasePlanningTaskRepository } from './planning/supabase-planning-task.repository';
 import { SupabaseKnowledgeArticleRepository } from './knowledge/supabase-knowledge-article.repository';
@@ -57,11 +59,16 @@ const referentialRepositoryBindings = [
     SupabaseAdminUserReadRepository,
     SupabaseAdminUserWriteRepository,
     SupabaseUserAssignmentProfileRepository,
+    SupabaseGroupChatMessageRepository,
     SupabaseReferentialReadRepository,
     SupabasePlanningTaskRepository,
     SupabaseKnowledgeArticleRepository,
     SupabaseTicketWriteRepository,
     ...referentialRepositoryBindings,
+    {
+      provide: GroupChatMessageRepository,
+      useExisting: SupabaseGroupChatMessageRepository,
+    },
     {
       provide: KnowledgeArticleRepository,
       useExisting: SupabaseKnowledgeArticleRepository,
@@ -121,6 +128,7 @@ const referentialRepositoryBindings = [
     AdminUserReadRepository,
     AdminUserWriteRepository,
     UserAssignmentProfileRepository,
+    GroupChatMessageRepository,
     KnowledgeArticleRepository,
     PlanningTaskRepository,
     TicketReadRepository,
