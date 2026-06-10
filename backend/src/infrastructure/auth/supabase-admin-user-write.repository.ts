@@ -69,8 +69,8 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
       displayName: buildDisplayName(record),
       email: record.email,
       firstName: record.firstName,
-      groupId: record.groupId,
-      groupIds: record.groupIds,
+      groupId: record.role === UserRole.DEMANDEUR ? null : record.groupId,
+      groupIds: record.role === UserRole.DEMANDEUR ? [] : record.groupIds,
       id: authUserId,
       isActive: true,
       lastName: record.lastName,
@@ -98,17 +98,37 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
       record,
     );
 
-    return upsertPublicUser(config.supabaseUrl, supabaseApiKey, {
-      displayName: buildDisplayName(record),
-      email: record.email,
-      firstName: record.firstName,
-      groupId: record.groupId,
-      groupIds: record.groupIds,
-      id: userId,
-      isActive: true,
-      lastName: record.lastName,
-      role: record.role,
-    });
+    const updatedUser = await upsertPublicUser(
+      config.supabaseUrl,
+      supabaseApiKey,
+      {
+        displayName: buildDisplayName(record),
+        email: record.email,
+        firstName: record.firstName,
+        groupId: record.role === UserRole.DEMANDEUR ? null : record.groupId,
+        groupIds: record.role === UserRole.DEMANDEUR ? [] : record.groupIds,
+        id: userId,
+        isActive: true,
+        lastName: record.lastName,
+        role: record.role,
+      },
+    );
+
+    if (record.role === UserRole.DEMANDEUR) {
+      await cleanupRequesterOperationalState(
+        config.supabaseUrl,
+        supabaseApiKey,
+        userId,
+      );
+
+      return {
+        ...updatedUser,
+        groupId: null,
+        groupIds: [],
+      };
+    }
+
+    return updatedUser;
   }
 
   async updateUserStatus(
@@ -172,6 +192,21 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
       );
     }
 
+    const row = await getPublicUserById(
+      config.supabaseUrl,
+      supabaseApiKey,
+      userId,
+    );
+
+    if (
+      resolveUserRole(row.role) === UserRole.DEMANDEUR &&
+      groupIds.length > 0
+    ) {
+      throw new BadRequestException(
+        'Un demandeur ne peut pas etre rattache a un groupe support.',
+      );
+    }
+
     await replaceUserGroups(
       config.supabaseUrl,
       supabaseApiKey,
@@ -179,13 +214,13 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
       groupIds,
     );
 
-    const row = await getPublicUserById(
+    const updatedRow = await getPublicUserById(
       config.supabaseUrl,
       supabaseApiKey,
       userId,
     );
 
-    return mapUserRow(row, row.email, groupIds);
+    return mapUserRow(updatedRow, updatedRow.email, groupIds);
   }
 
   async deleteUser(userId: string): Promise<void> {
@@ -812,6 +847,134 @@ async function updatePublicUserPrimaryGroup(
     throw new BadRequestException(
       message ||
         `Supabase public user primary group synchronization returned status ${response.status}.`,
+    );
+  }
+}
+
+async function cleanupRequesterOperationalState(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+): Promise<void> {
+  await deleteUserGroupsByUserId(supabaseUrl, supabaseApiKey, userId);
+  await updatePublicUserPrimaryGroup(supabaseUrl, supabaseApiKey, userId, null);
+  await unassignActiveTicketsForUser(supabaseUrl, supabaseApiKey, userId);
+  await deleteFuturePlanningTasksForUser(supabaseUrl, supabaseApiKey, userId);
+}
+
+async function deleteUserGroupsByUserId(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+): Promise<void> {
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/user_groups?user_id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: 'DELETE',
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          Prefer: 'return=minimal',
+        },
+      },
+    );
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase user group cleanup is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase user group cleanup returned status ${response.status}.`,
+    );
+  }
+}
+
+async function unassignActiveTicketsForUser(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+): Promise<void> {
+  let response: Response;
+  const query = new URLSearchParams({
+    assigned_to_user_id: `eq.${userId}`,
+    status: 'in.(OPEN,IN_PROGRESS,PENDING)',
+  });
+
+  try {
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/tickets?${query.toString()}`,
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          assigned_to_user_id: null,
+        }),
+      },
+    );
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase ticket assignment cleanup is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase ticket assignment cleanup returned status ${response.status}.`,
+    );
+  }
+}
+
+async function deleteFuturePlanningTasksForUser(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+): Promise<void> {
+  let response: Response;
+  const query = new URLSearchParams({
+    start_at: `gte.${new Date().toISOString()}`,
+    technician_id: `eq.${userId}`,
+  });
+
+  try {
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/planning_tasks?${query.toString()}`,
+      {
+        method: 'DELETE',
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          Prefer: 'return=minimal',
+        },
+      },
+    );
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase planning task cleanup is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase planning task cleanup returned status ${response.status}.`,
     );
   }
 }
