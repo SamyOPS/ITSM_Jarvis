@@ -57,7 +57,9 @@ export function RegisterPage() {
         password: form.password,
       });
       setForm(EMPTY_REGISTER_FORM);
-      setMessage('Compte créé. Vous pouvez maintenant vous connecter.');
+      setMessage(
+        'Compte créé. Vérifiez vos emails pour confirmer votre compte avant de vous connecter.',
+      );
     } catch (error) {
       setMessage(mapRegisterError(error));
     } finally {
@@ -184,6 +186,14 @@ function mapRegisterError(error: unknown): string {
   }
 
   const message = error.message.toLowerCase();
+
+  if (
+    message.includes('rate limit') ||
+    message.includes('too many') ||
+    message.includes('trop de mails')
+  ) {
+    return 'Trop de mails ont été envoyés en peu de temps. Attends quelques minutes avant de réessayer.';
+  }
 
   if (
     message.includes('already') ||

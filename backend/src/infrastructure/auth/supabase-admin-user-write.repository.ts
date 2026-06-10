@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -287,9 +289,20 @@ async function signUpSupabaseAuthUser(
 
   if (!response.ok) {
     const message = await response.text();
+    const supabaseError = parseSupabaseError(message);
+
+    if (
+      response.status === 429 ||
+      supabaseError.errorCode === 'over_email_send_rate_limit'
+    ) {
+      throw new HttpException(
+        'Trop de mails ont été envoyés en peu de temps. Attends quelques minutes avant de réessayer.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
 
     throw new BadRequestException(
-      message ||
+      supabaseError.message ||
         `Supabase requester signup returned status ${response.status}.`,
     );
   }
@@ -844,4 +857,33 @@ function resolveUserRole(role: string): UserRole {
   }
 
   return UserRole.DEMANDEUR;
+}
+
+function parseSupabaseError(message: string): {
+  errorCode: string | null;
+  message: string | null;
+} {
+  if (!message) {
+    return {
+      errorCode: null,
+      message: null,
+    };
+  }
+
+  try {
+    const payload = JSON.parse(message) as {
+      error_code?: string;
+      msg?: string;
+    };
+
+    return {
+      errorCode: payload.error_code ?? null,
+      message: payload.msg ?? message,
+    };
+  } catch {
+    return {
+      errorCode: null,
+      message,
+    };
+  }
 }
