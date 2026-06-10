@@ -811,21 +811,6 @@ export function AppShell({
             </button>
           </div>
 
-          <div className="workspace-topbar-search-shell">
-            <label className="workspace-topbar-search">
-              <Search
-                className="workspace-topbar-search-icon"
-                size={17}
-                strokeWidth={2}
-              />
-              <input
-                placeholder="Rechercher (tickets, assets, utilisateurs)..."
-                type="search"
-              />
-              <span>Ctrl K</span>
-            </label>
-          </div>
-
           <div className="workspace-topbar-actions">
             <div className="workspace-ticket-menu" ref={ticketMenuRef}>
               <button

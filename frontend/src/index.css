@@ -276,7 +276,7 @@ a {
   justify-content: space-between;
   gap: 24px;
   align-items: flex-start;
-  padding: 22px 28px;
+  padding: 10px 28px;
   border-bottom: 1px solid rgba(207, 216, 234, 0.9);
   background: rgba(255, 255, 255, 0.74);
   backdrop-filter: blur(16px);
@@ -321,36 +321,6 @@ a {
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
-}
-
-.workspace-topbar-search {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: min(520px, 100%);
-  padding: 10px 14px;
-  border: 1px solid rgba(207, 216, 234, 0.9);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.88);
-}
-
-.workspace-topbar-search input {
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.workspace-topbar-search span {
-  flex: none;
-  padding: 4px 8px;
-  border: 1px solid rgba(207, 216, 234, 0.9);
-  border-radius: 999px;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
 }
 
 .workspace-cta-button {
@@ -3115,10 +3085,6 @@ a {
     padding: 16px;
   }
 
-  .workspace-topbar-search {
-    min-width: 100%;
-  }
-
   .app-header {
     padding: 20px;
     flex-direction: column;
@@ -3380,10 +3346,10 @@ a {
   position: relative;
   z-index: 30;
   display: grid;
-  grid-template-columns: auto minmax(280px, 560px) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 18px;
-  padding: 16px 24px;
+  padding: 10px 24px;
   background: rgba(255, 255, 255, 0.76);
 }
 
@@ -3403,25 +3369,6 @@ a {
 .workspace-home-link-icon {
   width: 16px;
   height: 16px;
-}
-
-.workspace-topbar-search-shell {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-}
-
-.workspace-topbar-search {
-  width: min(100%, 560px);
-  min-width: 0;
-  padding: 10px 14px;
-  border-radius: 15px;
-  box-shadow: 0 10px 24px rgba(26, 44, 78, 0.06);
-}
-
-.workspace-topbar-search-icon {
-  color: var(--text-muted);
-  flex: 0 0 auto;
 }
 
 .workspace-topbar-actions {
@@ -4201,7 +4148,6 @@ a {
   }
 
   .workspace-topbar-copy,
-  .workspace-topbar-search-shell,
   .workspace-topbar-actions {
     justify-content: flex-start;
   }
