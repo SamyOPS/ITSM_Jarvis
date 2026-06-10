@@ -26,6 +26,7 @@ import { DeleteTicketUseCase } from '../../../application/ticketing/use-cases/de
 import { GetTicketByIdUseCase } from '../../../application/ticketing/use-cases/get-ticket-by-id.use-case';
 import { ListTicketAttachmentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-attachments.use-case';
 import { ListTicketCommentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-comments.use-case';
+import { ListTicketHistoryUseCase } from '../../../application/ticketing/use-cases/list-ticket-history.use-case';
 import { SearchTicketsUseCase } from '../../../application/ticketing/use-cases/search-tickets.use-case';
 import { UpdateTicketUseCase } from '../../../application/ticketing/use-cases/update-ticket.use-case';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
@@ -35,6 +36,7 @@ import { CreatedRequest } from '../../../domain/ticketing/created-request';
 import { TicketAttachment } from '../../../domain/ticketing/ticket-attachment';
 import { TicketComment } from '../../../domain/ticketing/ticket-comment';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
+import { TicketHistoryEntry } from '../../../domain/ticketing/ticket-history-entry';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketSummary } from '../../../domain/ticketing/ticket-summary';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
@@ -77,6 +79,7 @@ export class TicketsController {
     private readonly searchTicketsUseCase: SearchTicketsUseCase,
     private readonly getTicketByIdUseCase: GetTicketByIdUseCase,
     private readonly listTicketCommentsUseCase: ListTicketCommentsUseCase,
+    private readonly listTicketHistoryUseCase: ListTicketHistoryUseCase,
     private readonly addTicketCommentUseCase: AddTicketCommentUseCase,
     private readonly deleteTicketCommentUseCase: DeleteTicketCommentUseCase,
     private readonly listTicketAttachmentsUseCase: ListTicketAttachmentsUseCase,
@@ -185,6 +188,15 @@ export class TicketsController {
     });
   }
 
+  @Get(':id/history')
+  @UseGuards(BearerAuthGuard)
+  listHistory(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<TicketHistoryEntry[]> {
+    return this.listTicketHistoryUseCase.execute(id, user.id, user.role);
+  }
+
   @Delete(':ticketId/comments/:commentId')
   @UseGuards(BearerAuthGuard)
   async deleteComment(
@@ -262,7 +274,7 @@ export class TicketsController {
 
   @Patch(':id/status')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.ADMIN, UserRole.DEMANDEUR)
   changeStatus(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,

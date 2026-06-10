@@ -54,6 +54,7 @@ import { DeleteTicketUseCase } from './ticketing/use-cases/delete-ticket.use-cas
 import { GetTicketByIdUseCase } from './ticketing/use-cases/get-ticket-by-id.use-case';
 import { ListTicketAttachmentsUseCase } from './ticketing/use-cases/list-ticket-attachments.use-case';
 import { ListTicketCommentsUseCase } from './ticketing/use-cases/list-ticket-comments.use-case';
+import { ListTicketHistoryUseCase } from './ticketing/use-cases/list-ticket-history.use-case';
 import { SearchTicketsUseCase } from './ticketing/use-cases/search-tickets.use-case';
 import { UpdateTicketUseCase } from './ticketing/use-cases/update-ticket.use-case';
 
@@ -91,6 +92,7 @@ const ticketingUseCases = [
   ListTicketAttachmentsUseCase,
   AddTicketAttachmentUseCase,
   DeleteTicketAttachmentUseCase,
+  ListTicketHistoryUseCase,
   UpdateTicketUseCase,
 ];
 

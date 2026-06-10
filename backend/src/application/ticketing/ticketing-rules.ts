@@ -7,33 +7,63 @@ export const TICKET_NUMBER_PREFIX = 'TICK-';
 export const TICKET_NUMBER_DIGITS = 6;
 export const TICKET_NUMBER_PATTERN = /^TICK-\d{6}$/;
 
-const ALLOWED_STATUS_TRANSITIONS: Record<
+const AGENT_STATUS_TRANSITIONS: Record<TicketStatus, readonly TicketStatus[]> =
+  {
+    [TicketStatus.OPEN]: [
+      TicketStatus.IN_PROGRESS,
+      TicketStatus.PENDING,
+      TicketStatus.RESOLVED,
+    ],
+    [TicketStatus.IN_PROGRESS]: [TicketStatus.PENDING, TicketStatus.RESOLVED],
+    [TicketStatus.PENDING]: [TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED],
+    [TicketStatus.RESOLVED]: [TicketStatus.IN_PROGRESS, TicketStatus.PENDING],
+    [TicketStatus.CLOSED]: [TicketStatus.CLOSED],
+  };
+
+const REQUESTER_STATUS_TRANSITIONS: Record<
   TicketStatus,
   readonly TicketStatus[]
 > = {
-  [TicketStatus.OPEN]: [
-    TicketStatus.IN_PROGRESS,
-    TicketStatus.PENDING,
-    TicketStatus.RESOLVED,
-    TicketStatus.CLOSED,
-  ],
-  [TicketStatus.IN_PROGRESS]: [
-    TicketStatus.PENDING,
-    TicketStatus.RESOLVED,
-    TicketStatus.CLOSED,
-  ],
-  [TicketStatus.PENDING]: [
-    TicketStatus.IN_PROGRESS,
-    TicketStatus.RESOLVED,
-    TicketStatus.CLOSED,
-  ],
-  [TicketStatus.RESOLVED]: [
-    TicketStatus.IN_PROGRESS,
-    TicketStatus.PENDING,
-    TicketStatus.CLOSED,
-  ],
+  [TicketStatus.OPEN]: [TicketStatus.OPEN],
+  [TicketStatus.IN_PROGRESS]: [TicketStatus.IN_PROGRESS],
+  [TicketStatus.PENDING]: [TicketStatus.PENDING],
+  [TicketStatus.RESOLVED]: [TicketStatus.IN_PROGRESS, TicketStatus.CLOSED],
   [TicketStatus.CLOSED]: [TicketStatus.CLOSED],
 };
+
+const ADMIN_STATUS_TRANSITIONS: Record<TicketStatus, readonly TicketStatus[]> =
+  {
+    [TicketStatus.OPEN]: [
+      TicketStatus.IN_PROGRESS,
+      TicketStatus.PENDING,
+      TicketStatus.RESOLVED,
+      TicketStatus.CLOSED,
+    ],
+    [TicketStatus.IN_PROGRESS]: [
+      TicketStatus.OPEN,
+      TicketStatus.PENDING,
+      TicketStatus.RESOLVED,
+      TicketStatus.CLOSED,
+    ],
+    [TicketStatus.PENDING]: [
+      TicketStatus.OPEN,
+      TicketStatus.IN_PROGRESS,
+      TicketStatus.RESOLVED,
+      TicketStatus.CLOSED,
+    ],
+    [TicketStatus.RESOLVED]: [
+      TicketStatus.OPEN,
+      TicketStatus.IN_PROGRESS,
+      TicketStatus.PENDING,
+      TicketStatus.CLOSED,
+    ],
+    [TicketStatus.CLOSED]: [
+      TicketStatus.OPEN,
+      TicketStatus.IN_PROGRESS,
+      TicketStatus.PENDING,
+      TicketStatus.RESOLVED,
+    ],
+  };
 
 export type AssignmentPolicyInput = {
   assignedToUserId: string | null;
@@ -57,16 +87,33 @@ export function assertValidTicketNumberFormat(ticketNumber: string): void {
 export function assertAllowedTicketStatusTransition(
   previousStatus: TicketStatus,
   nextStatus: TicketStatus,
+  userRole: UserRole | null | undefined,
 ): void {
   if (previousStatus === nextStatus) {
     return;
   }
 
-  if (!ALLOWED_STATUS_TRANSITIONS[previousStatus].includes(nextStatus)) {
+  const transitions = getAllowedStatusTransitionsForRole(userRole);
+
+  if (!transitions[previousStatus].includes(nextStatus)) {
     throw new TicketRuleError(
-      `Ticket status transition ${previousStatus} -> ${nextStatus} is not allowed in V1.`,
+      `Ticket status transition ${previousStatus} -> ${nextStatus} is not allowed for this role.`,
     );
   }
+}
+
+function getAllowedStatusTransitionsForRole(
+  userRole: UserRole | null | undefined,
+): Record<TicketStatus, readonly TicketStatus[]> {
+  if (userRole === UserRole.ADMIN) {
+    return ADMIN_STATUS_TRANSITIONS;
+  }
+
+  if (userRole === UserRole.DEMANDEUR) {
+    return REQUESTER_STATUS_TRANSITIONS;
+  }
+
+  return AGENT_STATUS_TRANSITIONS;
 }
 
 export function assertTicketCanBeModifiedByRole(

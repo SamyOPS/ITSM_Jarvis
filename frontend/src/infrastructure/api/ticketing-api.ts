@@ -5,6 +5,7 @@ import type { TicketAttachmentSnapshot } from '../../domain/ticketing/ticket-att
 import type { RequestType } from '../../domain/ticketing/request-type';
 import type { TicketCommentSnapshot } from '../../domain/ticketing/ticket-comment';
 import type { TicketDetailSnapshot } from '../../domain/ticketing/ticket-detail';
+import type { TicketHistoryEntrySnapshot } from '../../domain/ticketing/ticket-history-entry';
 import type { TicketSummarySnapshot } from '../../domain/ticketing/ticket-summary';
 import { getFrontendRuntimeConfig } from '../config/env';
 import { getFrontendSupabaseConfig } from '../config/supabase-env';
@@ -270,6 +271,29 @@ export async function getTicketComments(
   }
 
   return (await response.json()) as TicketCommentSnapshot[];
+}
+
+export async function getTicketHistory(
+  accessToken: string,
+  ticketId: string,
+): Promise<TicketHistoryEntrySnapshot[]> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/tickets/${ticketId}/history`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      message ||
+        `Le chargement de l'historique a echoue avec le statut ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as TicketHistoryEntrySnapshot[];
 }
 
 export async function addTicketComment(

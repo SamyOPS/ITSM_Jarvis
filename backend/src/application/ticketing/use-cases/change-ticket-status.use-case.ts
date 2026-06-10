@@ -57,6 +57,12 @@ export class ChangeTicketStatusUseCase {
       assertAllowedTicketStatusTransition(
         existingTicket.ticket.status,
         command.status,
+        command.actorRole,
+      );
+      assertRequesterCanChangeTicketStatus(
+        existingTicket,
+        actorUserId,
+        command.actorRole,
       );
     } catch (error) {
       if (error instanceof TicketRuleError) {
@@ -88,5 +94,26 @@ export class ChangeTicketStatusUseCase {
     });
 
     return updatedTicket;
+  }
+}
+
+function assertRequesterCanChangeTicketStatus(
+  ticketDetail: TicketDetail,
+  actorUserId: string,
+  actorRole: UserRole | null | undefined,
+): void {
+  if (actorRole !== UserRole.DEMANDEUR) {
+    return;
+  }
+
+  const ticket = ticketDetail.ticket;
+
+  if (
+    ticket.createdByUserId !== actorUserId &&
+    ticket.requestedForUserId !== actorUserId
+  ) {
+    throw new TicketRuleError(
+      'Requesters can only change the status of their own tickets.',
+    );
   }
 }

@@ -12,6 +12,7 @@ import { DeleteTicketUseCase } from '../../../application/ticketing/use-cases/de
 import { GetTicketByIdUseCase } from '../../../application/ticketing/use-cases/get-ticket-by-id.use-case';
 import { ListTicketAttachmentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-attachments.use-case';
 import { ListTicketCommentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-comments.use-case';
+import { ListTicketHistoryUseCase } from '../../../application/ticketing/use-cases/list-ticket-history.use-case';
 import { SearchTicketsUseCase } from '../../../application/ticketing/use-cases/search-tickets.use-case';
 import { UpdateTicketUseCase } from '../../../application/ticketing/use-cases/update-ticket.use-case';
 import { UserRole } from '../../../domain/auth/user-role';
@@ -62,6 +63,19 @@ describe('TicketsController', () => {
       createdAt: '2026-04-02T08:10:00.000Z',
       id: 'comment-1',
       isInternal: false,
+      ticketId: 'ticket-1',
+    },
+  ]);
+  const listHistory = jest.fn().mockResolvedValue([
+    {
+      actorUserId: 'user-1',
+      createdAt: '2026-04-02T08:20:00.000Z',
+      eventType: 'STATUS_CHANGED',
+      id: 'history-1',
+      payload: {
+        fromStatus: TicketStatus.OPEN,
+        toStatus: TicketStatus.IN_PROGRESS,
+      },
       ticketId: 'ticket-1',
     },
   ]);
@@ -134,6 +148,7 @@ describe('TicketsController', () => {
     searchTickets.mockClear();
     getTicketById.mockClear();
     listComments.mockClear();
+    listHistory.mockClear();
     addComment.mockClear();
     archiveExpiredTickets.mockClear();
     deleteComment.mockClear();
@@ -172,6 +187,9 @@ describe('TicketsController', () => {
       {
         execute: listComments,
       } as unknown as ListTicketCommentsUseCase,
+      {
+        execute: listHistory,
+      } as unknown as ListTicketHistoryUseCase,
       {
         execute: addComment,
       } as unknown as AddTicketCommentUseCase,
@@ -419,6 +437,35 @@ describe('TicketsController', () => {
     ]);
 
     expect(listComments).toHaveBeenCalledWith(
+      'ticket-1',
+      'user-1',
+      UserRole.AGENT,
+    );
+  });
+
+  it('delegates ticket history listing with the authenticated role', async () => {
+    await expect(
+      controller.listHistory('ticket-1', {
+        accessToken: 'token',
+        email: 'agent@jarvis.local',
+        id: 'user-1',
+        role: UserRole.AGENT,
+      }),
+    ).resolves.toEqual([
+      {
+        actorUserId: 'user-1',
+        createdAt: '2026-04-02T08:20:00.000Z',
+        eventType: 'STATUS_CHANGED',
+        id: 'history-1',
+        payload: {
+          fromStatus: TicketStatus.OPEN,
+          toStatus: TicketStatus.IN_PROGRESS,
+        },
+        ticketId: 'ticket-1',
+      },
+    ]);
+
+    expect(listHistory).toHaveBeenCalledWith(
       'ticket-1',
       'user-1',
       UserRole.AGENT,
