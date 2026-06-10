@@ -149,6 +149,50 @@ function navigateToHomeDashboard(homeRoute: RoutePath, pathname: string): void {
   navigateTo('/reports');
 }
 
+function getCurrentBreadcrumbRoute(
+  pathname: string,
+
+  session: AuthSessionSnapshot | null,
+): { icon: LucideIcon; title: string } {
+  const exactRoute = ROUTES.find((route) => route.path === pathname);
+
+  if (exactRoute) {
+    return {
+      icon: routeIcons[exactRoute.path] ?? FileText,
+      title:
+        exactRoute.path === '/agent/tickets'
+          ? 'Tous les tickets'
+          : getRouteDisplayTitle(exactRoute.path, exactRoute.title, session),
+    };
+  }
+
+  if (pathname.startsWith('/agent/tickets/')) {
+    return {
+      icon: Ticket,
+      title: 'Ticket',
+    };
+  }
+
+  if (pathname.startsWith('/admin/users/')) {
+    return {
+      icon: User,
+      title: 'Utilisateur',
+    };
+  }
+
+  if (pathname.startsWith('/admin/groups/')) {
+    return {
+      icon: Users,
+      title: 'Groupe',
+    };
+  }
+
+  return {
+    icon: LayoutDashboard,
+    title: 'Tableau de bord',
+  };
+}
+
 export function AppShell({
   children,
   isAuthenticated,
@@ -172,6 +216,11 @@ export function AppShell({
   const isLoginShell = pathname === '/login';
   const homeRoute = getHomeRoute(session);
   const isHomeRoute = pathname === homeRoute;
+  const currentBreadcrumbRoute = useMemo(
+    () => getCurrentBreadcrumbRoute(pathname, session),
+    [pathname, session],
+  );
+  const CurrentBreadcrumbIcon = currentBreadcrumbRoute.icon;
   const userInitials = useMemo(() => getUserInitials(session), [session]);
   const userDisplayName = useMemo(() => getUserDisplayName(session), [session]);
   const administrationRoutes = administrationRouteOrder
@@ -793,22 +842,41 @@ export function AppShell({
       <div className="workspace-main">
         <header className="workspace-topbar">
           <div className="workspace-topbar-copy">
-            <button
-              className={
-                isHomeRoute
-                  ? 'workspace-home-link is-active'
-                  : 'workspace-home-link'
-              }
-              onClick={() => navigateToHomeDashboard(homeRoute, pathname)}
-              type="button"
-            >
-              <House
-                className="workspace-home-link-icon"
-                size={15}
-                strokeWidth={2.1}
-              />
-              <span>Accueil</span>
-            </button>
+            <nav className="workspace-breadcrumb" aria-label="Fil d'ariane">
+              <button
+                className={
+                  isHomeRoute
+                    ? 'workspace-breadcrumb-item is-active'
+                    : 'workspace-breadcrumb-item'
+                }
+                onClick={() => navigateToHomeDashboard(homeRoute, pathname)}
+                type="button"
+              >
+                <House
+                  className="workspace-breadcrumb-icon"
+                  size={15}
+                  strokeWidth={2.1}
+                />
+
+                <span>Accueil</span>
+              </button>
+
+              {!isHomeRoute ? (
+                <>
+                  <span className="workspace-breadcrumb-separator">/</span>
+
+                  <span className="workspace-breadcrumb-item workspace-breadcrumb-current">
+                    <CurrentBreadcrumbIcon
+                      className="workspace-breadcrumb-icon"
+                      size={15}
+                      strokeWidth={2.1}
+                    />
+
+                    <span>{currentBreadcrumbRoute.title}</span>
+                  </span>
+                </>
+              ) : null}
+            </nav>
           </div>
 
           <div className="workspace-topbar-actions">

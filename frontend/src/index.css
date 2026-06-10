@@ -282,29 +282,56 @@ a {
   backdrop-filter: blur(16px);
 }
 
-.workspace-home-link {
+.workspace-breadcrumb {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 6px;
-  padding: 0;
+  gap: 6px;
+  min-width: 0;
+  color: #66758d;
+}
+
+.workspace-breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 5px;
   border: 0;
+  border-radius: 8px;
   background: transparent;
-  font-size: 0.84rem;
-  font-weight: 700;
-  color: var(--text-muted);
+  color: #66758d;
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1;
   cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
 }
 
-.workspace-home-link:hover,
-.workspace-home-link.is-active {
-  color: var(--primary);
+.workspace-breadcrumb-item:hover {
+  background: rgba(100, 116, 139, 0.08);
+  color: #34445c;
 }
 
-.workspace-home-link-icon {
-  width: 14px;
-  height: 14px;
+.workspace-breadcrumb-item.is-active,
+.workspace-breadcrumb-current {
+  color: #34445c;
+}
+
+.workspace-breadcrumb-current {
+  cursor: default;
+}
+
+.workspace-breadcrumb-icon {
+  width: 15px;
+  height: 15px;
   flex: 0 0 auto;
+}
+
+.workspace-breadcrumb-separator {
+  color: #8a97aa;
+  font-size: 0.86rem;
 }
 
 .workspace-topbar-copy h1 {
@@ -3359,14 +3386,14 @@ a {
   min-width: 0;
 }
 
-.workspace-home-link {
+.workspace-breadcrumb-item {
   gap: 6px;
   margin: 0;
   font-size: 0.84rem;
   font-weight: 600;
 }
 
-.workspace-home-link-icon {
+.workspace-breadcrumb-icon {
   width: 16px;
   height: 16px;
 }
@@ -4629,13 +4656,13 @@ a {
   color: rgba(231, 237, 246, 0.72);
 }
 
-.workspace-home-link {
+.workspace-breadcrumb-item {
   gap: 8px;
-  font-size: 0.98rem;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
-.workspace-home-link-icon {
+.workspace-breadcrumb-icon {
   width: 18px;
   height: 18px;
 }
@@ -4746,8 +4773,8 @@ a {
 .workspace-nav-link,
 .workspace-nav-link-icon,
 .workspace-nav-link-label,
-.workspace-home-link,
-.workspace-home-link-icon,
+.workspace-breadcrumb-item,
+.workspace-breadcrumb-icon,
 .workspace-cta-button,
 .workspace-logout-button,
 .workspace-ticket-menu-item {
@@ -4756,13 +4783,6 @@ a {
     border-color 160ms ease,
     background-color 160ms ease,
     transform 160ms ease;
-}
-
-.workspace-home-link:hover .workspace-home-link-icon,
-.workspace-home-link:hover span,
-.workspace-home-link.is-active .workspace-home-link-icon,
-.workspace-home-link.is-active span {
-  color: #2b6de9;
 }
 
 .workspace-cta-button:hover,
@@ -7726,7 +7746,7 @@ a {
   font-size: 0.8rem;
 }
 
-.workspace-home-link {
+.workspace-breadcrumb-item {
   font-size: 0.9rem;
 }
 
