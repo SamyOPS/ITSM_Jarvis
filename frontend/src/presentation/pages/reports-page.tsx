@@ -17,6 +17,8 @@ import {
   BarChart3,
   ChevronLeft,
   ChevronRight,
+  Maximize2,
+  Minimize2,
   SlidersHorizontal,
   User,
   Users,
@@ -244,6 +246,8 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
   const [planningContext, setPlanningContext] =
     useState<ReportsPlanningContext | null>(null);
+
+  const [isGroupChatExpanded, setIsGroupChatExpanded] = useState(false);
 
   const [planningTasks, setPlanningTasks] = useState<PlanningTask[]>([]);
 
@@ -882,6 +886,23 @@ export function ReportsPage({ session }: ReportsPageProps) {
     );
   }
 
+  if (isGroupChatExpanded && activeView === 'GROUP' && selectedReportGroup) {
+    return (
+      <section className="reports-page group-chat-page">
+        <GroupChatPanel
+          currentUserId={session.user.id}
+          draft={groupChatDraft}
+          groupMembers={groupMembers}
+          isExpanded
+          messages={groupChatMessages}
+          onDraftChange={setGroupChatDraft}
+          onExpandedChange={setIsGroupChatExpanded}
+          onSubmit={handleGroupChatSubmit}
+        />
+      </section>
+    );
+  }
+
   return (
     <section className="reports-page">
       <nav
@@ -1297,6 +1318,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 groupMembers={groupMembers}
                 messages={groupChatMessages}
                 onDraftChange={setGroupChatDraft}
+                onExpandedChange={setIsGroupChatExpanded}
                 onSubmit={handleGroupChatSubmit}
               />
             </div>
@@ -2218,9 +2240,13 @@ function GroupChatPanel({
 
   groupMembers,
 
+  isExpanded = false,
+
   messages,
 
   onDraftChange,
+
+  onExpandedChange,
 
   onSubmit,
 }: {
@@ -2230,15 +2256,21 @@ function GroupChatPanel({
 
   groupMembers: AdminUserSummary[];
 
+  isExpanded?: boolean;
+
   messages: GroupChatMessage[];
 
   onDraftChange: (value: string) => void;
+
+  onExpandedChange?: (value: boolean) => void;
 
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void> | void;
 }) {
   const messagesRef = useRef<HTMLDivElement | null>(null);
 
   const [isMembersPanelOpen, setIsMembersPanelOpen] = useState(false);
+
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   useEffect(() => {
     const messagesElement = messagesRef.current;
@@ -2250,20 +2282,47 @@ function GroupChatPanel({
     messagesElement.scrollTop = messagesElement.scrollHeight;
   }, [messages.length]);
 
+  function handleMemberInfoOpen(memberId: string): void {
+    setSelectedMemberId(memberId);
+  }
+
   return (
-    <article className="personal-panel group-chat-panel">
+    <article
+      className={[
+        'personal-panel',
+        'group-chat-panel',
+        isExpanded ? 'is-expanded' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <header className="personal-panel-header">
         <h3>Chat box de groupe</h3>
 
-        <button
-          aria-expanded={isMembersPanelOpen}
-          aria-label="Afficher les membres du groupe"
-          className="group-chat-members-toggle"
-          onClick={() => setIsMembersPanelOpen((isOpen) => !isOpen)}
-          type="button"
-        >
-          <Users size={16} />
-        </button>
+        <div className="group-chat-header-actions">
+          <button
+            aria-expanded={isMembersPanelOpen}
+            aria-label="Afficher les membres du groupe"
+            className="group-chat-members-toggle"
+            onClick={() => setIsMembersPanelOpen((isOpen) => !isOpen)}
+            type="button"
+          >
+            <Users size={16} />
+
+            <span>Voir le groupe</span>
+          </button>
+
+          <button
+            aria-label={
+              isExpanded ? 'Reduire la chatbox' : 'Agrandir la chatbox'
+            }
+            className="group-chat-expand-toggle"
+            onClick={() => onExpandedChange?.(!isExpanded)}
+            type="button"
+          >
+            {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+          </button>
+        </div>
       </header>
 
       <div
@@ -2280,9 +2339,9 @@ function GroupChatPanel({
           ref={messagesRef}
         >
           {messages.length === 0 ? (
-            <p className="personal-panel-empty group-chat-empty">
+            <div className="personal-panel-empty group-chat-empty">
               Aucun message pour ce groupe.
-            </p>
+            </div>
           ) : (
             messages.map((message) => {
               const authorUserId = getGroupChatAuthorUserId(
@@ -2336,44 +2395,54 @@ function GroupChatPanel({
 
         {isMembersPanelOpen ? (
           <aside className="group-chat-members-panel">
-            <header>
-              <strong>{groupMembers.length} membres</strong>
-            </header>
+            {selectedMemberId ? (
+              <GroupChatMemberInfo
+                currentUserId={currentUserId}
+                member={
+                  groupMembers.find(
+                    (member) => member.id === selectedMemberId,
+                  ) ?? null
+                }
+                onBack={() => setSelectedMemberId(null)}
+              />
+            ) : (
+              <>
+                <header>
+                  <strong>{groupMembers.length} membres</strong>
+                </header>
 
-            <div className="group-chat-members-list">
-              {groupMembers.map((member) => {
-                const isCurrentUser = member.id === currentUserId;
-                const memberName = formatUserName(member);
-                const colorClass = getGroupMemberColorClass(
-                  member.id,
-                  groupMembers,
-                  currentUserId,
-                );
+                <div className="group-chat-members-list">
+                  {groupMembers.map((member) => {
+                    const isCurrentUser = member.id === currentUserId;
+                    const memberName = formatUserName(member);
 
-                return (
-                  <div
-                    className={[
-                      'group-chat-member-item',
-                      isCurrentUser ? 'is-own' : '',
-                      colorClass,
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    key={member.id}
-                  >
-                    <span className="group-chat-avatar">
-                      {formatGroupChatInitials(memberName)}
-                    </span>
+                    return (
+                      <button
+                        className={[
+                          'group-chat-member-item',
+                          isCurrentUser ? 'is-own' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        key={member.id}
+                        onClick={() => handleMemberInfoOpen(member.id)}
+                        type="button"
+                      >
+                        <span className="group-chat-avatar">
+                          {formatGroupChatInitials(memberName)}
+                        </span>
 
-                    <span>
-                      <strong>{isCurrentUser ? 'Vous' : memberName}</strong>
+                        <span>
+                          <strong>{isCurrentUser ? 'Vous' : memberName}</strong>
 
-                      <small>{formatGroupMemberRole(member.role)}</small>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+                          <small>{formatGroupMemberRole(member.role)}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </aside>
         ) : null}
       </div>
@@ -2390,6 +2459,69 @@ function GroupChatPanel({
         </button>
       </form>
     </article>
+  );
+}
+
+function GroupChatMemberInfo({
+  currentUserId,
+
+  member,
+
+  onBack,
+}: {
+  currentUserId: string;
+
+  member: AdminUserSummary | null;
+
+  onBack: () => void;
+}) {
+  if (!member) {
+    return (
+      <>
+        <header className="group-chat-member-info-header">
+          <button onClick={onBack} type="button">
+            <ChevronLeft size={16} />
+          </button>
+
+          <strong>Info du membre</strong>
+        </header>
+
+        <p className="personal-panel-empty group-chat-empty">
+          Membre introuvable.
+        </p>
+      </>
+    );
+  }
+
+  const isCurrentUser = member.id === currentUserId;
+  const memberName = formatUserName(member);
+
+  return (
+    <>
+      <header className="group-chat-member-info-header">
+        <button aria-label="Retour aux membres" onClick={onBack} type="button">
+          <ChevronLeft size={16} />
+        </button>
+
+        <strong>Info du membre</strong>
+      </header>
+
+      <div className="group-chat-member-info">
+        <span className="group-chat-avatar group-chat-member-info-avatar">
+          {formatGroupChatInitials(memberName)}
+        </span>
+
+        <h4>{isCurrentUser ? 'Vous' : memberName}</h4>
+
+        <p>{formatGroupMemberRole(member.role)}</p>
+
+        <div className="group-chat-member-info-detail">
+          <span>Email</span>
+
+          <strong>{member.email ?? 'Non renseigne'}</strong>
+        </div>
+      </div>
+    </>
   );
 }
 
