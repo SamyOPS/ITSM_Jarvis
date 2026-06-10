@@ -26,17 +26,39 @@ describe('ticketing rules', () => {
         assertAllowedTicketStatusTransition(
           TicketStatus.OPEN,
           TicketStatus.PENDING,
+          UserRole.AGENT,
         ),
       ).not.toThrow();
     });
 
-    it('rejects reopening a closed ticket', () => {
+    it('rejects closing a ticket directly as agent', () => {
+      expect(() =>
+        assertAllowedTicketStatusTransition(
+          TicketStatus.IN_PROGRESS,
+          TicketStatus.CLOSED,
+          UserRole.AGENT,
+        ),
+      ).toThrow(TicketRuleError);
+    });
+
+    it('allows closing a resolved ticket as requester', () => {
+      expect(() =>
+        assertAllowedTicketStatusTransition(
+          TicketStatus.RESOLVED,
+          TicketStatus.CLOSED,
+          UserRole.DEMANDEUR,
+        ),
+      ).not.toThrow();
+    });
+
+    it('allows reopening a closed ticket as admin', () => {
       expect(() =>
         assertAllowedTicketStatusTransition(
           TicketStatus.CLOSED,
           TicketStatus.IN_PROGRESS,
+          UserRole.ADMIN,
         ),
-      ).toThrow(TicketRuleError);
+      ).not.toThrow();
     });
   });
 

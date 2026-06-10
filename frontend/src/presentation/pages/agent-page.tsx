@@ -42,6 +42,7 @@ import {
 import type { TicketCommentSnapshot } from '../../domain/ticketing/ticket-comment';
 import type { TicketAttachmentSnapshot } from '../../domain/ticketing/ticket-attachment';
 import type { TicketDetailSnapshot } from '../../domain/ticketing/ticket-detail';
+import type { TicketHistoryEntrySnapshot } from '../../domain/ticketing/ticket-history-entry';
 
 import { type RequestType } from '../../domain/ticketing/request-type';
 
@@ -65,6 +66,7 @@ import {
   getTicketAttachments,
   getTicketById,
   getTicketComments,
+  getTicketHistory,
   searchTickets,
   updateTicket,
   uploadTicketAttachmentBinary,
@@ -377,6 +379,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     TicketAttachmentSnapshot[]
   >([]);
 
+  const [selectedTicketHistory, setSelectedTicketHistory] = useState<
+    TicketHistoryEntrySnapshot[]
+  >([]);
+
   const [assignmentDraft, setAssignmentDraft] = useState<AssignmentDraftState>(
     INITIAL_ASSIGNMENT_DRAFT,
   );
@@ -420,6 +426,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
 
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
   const [isSubmittingAttachment, setIsSubmittingAttachment] = useState(false);
 
   const [deletingAttachmentId, setDeletingAttachmentId] = useState<
@@ -446,6 +454,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   const [loadAttachmentsErrorMessage, setLoadAttachmentsErrorMessage] =
     useState<string | null>(null);
+
+  const [loadHistoryErrorMessage, setLoadHistoryErrorMessage] = useState<
+    string | null
+  >(null);
 
   const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(
     null,
@@ -500,6 +512,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     useState<RequestValidationErrors>({});
 
   const canManageTicket = canManageTicketActions(session.user.role);
+  const canChangeSelectedTicketStatus =
+    selectedTicketDetail &&
+    canChangeTicketStatus(
+      session.user.role,
+      session.user.id,
+      selectedTicketDetail,
+    );
+  const statusOptions = selectedTicketDetail
+    ? getStatusOptionsForRole(session.user.role, selectedTicketDetail)
+    : [];
   const showIncidentAdvancedFields =
     mode === 'INCIDENT' && canManageTicketActions(session.user.role);
   const showRequestAdvancedFields =
@@ -869,6 +891,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
       setSelectedTicketAttachments([]);
 
+      setSelectedTicketHistory([]);
+
       setCommentDraft(INITIAL_COMMENT_DRAFT);
 
       setAttachmentDraft(INITIAL_ATTACHMENT_DRAFT);
@@ -884,6 +908,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       setLoadCommentsErrorMessage(null);
 
       setLoadAttachmentsErrorMessage(null);
+
+      setLoadHistoryErrorMessage(null);
 
       setDetailActionErrorMessage(null);
 
@@ -1006,6 +1032,53 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     }
 
     void loadSelectedTicketComments();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTicketId, session.accessToken]);
+
+  useEffect(() => {
+    if (!selectedTicketId) {
+      return;
+    }
+
+    const currentTicketId = selectedTicketId;
+
+    let cancelled = false;
+
+    async function loadSelectedTicketHistory(): Promise<void> {
+      setIsLoadingHistory(true);
+
+      setLoadHistoryErrorMessage(null);
+
+      try {
+        const nextHistory = await getTicketHistory(
+          session.accessToken,
+          currentTicketId,
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setSelectedTicketHistory(nextHistory);
+      } catch (error) {
+        if (!cancelled) {
+          setLoadHistoryErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Erreur inconnue lors du chargement de l'historique",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingHistory(false);
+        }
+      }
+    }
+
+    void loadSelectedTicketHistory();
 
     return () => {
       cancelled = true;
@@ -2235,6 +2308,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
       setStatusDraft(asTicketStatus(updatedTicket.ticket.status) ?? 'OPEN');
 
+      await refreshSelectedTicketHistory(updatedTicket.ticket.id);
+
       setTickets((currentTickets) =>
         currentTickets.map((ticket) =>
           ticket.id === updatedTicket.ticket.id
@@ -2382,6 +2457,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         currentComments.filter((comment) => comment.id !== normalizedCommentId),
       );
       setCommentSuccessMessage('Commentaire supprime.');
+
+      await refreshSelectedTicketHistory(selectedTicketDetail.ticket.id);
     } catch (error) {
       setCommentErrorMessage(
         error instanceof Error
@@ -2441,6 +2518,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           ? 'Note interne ajoutee.'
           : 'Commentaire ajoute.',
       );
+
+      await refreshSelectedTicketHistory(selectedTicketDetail.ticket.id);
     } catch (error) {
       setCommentErrorMessage(
         error instanceof Error
@@ -2505,6 +2584,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       setAttachmentDraft(INITIAL_ATTACHMENT_DRAFT);
       setAttachmentInputKey((currentKey) => currentKey + 1);
       setAttachmentSuccessMessage('Piece jointe ajoutee.');
+
+      await refreshSelectedTicketHistory(selectedTicketDetail.ticket.id);
     } catch (error) {
       setAttachmentErrorMessage(
         error instanceof Error
@@ -2561,6 +2642,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
       setSelectedTicketAttachments(nextAttachments);
       setAttachmentSuccessMessage('Piece jointe supprimee.');
+
+      await refreshSelectedTicketHistory(selectedTicketDetail.ticket.id);
     } catch (error) {
       setAttachmentErrorMessage(
         error instanceof Error
@@ -2569,6 +2652,21 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       );
     } finally {
       setDeletingAttachmentId(null);
+    }
+  }
+
+  async function refreshSelectedTicketHistory(ticketId: string): Promise<void> {
+    try {
+      const nextHistory = await getTicketHistory(session.accessToken, ticketId);
+
+      setSelectedTicketHistory(nextHistory);
+      setLoadHistoryErrorMessage(null);
+    } catch (error) {
+      setLoadHistoryErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue lors du chargement de l'historique",
+      );
     }
   }
 
@@ -4126,7 +4224,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         {selectedTicketDetail.ticket.number}
                       </span>
                     ) : null}
-                    {selectedTicketDetail && canManageTicket ? (
+                    {selectedTicketDetail && canChangeSelectedTicketStatus ? (
                       <form
                         className="tdp-status-form"
                         onSubmit={handleStatusSubmit}
@@ -4139,11 +4237,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           }
                           value={statusDraft}
                         >
-                          <option value="OPEN">Nouveau</option>
-                          <option value="IN_PROGRESS">En cours</option>
-                          <option value="PENDING">En attente</option>
-                          <option value="RESOLVED">Résolu</option>
-                          <option value="CLOSED">Clos</option>
+                          {statusOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
                         </select>
 
                         <button
@@ -4656,6 +4754,62 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                     <div className="tdp-card">
                       <div className="tdp-card-header">
+                        <h3 className="tdp-card-title">Historique</h3>
+                        <span className="tdp-tab-count">
+                          {selectedTicketHistory.length}
+                        </span>
+                      </div>
+
+                      {isLoadingHistory ? (
+                        <p className="tdp-state">
+                          Chargement de l'historique...
+                        </p>
+                      ) : loadHistoryErrorMessage ? (
+                        <p className="tdp-state tdp-state--error">
+                          {loadHistoryErrorMessage}
+                        </p>
+                      ) : selectedTicketHistory.length === 0 ? (
+                        <p className="tdp-empty">
+                          Aucun evenement historise pour ce ticket.
+                        </p>
+                      ) : (
+                        <div className="tdp-comment-thread">
+                          {selectedTicketHistory.map((entry) => (
+                            <div className="tdp-comment" key={entry.id}>
+                              <div className="tdp-comment-avatar">
+                                {formatHistoryEventInitial(entry.eventType)}
+                              </div>
+
+                              <div className="tdp-comment-body">
+                                <div className="tdp-comment-header">
+                                  <strong>
+                                    {formatTicketHistoryEvent(entry.eventType)}
+                                  </strong>
+
+                                  <span>
+                                    {formatTicketDate(entry.createdAt)}
+                                  </span>
+
+                                  <span className="tdp-comment-badge">
+                                    {formatKnownUserName(
+                                      usersById.get(entry.actorUserId),
+                                      entry.actorUserId,
+                                    )}
+                                  </span>
+                                </div>
+
+                                <p className="tdp-comment-text">
+                                  {formatTicketHistoryPayload(entry)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="tdp-card">
+                      <div className="tdp-card-header">
                         <h3 className="tdp-card-title">Conversation</h3>
                         <span className="tdp-tab-count">
                           {selectedTicketComments.length}
@@ -5107,6 +5261,57 @@ function canManageTicketActions(role: UserRole): boolean {
   return role === 'AGENT' || role === 'ADMIN';
 }
 
+function canChangeTicketStatus(
+  role: UserRole,
+  currentUserId: string,
+  ticketDetail: TicketDetailSnapshot,
+): boolean {
+  if (role === 'ADMIN') {
+    return true;
+  }
+
+  if (role === 'AGENT') {
+    return ticketDetail.ticket.status !== 'CLOSED';
+  }
+
+  return (
+    role === 'DEMANDEUR' &&
+    ticketDetail.ticket.status === 'RESOLVED' &&
+    (ticketDetail.ticket.createdByUserId === currentUserId ||
+      ticketDetail.ticket.requestedForUserId === currentUserId)
+  );
+}
+
+function getStatusOptionsForRole(
+  role: UserRole,
+  ticketDetail: TicketDetailSnapshot,
+): Array<{ label: string; value: TicketStatus }> {
+  if (role === 'ADMIN') {
+    return [
+      { label: 'Nouveau', value: 'OPEN' },
+      { label: 'En cours', value: 'IN_PROGRESS' },
+      { label: 'En attente', value: 'PENDING' },
+      { label: 'Resolu', value: 'RESOLVED' },
+      { label: 'Clos', value: 'CLOSED' },
+    ];
+  }
+
+  if (role === 'DEMANDEUR' && ticketDetail.ticket.status === 'RESOLVED') {
+    return [
+      { label: 'Resolu', value: 'RESOLVED' },
+      { label: 'Refuser et remettre en cours', value: 'IN_PROGRESS' },
+      { label: 'Accepter et clore', value: 'CLOSED' },
+    ];
+  }
+
+  return [
+    { label: 'Nouveau', value: 'OPEN' },
+    { label: 'En cours', value: 'IN_PROGRESS' },
+    { label: 'En attente', value: 'PENDING' },
+    { label: 'Resolu', value: 'RESOLVED' },
+  ];
+}
+
 function asTicketStatus(value: string): TicketStatus | null {
   if (
     value === 'OPEN' ||
@@ -5206,6 +5411,86 @@ function formatKnownUserName(
     .trim();
 
   return fullName || user.displayName || fallback;
+}
+
+function formatTicketHistoryEvent(
+  eventType: TicketHistoryEntrySnapshot['eventType'],
+): string {
+  const labels: Record<TicketHistoryEntrySnapshot['eventType'], string> = {
+    ASSIGNED: 'Assignation modifiee',
+    ATTACHMENT_ADDED: 'Piece jointe ajoutee',
+    ATTACHMENT_DELETED: 'Piece jointe supprimee',
+    CATEGORY_CHANGED: 'Categorie modifiee',
+    CLOSED: 'Ticket clos',
+    COMMENT_ADDED: 'Commentaire ajoute',
+    COMMENT_DELETED: 'Commentaire supprime',
+    CREATED: 'Ticket cree',
+    ESCALATED: 'Ticket escalade',
+    PRIORITY_CHANGED: 'Priorite modifiee',
+    RESOLVED: 'Ticket resolu',
+    STATUS_CHANGED: 'Statut modifie',
+    UNASSIGNED: 'Assignation retiree',
+  };
+
+  return labels[eventType] ?? eventType;
+}
+
+function formatHistoryEventInitial(
+  eventType: TicketHistoryEntrySnapshot['eventType'],
+): string {
+  return formatTicketHistoryEvent(eventType).charAt(0).toUpperCase();
+}
+
+function formatTicketHistoryPayload(entry: TicketHistoryEntrySnapshot): string {
+  const payload = entry.payload ?? {};
+
+  if (entry.eventType === 'STATUS_CHANGED') {
+    return `${translatePayloadStatus(payload.fromStatus)} -> ${translatePayloadStatus(payload.toStatus)}`;
+  }
+
+  if (entry.eventType === 'ASSIGNED') {
+    return 'Le groupe ou le technicien assigne a ete mis a jour.';
+  }
+
+  if (entry.eventType === 'UNASSIGNED') {
+    return "Le ticket n'est plus assigne.";
+  }
+
+  if (entry.eventType === 'PRIORITY_CHANGED') {
+    return 'La priorite et les echeances SLA ont ete recalculees.';
+  }
+
+  if (entry.eventType === 'COMMENT_ADDED') {
+    return payload.isInternal
+      ? 'Une note interne a ete ajoutee.'
+      : 'Un commentaire public a ete ajoute.';
+  }
+
+  if (entry.eventType === 'COMMENT_DELETED') {
+    return payload.isInternal
+      ? 'Une note interne a ete supprimee.'
+      : 'Un commentaire public a ete supprime.';
+  }
+
+  if (entry.eventType === 'ATTACHMENT_ADDED') {
+    return 'Une piece jointe a ete ajoutee au ticket.';
+  }
+
+  if (entry.eventType === 'ATTACHMENT_DELETED') {
+    return 'Une piece jointe a ete supprimee du ticket.';
+  }
+
+  if (entry.eventType === 'CREATED') {
+    return 'Le ticket a ete cree.';
+  }
+
+  return 'Evenement enregistre sur le ticket.';
+}
+
+function translatePayloadStatus(value: unknown): string {
+  return typeof value === 'string'
+    ? translateTicketStatus(value)
+    : 'Non defini';
 }
 
 function filterIncidentLookupUsers(
