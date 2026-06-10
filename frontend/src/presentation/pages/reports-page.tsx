@@ -2238,6 +2238,8 @@ function GroupChatPanel({
 }) {
   const messagesRef = useRef<HTMLDivElement | null>(null);
 
+  const [isMembersPanelOpen, setIsMembersPanelOpen] = useState(false);
+
   useEffect(() => {
     const messagesElement = messagesRef.current;
 
@@ -2252,60 +2254,128 @@ function GroupChatPanel({
     <article className="personal-panel group-chat-panel">
       <header className="personal-panel-header">
         <h3>Chat box de groupe</h3>
+
+        <button
+          aria-expanded={isMembersPanelOpen}
+          aria-label="Afficher les membres du groupe"
+          className="group-chat-members-toggle"
+          onClick={() => setIsMembersPanelOpen((isOpen) => !isOpen)}
+          type="button"
+        >
+          <Users size={16} />
+        </button>
       </header>
 
-      <div className="group-chat-messages" aria-live="polite" ref={messagesRef}>
-        {messages.length === 0 ? (
-          <p className="personal-panel-empty group-chat-empty">
-            Aucun message pour ce groupe.
-          </p>
-        ) : (
-          messages.map((message) => {
-            const authorUserId = getGroupChatAuthorUserId(
-              message,
-              groupMembers,
-            );
-            const author = authorUserId
-              ? groupMembers.find((user) => user.id === authorUserId)
-              : null;
-            const isOwnMessage = authorUserId === currentUserId;
-            const colorClass = getGroupMemberColorClass(
-              authorUserId,
-              groupMembers,
-              currentUserId,
-            );
-            const authorName = author
-              ? formatUserName(author)
-              : message.authorName;
+      <div
+        className={[
+          'group-chat-content',
+          isMembersPanelOpen ? 'has-members-panel' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <div
+          className="group-chat-messages"
+          aria-live="polite"
+          ref={messagesRef}
+        >
+          {messages.length === 0 ? (
+            <p className="personal-panel-empty group-chat-empty">
+              Aucun message pour ce groupe.
+            </p>
+          ) : (
+            messages.map((message) => {
+              const authorUserId = getGroupChatAuthorUserId(
+                message,
+                groupMembers,
+              );
+              const author = authorUserId
+                ? groupMembers.find((user) => user.id === authorUserId)
+                : null;
+              const isOwnMessage = authorUserId === currentUserId;
+              const colorClass = getGroupMemberColorClass(
+                authorUserId,
+                groupMembers,
+                currentUserId,
+              );
+              const authorName = author
+                ? formatUserName(author)
+                : message.authorName;
 
-            return (
-              <div
-                className={[
-                  'group-chat-message-row',
-                  isOwnMessage ? 'is-own' : '',
-                  colorClass,
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                key={message.id}
-              >
-                <span className="group-chat-avatar">
-                  {formatGroupChatInitials(authorName)}
-                </span>
+              return (
+                <div
+                  className={[
+                    'group-chat-message-row',
+                    isOwnMessage ? 'is-own' : '',
+                    colorClass,
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  key={message.id}
+                >
+                  {!isOwnMessage ? (
+                    <span className="group-chat-avatar">
+                      {formatGroupChatInitials(authorName)}
+                    </span>
+                  ) : null}
 
-                <div className="group-chat-message">
-                  <div className="group-chat-message-meta">
-                    <strong>{isOwnMessage ? 'Vous' : authorName}</strong>
+                  <div className="group-chat-message">
+                    <div className="group-chat-message-meta">
+                      <strong>{isOwnMessage ? 'Vous' : authorName}</strong>
 
-                    <span>{formatGroupChatTimestamp(message.createdAt)}</span>
+                      <span>{formatGroupChatTimestamp(message.createdAt)}</span>
+                    </div>
+
+                    <p>{message.body}</p>
                   </div>
-
-                  <p>{message.body}</p>
                 </div>
-              </div>
-            );
-          })
-        )}
+              );
+            })
+          )}
+        </div>
+
+        {isMembersPanelOpen ? (
+          <aside className="group-chat-members-panel">
+            <header>
+              <strong>{groupMembers.length} membres</strong>
+            </header>
+
+            <div className="group-chat-members-list">
+              {groupMembers.map((member) => {
+                const isCurrentUser = member.id === currentUserId;
+                const memberName = formatUserName(member);
+                const colorClass = getGroupMemberColorClass(
+                  member.id,
+                  groupMembers,
+                  currentUserId,
+                );
+
+                return (
+                  <div
+                    className={[
+                      'group-chat-member-item',
+                      isCurrentUser ? 'is-own' : '',
+                      colorClass,
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    key={member.id}
+                  >
+                    <span className="group-chat-avatar">
+                      {formatGroupChatInitials(memberName)}
+                    </span>
+
+                    <span>
+                      <strong>{isCurrentUser ? 'Vous' : memberName}</strong>
+
+                      <small>{formatGroupMemberRole(member.role)}</small>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
+        ) : null}
       </div>
 
       <form className="group-chat-form" onSubmit={onSubmit}>
@@ -3453,6 +3523,18 @@ function formatGroupChatInitials(value: string): string {
   return `${normalizedParts[0][0] ?? ''}${
     normalizedParts[normalizedParts.length - 1][0] ?? ''
   }`.toUpperCase();
+}
+
+function formatGroupMemberRole(role: AdminUserSummary['role']): string {
+  if (role === 'ADMIN') {
+    return 'Admin';
+  }
+
+  if (role === 'AGENT') {
+    return 'Agent';
+  }
+
+  return 'Demandeur';
 }
 
 function formatGroupChatTimestamp(value: string): string {
