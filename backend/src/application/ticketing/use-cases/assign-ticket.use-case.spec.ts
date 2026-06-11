@@ -169,6 +169,82 @@ describe('AssignTicketUseCase', () => {
     });
   });
 
+  it('assigns a ticket directly to a support agent without assignment group', async () => {
+    const detail = new TicketDetail(
+      new Ticket(
+        'ticket-1',
+        'TICK-000001',
+        TicketType.INCIDENT,
+        TicketStatus.OPEN,
+        'VPN KO',
+        'Impossible de se connecter',
+        'priority-1',
+        'category-1',
+        'creator-1',
+        null,
+        null,
+        null,
+        null,
+        null,
+        '2026-03-31T10:00:00.000Z',
+      ),
+      null,
+      null,
+      null,
+    );
+    const getTicketById = jest
+      .fn()
+      .mockResolvedValueOnce(detail)
+      .mockResolvedValueOnce({
+        ...detail,
+        ticket: {
+          ...detail.ticket,
+          assignedToUserId: 'agent-1',
+          assignmentGroupId: null,
+        },
+      });
+    const updateAssignment = jest.fn().mockResolvedValue(undefined);
+    const useCase = new AssignTicketUseCase(
+      {
+        getTicketById,
+      } as unknown as TicketReadRepository,
+      {
+        updateAssignment,
+      } as unknown as TicketWriteRepository,
+      {
+        getById: jest.fn().mockResolvedValue({
+          groupId: 'group-1',
+          groupIds: ['group-1'],
+          id: 'agent-1',
+          isActive: true,
+          role: UserRole.AGENT,
+        }),
+      } as unknown as UserAssignmentProfileRepository,
+      {
+        write: jest.fn().mockResolvedValue(undefined),
+      } as unknown as TicketAuditService,
+    );
+
+    await expect(
+      useCase.execute({
+        actorUserId: 'agent-2',
+        assignedToUserId: 'agent-1',
+        assignmentGroupId: null,
+        ticketId: 'ticket-1',
+      }),
+    ).resolves.toMatchObject({
+      ticket: {
+        assignedToUserId: 'agent-1',
+        assignmentGroupId: null,
+      },
+    });
+
+    expect(updateAssignment).toHaveBeenCalledWith('ticket-1', {
+      assignedToUserId: 'agent-1',
+      assignmentGroupId: null,
+    });
+  });
+
   it('writes UNASSIGNED when both group and assignee are cleared', async () => {
     const detail = new TicketDetail(
       new Ticket(
