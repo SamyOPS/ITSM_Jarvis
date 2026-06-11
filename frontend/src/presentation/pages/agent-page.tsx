@@ -80,7 +80,6 @@ type AgentPageProps = {
     | 'INCIDENT_CREATE'
     | 'MY_TICKETS'
     | 'REQUEST_CREATE'
-    | 'UNASSIGNED_TICKETS'
     | 'LIST'
     | 'DETAIL';
   session: AuthSessionSnapshot;
@@ -108,7 +107,7 @@ type IncidentLookupSearchField =
   | 'STATUS'
   | 'TYPE';
 
-type TicketListSearchField = 'TITLE' | 'REQUESTER' | 'TECHNICIAN';
+type TicketListSearchField = 'TITLE' | 'REQUESTER' | 'TECHNICIAN' | 'GROUP';
 
 type IncidentDraftState = {
   assignmentGroupId: string;
@@ -539,17 +538,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const isArchiveListPage = section === 'ARCHIVES';
   const isArchiveDetailPage = section === 'ARCHIVE_DETAIL';
   const isMyTicketsPage = section === 'MY_TICKETS';
-  const isUnassignedTicketsPage = section === 'UNASSIGNED_TICKETS';
   const isRequestCreatePage = section === 'REQUEST_CREATE';
   const isListPage = section === 'LIST';
   const isDetailPage = section === 'DETAIL';
   const showCreationPanel = isIncidentCreatePage || isRequestCreatePage;
   const showCreationRequesterField = showCreationPanel;
-  const showListPanel =
-    isListPage ||
-    isArchiveListPage ||
-    isMyTicketsPage ||
-    isUnassignedTicketsPage;
+  const showListPanel = isListPage || isArchiveListPage || isMyTicketsPage;
   const showDetailPanel = isDetailPage || isArchiveDetailPage;
   const detailOrigin =
     typeof window !== 'undefined'
@@ -572,9 +566,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         tickets,
         searchFilters.q,
         userDirectory,
+        catalog.groups,
         searchFilters.searchField,
       ),
-    [searchFilters.q, searchFilters.searchField, tickets, userDirectory],
+    [
+      catalog.groups,
+      searchFilters.q,
+      searchFilters.searchField,
+      tickets,
+      userDirectory,
+    ],
   );
   const totalTicketPages = Math.max(
     1,
@@ -828,10 +829,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
               ticket.createdByUserId === session.user.id ||
               ticket.requestedForUserId === session.user.id,
           );
-        } else if (isUnassignedTicketsPage) {
-          displayedTickets = activeTickets.filter(
-            (ticket) => !ticket.assignedToUserId,
-          );
         }
 
         setTickets(displayedTickets);
@@ -866,7 +863,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     isArchiveListPage,
     isListPage,
     isMyTicketsPage,
-    isUnassignedTicketsPage,
     searchFilters.categoryId,
 
     searchFilters.priorityId,
@@ -3942,6 +3938,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       >
                         <option value="TITLE">Titre</option>
                         <option value="REQUESTER">Demandeur</option>
+                        <option value="GROUP">Groupe</option>
                         <option value="TECHNICIAN">Assigné à</option>
                       </select>
 
@@ -5338,10 +5335,6 @@ function getTicketListTitle(
     return 'Mes tickets';
   }
 
-  if (section === 'UNASSIGNED_TICKETS') {
-    return 'Tickets non assignés';
-  }
-
   if (section === 'LIST' && userRole === 'DEMANDEUR') {
     return 'Mes tickets';
   }
@@ -5358,10 +5351,6 @@ function getTicketListDescription(section: AgentPageProps['section']): string {
     return 'Tickets crees par votre compte utilisateur.';
   }
 
-  if (section === 'UNASSIGNED_TICKETS') {
-    return 'Tickets actifs sans technicien assigne.';
-  }
-
   return 'Vue compacte des tickets avec les colonnes principales de suivi.';
 }
 
@@ -5372,10 +5361,6 @@ function getTicketListEmptyMessage(section: AgentPageProps['section']): string {
 
   if (section === 'MY_TICKETS') {
     return 'Aucun ticket cree par votre compte ne correspond aux filtres actuels.';
-  }
-
-  if (section === 'UNASSIGNED_TICKETS') {
-    return 'Aucun ticket non assigne ne correspond aux filtres actuels.';
   }
 
   return 'Aucun ticket ne correspond aux filtres actuels.';
@@ -5612,6 +5597,7 @@ function filterTicketsByListSearch(
   tickets: TicketSummarySnapshot[],
   searchText: string,
   users: AdminUserSummary[],
+  groups: ReferentialCatalogSnapshot['groups'],
   searchField: TicketListSearchField,
 ): TicketSummarySnapshot[] {
   const normalizedSearch = normalizeSearchText(searchText);
@@ -5621,6 +5607,7 @@ function filterTicketsByListSearch(
   }
 
   const usersById = new Map(users.map((user) => [user.id, user]));
+  const groupsById = new Map(groups.map((group) => [group.id, group]));
 
   return tickets.filter((ticket) => {
     const requesterId = ticket.requestedForUserId ?? ticket.createdByUserId;
@@ -5633,10 +5620,16 @@ function filterTicketsByListSearch(
           usersById.get(ticket.assignedToUserId),
           ticket.assignedToUserId,
         )
-      : '';
+      : 'aucun';
+    const groupName = ticket.assignmentGroupId
+      ? (groupsById.get(ticket.assignmentGroupId)?.name ??
+        ticket.assignmentGroupId)
+      : 'aucun';
 
     const searchableValues: string[] = (() => {
       switch (searchField) {
+        case 'GROUP':
+          return [groupName];
         case 'REQUESTER':
           return [requesterName];
         case 'TECHNICIAN':

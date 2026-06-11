@@ -6,7 +6,6 @@ import {
   Bell,
   ChevronDown,
   ClipboardList,
-  ClipboardX,
   FileText,
   BookOpen,
   House,
@@ -64,7 +63,6 @@ const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/agent/my-tickets': Ticket,
   '/agent/requests/new': FileText,
   '/agent/tickets': ListChecks,
-  '/agent/unassigned-tickets': ClipboardX,
   '/knowledge/articles': BookOpen,
   '/parc/ci-types': SlidersHorizontal,
   '/parc/cis': Settings,
@@ -578,18 +576,6 @@ export function AppShell({
                         <ClipboardList size={15} strokeWidth={2} />
                         Tous les tickets
                       </button>
-                      <button
-                        className={
-                          pathname === '/agent/unassigned-tickets'
-                            ? 'workspace-nav-dropdown-item is-active'
-                            : 'workspace-nav-dropdown-item'
-                        }
-                        onClick={() => navigateTo('/agent/unassigned-tickets')}
-                        type="button"
-                      >
-                        <ClipboardX size={15} strokeWidth={2} />
-                        Non assignés
-                      </button>
                     </div>
                   ) : null}
 
@@ -609,18 +595,6 @@ export function AppShell({
                       >
                         <ClipboardList size={15} strokeWidth={2} />
                         Tous les tickets
-                      </button>
-                      <button
-                        className={
-                          pathname === '/agent/unassigned-tickets'
-                            ? 'workspace-nav-dropdown-item is-active'
-                            : 'workspace-nav-dropdown-item'
-                        }
-                        onClick={() => navigateTo('/agent/unassigned-tickets')}
-                        type="button"
-                      >
-                        <ClipboardX size={15} strokeWidth={2} />
-                        Non assignés
                       </button>
                     </div>
                   </div>

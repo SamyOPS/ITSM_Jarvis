@@ -11,7 +11,6 @@ const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
   '/agent/my-tickets': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/agent/requests/new': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/agent/tickets': ['DEMANDEUR', 'AGENT', 'ADMIN'],
-  '/agent/unassigned-tickets': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/knowledge/articles': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/parc/ci-types': ['ADMIN'],
   '/parc/cis': ['ADMIN'],

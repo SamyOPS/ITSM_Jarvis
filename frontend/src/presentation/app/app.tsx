@@ -148,12 +148,6 @@ function renderPage({
       ) : (
         <NotFoundPage />
       );
-    case '/agent/unassigned-tickets':
-      return session ? (
-        <AgentPage section="UNASSIGNED_TICKETS" session={session} />
-      ) : (
-        <NotFoundPage />
-      );
     case '/agent/archives':
       if (pathname.startsWith('/agent/archives/')) {
         const ticketId = pathname.replace('/agent/archives/', '').trim();
