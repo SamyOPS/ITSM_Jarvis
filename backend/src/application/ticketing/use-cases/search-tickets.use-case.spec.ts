@@ -2,15 +2,27 @@ import { UserRole } from '../../../domain/auth/user-role';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketSummary } from '../../../domain/ticketing/ticket-summary';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
+import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { SearchTicketsUseCase } from './search-tickets.use-case';
 
 describe('SearchTicketsUseCase', () => {
   it('normalizes optional filters before delegating to the repository', async () => {
     const searchTickets = jest.fn().mockResolvedValue([]);
-    const useCase = new SearchTicketsUseCase({
-      searchTickets,
-    } as unknown as TicketReadRepository);
+    const useCase = new SearchTicketsUseCase(
+      {
+        searchTickets,
+      } as unknown as TicketReadRepository,
+      {
+        getById: jest.fn().mockResolvedValue({
+          groupId: null,
+          groupIds: [],
+          id: 'agent-1',
+          isActive: true,
+          role: UserRole.AGENT,
+        }),
+      } as unknown as UserAssignmentProfileRepository,
+    );
 
     await expect(
       useCase.execute({
@@ -76,9 +88,14 @@ describe('SearchTicketsUseCase', () => {
       .fn()
       .mockResolvedValueOnce([createdTicket])
       .mockResolvedValueOnce([requestedTicket]);
-    const useCase = new SearchTicketsUseCase({
-      searchTickets,
-    } as unknown as TicketReadRepository);
+    const useCase = new SearchTicketsUseCase(
+      {
+        searchTickets,
+      } as unknown as TicketReadRepository,
+      {
+        getById: jest.fn(),
+      } as unknown as UserAssignmentProfileRepository,
+    );
 
     await expect(
       useCase.execute({
@@ -125,9 +142,20 @@ describe('SearchTicketsUseCase', () => {
     const searchTickets = jest
       .fn()
       .mockResolvedValue([openTicket, closedTicket, archivedTicket]);
-    const useCase = new SearchTicketsUseCase({
-      searchTickets,
-    } as unknown as TicketReadRepository);
+    const useCase = new SearchTicketsUseCase(
+      {
+        searchTickets,
+      } as unknown as TicketReadRepository,
+      {
+        getById: jest.fn().mockResolvedValue({
+          groupId: null,
+          groupIds: [],
+          id: 'agent-1',
+          isActive: true,
+          role: UserRole.AGENT,
+        }),
+      } as unknown as UserAssignmentProfileRepository,
+    );
 
     await expect(
       useCase.execute({
@@ -135,6 +163,61 @@ describe('SearchTicketsUseCase', () => {
         requesterUserRole: UserRole.AGENT,
       }),
     ).resolves.toEqual([openTicket]);
+  });
+
+  it('limits agent searches to unassigned tickets, direct assignments, and own groups', async () => {
+    const unassignedTicket = createTicketSummary('ticket-1', TicketStatus.OPEN);
+    const assignedToCurrentAgent = createTicketSummaryWithAssignment({
+      assignedToUserId: 'agent-1',
+      id: 'ticket-2',
+    });
+    const assignedToOtherAgentWithoutGroup = createTicketSummaryWithAssignment({
+      assignedToUserId: 'agent-2',
+      id: 'ticket-3',
+    });
+    const assignedToOwnGroup = createTicketSummaryWithAssignment({
+      assignedToUserId: 'agent-2',
+      assignmentGroupId: 'group-1',
+      id: 'ticket-4',
+    });
+    const assignedToOtherGroup = createTicketSummaryWithAssignment({
+      assignmentGroupId: 'group-2',
+      id: 'ticket-5',
+    });
+    const searchTickets = jest
+      .fn()
+      .mockResolvedValue([
+        unassignedTicket,
+        assignedToCurrentAgent,
+        assignedToOtherAgentWithoutGroup,
+        assignedToOwnGroup,
+        assignedToOtherGroup,
+      ]);
+    const useCase = new SearchTicketsUseCase(
+      {
+        searchTickets,
+      } as unknown as TicketReadRepository,
+      {
+        getById: jest.fn().mockResolvedValue({
+          groupId: null,
+          groupIds: ['group-1'],
+          id: 'agent-1',
+          isActive: true,
+          role: UserRole.AGENT,
+        }),
+      } as unknown as UserAssignmentProfileRepository,
+    );
+
+    await expect(
+      useCase.execute({
+        requesterUserId: 'agent-1',
+        requesterUserRole: UserRole.AGENT,
+      }),
+    ).resolves.toEqual([
+      unassignedTicket,
+      assignedToCurrentAgent,
+      assignedToOwnGroup,
+    ]);
   });
 
   it('keeps closed tickets visible to admins before archival', async () => {
@@ -147,9 +230,14 @@ describe('SearchTicketsUseCase', () => {
     const searchTickets = jest
       .fn()
       .mockResolvedValue([closedTicket, archivedTicket]);
-    const useCase = new SearchTicketsUseCase({
-      searchTickets,
-    } as unknown as TicketReadRepository);
+    const useCase = new SearchTicketsUseCase(
+      {
+        searchTickets,
+      } as unknown as TicketReadRepository,
+      {
+        getById: jest.fn(),
+      } as unknown as UserAssignmentProfileRepository,
+    );
 
     await expect(
       useCase.execute({
@@ -161,9 +249,20 @@ describe('SearchTicketsUseCase', () => {
 
   it('accepts a single-character search text', async () => {
     const searchTickets = jest.fn().mockResolvedValue([]);
-    const useCase = new SearchTicketsUseCase({
-      searchTickets,
-    } as unknown as TicketReadRepository);
+    const useCase = new SearchTicketsUseCase(
+      {
+        searchTickets,
+      } as unknown as TicketReadRepository,
+      {
+        getById: jest.fn().mockResolvedValue({
+          groupId: null,
+          groupIds: [],
+          id: 'agent-1',
+          isActive: true,
+          role: UserRole.AGENT,
+        }),
+      } as unknown as UserAssignmentProfileRepository,
+    );
 
     await expect(
       useCase.execute({
@@ -207,5 +306,33 @@ function createTicketSummary(
     null,
     null,
     archivedAt,
+  );
+}
+
+function createTicketSummaryWithAssignment({
+  assignedToUserId = null,
+  assignmentGroupId = null,
+  id,
+}: {
+  assignedToUserId?: string | null;
+  assignmentGroupId?: string | null;
+  id: string;
+}): TicketSummary {
+  return new TicketSummary(
+    id,
+    'TICK-000001',
+    TicketType.INCIDENT,
+    TicketStatus.OPEN,
+    'VPN KO',
+    'priority-1',
+    'HIGH',
+    'category-1',
+    'user-1',
+    null,
+    null,
+    assignmentGroupId,
+    assignedToUserId,
+    null,
+    '2026-04-02T10:00:00.000Z',
   );
 }

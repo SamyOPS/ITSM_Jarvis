@@ -1,5 +1,7 @@
-﻿import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { UserAssignmentProfile } from '../../../domain/auth/user-assignment-profile';
 import { UserRole } from '../../../domain/auth/user-role';
+import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketSummary } from '../../../domain/ticketing/ticket-summary';
 import {
@@ -18,6 +20,8 @@ export class SearchTicketsUseCase {
   constructor(
     @Inject(TicketReadRepository)
     private readonly ticketReadRepository: TicketReadRepository,
+    @Inject(UserAssignmentProfileRepository)
+    private readonly userAssignmentProfileRepository: UserAssignmentProfileRepository,
   ) {}
 
   async execute(query: SearchTicketsQuery): Promise<TicketSummary[]> {
@@ -43,10 +47,14 @@ export class SearchTicketsUseCase {
     }
 
     if (query.requesterUserRole === UserRole.AGENT) {
-      const tickets =
-        await this.ticketReadRepository.searchTickets(normalizedFilters);
+      const [tickets, profile] = await Promise.all([
+        this.ticketReadRepository.searchTickets(normalizedFilters),
+        this.userAssignmentProfileRepository.getById(requesterUserId),
+      ]);
 
-      return withoutClosedOrArchivedTickets(tickets);
+      return withoutClosedOrArchivedTickets(tickets).filter((ticket) =>
+        isTicketVisibleToAgent(ticket, requesterUserId, profile),
+      );
     }
 
     const [createdTickets, requestedTickets] = await Promise.all([
@@ -73,6 +81,27 @@ export class SearchTicketsUseCase {
 
     return withoutArchivedTickets(tickets);
   }
+}
+
+function isTicketVisibleToAgent(
+  ticket: TicketSummary,
+  agentUserId: string,
+  profile: UserAssignmentProfile | null,
+): boolean {
+  if (ticket.assignmentGroupId) {
+    const groupIds = new Set([
+      ...(profile?.groupIds ?? []),
+      ...(profile?.groupId ? [profile.groupId] : []),
+    ]);
+
+    return groupIds.has(ticket.assignmentGroupId);
+  }
+
+  if (ticket.assignedToUserId) {
+    return ticket.assignedToUserId === agentUserId;
+  }
+
+  return true;
 }
 
 function withoutArchivedTickets(tickets: TicketSummary[]): TicketSummary[] {
