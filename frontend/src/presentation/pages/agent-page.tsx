@@ -434,8 +434,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   const [isSavingInfo, setIsSavingInfo] = useState(false);
 
-  const [isSubmittingStatus, setIsSubmittingStatus] = useState(false);
-
   const [isDeletingTicket, setIsDeletingTicket] = useState(false);
 
   const [isLoadingComments, setIsLoadingComments] = useState(false);
@@ -4414,14 +4412,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
             {showDetailPanel ? (
               <aside className="tdp-shell">
                 <div className="tdp-topbar">
-                  <button
-                    className="tdp-back-btn"
-                    onClick={() => navigateTo(detailBackPath)}
-                    type="button"
-                  >
-                    <ArrowLeft size={15} />
-                    Retour à la liste
-                  </button>
+                  <div className="tdp-topbar-left">
+                    <button
+                      className="tdp-back-btn"
+                      onClick={() => navigateTo(detailBackPath)}
+                      type="button"
+                    >
+                      <ArrowLeft size={15} />
+                      Retour à la liste
+                    </button>
+                  </div>
 
                   {selectedTicketDetail ? (
                     <strong className="tdp-topbar-ticket-title">
@@ -7086,7 +7086,10 @@ function toTimestamp(value: string): number {
   return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
 }
 
-function formatTicketDisplayNumber(ticket: TicketSummarySnapshot): string {
+function formatTicketDisplayNumber(ticket: {
+  number: string;
+  type: string;
+}): string {
   const numberSuffix = ticket.number.split('-').at(-1) ?? ticket.number;
 
   if (ticket.type === 'INCIDENT') {

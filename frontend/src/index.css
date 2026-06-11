@@ -3433,13 +3433,20 @@ a {
 }
 
 .tdp-topbar {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 14px 20px;
   background: rgba(255, 255, 255, 0.96);
   border-bottom: 1px solid rgba(190, 210, 242, 0.9);
+}
+
+.tdp-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
 }
 
 .tdp-back-btn {
@@ -3462,9 +3469,22 @@ a {
   border-color: rgba(120, 164, 231, 0.7);
 }
 
+.tdp-topbar-ticket-title {
+  min-width: 0;
+  color: #17335f;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .tdp-topbar-right {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
 }
 
@@ -3898,7 +3918,6 @@ a {
   min-width: 190px;
 }
 
-.tdp-status-apply-btn,
 .tdp-edit-toggle-btn,
 .tdp-save-btn,
 .tdp-cancel-btn {
@@ -3913,14 +3932,12 @@ a {
   transition: all 0.15s;
 }
 
-.tdp-status-apply-btn,
 .tdp-save-btn {
   border: 1px solid rgba(25, 86, 179, 0.24);
   background: var(--primary);
   color: white;
 }
 
-.tdp-status-apply-btn:hover:not(:disabled),
 .tdp-save-btn:hover:not(:disabled) {
   background: #14458f;
 }
@@ -3949,7 +3966,6 @@ a {
   background: rgba(245, 248, 255, 0.9);
 }
 
-.tdp-status-apply-btn:disabled,
 .tdp-edit-toggle-btn:disabled,
 .tdp-save-btn:disabled,
 .tdp-cancel-btn:disabled {
@@ -3961,8 +3977,7 @@ a {
   display: inline-flex;
   padding: 5px 14px;
   border-radius: 999px;
-  background: var(--primary-soft);
-  color: var(--primary);
+  color: #5f6f87;
   font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.04em;
