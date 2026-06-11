@@ -4361,12 +4361,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         ) : (
                           <div className="tdp-comment-thread">
                             {selectedTicketComments.map((comment) => {
-                              const canDeleteComment =
-                                canDeleteTicketComment(
-                                  session.user.role,
-                                  session.user.id,
-                                  comment.authorUserId,
-                                );
+                              const canDeleteComment = canDeleteTicketComment(
+                                session.user.role,
+                                session.user.id,
+                                comment.authorUserId,
+                              );
                               const initial =
                                 formatKnownUserName(
                                   usersById.get(comment.authorUserId),
@@ -4444,8 +4443,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         {selectedTicketAttachments.length > 0 ? (
                           <div className="tdp-attachment-section">
                             <p className="tdp-subsection-label">
-                              Pièces jointes (
-                              {selectedTicketAttachments.length})
+                              Pièces jointes ({selectedTicketAttachments.length}
+                              )
                             </p>
 
                             {isLoadingAttachments ? (
@@ -4475,11 +4474,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                       <strong>{attachment.fileName}</strong>
                                       <span>
                                         Ajouté le{' '}
-                                        {formatTicketDate(
-                                          attachment.createdAt,
-                                        )}{' '}
-                                        ·{' '}
-                                        {formatFileSize(attachment.sizeBytes)}
+                                        {formatTicketDate(attachment.createdAt)}{' '}
+                                        · {formatFileSize(attachment.sizeBytes)}
                                       </span>
                                     </div>
 
@@ -4502,7 +4498,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                           deletingAttachmentId === attachment.id
                                         }
                                         onClick={() =>
-                                          void handleDeleteAttachment(attachment)
+                                          void handleDeleteAttachment(
+                                            attachment,
+                                          )
                                         }
                                         type="button"
                                       >
@@ -4753,9 +4751,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 onClick={() => void handleSaveInfoEdits()}
                                 type="button"
                               >
-                                {isSavingInfo
-                                  ? 'Sauvegarde...'
-                                  : 'Sauvegarder'}
+                                {isSavingInfo ? 'Sauvegarde...' : 'Sauvegarder'}
                               </button>
 
                               <button
@@ -4787,10 +4783,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 <option value="">Choisir une catégorie</option>
 
                                 {catalog.categories.map((category) => (
-                                  <option
-                                    key={category.id}
-                                    value={category.id}
-                                  >
+                                  <option key={category.id} value={category.id}>
                                     {category.name}
                                   </option>
                                 ))}
@@ -4865,8 +4858,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 {selectedTicketDetail.ticket.ciId
                                   ? (cisById.get(
                                       selectedTicketDetail.ticket.ciId,
-                                    )?.name ??
-                                    selectedTicketDetail.ticket.ciId)
+                                    )?.name ?? selectedTicketDetail.ticket.ciId)
                                   : 'Non renseigné'}
                               </strong>
                             )}
@@ -5466,12 +5458,6 @@ function formatTicketHistoryEvent(
   return labels[eventType] ?? eventType;
 }
 
-function formatHistoryEventInitial(
-  eventType: TicketHistoryEntrySnapshot['eventType'],
-): string {
-  return formatTicketHistoryEvent(eventType).charAt(0).toUpperCase();
-}
-
 function getHistoryEntryColor(
   eventType: TicketHistoryEntrySnapshot['eventType'],
 ): string {
@@ -5486,10 +5472,7 @@ function getHistoryEntryColor(
     return 'assignment';
   if (eventType === 'COMMENT_ADDED' || eventType === 'COMMENT_DELETED')
     return 'comment';
-  if (
-    eventType === 'ATTACHMENT_ADDED' ||
-    eventType === 'ATTACHMENT_DELETED'
-  )
+  if (eventType === 'ATTACHMENT_ADDED' || eventType === 'ATTACHMENT_DELETED')
     return 'attachment';
   if (eventType === 'ESCALATED') return 'escalated';
   return 'default';

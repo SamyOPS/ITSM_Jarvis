@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -229,8 +230,15 @@ export class AuthController {
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
   updateAdminUserStatus(
     @Param('userId') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() body: UpdateAdminUserStatusDto,
   ): Promise<AdminUserSummary> {
+    if (user.id === userId && !body.isActive) {
+      throw new BadRequestException(
+        'You cannot move your own account to trash.',
+      );
+    }
+
     return this.updateAdminUserStatusUseCase.execute(userId, body.isActive);
   }
 
@@ -252,7 +260,14 @@ export class AuthController {
   @UseGuards(BearerAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
-  async deleteAdminUser(@Param('userId') userId: string): Promise<void> {
+  async deleteAdminUser(
+    @Param('userId') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    if (user.id === userId) {
+      throw new BadRequestException('You cannot delete your own account.');
+    }
+
     await this.deleteAdminUserUseCase.execute(userId);
   }
 
