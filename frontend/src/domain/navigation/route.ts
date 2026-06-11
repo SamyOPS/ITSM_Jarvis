@@ -7,7 +7,6 @@ export type RoutePath =
   | '/agent/requests/new'
   | '/agent/archives'
   | '/agent/my-tickets'
-  | '/agent/unassigned-tickets'
   | '/agent/tickets'
   | '/knowledge/articles'
   | '/parc/ci-types'
@@ -54,11 +53,6 @@ export const ROUTES: RouteDefinition[] = [
     description: 'Liste des tickets crees par l utilisateur connecte.',
     path: '/agent/my-tickets',
     title: 'Mes tickets créés',
-  },
-  {
-    description: 'Liste des tickets sans technicien assigne.',
-    path: '/agent/unassigned-tickets',
-    title: 'Non assignés',
   },
   {
     description: 'Liste des tickets archives.',
