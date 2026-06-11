@@ -1244,7 +1244,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     () =>
       incidentSelectableUsers.filter(
         (user) =>
-          user.isActive && (user.role === 'AGENT' || user.role === 'ADMIN'),
+          user.isActive &&
+          (user.role === 'AGENT' || user.role === 'ADMIN') &&
+          getUserSupportGroupIds(user).length > 0,
       ),
     [incidentSelectableUsers],
   );
@@ -1259,7 +1261,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       technicians.filter(
         (technician) =>
           !assignmentDraft.assignmentGroupId ||
-          technician.groupId === assignmentDraft.assignmentGroupId,
+          isUserInSupportGroup(technician, assignmentDraft.assignmentGroupId),
       ),
     [assignmentDraft.assignmentGroupId, technicians],
   );
@@ -1280,19 +1282,23 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       technicians.filter(
         (technician) =>
           !selectedCreationAssignmentGroupId ||
-          technician.groupId === selectedCreationAssignmentGroupId,
+          isUserInSupportGroup(technician, selectedCreationAssignmentGroupId),
       ),
     [selectedCreationAssignmentGroupId, technicians],
   );
-  const incidentLookupGroups = useMemo(
-    () =>
-      selectedCreationTechnician?.groupId
-        ? catalog.groups.filter(
-            (group) => group.id === selectedCreationTechnician.groupId,
-          )
-        : catalog.groups,
-    [catalog.groups, selectedCreationTechnician?.groupId],
-  );
+  const incidentLookupGroups = useMemo(() => {
+    const selectedTechnicianGroupIds = getUserSupportGroupIds(
+      selectedCreationTechnician,
+    );
+
+    if (selectedTechnicianGroupIds.length === 0) {
+      return catalog.groups;
+    }
+
+    return catalog.groups.filter((group) =>
+      selectedTechnicianGroupIds.includes(group.id),
+    );
+  }, [catalog.groups, selectedCreationTechnician]);
 
   const incidentLookupSource =
     incidentLookupKind === 'ASSIGNEE' ? incidentLookupTechnicians : requesters;
@@ -1431,8 +1437,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       }
 
       if (field === 'assignmentGroupId') {
+        const selectedTechnician = usersById.get(currentDraft.assignedToUserId);
+
         return {
           ...currentDraft,
+
+          assignedToUserId:
+            selectedTechnician &&
+            isUserInSupportGroup(selectedTechnician, value)
+              ? currentDraft.assignedToUserId
+              : '',
 
           assignmentGroupId: value,
         };
@@ -1479,8 +1493,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       }
 
       if (field === 'assignmentGroupId') {
+        const selectedTechnician = usersById.get(currentDraft.assignedToUserId);
+
         return {
           ...currentDraft,
+
+          assignedToUserId:
+            selectedTechnician &&
+            isUserInSupportGroup(selectedTechnician, value)
+              ? currentDraft.assignedToUserId
+              : '',
 
           assignmentGroupId: value,
         };
@@ -1641,15 +1663,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   ): void {
     setAssignmentDraft((currentDraft) => {
       if (field === 'assignedToUserId') {
-        const selectedTechnician = usersById.get(value);
-
         return {
           ...currentDraft,
 
           assignedToUserId: value,
-
-          assignmentGroupId:
-            selectedTechnician?.groupId ?? currentDraft.assignmentGroupId,
         };
       }
 
@@ -1660,7 +1677,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           ...currentDraft,
 
           assignedToUserId:
-            selectedTechnician?.groupId === value
+            selectedTechnician &&
+            isUserInSupportGroup(selectedTechnician, value)
               ? currentDraft.assignedToUserId
               : '',
 
@@ -5515,6 +5533,30 @@ function translatePayloadStatus(value: unknown): string {
     : 'Non defini';
 }
 
+function getUserSupportGroupIds(user: AdminUserSummary | undefined): string[] {
+  if (!user) {
+    return [];
+  }
+
+  return [
+    ...new Set([
+      ...(user.groupIds ?? []),
+      ...(user.groupId ? [user.groupId] : []),
+    ]),
+  ];
+}
+
+function isUserInSupportGroup(
+  user: AdminUserSummary,
+  groupId: string,
+): boolean {
+  if (!groupId) {
+    return true;
+  }
+
+  return getUserSupportGroupIds(user).includes(groupId);
+}
+
 function filterIncidentLookupUsers(
   users: AdminUserSummary[],
   searchText: string,
@@ -5528,9 +5570,7 @@ function filterIncidentLookupUsers(
   }
 
   return users.filter((user) => {
-    const groupName = user.groupId
-      ? (groupsById.get(user.groupId)?.name ?? 'Non assigne')
-      : 'Non assigne';
+    const groupName = formatUserSupportGroupNames(user, groupsById);
     const searchableValue = getIncidentLookupSearchValue(
       user,
       searchField,
@@ -5539,6 +5579,17 @@ function filterIncidentLookupUsers(
 
     return normalizeSearchText(searchableValue).includes(normalizedSearch);
   });
+}
+
+function formatUserSupportGroupNames(
+  user: AdminUserSummary,
+  groupsById: Map<string, { name: string }>,
+): string {
+  const groupNames = getUserSupportGroupIds(user).map(
+    (groupId) => groupsById.get(groupId)?.name ?? groupId,
+  );
+
+  return groupNames.length > 0 ? groupNames.join(', ') : 'Non assigne';
 }
 
 function getIncidentLookupSearchValue(
