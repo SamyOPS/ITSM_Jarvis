@@ -6744,6 +6744,28 @@ function formatCommentAuthorInitials(value: string): string {
   return initials || '?';
 }
 
+function formatHistoryEventInitial(
+  eventType: TicketHistoryEntrySnapshot['eventType'],
+): string {
+  const labels: Record<TicketHistoryEntrySnapshot['eventType'], string> = {
+    ASSIGNED: 'A',
+    ATTACHMENT_ADDED: 'P',
+    ATTACHMENT_DELETED: 'P',
+    CATEGORY_CHANGED: 'C',
+    CLOSED: 'F',
+    COMMENT_ADDED: 'M',
+    COMMENT_DELETED: 'M',
+    CREATED: 'C',
+    ESCALATED: 'E',
+    PRIORITY_CHANGED: 'P',
+    RESOLVED: 'R',
+    STATUS_CHANGED: 'S',
+    UNASSIGNED: 'A',
+  };
+
+  return labels[eventType] ?? '?';
+}
+
 function formatTicketHistoryEvent(
   eventType: TicketHistoryEntrySnapshot['eventType'],
 ): string {
