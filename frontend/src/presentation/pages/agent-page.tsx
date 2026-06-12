@@ -5825,7 +5825,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           <div className="tdp-info-item">
                             <span>Agent assigné</span>
 
-
                             {canManageTicket ? (
                               <select
                                 onChange={(event) =>
@@ -5932,7 +5931,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                       selectedTicketDetail.incident.impact,
                                     )}
                                   </strong>
-
                                 )}
                               </div>
 
@@ -6382,7 +6380,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             ) : null}
                           </form>
                         </div>
-
                       </div>
                     </div>
                   </>
@@ -6767,26 +6764,6 @@ function formatTicketHistoryEvent(
   };
 
   return labels[eventType] ?? eventType;
-}
-
-function getHistoryEntryColor(
-  eventType: TicketHistoryEntrySnapshot['eventType'],
-): string {
-  if (eventType === 'CREATED') return 'created';
-  if (
-    eventType === 'STATUS_CHANGED' ||
-    eventType === 'RESOLVED' ||
-    eventType === 'CLOSED'
-  )
-    return 'status';
-  if (eventType === 'ASSIGNED' || eventType === 'UNASSIGNED')
-    return 'assignment';
-  if (eventType === 'COMMENT_ADDED' || eventType === 'COMMENT_DELETED')
-    return 'comment';
-  if (eventType === 'ATTACHMENT_ADDED' || eventType === 'ATTACHMENT_DELETED')
-    return 'attachment';
-  if (eventType === 'ESCALATED') return 'escalated';
-  return 'default';
 }
 
 function formatTicketHistoryPayload(entry: TicketHistoryEntrySnapshot): string {
