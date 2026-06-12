@@ -96,6 +96,7 @@ export function UsersPage({ session }: UsersPageProps) {
   const selectedUser = selectedUserId
     ? (users.find((user) => user.id === selectedUserId) ?? null)
     : null;
+  const isSelectedCurrentUser = selectedUserId === session.user.id;
   const filteredUsers = useMemo(
     () => filterUsers(users, searchText, searchField, roleFilter, showTrash),
     [roleFilter, searchField, searchText, showTrash, users],
@@ -295,6 +296,14 @@ export function UsersPage({ session }: UsersPageProps) {
       return;
     }
 
+    if (selectedUserId === session.user.id) {
+      setFormMessage(
+        'Vous ne pouvez pas mettre votre propre compte a la corbeille.',
+      );
+
+      return;
+    }
+
     setIsDeleting(true);
     setFormMessage(null);
 
@@ -341,6 +350,12 @@ export function UsersPage({ session }: UsersPageProps) {
 
   async function handleDeleteUserPermanently(): Promise<void> {
     if (!selectedUserId) {
+      return;
+    }
+
+    if (selectedUserId === session.user.id) {
+      setFormMessage('Vous ne pouvez pas supprimer votre propre compte.');
+
       return;
     }
 
@@ -476,7 +491,9 @@ export function UsersPage({ session }: UsersPageProps) {
             </button>
 
             <div className="tdp-topbar-right">
-              {selectedUserId && selectedUser?.isActive ? (
+              {selectedUserId &&
+              selectedUser?.isActive &&
+              !isSelectedCurrentUser ? (
                 <button
                   className="admin-user-trash-button"
                   disabled={isSubmitting}
@@ -488,7 +505,9 @@ export function UsersPage({ session }: UsersPageProps) {
                 </button>
               ) : null}
 
-              {selectedUserId && selectedUser?.isActive === false ? (
+              {selectedUserId &&
+              selectedUser?.isActive === false &&
+              !isSelectedCurrentUser ? (
                 <>
                   <button
                     className="admin-user-delete-button"

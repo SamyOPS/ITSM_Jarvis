@@ -72,7 +72,7 @@ describe('ticketing rules', () => {
       ).not.toThrow();
     });
 
-    it('rejects an assigned user without assignment group', () => {
+    it('accepts an assigned support user without assignment group', () => {
       expect(() =>
         assertValidAssignmentPolicy({
           assignedToUserId: 'user-1',
@@ -83,7 +83,7 @@ describe('ticketing rules', () => {
             role: UserRole.AGENT,
           },
         }),
-      ).toThrow(TicketRuleError);
+      ).not.toThrow();
     });
 
     it('rejects a demandeur assignment', () => {

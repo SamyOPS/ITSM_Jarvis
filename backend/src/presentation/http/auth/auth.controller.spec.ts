@@ -219,4 +219,92 @@ describe('AuthController', () => {
 
     await expect(controller.listUsers()).resolves.toEqual(users);
   });
+
+  it('rejects moving the current admin account to trash', () => {
+    const updateStatus = jest.fn();
+
+    controller = new AuthController(
+      {
+        execute: jest.fn(),
+      } as unknown as CreateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as DeleteAdminUserUseCase,
+      new GetAuthSetupUseCase(),
+      {
+        execute: jest.fn(),
+      } as unknown as GetAuthenticatedUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as ListAdminUsersUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as RegisterRequesterUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserGroupsUseCase,
+      {
+        execute: updateStatus,
+      } as unknown as UpdateAdminUserStatusUseCase,
+    );
+
+    expect(() =>
+      controller.updateAdminUserStatus(
+        'admin-1',
+        {
+          accessToken: 'token',
+          email: 'admin@example.com',
+          id: 'admin-1',
+          role: UserRole.ADMIN,
+        },
+        { isActive: false },
+      ),
+    ).toThrow('You cannot move your own account to trash.');
+    expect(updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('rejects deleting the current admin account', async () => {
+    const deleteUser = jest.fn();
+
+    controller = new AuthController(
+      {
+        execute: jest.fn(),
+      } as unknown as CreateAdminUserUseCase,
+      {
+        execute: deleteUser,
+      } as unknown as DeleteAdminUserUseCase,
+      new GetAuthSetupUseCase(),
+      {
+        execute: jest.fn(),
+      } as unknown as GetAuthenticatedUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as ListAdminUsersUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as RegisterRequesterUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserGroupsUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserStatusUseCase,
+    );
+
+    await expect(
+      controller.deleteAdminUser('admin-1', {
+        accessToken: 'token',
+        email: 'admin@example.com',
+        id: 'admin-1',
+        role: UserRole.ADMIN,
+      }),
+    ).rejects.toThrow('You cannot delete your own account.');
+    expect(deleteUser).not.toHaveBeenCalled();
+  });
 });

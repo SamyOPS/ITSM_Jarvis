@@ -145,12 +145,6 @@ export function assertValidAssignmentPolicy({
     return;
   }
 
-  if (!assignmentGroupId) {
-    throw new TicketRuleError(
-      'assignmentGroupId is required when assignedToUserId is set.',
-    );
-  }
-
   if (!user) {
     throw new TicketRuleError('Assigned user must exist.');
   }
@@ -172,7 +166,7 @@ export function assertValidAssignmentPolicy({
     throw new TicketRuleError('Assigned user must belong to a support group.');
   }
 
-  if (!userGroupIds.has(assignmentGroupId)) {
+  if (assignmentGroupId && !userGroupIds.has(assignmentGroupId)) {
     throw new TicketRuleError(
       'Assigned user must belong to the assignment group.',
     );
