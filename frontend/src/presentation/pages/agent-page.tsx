@@ -4535,7 +4535,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     <p>
                                       {comment.isSeedDescription ? (
                                         <>
-                                          <strong>Description: </strong>
+                                          <strong>Description :</strong>
+                                          <br />
                                           {comment.body}
                                         </>
                                       ) : (
@@ -6139,7 +6140,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     <p className="tdp-comment-text">
                                       {comment.isSeedDescription ? (
                                         <>
-                                          <strong>Description: </strong>
+                                          <strong>Description :</strong>
+                                          <br />
                                           {comment.body}
                                         </>
                                       ) : (

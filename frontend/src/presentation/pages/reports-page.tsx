@@ -894,6 +894,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
           draft={groupChatDraft}
           groupMembers={groupMembers}
           isExpanded
+          knownUsers={users}
           messages={groupChatMessages}
           onDraftChange={setGroupChatDraft}
           onExpandedChange={setIsGroupChatExpanded}
@@ -1316,6 +1317,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 currentUserId={session.user.id}
                 draft={groupChatDraft}
                 groupMembers={groupMembers}
+                knownUsers={users}
                 messages={groupChatMessages}
                 onDraftChange={setGroupChatDraft}
                 onExpandedChange={setIsGroupChatExpanded}
@@ -2242,6 +2244,8 @@ function GroupChatPanel({
 
   isExpanded = false,
 
+  knownUsers,
+
   messages,
 
   onDraftChange,
@@ -2257,6 +2261,8 @@ function GroupChatPanel({
   groupMembers: AdminUserSummary[];
 
   isExpanded?: boolean;
+
+  knownUsers: AdminUserSummary[];
 
   messages: GroupChatMessage[];
 
@@ -2349,7 +2355,7 @@ function GroupChatPanel({
                 groupMembers,
               );
               const author = authorUserId
-                ? groupMembers.find((user) => user.id === authorUserId)
+                ? knownUsers.find((user) => user.id === authorUserId)
                 : null;
               const isOwnMessage = authorUserId === currentUserId;
               const colorClass = getGroupMemberColorClass(
