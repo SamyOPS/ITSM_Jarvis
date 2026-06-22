@@ -105,9 +105,9 @@ export class UpdateTicketUseCase {
     }
 
     let incidentRecord: UpdateTicketRecord['incident'] = undefined;
-    let priorityId: string | null = null;
-    let responseDueAt: string | null = null;
-    let resolutionDueAt: string | null = null;
+    let priorityId: string | null = existingTicket.ticket.priorityId;
+    let responseDueAt: string | null = existingTicket.ticket.responseDueAt;
+    let resolutionDueAt: string | null = existingTicket.ticket.resolutionDueAt;
 
     if (existingTicket.ticket.type === TicketType.INCIDENT) {
       if (!existingTicket.incident) {

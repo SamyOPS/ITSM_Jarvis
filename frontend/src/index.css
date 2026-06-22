@@ -1773,10 +1773,6 @@ a {
   order: 81;
 }
 
-.ticket-create-order-request-comment {
-  order: 110;
-}
-
 .ticket-create-order-incident-requester,
 .ticket-create-order-request-requester {
   order: 30;
@@ -1784,10 +1780,6 @@ a {
 
 .ticket-create-order-incident-channel {
   order: 81;
-}
-
-.ticket-create-order-incident-comment {
-  order: 110;
 }
 
 .ticket-create-order-attachments {
@@ -3648,9 +3640,17 @@ a {
   justify-content: flex-end;
 }
 
+.tdp-chat-message.is-own.is-seed .tdp-chat-message-header {
+  justify-content: flex-start;
+}
+
 .tdp-chat-message-header strong {
   color: #17335f;
   font-size: 0.88rem;
+}
+
+.tdp-chat-message.is-own .tdp-chat-message-header strong {
+  color: #2b5d9f;
 }
 
 .tdp-chat-message-header span {
