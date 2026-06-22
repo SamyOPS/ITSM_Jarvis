@@ -105,7 +105,6 @@ type IncidentLookupKind =
   | 'ASSIGNEE'
   | 'ASSIGNMENT_GROUP'
   | 'INCIDENT_EQUIPMENT'
-  | 'REQUEST_EQUIPMENT'
   | 'REQUESTER';
 
 type IncidentLookupSearchField =
@@ -1374,8 +1373,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const incidentLookupResultCount =
     incidentLookupKind === 'ASSIGNMENT_GROUP'
       ? filteredIncidentLookupGroups.length
-      : incidentLookupKind === 'INCIDENT_EQUIPMENT' ||
-          incidentLookupKind === 'REQUEST_EQUIPMENT'
+      : incidentLookupKind === 'INCIDENT_EQUIPMENT'
         ? filteredIncidentLookupEquipment.length
         : filteredIncidentLookupUsers.length;
   const incidentLookupTotalPages = Math.max(
@@ -1410,7 +1408,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const selectedRequestRequester = usersById.get(
     requestDraft.requestedForUserId,
   );
-  const selectedRequestEquipment = cisById.get(requestDraft.ciId);
   const selectedTicketDetailTechnician = usersById.get(
     assignmentDraft.assignedToUserId,
   );
@@ -1528,11 +1525,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         : requestDraft.assignmentGroupId
       : '';
   const selectedIncidentLookupEquipmentId =
-    incidentLookupKind === 'INCIDENT_EQUIPMENT'
-      ? incidentDraft.ciId
-      : incidentLookupKind === 'REQUEST_EQUIPMENT'
-        ? requestDraft.ciId
-        : '';
+    incidentLookupKind === 'INCIDENT_EQUIPMENT' ? incidentDraft.ciId : '';
   const selectedTicketDetailLookupUserId =
     ticketDetailLookupKind === 'ASSIGNEE'
       ? assignmentDraft.assignedToUserId
@@ -1683,16 +1676,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   }
 
   function openIncidentLookup(kind: IncidentLookupKind): void {
-    if (kind === 'INCIDENT_EQUIPMENT' || kind === 'REQUEST_EQUIPMENT') {
-      const selectedEquipmentId =
-        kind === 'INCIDENT_EQUIPMENT' ? incidentDraft.ciId : requestDraft.ciId;
-      const equipmentSource = kind === 'INCIDENT_EQUIPMENT' ? [] : catalog.cis;
+    if (kind === 'INCIDENT_EQUIPMENT') {
       const selectedEquipmentIndex = filterIncidentLookupEquipment(
-        equipmentSource,
+        [],
         '',
         'IDENTIFIER',
         ciTypesById,
-      ).findIndex((ci) => ci.id === selectedEquipmentId);
+      ).findIndex((ci) => ci.id === incidentDraft.ciId);
 
       setIncidentLookupKind(kind);
       setIncidentLookupSearch('');
@@ -1853,11 +1843,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   }
 
   function handleIncidentEquipmentLookupSelect(ci: ReferentialCi): void {
-    if (incidentLookupKind === 'INCIDENT_EQUIPMENT') {
-      handleIncidentFieldChange('ciId', ci.id);
-    } else {
-      handleRequestFieldChange('ciId', ci.id);
-    }
+    handleIncidentFieldChange('ciId', ci.id);
 
     closeIncidentLookup();
   }
@@ -3159,49 +3145,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     </label>
                   ) : null}
 
-                  {mode === 'REQUEST' ? (
-                    <label className="field ticket-create-order-request-equipment">
-                      <span>Equipement demande</span>
-
-                      <div
-                        className={
-                          requestDraft.ciId
-                            ? 'incident-lookup-field has-clear'
-                            : 'incident-lookup-field'
-                        }
-                      >
-                        <input
-                          className={
-                            requestDraft.ciId ? '' : 'lookup-placeholder'
-                          }
-                          placeholder="Choisir l'équipement"
-                          readOnly
-                          value={selectedRequestEquipment?.name ?? ''}
-                        />
-
-                        {requestDraft.ciId ? (
-                          <button
-                            aria-label="Retirer l'equipement demande"
-                            onClick={() => handleRequestFieldChange('ciId', '')}
-                            type="button"
-                          >
-                            <X size={16} />
-                          </button>
-                        ) : null}
-
-                        <button
-                          aria-label="Rechercher un equipement"
-                          onClick={() =>
-                            openIncidentLookup('REQUEST_EQUIPMENT')
-                          }
-                          type="button"
-                        >
-                          <Search size={18} />
-                        </button>
-                      </div>
-                    </label>
-                  ) : null}
-
                   {mode === 'INCIDENT' ? (
                     <>
                       <label className="field ticket-create-order-incident-impact">
@@ -3701,8 +3644,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           <h3>
                             {incidentLookupKind === 'ASSIGNMENT_GROUP'
                               ? 'Selectionner un groupe'
-                              : incidentLookupKind === 'INCIDENT_EQUIPMENT' ||
-                                  incidentLookupKind === 'REQUEST_EQUIPMENT'
+                              : incidentLookupKind === 'INCIDENT_EQUIPMENT'
                                 ? 'Selectionner un equipement'
                                 : incidentLookupKind === 'ASSIGNEE'
                                   ? 'Selectionner un technicien'
@@ -3735,8 +3677,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             <>
                               <option value="NAME">Nom</option>
                             </>
-                          ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ||
-                            incidentLookupKind === 'REQUEST_EQUIPMENT' ? (
+                          ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ? (
                             <>
                               <option value="NAME">Nom</option>
                               <option value="TYPE">Type</option>
@@ -3768,8 +3709,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         <table
                           className={
                             incidentLookupKind === 'ASSIGNMENT_GROUP' ||
-                            incidentLookupKind === 'INCIDENT_EQUIPMENT' ||
-                            incidentLookupKind === 'REQUEST_EQUIPMENT'
+                            incidentLookupKind === 'INCIDENT_EQUIPMENT'
                               ? 'incident-lookup-table'
                               : incidentLookupKind === 'ASSIGNEE'
                                 ? 'incident-lookup-table incident-lookup-table--assignee'
@@ -3783,8 +3723,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 <th>Nom</th>
                                 <th>Description</th>
                               </tr>
-                            ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ||
-                              incidentLookupKind === 'REQUEST_EQUIPMENT' ? (
+                            ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ? (
                               <tr>
                                 <th>Identifiant</th>
                                 <th>Nom</th>
@@ -3844,14 +3783,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   </tr>
                                 ))
                               )
-                            ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ||
-                              incidentLookupKind === 'REQUEST_EQUIPMENT' ? (
+                            ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ? (
                               paginatedIncidentLookupEquipment.length === 0 ? (
                                 <tr>
                                   <td colSpan={5}>
-                                    {incidentLookupKind === 'INCIDENT_EQUIPMENT'
-                                      ? 'Aucun equipement disponible dans le parc informatique pour le moment.'
-                                      : 'Aucun equipement ne correspond a la recherche.'}
+                                    Aucun equipement disponible dans le parc
+                                    informatique pour le moment.
                                   </td>
                                 </tr>
                               ) : (

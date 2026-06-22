@@ -5,7 +5,6 @@ import {
   BarChart3,
   Bell,
   ChevronDown,
-  ClipboardList,
   FileText,
   BookOpen,
   House,
@@ -41,11 +40,7 @@ interface AppShellProps {
   session: AuthSessionSnapshot | null;
 }
 
-type SidebarMenuId =
-  | 'administration'
-  | 'create-ticket'
-  | 'parc'
-  | 'ticket-list';
+type SidebarMenuId = 'administration' | 'create-ticket' | 'parc';
 
 const administrationRouteOrder: RoutePath[] = [
   '/admin/users',
@@ -96,6 +91,10 @@ function getRouteDisplayTitle(
 ): string {
   if (routePath === '/agent/tickets' && session?.user.role === 'DEMANDEUR') {
     return 'Mes tickets';
+  }
+
+  if (routePath === '/agent/tickets') {
+    return 'Tous les tickets';
   }
 
   return routeTitle;
@@ -227,7 +226,6 @@ export function AppShell({
   const isAdministrationMenuOpen = openSidebarMenu === 'administration';
   const isParcMenuOpen = openSidebarMenu === 'parc';
   const isTicketCreateMenuOpen = openSidebarMenu === 'create-ticket';
-  const isTicketListMenuOpen = openSidebarMenu === 'ticket-list';
   const parcRoutes = [
     visibleRoutes.find((route) => route.path === '/parc/cis') ?? null,
     visibleRoutes.find((route) => route.path === '/parc/ci-types') ?? null,
@@ -510,97 +508,6 @@ export function AppShell({
               route.title,
               session,
             );
-            const shouldShowTicketDropdown =
-              route.path === '/agent/tickets' &&
-              session?.user.role !== 'DEMANDEUR';
-            const isTicketDropdownParentActive =
-              shouldShowTicketDropdown &&
-              pathname.startsWith('/agent/tickets/');
-
-            if (shouldShowTicketDropdown) {
-              return (
-                <div
-                  className={
-                    isTicketListMenuOpen
-                      ? 'workspace-nav-dropdown is-open'
-                      : 'workspace-nav-dropdown'
-                  }
-                  key={route.path}
-                >
-                  <button
-                    aria-expanded={!isSidebarCollapsed && isTicketListMenuOpen}
-                    className={
-                      isTicketDropdownParentActive
-                        ? 'workspace-nav-link is-active'
-                        : 'workspace-nav-link'
-                    }
-                    onClick={() => {
-                      if (isSidebarCollapsed) {
-                        return;
-                      }
-
-                      setOpenSidebarMenu((current) =>
-                        current === 'ticket-list' ? null : 'ticket-list',
-                      );
-                    }}
-                    title={routeTitle}
-                    type="button"
-                  >
-                    <span
-                      className="workspace-nav-link-icon"
-                      aria-hidden="true"
-                    >
-                      <Icon size={18} strokeWidth={2} />
-                    </span>
-                    <strong className="workspace-nav-link-label">
-                      {routeTitle}
-                    </strong>
-                    <ChevronDown
-                      className="workspace-nav-dropdown-chevron"
-                      size={16}
-                      strokeWidth={2}
-                    />
-                  </button>
-
-                  {isTicketListMenuOpen ? (
-                    <div className="workspace-nav-dropdown-list">
-                      <button
-                        className={
-                          pathname === '/agent/tickets'
-                            ? 'workspace-nav-dropdown-item is-active'
-                            : 'workspace-nav-dropdown-item'
-                        }
-                        onClick={() => navigateTo('/agent/tickets')}
-                        type="button"
-                      >
-                        <ClipboardList size={15} strokeWidth={2} />
-                        Tous les tickets
-                      </button>
-                    </div>
-                  ) : null}
-
-                  <div className="workspace-nav-flyout">
-                    <div className="workspace-nav-flyout-title">
-                      {routeTitle}
-                    </div>
-                    <div className="workspace-nav-flyout-list">
-                      <button
-                        className={
-                          pathname === '/agent/tickets'
-                            ? 'workspace-nav-dropdown-item is-active'
-                            : 'workspace-nav-dropdown-item'
-                        }
-                        onClick={() => navigateTo('/agent/tickets')}
-                        type="button"
-                      >
-                        <ClipboardList size={15} strokeWidth={2} />
-                        Tous les tickets
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            }
 
             return (
               <button
