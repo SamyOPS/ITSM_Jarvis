@@ -3533,6 +3533,33 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         </label>
                       ) : null}
 
+                      <label className="field ticket-create-order-request-category">
+                        <span>Categorie</span>
+
+                        <select
+                          className={
+                            requestDraft.categoryId ? '' : 'select-placeholder'
+                          }
+                          onChange={(event) =>
+                            handleRequestFieldChange(
+                              'categoryId',
+                              event.target.value,
+                            )
+                          }
+                          value={requestDraft.categoryId}
+                        >
+                          <option disabled hidden value="">
+                            Choisir une categorie
+                          </option>
+
+                          {catalog.categories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
                       {showRequestAdvancedFields ? (
                         <label className="field ticket-form-span-2 ticket-create-order-request-comment">
                           <span>Commentaire</span>
