@@ -203,7 +203,7 @@ type TicketChatMessage = TicketCommentSnapshot & {
 };
 
 type AttachmentDraftState = {
-  file: File | null;
+  files: File[];
 };
 
 type IncidentValidationErrors = Partial<
@@ -331,7 +331,7 @@ const INITIAL_COMMENT_DRAFT: CommentDraftState = {
 };
 
 const INITIAL_ATTACHMENT_DRAFT: AttachmentDraftState = {
-  file: null,
+  files: [],
 };
 
 const TICKET_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
@@ -2584,10 +2584,40 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setCommentSuccessMessage(null);
   }
 
-  function handleAttachmentSelection(file: File | null): void {
-    setAttachmentDraft({ file });
+  function handleAttachmentSelection(fileList: FileList | null): void {
+    const incomingFiles = Array.from(fileList ?? []);
+
+    if (incomingFiles.length === 0) {
+      return;
+    }
+
+    setAttachmentDraft((currentDraft) => {
+      const knownFileKeys = new Set(currentDraft.files.map(getLocalFileKey));
+      const nextFiles = [...currentDraft.files];
+
+      for (const file of incomingFiles) {
+        const fileKey = getLocalFileKey(file);
+
+        if (!knownFileKeys.has(fileKey)) {
+          knownFileKeys.add(fileKey);
+          nextFiles.push(file);
+        }
+      }
+
+      return { files: nextFiles };
+    });
+    setAttachmentInputKey((currentKey) => currentKey + 1);
     setAttachmentErrorMessage(null);
     setAttachmentSuccessMessage(null);
+  }
+
+  function handleRemoveAttachmentDraftFile(fileKey: string): void {
+    setAttachmentDraft((currentDraft) => ({
+      files: currentDraft.files.filter(
+        (file) => getLocalFileKey(file) !== fileKey,
+      ),
+    }));
+    setAttachmentInputKey((currentKey) => currentKey + 1);
   }
 
   function handleCreationAttachmentSelection(fileList: FileList | null): void {
@@ -2760,10 +2790,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       return;
     }
 
-    const file = attachmentDraft.file;
+    const files = attachmentDraft.files;
 
-    if (!file) {
-      setAttachmentErrorMessage('Selectionne un fichier a envoyer.');
+    if (files.length === 0) {
+      setAttachmentErrorMessage('Selectionne au moins un fichier a envoyer.');
       return;
     }
 
@@ -2771,39 +2801,49 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setAttachmentErrorMessage(null);
     setAttachmentSuccessMessage(null);
 
-    const storagePath = buildTicketAttachmentStoragePath(
-      session.user.id,
-      selectedTicketDetail.ticket.id,
-      file.name,
-    );
-
     try {
-      await uploadTicketAttachmentBinary(
-        session.accessToken,
-        TICKET_ATTACHMENTS_BUCKET_ID,
-        storagePath,
-        file,
-      );
+      const createdAttachments: TicketAttachmentSnapshot[] = [];
 
-      const createdAttachment = await addTicketAttachment(
-        session.accessToken,
-        selectedTicketDetail.ticket.id,
-        {
-          bucketId: TICKET_ATTACHMENTS_BUCKET_ID,
-          fileName: file.name,
-          mimeType: file.type || null,
-          sizeBytes: file.size,
+      for (const file of files) {
+        const storagePath = buildTicketAttachmentStoragePath(
+          session.user.id,
+          selectedTicketDetail.ticket.id,
+          file.name,
+        );
+
+        await uploadTicketAttachmentBinary(
+          session.accessToken,
+          TICKET_ATTACHMENTS_BUCKET_ID,
           storagePath,
-        },
-      );
+          file,
+        );
+
+        const createdAttachment = await addTicketAttachment(
+          session.accessToken,
+          selectedTicketDetail.ticket.id,
+          {
+            bucketId: TICKET_ATTACHMENTS_BUCKET_ID,
+            fileName: file.name,
+            mimeType: file.type || null,
+            sizeBytes: file.size,
+            storagePath,
+          },
+        );
+
+        createdAttachments.push(createdAttachment);
+      }
 
       setSelectedTicketAttachments((currentAttachments) => [
-        createdAttachment,
+        ...createdAttachments,
         ...currentAttachments,
       ]);
       setAttachmentDraft(INITIAL_ATTACHMENT_DRAFT);
       setAttachmentInputKey((currentKey) => currentKey + 1);
-      setAttachmentSuccessMessage('Piece jointe ajoutee.');
+      setAttachmentSuccessMessage(
+        createdAttachments.length > 1
+          ? 'Pieces jointes ajoutees.'
+          : 'Piece jointe ajoutee.',
+      );
 
       await refreshSelectedTicketHistory(selectedTicketDetail.ticket.id);
     } catch (error) {
@@ -5048,17 +5088,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   key={attachment.id}
                                 >
                                   <div className="tdp-attachment-info">
-                                    <strong>{attachment.fileName}</strong>
-                                    <span>
-                                      {formatFileSize(attachment.sizeBytes)} -
-                                      ajoute le{' '}
-                                      {formatTicketDate(attachment.createdAt)}
-                                    </span>
-                                  </div>
-
-                                  <div className="tdp-attachment-actions">
                                     <button
-                                      className="secondary-button"
+                                      className="tdp-attachment-link"
                                       onClick={() =>
                                         void handleDownloadAttachment(
                                           attachment,
@@ -5066,23 +5097,28 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                       }
                                       type="button"
                                     >
-                                      Telecharger
+                                      {attachment.fileName}
                                     </button>
-
-                                    <button
-                                      aria-label="Supprimer la piece jointe"
-                                      className="tdp-delete-icon-btn"
-                                      disabled={
-                                        deletingAttachmentId === attachment.id
-                                      }
-                                      onClick={() =>
-                                        void handleDeleteAttachment(attachment)
-                                      }
-                                      type="button"
-                                    >
-                                      <X size={16} />
-                                    </button>
+                                    <span>
+                                      {formatFileSize(attachment.sizeBytes)} -
+                                      ajoute le{' '}
+                                      {formatTicketDate(attachment.createdAt)}
+                                    </span>
                                   </div>
+
+                                  <button
+                                    aria-label="Supprimer la piece jointe"
+                                    className="tdp-attachment-remove-btn"
+                                    disabled={
+                                      deletingAttachmentId === attachment.id
+                                    }
+                                    onClick={() =>
+                                      void handleDeleteAttachment(attachment)
+                                    }
+                                    type="button"
+                                  >
+                                    <X size={12} />
+                                  </button>
                                 </div>
                               ))}
                             </div>
@@ -5095,30 +5131,62 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             <div className="ticket-upload-zone tdp-upload-zone">
                               <div className="ticket-upload-actions">
                                 <label className="ticket-upload-button">
-                                  Choisir un fichier
+                                  Choisir des fichiers
                                   <input
                                     accept="*/*"
                                     key={attachmentInputKey}
                                     onChange={(event) =>
                                       handleAttachmentSelection(
-                                        event.target.files?.[0] ?? null,
+                                        event.target.files,
                                       )
                                     }
+                                    multiple
                                     type="file"
                                   />
                                 </label>
 
                                 <span className="ticket-upload-note">
-                                  {attachmentDraft.file
-                                    ? `${attachmentDraft.file.name} (${formatFileSize(attachmentDraft.file.size)})`
-                                    : 'Aucun fichier selectionne'}
+                                  {formatSelectedFilesLabel(
+                                    attachmentDraft.files.length,
+                                  )}
                                 </span>
                               </div>
 
+                              {attachmentDraft.files.length > 0 ? (
+                                <div className="ticket-file-list">
+                                  {attachmentDraft.files.map((file) => {
+                                    const fileKey = getLocalFileKey(file);
+
+                                    return (
+                                      <span
+                                        className="ticket-file-chip"
+                                        key={fileKey}
+                                      >
+                                        <span>
+                                          {file.name} (
+                                          {formatFileSize(file.size)})
+                                        </span>
+                                        <button
+                                          aria-label={`Retirer ${file.name}`}
+                                          onClick={() =>
+                                            handleRemoveAttachmentDraftFile(
+                                              fileKey,
+                                            )
+                                          }
+                                          type="button"
+                                        >
+                                          ×
+                                        </button>
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              ) : null}
+
                               <div className="ticket-upload-note ticket-upload-note--stacked">
                                 <span>
-                                  Glissez et deposez votre fichier ici, ou
-                                  selectionnez un fichier.
+                                  Glissez et deposez vos fichiers ici, ou
+                                  selectionnez des fichiers.
                                 </span>
                                 <span>2 Mo max par fichier.</span>
                               </div>
@@ -5175,7 +5243,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               Aucun evenement historise pour ce ticket.
                             </p>
                           ) : (
-                            <div className="tdp-history-list">
+                            <div className="tdp-history-timeline">
                               {selectedTicketHistory
                                 .filter(
                                   (entry) =>
@@ -5183,18 +5251,31 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 )
                                 .map((entry) => (
                                   <div
-                                    className="tdp-history-item"
+                                    className={getTicketHistoryEntryClassName(
+                                      entry,
+                                    )}
                                     key={entry.id}
                                   >
-                                    <strong>
-                                      {formatTicketHistoryEvent(
-                                        entry.eventType,
-                                      )}
-                                    </strong>
-                                    <span>
-                                      {formatTicketDate(entry.createdAt)}
-                                    </span>
-                                    <p>{formatTicketHistoryPayload(entry)}</p>
+                                    <span className="tdp-history-dot" />
+                                    <div className="tdp-history-meta">
+                                      <div className="tdp-history-heading">
+                                        <strong>
+                                          {formatTicketHistoryTitle(entry)}
+                                        </strong>
+                                        <span className="tdp-history-actor">
+                                          {formatKnownUserName(
+                                            usersById.get(entry.actorUserId),
+                                            entry.actorUserId,
+                                          )}
+                                        </span>
+                                      </div>
+                                      <span className="tdp-history-date">
+                                        {formatTicketDate(entry.createdAt)}
+                                      </span>
+                                    </div>
+                                    <p className="tdp-history-payload">
+                                      {formatTicketHistoryPayload(entry)}
+                                    </p>
                                   </div>
                                 ))}
                             </div>
@@ -6015,21 +6096,20 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                                 <div className="tdp-comment-body">
                                   <div className="tdp-comment-header">
-                                    <strong>
-                                      {formatTicketHistoryEvent(
-                                        entry.eventType,
-                                      )}
-                                    </strong>
+                                    <div className="tdp-history-heading">
+                                      <strong>
+                                        {formatTicketHistoryTitle(entry)}
+                                      </strong>
+                                      <span className="tdp-comment-badge">
+                                        {formatKnownUserName(
+                                          usersById.get(entry.actorUserId),
+                                          entry.actorUserId,
+                                        )}
+                                      </span>
+                                    </div>
 
                                     <span>
                                       {formatTicketDate(entry.createdAt)}
-                                    </span>
-
-                                    <span className="tdp-comment-badge">
-                                      {formatKnownUserName(
-                                        usersById.get(entry.actorUserId),
-                                        entry.actorUserId,
-                                      )}
                                     </span>
                                   </div>
 
@@ -6178,7 +6258,17 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     key={attachment.id}
                                   >
                                     <div className="tdp-attachment-info">
-                                      <strong>{attachment.fileName}</strong>
+                                      <button
+                                        className="tdp-attachment-link"
+                                        onClick={() =>
+                                          void handleDownloadAttachment(
+                                            attachment,
+                                          )
+                                        }
+                                        type="button"
+                                      >
+                                        {attachment.fileName}
+                                      </button>
 
                                       <span>
                                         Ajouté le{' '}
@@ -6276,25 +6366,57 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               <div className="ticket-upload-zone tdp-upload-zone">
                                 <div className="ticket-upload-actions">
                                   <label className="ticket-upload-button">
-                                    Choisir un fichier
+                                    Choisir des fichiers
                                     <input
                                       accept="*/*"
                                       key={attachmentInputKey}
                                       onChange={(event) =>
                                         handleAttachmentSelection(
-                                          event.target.files?.[0] ?? null,
+                                          event.target.files,
                                         )
                                       }
+                                      multiple
                                       type="file"
                                     />
                                   </label>
 
                                   <span className="ticket-upload-note">
-                                    {attachmentDraft.file
-                                      ? `${attachmentDraft.file.name} (${formatFileSize(attachmentDraft.file.size)})`
-                                      : 'Aucun fichier sélectionné'}
+                                    {formatSelectedFilesLabel(
+                                      attachmentDraft.files.length,
+                                    )}
                                   </span>
                                 </div>
+
+                                {attachmentDraft.files.length > 0 ? (
+                                  <div className="ticket-file-list">
+                                    {attachmentDraft.files.map((file) => {
+                                      const fileKey = getLocalFileKey(file);
+
+                                      return (
+                                        <span
+                                          className="ticket-file-chip"
+                                          key={fileKey}
+                                        >
+                                          <span>
+                                            {file.name} (
+                                            {formatFileSize(file.size)})
+                                          </span>
+                                          <button
+                                            aria-label={`Retirer ${file.name}`}
+                                            onClick={() =>
+                                              handleRemoveAttachmentDraftFile(
+                                                fileKey,
+                                              )
+                                            }
+                                            type="button"
+                                          >
+                                            ×
+                                          </button>
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                ) : null}
 
                                 <div className="ticket-upload-note ticket-upload-note--stacked">
                                   <span>
@@ -6715,6 +6837,31 @@ function formatHistoryEventInitial(
   return labels[eventType] ?? '?';
 }
 
+function getTicketHistoryEntryClassName(
+  entry: TicketHistoryEntrySnapshot,
+): string {
+  const classByEventType: Record<
+    TicketHistoryEntrySnapshot['eventType'],
+    string
+  > = {
+    ASSIGNED: 'tdp-history-entry--assignment',
+    ATTACHMENT_ADDED: 'tdp-history-entry--attachment-added',
+    ATTACHMENT_DELETED: 'tdp-history-entry--attachment-deleted',
+    CATEGORY_CHANGED: 'tdp-history-entry--category',
+    CLOSED: 'tdp-history-entry--closed',
+    COMMENT_ADDED: 'tdp-history-entry--default',
+    COMMENT_DELETED: 'tdp-history-entry--default',
+    CREATED: 'tdp-history-entry--created',
+    ESCALATED: 'tdp-history-entry--default',
+    PRIORITY_CHANGED: 'tdp-history-entry--priority',
+    RESOLVED: 'tdp-history-entry--resolved',
+    STATUS_CHANGED: 'tdp-history-entry--status',
+    UNASSIGNED: 'tdp-history-entry--unassigned',
+  };
+
+  return `tdp-history-entry ${classByEventType[entry.eventType]}`;
+}
+
 function formatTicketHistoryEvent(
   eventType: TicketHistoryEntrySnapshot['eventType'],
 ): string {
@@ -6737,6 +6884,18 @@ function formatTicketHistoryEvent(
   return labels[eventType] ?? eventType;
 }
 
+function formatTicketHistoryTitle(entry: TicketHistoryEntrySnapshot): string {
+  if (entry.eventType === 'ASSIGNED') {
+    return formatTicketHistoryEvent(entry.eventType);
+  }
+
+  if (entry.eventType === 'UNASSIGNED') {
+    return "Ticket en attente d'assignation";
+  }
+
+  return formatTicketHistoryEvent(entry.eventType);
+}
+
 function formatTicketHistoryPayload(entry: TicketHistoryEntrySnapshot): string {
   const payload = entry.payload ?? {};
 
@@ -6745,11 +6904,11 @@ function formatTicketHistoryPayload(entry: TicketHistoryEntrySnapshot): string {
   }
 
   if (entry.eventType === 'ASSIGNED') {
-    return 'Le groupe ou le technicien assigne a ete mis a jour.';
+    return "L'assignation du ticket a ete mise a jour.";
   }
 
   if (entry.eventType === 'UNASSIGNED') {
-    return "Le ticket n'est plus assigne.";
+    return "Le ticket n'a plus de groupe ou de technicien assigne.";
   }
 
   if (entry.eventType === 'PRIORITY_CHANGED') {
