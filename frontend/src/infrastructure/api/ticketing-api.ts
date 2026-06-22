@@ -50,15 +50,19 @@ export type ChangeTicketStatusPayload = {
   status: 'OPEN' | 'IN_PROGRESS' | 'PENDING' | 'RESOLVED' | 'CLOSED';
 };
 
+export type ChangeTicketPriorityPayload = {
+  priorityId: string;
+};
+
 export type UpdateTicketPayload = {
   categoryId: string;
   channelId?: string | null;
   ciId?: string | null;
-  description: string;
+  description?: string;
   impact?: IncidentSeverity | null;
   requestedForUserId?: string | null;
   rootCause?: string | null;
-  title: string;
+  title?: string;
   urgency?: IncidentSeverity | null;
   workaround?: string | null;
 };
@@ -244,6 +248,33 @@ export async function updateTicket(
     throw new Error(
       message ||
         `La mise a jour du ticket a echoue avec le statut ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as TicketDetailSnapshot;
+}
+
+export async function changeTicketPriority(
+  accessToken: string,
+  ticketId: string,
+  payload: ChangeTicketPriorityPayload,
+): Promise<TicketDetailSnapshot> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/tickets/${ticketId}/priority`, {
+    method: 'PATCH',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      message ||
+        `La mise a jour de la priorite du ticket a echoue avec le statut ${response.status}`,
     );
   }
 

@@ -66,6 +66,7 @@ import {
   addTicketComment,
   addTicketAttachment,
   assignTicket,
+  changeTicketPriority,
   deleteTicket,
   deleteTicketAttachment,
   deleteTicketAttachmentBinary,
@@ -138,8 +139,6 @@ type IncidentDraftState = {
 
   ciId: string;
 
-  comment: string;
-
   description: string;
 
   impact: '' | IncidentSeverity;
@@ -161,8 +160,6 @@ type RequestDraftState = {
   channelId: string;
 
   ciId: string;
-
-  comment: string;
 
   description: string;
 
@@ -187,6 +184,7 @@ type TicketEditDraftState = {
   ciId: string;
   description: string;
   impact: IncidentSeverity;
+  priorityId: string;
   requestedForUserId: string;
   rootCause: string;
   title: string;
@@ -198,6 +196,10 @@ type CommentDraftState = {
   body: string;
 
   isInternal: boolean;
+};
+
+type TicketChatMessage = TicketCommentSnapshot & {
+  isSeedDescription?: boolean;
 };
 
 type AttachmentDraftState = {
@@ -251,8 +253,6 @@ const INITIAL_INCIDENT_DRAFT: IncidentDraftState = {
 
   ciId: '',
 
-  comment: '',
-
   description: '',
 
   impact: '',
@@ -274,8 +274,6 @@ const INITIAL_REQUEST_DRAFT: RequestDraftState = {
   channelId: '',
 
   ciId: '',
-
-  comment: '',
 
   description: '',
 
@@ -318,6 +316,7 @@ const INITIAL_TICKET_EDIT_DRAFT: TicketEditDraftState = {
   ciId: '',
   description: '',
   impact: 'MEDIUM',
+  priorityId: '',
   requestedForUserId: '',
   rootCause: '',
   title: '',
@@ -391,6 +390,38 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const [selectedTicketComments, setSelectedTicketComments] = useState<
     TicketCommentSnapshot[]
   >([]);
+
+  const seededTicketComments = useMemo<TicketChatMessage[]>(() => {
+    if (!selectedTicketDetail) {
+      return selectedTicketComments;
+    }
+
+    const description = selectedTicketDetail.ticket.description.trim();
+
+    if (!description) {
+      return selectedTicketComments;
+    }
+
+    const authorUserId =
+      selectedTicketDetail.ticket.requestedForUserId ??
+      selectedTicketDetail.ticket.createdByUserId;
+    const seedCommentId = `seed-description-${selectedTicketDetail.ticket.id}`;
+
+    return [
+      {
+        authorUserId,
+        body: description,
+        createdAt: selectedTicketDetail.ticket.createdAt,
+        id: seedCommentId,
+        isInternal: false,
+        isSeedDescription: true,
+        ticketId: selectedTicketDetail.ticket.id,
+      },
+      ...selectedTicketComments.filter(
+        (comment) => comment.id !== seedCommentId,
+      ),
+    ];
+  }, [selectedTicketComments, selectedTicketDetail]);
 
   const [selectedTicketAttachments, setSelectedTicketAttachments] = useState<
     TicketAttachmentSnapshot[]
@@ -984,6 +1015,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           ciId: nextTicket.ticket.ciId ?? '',
           description: nextTicket.ticket.description,
           impact: nextTicket.incident?.impact ?? 'MEDIUM',
+          priorityId: nextTicket.ticket.priorityId,
           requestedForUserId: nextTicket.ticket.requestedForUserId ?? '',
           rootCause: nextTicket.incident?.rootCause ?? '',
           title: nextTicket.ticket.title,
@@ -2023,21 +2055,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           }
         }
 
-        if (showIncidentAdvancedFields && incidentDraft.comment.trim()) {
-          try {
-            await addTicketComment(session.accessToken, result.ticket.id, {
-              body: incidentDraft.comment.trim(),
-              isInternal: false,
-            });
-          } catch (error) {
-            postCreationWarnings.push(
-              error instanceof Error
-                ? `l'ajout du commentaire a echoue : ${error.message}`
-                : "l'ajout du commentaire a echoue",
-            );
-          }
-        }
-
         setCreatedIncident(result);
 
         setSelectedTicketId(result.ticket.id);
@@ -2070,8 +2087,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           assignmentGroupId: '',
 
           assignedToUserId: '',
-
-          comment: '',
 
           requestedForUserId: session.user.id,
         }));
@@ -2196,21 +2211,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         }
       }
 
-      if (showRequestAdvancedFields && requestDraft.comment.trim()) {
-        try {
-          await addTicketComment(session.accessToken, result.ticket.id, {
-            body: requestDraft.comment.trim(),
-            isInternal: false,
-          });
-        } catch (error) {
-          postCreationWarnings.push(
-            error instanceof Error
-              ? `l'ajout du commentaire a echoue : ${error.message}`
-              : "l'ajout du commentaire a echoue",
-          );
-        }
-      }
-
       setCreatedRequest(result);
 
       setSelectedTicketId(result.ticket.id);
@@ -2243,8 +2243,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         assignmentGroupId: '',
 
         assignedToUserId: '',
-
-        comment: '',
 
         ciId: '',
 
@@ -2342,12 +2340,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       return;
     }
 
-    if (ticketEditDraft.title.trim().length > TICKET_TITLE_MAX_LENGTH) {
-      setDetailActionErrorMessage('40 caracteres max.');
-
-      return;
-    }
-
     setIsSavingInfo(true);
     setDetailActionErrorMessage(null);
     setDetailActionSuccessMessage(null);
@@ -2396,8 +2388,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           {
             categoryId: ticketEditDraft.categoryId.trim(),
             channelId: normalizeOptionalId(ticketEditDraft.channelId),
-            ciId: normalizeOptionalId(ticketEditDraft.ciId),
-            description: ticketEditDraft.description.trim(),
+            ciId: selectedTicketDetail.incident
+              ? normalizeOptionalId(ticketEditDraft.ciId)
+              : undefined,
+            description: selectedTicketDetail.ticket.description,
             impact: selectedTicketDetail.incident
               ? ticketEditDraft.impact
               : undefined,
@@ -2407,7 +2401,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
             rootCause: selectedTicketDetail.incident
               ? normalizeOptionalText(ticketEditDraft.rootCause)
               : undefined,
-            title: ticketEditDraft.title.trim(),
+            title: selectedTicketDetail.ticket.title,
             urgency: selectedTicketDetail.incident
               ? ticketEditDraft.urgency
               : undefined,
@@ -2416,34 +2410,49 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
               : undefined,
           },
         );
-        nextSelectedTicketDetail = updatedTicket;
-        setSelectedTicketDetail(updatedTicket);
+        const reprioritizedTicket =
+          !selectedTicketDetail.incident &&
+          ticketEditDraft.priorityId.trim() &&
+          ticketEditDraft.priorityId !== updatedTicket.ticket.priorityId
+            ? await changeTicketPriority(
+                session.accessToken,
+                nextSelectedTicketDetail.ticket.id,
+                {
+                  priorityId: ticketEditDraft.priorityId.trim(),
+                },
+              )
+            : updatedTicket;
+        nextSelectedTicketDetail = reprioritizedTicket;
+        setSelectedTicketDetail(reprioritizedTicket);
         setTicketEditDraft({
-          categoryId: updatedTicket.ticket.categoryId,
-          channelId: updatedTicket.ticket.channelId ?? '',
-          ciId: updatedTicket.ticket.ciId ?? '',
-          description: updatedTicket.ticket.description,
-          impact: updatedTicket.incident?.impact ?? 'MEDIUM',
-          requestedForUserId: updatedTicket.ticket.requestedForUserId ?? '',
-          rootCause: updatedTicket.incident?.rootCause ?? '',
-          title: updatedTicket.ticket.title,
-          urgency: updatedTicket.incident?.urgency ?? 'MEDIUM',
-          workaround: updatedTicket.incident?.workaround ?? '',
+          categoryId: reprioritizedTicket.ticket.categoryId,
+          channelId: reprioritizedTicket.ticket.channelId ?? '',
+          ciId: reprioritizedTicket.ticket.ciId ?? '',
+          description: reprioritizedTicket.ticket.description,
+          impact: reprioritizedTicket.incident?.impact ?? 'MEDIUM',
+          priorityId: reprioritizedTicket.ticket.priorityId,
+          requestedForUserId:
+            reprioritizedTicket.ticket.requestedForUserId ?? '',
+          rootCause: reprioritizedTicket.incident?.rootCause ?? '',
+          title: reprioritizedTicket.ticket.title,
+          urgency: reprioritizedTicket.incident?.urgency ?? 'MEDIUM',
+          workaround: reprioritizedTicket.incident?.workaround ?? '',
         });
         setTickets((currentTickets) =>
           currentTickets.map((ticket) =>
-            ticket.id === updatedTicket.ticket.id
+            ticket.id === reprioritizedTicket.ticket.id
               ? {
                   ...ticket,
-                  status: updatedTicket.ticket.status,
-                  categoryId: updatedTicket.ticket.categoryId,
-                  channelId: updatedTicket.ticket.channelId,
-                  ciId: updatedTicket.ticket.ciId,
-                  priorityId: updatedTicket.ticket.priorityId,
-                  requestedForUserId: updatedTicket.ticket.requestedForUserId,
-                  resolutionDueAt: updatedTicket.ticket.resolutionDueAt,
-                  responseDueAt: updatedTicket.ticket.responseDueAt,
-                  title: updatedTicket.ticket.title,
+                  status: reprioritizedTicket.ticket.status,
+                  categoryId: reprioritizedTicket.ticket.categoryId,
+                  channelId: reprioritizedTicket.ticket.channelId,
+                  ciId: reprioritizedTicket.ticket.ciId,
+                  priorityId: reprioritizedTicket.ticket.priorityId,
+                  requestedForUserId:
+                    reprioritizedTicket.ticket.requestedForUserId,
+                  resolutionDueAt: reprioritizedTicket.ticket.resolutionDueAt,
+                  responseDueAt: reprioritizedTicket.ticket.responseDueAt,
+                  title: reprioritizedTicket.ticket.title,
                 }
               : ticket,
           ),
@@ -2504,6 +2513,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         ciId: selectedTicketDetail.ticket.ciId ?? '',
         description: selectedTicketDetail.ticket.description,
         impact: selectedTicketDetail.incident?.impact ?? 'MEDIUM',
+        priorityId: selectedTicketDetail.ticket.priorityId,
         requestedForUserId:
           selectedTicketDetail.ticket.requestedForUserId ?? '',
         rootCause: selectedTicketDetail.incident?.rootCause ?? '',
@@ -2641,6 +2651,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     }
 
     const normalizedCommentId = commentId.trim();
+
+    if (normalizedCommentId.startsWith('seed-description-')) {
+      return;
+    }
 
     if (!normalizedCommentId) {
       return;
@@ -3347,24 +3361,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           ) : null}
                         </label>
                       ) : null}
-
-                      {showIncidentAdvancedFields ? (
-                        <label className="field ticket-form-span-2 ticket-create-order-incident-comment">
-                          <span>Commentaire</span>
-
-                          <textarea
-                            onChange={(event) =>
-                              handleIncidentFieldChange(
-                                'comment',
-                                event.target.value,
-                              )
-                            }
-                            placeholder="Ajoute une note utile au traitement de l incident."
-                            rows={4}
-                            value={incidentDraft.comment}
-                          />
-                        </label>
-                      ) : null}
                     </>
                   ) : (
                     <>
@@ -3559,24 +3555,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           ))}
                         </select>
                       </label>
-
-                      {showRequestAdvancedFields ? (
-                        <label className="field ticket-form-span-2 ticket-create-order-request-comment">
-                          <span>Commentaire</span>
-
-                          <textarea
-                            onChange={(event) =>
-                              handleRequestFieldChange(
-                                'comment',
-                                event.target.value,
-                              )
-                            }
-                            placeholder="Ajoute une note utile au traitement de la demande."
-                            rows={4}
-                            value={requestDraft.comment}
-                          />
-                        </label>
-                      ) : null}
                     </>
                   )}
 
@@ -4486,17 +4464,19 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             <p className="tdp-state tdp-state--error">
                               {loadCommentsErrorMessage}
                             </p>
-                          ) : selectedTicketComments.length === 0 ? (
+                          ) : seededTicketComments.length === 0 ? (
                             <p className="tdp-empty">
                               Aucun commentaire pour ce ticket.
                             </p>
                           ) : (
-                            selectedTicketComments.map((comment) => {
-                              const canDeleteComment = canDeleteTicketComment(
-                                session.user.role,
-                                session.user.id,
-                                comment.authorUserId,
-                              );
+                            seededTicketComments.map((comment) => {
+                              const canDeleteComment =
+                                !comment.isSeedDescription &&
+                                canDeleteTicketComment(
+                                  session.user.role,
+                                  session.user.id,
+                                  comment.authorUserId,
+                                );
                               const authorName = formatKnownUserName(
                                 usersById.get(comment.authorUserId),
                                 comment.authorUserId,
@@ -4505,14 +4485,17 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 comment.authorUserId === session.user.id;
                               const initials =
                                 formatCommentAuthorInitials(authorName);
+                              const messageClassName = [
+                                'tdp-chat-message',
+                                isOwnComment ? 'is-own' : null,
+                                comment.isSeedDescription ? 'is-seed' : null,
+                              ]
+                                .filter(Boolean)
+                                .join(' ');
 
                               return (
                                 <article
-                                  className={
-                                    isOwnComment
-                                      ? 'tdp-chat-message is-own'
-                                      : 'tdp-chat-message'
-                                  }
+                                  className={messageClassName}
                                   key={comment.id}
                                 >
                                   {isOwnComment ? null : (
@@ -4549,7 +4532,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                       ) : null}
                                     </div>
 
-                                    <p>{comment.body}</p>
+                                    <p>
+                                      {comment.isSeedDescription ? (
+                                        <>
+                                          <strong>Description: </strong>
+                                          {comment.body}
+                                        </>
+                                      ) : (
+                                        comment.body
+                                      )}
+                                    </p>
                                   </div>
                                 </article>
                               );
@@ -4610,45 +4602,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           title="Ticket"
                         >
                           <div className="tdp-side-form">
-                            <label className="field tdp-detail-field">
-                              <span>Titre</span>
-                              {canEditTicket ? (
-                                <input
-                                  onChange={(event) =>
-                                    handleTicketEditFieldChange(
-                                      'title',
-                                      event.target.value,
-                                    )
-                                  }
-                                  value={ticketEditDraft.title}
-                                />
-                              ) : (
-                                <strong>
-                                  {selectedTicketDetail.ticket.title}
-                                </strong>
-                              )}
-                            </label>
-
-                            <label className="field tdp-detail-field">
-                              <span>Description</span>
-                              {canEditTicket ? (
-                                <textarea
-                                  onChange={(event) =>
-                                    handleTicketEditFieldChange(
-                                      'description',
-                                      event.target.value,
-                                    )
-                                  }
-                                  rows={4}
-                                  value={ticketEditDraft.description}
-                                />
-                              ) : (
-                                <strong>
-                                  {selectedTicketDetail.ticket.description}
-                                </strong>
-                              )}
-                            </label>
-
                             <label className="field tdp-detail-field">
                               <span>Categorie</span>
                               {canEditTicket ? (
@@ -4771,62 +4724,110 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               </>
                             ) : null}
 
-                            <label className="field tdp-detail-field">
-                              <span>Equipement concerne</span>
-                              {canEditTicket ? (
-                                <div
-                                  className={
-                                    ticketEditDraft.ciId
-                                      ? 'incident-lookup-field has-clear'
-                                      : 'incident-lookup-field'
-                                  }
-                                >
-                                  <input
+                            {selectedTicketDetail.incident ? (
+                              <label className="field tdp-detail-field">
+                                <span>Equipement concerne</span>
+                                {canEditTicket ? (
+                                  <div
                                     className={
                                       ticketEditDraft.ciId
-                                        ? ''
-                                        : 'lookup-placeholder'
+                                        ? 'incident-lookup-field has-clear'
+                                        : 'incident-lookup-field'
                                     }
-                                    placeholder="Choisir l'equipement"
-                                    readOnly
-                                    value={
-                                      selectedTicketDetailEquipment?.name ?? ''
-                                    }
-                                  />
+                                  >
+                                    <input
+                                      className={
+                                        ticketEditDraft.ciId
+                                          ? ''
+                                          : 'lookup-placeholder'
+                                      }
+                                      placeholder="Choisir l'equipement"
+                                      readOnly
+                                      value={
+                                        selectedTicketDetailEquipment?.name ??
+                                        ''
+                                      }
+                                    />
 
-                                  {ticketEditDraft.ciId ? (
+                                    {ticketEditDraft.ciId ? (
+                                      <button
+                                        aria-label="Retirer l'equipement"
+                                        onClick={() =>
+                                          handleTicketEditFieldChange(
+                                            'ciId',
+                                            '',
+                                          )
+                                        }
+                                        type="button"
+                                      >
+                                        <X size={16} />
+                                      </button>
+                                    ) : null}
+
                                     <button
-                                      aria-label="Retirer l'equipement"
+                                      aria-label="Rechercher un equipement"
                                       onClick={() =>
-                                        handleTicketEditFieldChange('ciId', '')
+                                        openTicketDetailLookup('EQUIPMENT')
                                       }
                                       type="button"
                                     >
-                                      <X size={16} />
+                                      <Search size={18} />
                                     </button>
-                                  ) : null}
-
-                                  <button
-                                    aria-label="Rechercher un equipement"
-                                    onClick={() =>
-                                      openTicketDetailLookup('EQUIPMENT')
+                                  </div>
+                                ) : (
+                                  <strong>
+                                    {selectedTicketDetail.ticket.ciId
+                                      ? (cisById.get(
+                                          selectedTicketDetail.ticket.ciId,
+                                        )?.name ??
+                                        selectedTicketDetail.ticket.ciId)
+                                      : 'Non renseigne'}
+                                  </strong>
+                                )}
+                              </label>
+                            ) : (
+                              <label className="field tdp-detail-field">
+                                <span>Priorite</span>
+                                {canEditTicket ? (
+                                  <select
+                                    onChange={(event) =>
+                                      handleTicketEditFieldChange(
+                                        'priorityId',
+                                        event.target.value,
+                                      )
                                     }
-                                    type="button"
+                                    value={ticketEditDraft.priorityId}
                                   >
-                                    <Search size={18} />
-                                  </button>
-                                </div>
-                              ) : (
-                                <strong>
-                                  {selectedTicketDetail.ticket.ciId
-                                    ? (cisById.get(
-                                        selectedTicketDetail.ticket.ciId,
-                                      )?.name ??
-                                      selectedTicketDetail.ticket.ciId)
-                                    : 'Non renseigne'}
-                                </strong>
-                              )}
-                            </label>
+                                    {catalog.priorities.map((priority) => (
+                                      <option
+                                        key={priority.id}
+                                        value={priority.id}
+                                      >
+                                        {translatePriority(priority.name)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <strong>
+                                    {selectedTicketDetail.priorityName
+                                      ? translatePriority(
+                                          selectedTicketDetail.priorityName,
+                                        )
+                                      : prioritiesById.get(
+                                            selectedTicketDetail.ticket
+                                              .priorityId,
+                                          )
+                                        ? translatePriority(
+                                            prioritiesById.get(
+                                              selectedTicketDetail.ticket
+                                                .priorityId,
+                                            )!.name,
+                                          )
+                                        : 'Priorite non definie'}
+                                  </strong>
+                                )}
+                              </label>
+                            )}
                           </div>
                         </TicketDetailSectionPanel>
 
@@ -5536,22 +5537,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                     <div className="tdp-content tdp-legacy-content">
                       <div className="tdp-hero">
-                        {canEditTicket ? (
-                          <input
-                            className="tdp-title-edit"
-                            onChange={(event) =>
-                              handleTicketEditFieldChange(
-                                'title',
-                                event.target.value,
-                              )
-                            }
-                            value={ticketEditDraft.title}
-                          />
-                        ) : (
-                          <h2 className="tdp-title">
-                            {selectedTicketDetail.ticket.title}
-                          </h2>
-                        )}
+                        <h2 className="tdp-title">
+                          {selectedTicketDetail.ticket.title}
+                        </h2>
 
                         <div className="tdp-badges">
                           <span
@@ -5598,23 +5586,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           <h3 className="tdp-card-title">Description</h3>
                         </div>
 
-                        {canEditTicket ? (
-                          <textarea
-                            className="tdp-description-edit"
-                            onChange={(event) =>
-                              handleTicketEditFieldChange(
-                                'description',
-                                event.target.value,
-                              )
-                            }
-                            rows={4}
-                            value={ticketEditDraft.description}
-                          />
-                        ) : (
-                          <p className="tdp-description">
-                            {selectedTicketDetail.ticket.description}
-                          </p>
-                        )}
+                        <p className="tdp-description">
+                          {selectedTicketDetail.ticket.description}
+                        </p>
                       </div>
 
                       <div className="tdp-card">
@@ -6072,7 +6046,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         <div className="tdp-card-header">
                           <h3 className="tdp-card-title">Conversation</h3>
                           <span className="tdp-tab-count">
-                            {selectedTicketComments.length}
+                            {seededTicketComments.length}
                           </span>
                         </div>
 
@@ -6084,18 +6058,20 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           <p className="tdp-state tdp-state--error">
                             {loadCommentsErrorMessage}
                           </p>
-                        ) : selectedTicketComments.length === 0 ? (
+                        ) : seededTicketComments.length === 0 ? (
                           <p className="tdp-empty">
                             Aucun commentaire pour ce ticket.
                           </p>
                         ) : (
                           <div className="tdp-comment-thread">
-                            {selectedTicketComments.map((comment) => {
-                              const canDeleteComment = canDeleteTicketComment(
-                                session.user.role,
-                                session.user.id,
-                                comment.authorUserId,
-                              );
+                            {seededTicketComments.map((comment) => {
+                              const canDeleteComment =
+                                !comment.isSeedDescription &&
+                                canDeleteTicketComment(
+                                  session.user.role,
+                                  session.user.id,
+                                  comment.authorUserId,
+                                );
                               const initial =
                                 formatKnownUserName(
                                   usersById.get(comment.authorUserId),
@@ -6161,7 +6137,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     </div>
 
                                     <p className="tdp-comment-text">
-                                      {comment.body}
+                                      {comment.isSeedDescription ? (
+                                        <>
+                                          <strong>Description: </strong>
+                                          {comment.body}
+                                        </>
+                                      ) : (
+                                        comment.body
+                                      )}
                                     </p>
                                   </div>
                                 </div>
