@@ -50,6 +50,21 @@ type ModalState =
   | { type: 'edit'; article: KnowledgeArticle }
   | { type: 'delete'; article: KnowledgeArticle };
 
+const KNOWLEDGE_CATEGORY_OPTIONS = [
+  'Compte & accès',
+  'Réseau & Internet',
+  'Matériel',
+  'Logiciels & applications',
+  'Messagerie',
+  'Impression',
+  'Sécurité',
+  'Téléphonie',
+  'Procédures internes',
+  'Dépannage général',
+] as const;
+
+const KNOWLEDGE_PAGE_SIZE = 12;
+
 const EMPTY_FORM: KnowledgeFormState = {
   category: '',
   content: '',
@@ -66,6 +81,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   const [contentTab, setContentTab] = useState<'edit' | 'preview'>('edit');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [page, setPage] = useState(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -147,6 +163,20 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
       return matchesCategory && searchableText.includes(normalizedSearch);
     });
   }, [articles, categoryFilter, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, categoryFilter]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredArticles.length / KNOWLEDGE_PAGE_SIZE),
+  );
+  const visiblePage = Math.min(page, totalPages);
+  const paginatedArticles = useMemo(() => {
+    const startIndex = (visiblePage - 1) * KNOWLEDGE_PAGE_SIZE;
+    return filteredArticles.slice(startIndex, startIndex + KNOWLEDGE_PAGE_SIZE);
+  }, [filteredArticles, visiblePage]);
 
   function openCreate() {
     setForm(EMPTY_FORM);
@@ -356,21 +386,21 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               />
             </label>
             <label className="field">
-              <span>Catégorie</span>
-              <input
-                list="kb-categories-list"
+              <span>Cat?gorie</span>
+              <select
                 onChange={(e) =>
                   setForm((f) => ({ ...f, category: e.target.value }))
                 }
-                placeholder="Compte, Réseau, Logiciel..."
                 required
                 value={form.category}
-              />
-              <datalist id="kb-categories-list">
-                {categories.map((cat) => (
-                  <option key={cat} value={cat} />
+              >
+                <option value="">Choisir une cat?gorie</option>
+                {KNOWLEDGE_CATEGORY_OPTIONS.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
                 ))}
-              </datalist>
+              </select>
             </label>
             <label className="field">
               <span>Statut</span>
@@ -409,6 +439,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               </div>
               {contentTab === 'edit' ? (
                 <textarea
+                  className="kb-markdown-editor"
                   onChange={(e) =>
                     setForm((f) => ({ ...f, content: e.target.value }))
                   }
@@ -539,41 +570,31 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   return (
     <section className="kb-page">
       {modalNode}
-
-      <header className="kb-header">
-        <div className="kb-header-copy">
-          <h1>Base de connaissances</h1>
-          <p>
-            Retrouve les procédures utiles avant de créer un ticket ou pour
-            résoudre un incident récurrent.
-          </p>
+      <div className="kb-toolbar">
+        <div className="kb-search">
+          <Search size={16} />
+          <input
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher un article..."
+            value={search}
+          />
         </div>
-        <div className="kb-toolbar">
-          <div className="kb-search">
-            <Search size={16} />
-            <input
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher un article..."
-              value={search}
-            />
-          </div>
-          {isAdmin ? (
-            <button
-              className="primary-button"
-              onClick={openCreate}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-              type="button"
-            >
-              <Plus size={16} />
-              Nouvel article
-            </button>
-          ) : null}
-        </div>
-      </header>
+        {isAdmin ? (
+          <button
+            className="primary-button"
+            onClick={openCreate}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+            type="button"
+          >
+            <Plus size={16} />
+            Nouvel article
+          </button>
+        ) : null}
+      </div>
 
       {errorMessage ? (
         <p className="referentials-error">{errorMessage}</p>
@@ -608,30 +629,56 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
       ) : filteredArticles.length === 0 ? (
         <p className="kb-empty">Aucun article trouvé.</p>
       ) : (
-        <div className="kb-grid">
-          {filteredArticles.map((article) => (
+        <>
+          <div className="kb-grid">
+            {paginatedArticles.map((article) => (
+              <button
+                className="kb-card"
+                key={article.id}
+                onClick={() => navigateTo(`/knowledge/articles/${article.id}`)}
+                type="button"
+              >
+                <div className="kb-card-top">
+                  <span className="kb-card-category">{article.category}</span>
+                  <span
+                    className={`kb-card-status ${article.status === 'PUBLISHED' ? 'is-published' : 'is-draft'}`}
+                  >
+                    {article.status === 'PUBLISHED' ? 'Publié' : 'Brouillon'}
+                  </span>
+                </div>
+                <strong className="kb-card-title">{article.title}</strong>
+                <p className="kb-card-excerpt">{article.content}</p>
+                <small className="kb-card-meta">
+                  Mis à jour le {formatDate(article.updatedAt)}
+                </small>
+              </button>
+            ))}
+          </div>
+
+          <div className="kb-pagination">
             <button
-              className="kb-card"
-              key={article.id}
-              onClick={() => navigateTo(`/knowledge/articles/${article.id}`)}
+              className="secondary-button"
+              disabled={visiblePage <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
               type="button"
             >
-              <div className="kb-card-top">
-                <span className="kb-card-category">{article.category}</span>
-                <span
-                  className={`kb-card-status ${article.status === 'PUBLISHED' ? 'is-published' : 'is-draft'}`}
-                >
-                  {article.status === 'PUBLISHED' ? 'Publié' : 'Brouillon'}
-                </span>
-              </div>
-              <strong className="kb-card-title">{article.title}</strong>
-              <p className="kb-card-excerpt">{article.content}</p>
-              <small className="kb-card-meta">
-                Mis à jour le {formatDate(article.updatedAt)}
-              </small>
+              Précédent
             </button>
-          ))}
-        </div>
+            <span aria-current="page" className="kb-pagination-current">
+              {visiblePage}
+            </span>
+            <button
+              className="secondary-button"
+              disabled={visiblePage >= totalPages}
+              onClick={() =>
+                setPage((current) => Math.min(totalPages, current + 1))
+              }
+              type="button"
+            >
+              Suivant
+            </button>
+          </div>
+        </>
       )}
     </section>
   );

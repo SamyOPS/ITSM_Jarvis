@@ -9625,14 +9625,43 @@ a {
 }
 
 .kb-markdown-preview {
-  min-height: 200px;
-  max-height: 320px;
+  min-height: 260px;
+  max-height: 260px;
   padding: 14px 18px !important;
   border: 1px solid var(--border) !important;
   border-radius: 14px !important;
   background: rgba(255, 255, 255, 0.92) !important;
   box-shadow: none !important;
   overflow-y: auto;
+}
+
+.kb-markdown-editor {
+  min-height: 260px;
+  max-height: 260px;
+  resize: none;
+}
+
+.kb-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding-top: 4px;
+}
+
+.kb-pagination-current {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid rgba(172, 198, 238, 0.9);
+  border-radius: 999px;
+  background: rgba(241, 246, 255, 0.88);
+  color: var(--primary);
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .kb-delete-confirm {
