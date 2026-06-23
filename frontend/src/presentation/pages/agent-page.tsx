@@ -14,9 +14,11 @@ import {
   BadgeAlert,
   History,
   Paperclip,
+  Plus,
   Search,
   SlidersHorizontal,
   Ticket as TicketIcon,
+  Trash2,
   Users,
   X,
 } from 'lucide-react';
@@ -2493,12 +2495,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       }
 
       setIsEditingInfo(false);
-      setDetailActionSuccessMessage('Informations mises à jour.');
+      setDetailActionSuccessMessage('Informations mises Ã  jour.');
     } catch (error) {
       setDetailActionErrorMessage(
         error instanceof Error
           ? error.message
-          : 'Erreur lors de la mise à jour.',
+          : 'Erreur lors de la mise Ã  jour.',
       );
     } finally {
       setIsSavingInfo(false);
@@ -3087,7 +3089,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         value={incidentDraft.categoryId}
                       >
                         <option disabled hidden value="">
-                          Choisir une catégorie
+                          Choisir une catÃ©gorie
                         </option>
 
                         {incidentCategoryOptions.map((category) => (
@@ -3265,7 +3267,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                       {showIncidentAdvancedFields ? (
                         <label className="field ticket-create-order-incident-group">
-                          <span>Assigné groupe</span>
+                          <span>AssignÃ© groupe</span>
 
                           <div
                             className={
@@ -3315,7 +3317,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                       {showIncidentAdvancedFields ? (
                         <label className="field ticket-create-order-incident-technician">
-                          <span>Assigné technicien</span>
+                          <span>AssignÃ© technicien</span>
 
                           <div
                             className={
@@ -3420,7 +3422,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           value={requestDraft.priorityId}
                         >
                           <option disabled hidden value="">
-                            Choisir la priorité
+                            Choisir la prioritÃ©
                           </option>
 
                           {catalog.priorities.map((priority) => (
@@ -3438,7 +3440,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                       {showRequestAdvancedFields ? (
                         <label className="field ticket-create-order-request-group">
-                          <span>Assigné groupe</span>
+                          <span>AssignÃ© groupe</span>
 
                           <div
                             className={
@@ -3488,7 +3490,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                       {showRequestAdvancedFields ? (
                         <label className="field ticket-create-order-request-technician">
-                          <span>Assigné technicien</span>
+                          <span>AssignÃ© technicien</span>
 
                           <div
                             className={
@@ -3639,7 +3641,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   }
                                   type="button"
                                 >
-                                  ×
+                                  Ã—
                                 </button>
                               </span>
                             );
@@ -4145,7 +4147,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         <option value="TITLE">Titre</option>
                         <option value="REQUESTER">Demandeur</option>
                         <option value="GROUP">Groupe</option>
-                        <option value="TECHNICIAN">Assigné à</option>
+                        <option value="TECHNICIAN">Assigne a</option>
                       </select>
 
                       <div className="ticket-list-target-search-input">
@@ -4265,11 +4267,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               <th>ID</th>
                               <th>Titre</th>
                               <th>Statut</th>
-                              <th>Date de création</th>
-                              <th>Priorité</th>
+                              <th>Date de creation</th>
+                              <th>Priorite</th>
                               <th>Demandeur</th>
-                              <th>Assigné à</th>
-                              <th>Catégorie</th>
+                              <th>Assigne a</th>
+                              <th>Categorie</th>
                               <th>Groupe</th>
                               <th>TTR</th>
                             </tr>
@@ -4324,7 +4326,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 </td>
                                 <td>
                                   {categoriesById.get(ticket.categoryId)
-                                    ?.name ?? 'Non définie'}
+                                    ?.name ?? 'Non dÃ©finie'}
                                 </td>
                                 <td>
                                   {ticket.assignmentGroupId
@@ -4419,7 +4421,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       type="button"
                     >
                       <ArrowLeft size={15} />
-                      Retour à la liste
+                      Retour a la liste
                     </button>
                   </div>
 
@@ -4457,22 +4459,28 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     {selectedTicketDetail &&
                     (canEditTicket || canManageTicket) ? (
                       <button
-                        className="tdp-save-btn"
+                        className="primary-button admin-user-save-button"
                         disabled={isSavingInfo}
                         onClick={() => void handleSaveInfoEdits()}
                         type="button"
                       >
+                        <Plus
+                          size={16}
+                          strokeWidth={2.3}
+                          style={{ marginRight: 8 }}
+                        />
                         {isSavingInfo ? 'Sauvegarde...' : 'Sauvegarder'}
                       </button>
                     ) : null}
 
                     {selectedTicketDetail && canDeleteTickets ? (
                       <button
-                        className="danger-button"
+                        className="admin-user-delete-button"
                         disabled={isDeletingTicket}
                         onClick={() => void handleDeleteTicket()}
                         type="button"
                       >
+                        <Trash2 size={16} strokeWidth={2.2} />
                         {isDeletingTicket ? 'Suppression...' : 'Supprimer'}
                       </button>
                     ) : null}
@@ -4481,7 +4489,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                 {!selectedTicketId ? (
                   <p className="tdp-state">
-                    Sélectionnez un ticket pour afficher son détail.
+                    SÃ©lectionnez un ticket pour afficher son dÃ©tail.
                   </p>
                 ) : isLoadingDetail ? (
                   <p className="tdp-state">Chargement du ticket...</p>
@@ -4490,7 +4498,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     {loadDetailErrorMessage}
                   </p>
                 ) : !selectedTicketDetail ? (
-                  <p className="tdp-state">Aucun détail disponible.</p>
+                  <p className="tdp-state">Aucun dÃ©tail disponible.</p>
                 ) : (
                   <>
                     <div className="tdp-modern-content">
@@ -5175,7 +5183,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                           }
                                           type="button"
                                         >
-                                          ×
+                                          Ã—
                                         </button>
                                       </span>
                                     );
@@ -5651,11 +5659,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                       selectedTicketDetail.ticket.priorityId,
                                     )!.name,
                                   )
-                                : 'Priorité non définie'}
+                                : 'PrioritÃ© non dÃ©finie'}
                           </span>
 
                           <span className="tdp-badge tdp-badge--date">
-                            Créé le{' '}
+                            CrÃ©Ã© le{' '}
                             {formatTicketDate(
                               selectedTicketDetail.ticket.createdAt,
                             )}
@@ -5711,7 +5719,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                         <div className="tdp-info-grid">
                           <div className="tdp-info-item">
-                            <span>Catégorie</span>
+                            <span>CatÃ©gorie</span>
 
                             {canEditTicket ? (
                               <select
@@ -5723,7 +5731,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 }
                                 value={ticketEditDraft.categoryId}
                               >
-                                <option value="">Choisir une catégorie</option>
+                                <option value="">Choisir une catÃ©gorie</option>
 
                                 {catalog.categories.map((category) => (
                                   <option key={category.id} value={category.id}>
@@ -5735,7 +5743,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               <strong>
                                 {categoriesById.get(
                                   selectedTicketDetail.ticket.categoryId,
-                                )?.name ?? 'Non définie'}
+                                )?.name ?? 'Non dÃ©finie'}
                               </strong>
                             )}
                           </div>
@@ -5753,7 +5761,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 }
                                 value={ticketEditDraft.channelId}
                               >
-                                <option value="">Non renseigné</option>
+                                <option value="">Non renseignÃ©</option>
 
                                 {catalog.channels.map((channel) => (
                                   <option key={channel.id} value={channel.id}>
@@ -5770,13 +5778,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                       )?.name ??
                                         selectedTicketDetail.ticket.channelId,
                                     )
-                                  : 'Non renseigné'}
+                                  : 'Non renseignÃ©'}
                               </strong>
                             )}
                           </div>
 
                           <div className="tdp-info-item">
-                            <span>Équipement concerné</span>
+                            <span>Ã‰quipement concernÃ©</span>
 
                             {canEditTicket ? (
                               <select
@@ -5788,7 +5796,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 }
                                 value={ticketEditDraft.ciId}
                               >
-                                <option value="">Non renseigné</option>
+                                <option value="">Non renseignÃ©</option>
 
                                 {catalog.cis.map((ci) => (
                                   <option key={ci.id} value={ci.id}>
@@ -5802,7 +5810,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   ? (cisById.get(
                                       selectedTicketDetail.ticket.ciId,
                                     )?.name ?? selectedTicketDetail.ticket.ciId)
-                                  : 'Non renseigné'}
+                                  : 'Non renseignÃ©'}
                               </strong>
                             )}
                           </div>
@@ -5837,13 +5845,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     )?.name ??
                                     selectedTicketDetail.ticket
                                       .assignmentGroupId)
-                                  : 'Non affecté'}
+                                  : 'Non affectÃ©'}
                               </strong>
                             )}
                           </div>
 
                           <div className="tdp-info-item">
-                            <span>Agent assigné</span>
+                            <span>Agent assignÃ©</span>
 
                             {canManageTicket ? (
                               <select
@@ -5900,7 +5908,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   }
                                   value={ticketEditDraft.requestedForUserId}
                                 >
-                                  <option value="">Non renseigné</option>
+                                  <option value="">Non renseignÃ©</option>
 
                                   {userDirectory
                                     .filter((user) => user.isActive)
@@ -6238,13 +6246,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         {selectedTicketAttachments.length > 0 ? (
                           <div className="tdp-attachment-section">
                             <p className="tdp-subsection-label">
-                              Pièces jointes ({selectedTicketAttachments.length}
+                              Pieces jointes ({selectedTicketAttachments.length}
                               )
                             </p>
 
                             {isLoadingAttachments ? (
                               <p className="tdp-state">
-                                Chargement des pièces jointes...
+                                Chargement des piÃ¨ces jointes...
                               </p>
                             ) : loadAttachmentsErrorMessage ? (
                               <p className="tdp-state tdp-state--error">
@@ -6271,9 +6279,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                       </button>
 
                                       <span>
-                                        Ajouté le{' '}
+                                        Ajoute le{' '}
                                         {formatTicketDate(attachment.createdAt)}{' '}
-                                        · {formatFileSize(attachment.sizeBytes)}
+                                        - {formatFileSize(attachment.sizeBytes)}
                                       </span>
                                     </div>
 
@@ -6287,7 +6295,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                         }
                                         type="button"
                                       >
-                                        Télécharger
+                                        TÃ©lÃ©charger
                                       </button>
 
                                       <button
@@ -6361,7 +6369,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             onSubmit={handleAttachmentSubmit}
                           >
                             <div className="field">
-                              <span>Pièces jointes</span>
+                              <span>PiÃ¨ces jointes</span>
 
                               <div className="ticket-upload-zone tdp-upload-zone">
                                 <div className="ticket-upload-actions">
@@ -6410,7 +6418,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                             }
                                             type="button"
                                           >
-                                            ×
+                                            Ã—
                                           </button>
                                         </span>
                                       );
@@ -6420,7 +6428,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                                 <div className="ticket-upload-note ticket-upload-note--stacked">
                                   <span>
-                                    Formats acceptés : PDF, PNG, JPG, DOCX.
+                                    Formats acceptÃ©s : PDF, PNG, JPG, DOCX.
                                   </span>
                                   <span>2 Mo max par fichier.</span>
                                 </div>
@@ -6496,7 +6504,7 @@ function TicketDetailSectionPanel({
         {typeof count === 'number' ? (
           <span className="tdp-tab-count">{count}</span>
         ) : null}
-        <span className="tdp-section-chevron">{isOpen ? '−' : '+'}</span>
+        <span className="tdp-section-chevron">{isOpen ? '-' : '+'}</span>
       </button>
 
       <div

@@ -486,12 +486,14 @@ export function ReportsPage({ session }: ReportsPageProps) {
     [personalTickets, session.user.id],
   );
 
-  const createdByMeTickets = useMemo(
+  const requesterTickets = useMemo(
     () =>
       buildPersonalTicketPreview(
         personalTickets,
 
-        (ticket) => ticket.createdByUserId === session.user.id,
+        (ticket) =>
+          (ticket.requestedForUserId ?? ticket.createdByUserId) ===
+          session.user.id,
       ),
 
     [personalTickets, session.user.id],
@@ -1208,8 +1210,8 @@ export function ReportsPage({ session }: ReportsPageProps) {
               navigateTo(`/agent/tickets/${ticketId}?from=reports-personal`)
             }
             prioritiesById={personalPrioritiesById}
-            title="Mes tickets créés"
-            tickets={createdByMeTickets}
+            title="Mes tickets"
+            tickets={requesterTickets}
             users={users}
           />
 

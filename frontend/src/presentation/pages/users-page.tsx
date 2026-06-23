@@ -910,7 +910,7 @@ export function UsersPage({ session }: UsersPageProps) {
                 </div>
 
                 <button
-                  className="admin-users-add-button"
+                  className="primary-button admin-user-save-button admin-group-add-button"
                   onClick={handleOpenCreateForm}
                   type="button"
                 >
