@@ -5,15 +5,20 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
   ArrowLeft,
+  ArrowUpDown,
   Eye,
   FileText,
+  Flame,
+  History,
   Pencil,
   Plus,
   Search,
+  SlidersHorizontal,
   ThumbsUp,
   Trash2,
   X,
@@ -53,6 +58,8 @@ type ModalState =
   | { type: 'edit'; article: KnowledgeArticle }
   | { type: 'delete'; article: KnowledgeArticle };
 
+type KnowledgeSortOption = 'POPULAR' | 'NEWEST' | 'OLDEST';
+
 const KNOWLEDGE_CATEGORY_OPTIONS = [
   'Compte & accès',
   'Réseau & Internet',
@@ -75,6 +82,32 @@ const EMPTY_FORM: KnowledgeFormState = {
   title: '',
 };
 
+const KNOWLEDGE_SORT_OPTIONS: Array<{
+  description: string;
+  icon: typeof Flame;
+  label: string;
+  value: KnowledgeSortOption;
+}> = [
+  {
+    value: 'POPULAR',
+    label: 'Plus populaire',
+    description: 'Trie par nombre de likes',
+    icon: Flame,
+  },
+  {
+    value: 'NEWEST',
+    label: 'Plus recentes',
+    description: 'Articles les plus recemment mis a jour',
+    icon: ArrowUpDown,
+  },
+  {
+    value: 'OLDEST',
+    label: 'Plus anciennes',
+    description: 'Articles les plus anciens en premier',
+    icon: History,
+  },
+];
+
 export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
   const [selectedArticle, setSelectedArticle] =
@@ -84,11 +117,15 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   const [contentTab, setContentTab] = useState<'edit' | 'preview'>('edit');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sortBy, setSortBy] = useState<KnowledgeSortOption>('NEWEST');
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [likingArticleIds, setLikingArticleIds] = useState<string[]>([]);
+  const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const isAdmin = session.user.role === 'ADMIN';
 
   const loadArticles = useCallback(async (): Promise<void> => {
@@ -153,26 +190,92 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
     return articles.filter((article) => {
       const matchesCategory =
         !categoryFilter || article.category === categoryFilter;
+      const matchesStatus = !statusFilter || article.status === statusFilter;
       const searchableText = normalizeText(
         `${article.title} ${article.category} ${article.content}`,
       );
-      return matchesCategory && searchableText.includes(normalizedSearch);
+      return (
+        matchesCategory &&
+        matchesStatus &&
+        searchableText.includes(normalizedSearch)
+      );
     });
-  }, [articles, categoryFilter, search]);
+  }, [articles, categoryFilter, search, statusFilter]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, categoryFilter]);
+  }, [search, categoryFilter, statusFilter, sortBy]);
+
+  useEffect(() => {
+    if (!isSortMenuOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: globalThis.MouseEvent): void {
+      if (
+        sortMenuRef.current &&
+        event.target instanceof Node &&
+        !sortMenuRef.current.contains(event.target)
+      ) {
+        setIsSortMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') {
+        setIsSortMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSortMenuOpen]);
+
+  const sortedArticles = useMemo(() => {
+    const nextArticles = [...filteredArticles];
+
+    nextArticles.sort((leftArticle, rightArticle) => {
+      if (sortBy === 'POPULAR') {
+        if (rightArticle.likesCount !== leftArticle.likesCount) {
+          return rightArticle.likesCount - leftArticle.likesCount;
+        }
+
+        return (
+          new Date(rightArticle.updatedAt).getTime() -
+          new Date(leftArticle.updatedAt).getTime()
+        );
+      }
+
+      if (sortBy === 'NEWEST') {
+        return (
+          new Date(rightArticle.updatedAt).getTime() -
+          new Date(leftArticle.updatedAt).getTime()
+        );
+      }
+
+      return (
+        new Date(leftArticle.updatedAt).getTime() -
+        new Date(rightArticle.updatedAt).getTime()
+      );
+    });
+
+    return nextArticles;
+  }, [filteredArticles, sortBy]);
 
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredArticles.length / KNOWLEDGE_PAGE_SIZE),
+    Math.ceil(sortedArticles.length / KNOWLEDGE_PAGE_SIZE),
   );
   const visiblePage = Math.min(page, totalPages);
   const paginatedArticles = useMemo(() => {
     const startIndex = (visiblePage - 1) * KNOWLEDGE_PAGE_SIZE;
-    return filteredArticles.slice(startIndex, startIndex + KNOWLEDGE_PAGE_SIZE);
-  }, [filteredArticles, visiblePage]);
+    return sortedArticles.slice(startIndex, startIndex + KNOWLEDGE_PAGE_SIZE);
+  }, [sortedArticles, visiblePage]);
 
   function openCreate() {
     setForm(EMPTY_FORM);
@@ -628,7 +731,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
 
             {isAdmin ? (
               <button
-                className="primary-button kb-light-button"
+                className="primary-button kb-light-button kb-toolbar-create-button"
                 onClick={openCreate}
                 style={{
                   display: 'inline-flex',
@@ -641,6 +744,70 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                 Nouvel article
               </button>
             ) : null}
+
+            <div className="ticket-list-sort-menu" ref={sortMenuRef}>
+              <button
+                aria-expanded={isSortMenuOpen}
+                aria-haspopup="menu"
+                className={
+                  isSortMenuOpen
+                    ? 'ticket-filter-trigger is-open'
+                    : 'ticket-filter-trigger'
+                }
+                onClick={() =>
+                  setIsSortMenuOpen((currentState) => !currentState)
+                }
+                type="button"
+              >
+                <span>Trier par</span>
+                <SlidersHorizontal size={18} strokeWidth={2} />
+              </button>
+
+              {isSortMenuOpen ? (
+                <div className="ticket-sort-popover" role="menu">
+                  <div className="ticket-sort-popover-label">Trier par</div>
+
+                  <div className="ticket-sort-option-list">
+                    {KNOWLEDGE_SORT_OPTIONS.map((option) => {
+                      const Icon = option.icon;
+
+                      return (
+                        <button
+                          className={
+                            sortBy === option.value
+                              ? 'ticket-sort-option is-active'
+                              : 'ticket-sort-option'
+                          }
+                          key={option.value}
+                          onClick={() => {
+                            setSortBy(option.value);
+                            setIsSortMenuOpen(false);
+                          }}
+                          role="menuitemradio"
+                          type="button"
+                        >
+                          <span
+                            className="ticket-sort-option-icon"
+                            aria-hidden="true"
+                          >
+                            <Icon size={16} strokeWidth={2} />
+                          </span>
+
+                          <span className="ticket-sort-option-copy">
+                            <strong>{option.label}</strong>
+                            <span>
+                              {sortBy === option.value
+                                ? 'Selection actuelle'
+                                : option.description}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -670,6 +837,20 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                     {category}
                   </option>
                 ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="field kb-filter-field">
+            <span>Statut</span>
+            <div className="kb-category-select">
+              <select
+                onChange={(e) => setStatusFilter(e.target.value)}
+                value={statusFilter}
+              >
+                <option value="">Tous</option>
+                <option value="PUBLISHED">Publie</option>
+                <option value="DRAFT">Brouillon</option>
               </select>
             </div>
           </div>

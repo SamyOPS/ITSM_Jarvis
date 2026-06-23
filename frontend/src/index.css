@@ -9172,9 +9172,15 @@ a {
 
 .kb-filter-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 12px;
   align-items: center;
+}
+
+.kb-toolbar-create-button {
+  min-height: 40px;
+  padding: 0 16px;
+  font-weight: 400;
 }
 
 .kb-filter-field {
@@ -9262,7 +9268,6 @@ a {
 .kb-card:hover {
   transform: translateY(-2px);
   border-color: rgba(25, 86, 179, 0.28);
-  box-shadow: 0 12px 32px rgba(26, 44, 78, 0.1);
 }
 
 .kb-card-top {
@@ -9324,8 +9329,10 @@ a {
   font-size: 0.87rem;
   color: var(--text-muted);
   overflow: hidden;
-  display: block;
-  max-height: 4.65em;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
   line-height: 1.55;
   overflow-wrap: anywhere;
   word-break: break-word;

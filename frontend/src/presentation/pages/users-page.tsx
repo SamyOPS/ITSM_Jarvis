@@ -914,7 +914,11 @@ export function UsersPage({ session }: UsersPageProps) {
                   onClick={handleOpenCreateForm}
                   type="button"
                 >
-                  <Plus size={16} strokeWidth={2.3} />
+                  <Plus
+                    size={16}
+                    strokeWidth={2.3}
+                    style={{ marginRight: 8 }}
+                  />
                   Ajouter
                 </button>
               </div>
