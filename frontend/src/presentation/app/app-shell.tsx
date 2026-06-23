@@ -463,14 +463,14 @@ export function AppShell({
                   : 'workspace-nav-link'
               }
               onClick={() => navigateTo('/agent/my-tickets')}
-              title="Mes tickets créés"
+              title="Mes tickets"
               type="button"
             >
               <span className="workspace-nav-link-icon" aria-hidden="true">
                 <Ticket size={18} strokeWidth={2} />
               </span>
               <strong className="workspace-nav-link-label">
-                Mes tickets créés
+                Mes tickets
               </strong>
             </button>
           ) : null}
