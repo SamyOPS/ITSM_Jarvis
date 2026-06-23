@@ -23,14 +23,25 @@ export abstract class KnowledgeArticleRepository {
 
   abstract updateArticle(
     id: string,
+    currentUserId: string,
     command: UpdateKnowledgeArticleRecord,
   ): Promise<KnowledgeArticle>;
 
   abstract deleteArticle(id: string): Promise<void>;
 
-  abstract getArticleById(id: string): Promise<KnowledgeArticle | null>;
+  abstract getArticleById(
+    id: string,
+    currentUserId: string,
+  ): Promise<KnowledgeArticle | null>;
 
-  abstract listArticles(): Promise<KnowledgeArticle[]>;
+  abstract listArticles(currentUserId: string): Promise<KnowledgeArticle[]>;
 
-  abstract listPublishedArticles(): Promise<KnowledgeArticle[]>;
+  abstract listPublishedArticles(
+    currentUserId: string,
+  ): Promise<KnowledgeArticle[]>;
+
+  abstract toggleArticleLike(
+    articleId: string,
+    userId: string,
+  ): Promise<KnowledgeArticle>;
 }

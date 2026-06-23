@@ -24,6 +24,11 @@ type SupabaseKnowledgeArticleRow = {
   updated_at: string;
 };
 
+type SupabaseKnowledgeArticleLikeRow = {
+  article_id: string;
+  user_id: string;
+};
+
 type MutationFilter = { column: string; value: string };
 
 const KNOWLEDGE_ARTICLE_SELECT =
@@ -31,24 +36,40 @@ const KNOWLEDGE_ARTICLE_SELECT =
 
 @Injectable()
 export class SupabaseKnowledgeArticleRepository implements KnowledgeArticleRepository {
-  async listArticles(): Promise<KnowledgeArticle[]> {
+  async listArticles(currentUserId: string): Promise<KnowledgeArticle[]> {
     const rows = await this.fetchRows();
+    const likes = await this.fetchLikeRows(
+      rows.map((row) => row.id),
+    );
 
-    return rows.map((row) => this.mapRow(row));
+    return rows.map((row) => this.mapRow(row, likes, currentUserId));
   }
 
-  async listPublishedArticles(): Promise<KnowledgeArticle[]> {
+  async listPublishedArticles(currentUserId: string): Promise<KnowledgeArticle[]> {
     const rows = await this.fetchRows([
       { column: 'status', value: 'PUBLISHED' },
     ]);
+    const likes = await this.fetchLikeRows(
+      rows.map((row) => row.id),
+    );
 
-    return rows.map((row) => this.mapRow(row));
+    return rows.map((row) => this.mapRow(row, likes, currentUserId));
   }
 
-  async getArticleById(id: string): Promise<KnowledgeArticle | null> {
+  async getArticleById(
+    id: string,
+    currentUserId: string,
+  ): Promise<KnowledgeArticle | null> {
     const rows = await this.fetchRows([{ column: 'id', value: id }]);
+    const article = rows[0];
 
-    return rows[0] ? this.mapRow(rows[0]) : null;
+    if (!article) {
+      return null;
+    }
+
+    const likes = await this.fetchLikeRows([article.id]);
+
+    return this.mapRow(article, likes, currentUserId);
   }
 
   async createArticle(
@@ -63,11 +84,12 @@ export class SupabaseKnowledgeArticleRepository implements KnowledgeArticleRepos
       title: command.title,
     });
 
-    return this.expectSingle(rows);
+    return this.expectSingle(rows, command.createdByUserId);
   }
 
   async updateArticle(
     id: string,
+    currentUserId: string,
     command: UpdateKnowledgeArticleRecord,
   ): Promise<KnowledgeArticle> {
     const url = this.buildUrl([{ column: 'id', value: id }]);
@@ -91,7 +113,7 @@ export class SupabaseKnowledgeArticleRepository implements KnowledgeArticleRepos
     }
 
     const rows = (await response.json()) as SupabaseKnowledgeArticleRow[];
-    return this.expectSingle(rows);
+    return this.expectSingle(rows, currentUserId);
   }
 
   async deleteArticle(id: string): Promise<void> {
@@ -102,6 +124,59 @@ export class SupabaseKnowledgeArticleRepository implements KnowledgeArticleRepos
     if (!response.ok) {
       await this.throwSupabaseError(response);
     }
+  }
+
+  async toggleArticleLike(
+    articleId: string,
+    userId: string,
+  ): Promise<KnowledgeArticle> {
+    const article = await this.getArticleById(articleId, userId);
+
+    if (!article) {
+      throw new NotFoundException('Knowledge article not found.');
+    }
+
+    const existingLike = await this.fetchLikeRows([articleId], userId);
+
+    if (existingLike.length > 0) {
+      const deleteUrl = this.buildLikesUrl([
+        { column: 'article_id', value: articleId },
+        { column: 'user_id', value: userId },
+      ]);
+      deleteUrl.searchParams.delete('select');
+
+      const deleteResponse = await this.executeRequest(deleteUrl, {
+        method: 'DELETE',
+      });
+
+      if (!deleteResponse.ok) {
+        await this.throwSupabaseError(deleteResponse);
+      }
+    } else {
+      const insertResponse = await this.executeRequest(this.buildLikesUrl(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          article_id: articleId,
+          user_id: userId,
+        }),
+      });
+
+      if (!insertResponse.ok) {
+        await this.throwSupabaseError(insertResponse);
+      }
+    }
+
+    const refreshedArticle = await this.getArticleById(articleId, userId);
+
+    if (!refreshedArticle) {
+      throw new NotFoundException('Knowledge article not found.');
+    }
+
+    return refreshedArticle;
   }
 
   private async fetchRows(
@@ -117,6 +192,30 @@ export class SupabaseKnowledgeArticleRepository implements KnowledgeArticleRepos
     }
 
     return (await response.json()) as SupabaseKnowledgeArticleRow[];
+  }
+
+  private async fetchLikeRows(
+    articleIds: readonly string[],
+    userId?: string,
+  ): Promise<SupabaseKnowledgeArticleLikeRow[]> {
+    if (articleIds.length === 0) {
+      return [];
+    }
+
+    const url = this.buildLikesUrl();
+    url.searchParams.set('article_id', `in.(${articleIds.join(',')})`);
+
+    if (userId) {
+      url.searchParams.set('user_id', `eq.${userId}`);
+    }
+
+    const response = await this.executeRequest(url);
+
+    if (!response.ok) {
+      await this.throwSupabaseError(response);
+    }
+
+    return (await response.json()) as SupabaseKnowledgeArticleLikeRow[];
   }
 
   private async mutateRows(
@@ -157,6 +256,27 @@ export class SupabaseKnowledgeArticleRepository implements KnowledgeArticleRepos
     return url;
   }
 
+  private buildLikesUrl(filters: readonly MutationFilter[] = []): URL {
+    const config = getBackendRuntimeConfig();
+
+    if (!config.supabaseUrl) {
+      throw new ServiceUnavailableException(
+        'Supabase knowledge configuration is incomplete on the backend.',
+      );
+    }
+
+    const url = new URL(
+      `${config.supabaseUrl}/rest/v1/knowledge_article_likes`,
+    );
+    url.searchParams.set('select', 'article_id,user_id');
+
+    for (const filter of filters) {
+      url.searchParams.set(filter.column, `eq.${filter.value}`);
+    }
+
+    return url;
+  }
+
   private async executeRequest(
     url: URL,
     init?: RequestInit,
@@ -188,17 +308,26 @@ export class SupabaseKnowledgeArticleRepository implements KnowledgeArticleRepos
     }
   }
 
-  private expectSingle(rows: SupabaseKnowledgeArticleRow[]): KnowledgeArticle {
+  private expectSingle(
+    rows: SupabaseKnowledgeArticleRow[],
+    currentUserId: string,
+  ): KnowledgeArticle {
     if (rows.length === 0) {
       throw new ServiceUnavailableException(
         'Supabase knowledge mutation returned no representation.',
       );
     }
 
-    return this.mapRow(rows[0]);
+    return this.mapRow(rows[0], [], currentUserId);
   }
 
-  private mapRow(row: SupabaseKnowledgeArticleRow): KnowledgeArticle {
+  private mapRow(
+    row: SupabaseKnowledgeArticleRow,
+    likes: readonly SupabaseKnowledgeArticleLikeRow[],
+    currentUserId: string,
+  ): KnowledgeArticle {
+    const articleLikes = likes.filter((like) => like.article_id === row.id);
+
     return new KnowledgeArticle(
       row.id,
       row.title,
@@ -209,6 +338,8 @@ export class SupabaseKnowledgeArticleRepository implements KnowledgeArticleRepos
       row.created_by_user_id,
       row.created_at,
       row.updated_at,
+      articleLikes.length,
+      articleLikes.some((like) => like.user_id === currentUserId),
     );
   }
 

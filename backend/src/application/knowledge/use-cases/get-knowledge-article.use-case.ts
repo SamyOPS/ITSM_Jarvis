@@ -11,8 +11,12 @@ import { KnowledgeArticleRepository } from '../repositories/knowledge-article.re
 export class GetKnowledgeArticleUseCase {
   constructor(private readonly repository: KnowledgeArticleRepository) {}
 
-  async execute(id: string, userRole: UserRole): Promise<KnowledgeArticle> {
-    const article = await this.repository.getArticleById(id);
+  async execute(
+    id: string,
+    userRole: UserRole,
+    currentUserId: string,
+  ): Promise<KnowledgeArticle> {
+    const article = await this.repository.getArticleById(id, currentUserId);
 
     if (!article) {
       throw new NotFoundException('Knowledge article not found.');

@@ -1,5 +1,6 @@
 import {
   type FormEvent,
+  type MouseEvent,
   type ReactNode,
   useCallback,
   useEffect,
@@ -13,6 +14,7 @@ import {
   Pencil,
   Plus,
   Search,
+  ThumbsUp,
   Trash2,
   X,
 } from 'lucide-react';
@@ -28,6 +30,7 @@ import {
   deleteKnowledgeArticle,
   fetchKnowledgeArticle,
   fetchKnowledgeArticles,
+  toggleKnowledgeArticleLike,
   updateKnowledgeArticle,
 } from '../../infrastructure/api/knowledge-api';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
@@ -63,7 +66,7 @@ const KNOWLEDGE_CATEGORY_OPTIONS = [
   'Dépannage général',
 ] as const;
 
-const KNOWLEDGE_PAGE_SIZE = 12;
+const KNOWLEDGE_PAGE_SIZE = 20;
 
 const EMPTY_FORM: KnowledgeFormState = {
   category: '',
@@ -85,6 +88,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [likingArticleIds, setLikingArticleIds] = useState<string[]>([]);
   const isAdmin = session.user.role === 'ADMIN';
 
   const loadArticles = useCallback(async (): Promise<void> => {
@@ -143,14 +147,6 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
       ),
     [articles],
   );
-
-  const categoryCount = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const a of articles) {
-      counts[a.category] = (counts[a.category] ?? 0) + 1;
-    }
-    return counts;
-  }, [articles]);
 
   const filteredArticles = useMemo(() => {
     const normalizedSearch = normalizeText(search);
@@ -296,6 +292,47 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
     }
   }
 
+  async function handleToggleLike(
+    articleId: string,
+    event: MouseEvent<HTMLButtonElement>,
+  ): Promise<void> {
+    event.stopPropagation();
+    event.preventDefault();
+
+    if (likingArticleIds.includes(articleId)) {
+      return;
+    }
+
+    setLikingArticleIds((current) => [...current, articleId]);
+
+    try {
+      const updatedArticle = await toggleKnowledgeArticleLike(
+        session.accessToken,
+        articleId,
+      );
+
+      setArticles((current) =>
+        current.map((article) =>
+          article.id === updatedArticle.id ? updatedArticle : article,
+        ),
+      );
+
+      if (selectedArticle?.id === updatedArticle.id) {
+        setSelectedArticle(updatedArticle);
+      }
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue lors de la mise a jour du like de l'article",
+      );
+    } finally {
+      setLikingArticleIds((current) =>
+        current.filter((currentId) => currentId !== articleId),
+      );
+    }
+  }
+
   // Build modal node before conditional branches so it can be used in both views
   let modalNode: ReactNode = null;
 
@@ -378,6 +415,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
             <label className="field">
               <span>Titre</span>
               <input
+                maxLength={50}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, title: e.target.value }))
                 }
@@ -386,7 +424,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               />
             </label>
             <label className="field">
-              <span>Cat?gorie</span>
+              <span>Catégorie</span>
               <select
                 onChange={(e) =>
                   setForm((f) => ({ ...f, category: e.target.value }))
@@ -394,7 +432,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                 required
                 value={form.category}
               >
-                <option value="">Choisir une cat?gorie</option>
+                <option value="">Choisir une catégorie</option>
                 {KNOWLEDGE_CATEGORY_OPTIONS.map((category) => (
                   <option key={category} value={category}>
                     {category}
@@ -468,7 +506,10 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               >
                 Annuler
               </button>
-              <button className="primary-button" disabled={isSaving}>
+              <button
+                className="primary-button kb-light-button"
+                disabled={isSaving}
+              >
                 {isSaving
                   ? isEdit
                     ? 'Sauvegarde...'
@@ -570,116 +611,166 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   return (
     <section className="kb-page">
       {modalNode}
-      <div className="kb-toolbar">
-        <div className="kb-search">
-          <Search size={16} />
-          <input
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher un article..."
-            value={search}
-          />
-        </div>
-        {isAdmin ? (
-          <button
-            className="primary-button"
-            onClick={openCreate}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
-            type="button"
-          >
-            <Plus size={16} />
-            Nouvel article
-          </button>
-        ) : null}
-      </div>
+      <div className="ticket-list-card kb-list-card">
+        <div className="ticket-list-header kb-list-header">
+          <div>
+            <h3>Base de connaissances</h3>
+            <p>
+              Retrouvez les procedures utiles ainsi que les articles de support.
+            </p>
+          </div>
 
-      {errorMessage ? (
-        <p className="referentials-error">{errorMessage}</p>
-      ) : null}
+          <div className="ticket-list-toolbar">
+            <div className="ticket-list-count" aria-live="polite">
+              <strong>{filteredArticles.length}</strong>
+              <span>articles</span>
+            </div>
 
-      <div className="kb-category-bar">
-        <button
-          className={`kb-category-pill${!categoryFilter ? ' is-active' : ''}`}
-          onClick={() => setCategoryFilter('')}
-          type="button"
-        >
-          Toutes
-          <span className="kb-category-pill-count">{articles.length}</span>
-        </button>
-        {categories.map((cat) => (
-          <button
-            className={`kb-category-pill${categoryFilter === cat ? ' is-active' : ''}`}
-            key={cat}
-            onClick={() => setCategoryFilter(cat)}
-            type="button"
-          >
-            {cat}
-            <span className="kb-category-pill-count">
-              {categoryCount[cat] ?? 0}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {isLoading ? (
-        <p className="kb-empty">Chargement des articles...</p>
-      ) : filteredArticles.length === 0 ? (
-        <p className="kb-empty">Aucun article trouvé.</p>
-      ) : (
-        <>
-          <div className="kb-grid">
-            {paginatedArticles.map((article) => (
+            {isAdmin ? (
               <button
-                className="kb-card"
-                key={article.id}
-                onClick={() => navigateTo(`/knowledge/articles/${article.id}`)}
+                className="primary-button kb-light-button"
+                onClick={openCreate}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
                 type="button"
               >
-                <div className="kb-card-top">
-                  <span className="kb-card-category">{article.category}</span>
-                  <span
-                    className={`kb-card-status ${article.status === 'PUBLISHED' ? 'is-published' : 'is-draft'}`}
-                  >
-                    {article.status === 'PUBLISHED' ? 'Publié' : 'Brouillon'}
-                  </span>
-                </div>
-                <strong className="kb-card-title">{article.title}</strong>
-                <p className="kb-card-excerpt">{article.content}</p>
-                <small className="kb-card-meta">
-                  Mis à jour le {formatDate(article.updatedAt)}
-                </small>
+                <Plus size={16} />
+                Nouvel article
               </button>
-            ))}
+            ) : null}
+          </div>
+        </div>
+
+        <div className="kb-filter-row">
+          <div className="field kb-filter-field">
+            <span>Recherche</span>
+            <div className="kb-search">
+              <Search size={16} />
+              <input
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Rechercher un article..."
+                value={search}
+              />
+            </div>
           </div>
 
-          <div className="kb-pagination">
-            <button
-              className="secondary-button"
-              disabled={visiblePage <= 1}
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
-              type="button"
-            >
-              Précédent
-            </button>
-            <span aria-current="page" className="kb-pagination-current">
-              {visiblePage}
-            </span>
-            <button
-              className="secondary-button"
-              disabled={visiblePage >= totalPages}
-              onClick={() =>
-                setPage((current) => Math.min(totalPages, current + 1))
-              }
-              type="button"
-            >
-              Suivant
-            </button>
+          <div className="field kb-filter-field">
+            <span>Categorie</span>
+            <div className="kb-category-select">
+              <select
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                value={categoryFilter}
+              >
+                <option value="">Tous</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-        </>
-      )}
+        </div>
+
+        {errorMessage ? (
+          <p className="referentials-error">{errorMessage}</p>
+        ) : null}
+
+        {isLoading ? (
+          <p className="kb-empty">Chargement des articles...</p>
+        ) : filteredArticles.length === 0 ? (
+          <p className="kb-empty">Aucun article trouve.</p>
+        ) : (
+          <>
+            <div className="kb-grid">
+              {paginatedArticles.map((article) => (
+                <article
+                  className="kb-card"
+                  key={article.id}
+                  onClick={() =>
+                    navigateTo(`/knowledge/articles/${article.id}`)
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      navigateTo(`/knowledge/articles/${article.id}`);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="kb-card-top">
+                    <span className="kb-card-category">{article.category}</span>
+                    <span
+                      className={`kb-card-status ${article.status === 'PUBLISHED' ? 'is-published' : 'is-draft'}`}
+                    >
+                      {article.status === 'PUBLISHED' ? 'Publie' : 'Brouillon'}
+                    </span>
+                  </div>
+                  <strong className="kb-card-title">{article.title}</strong>
+                  <p className="kb-card-excerpt">{article.content}</p>
+                  <div className="kb-card-footer">
+                    <small className="kb-card-meta">
+                      Mis a jour le {formatDate(article.updatedAt)}
+                    </small>
+
+                    <button
+                      aria-label={
+                        article.likedByMe
+                          ? "Retirer le like de l'article"
+                          : "Liker l'article"
+                      }
+                      className={`kb-like-button${article.likedByMe ? ' is-active' : ''}`}
+                      disabled={likingArticleIds.includes(article.id)}
+                      onClick={(event) =>
+                        void handleToggleLike(article.id, event)
+                      }
+                      type="button"
+                    >
+                      <ThumbsUp size={15} />
+                      <span>{article.likesCount}</span>
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="kb-pagination">
+              <span className="kb-pagination-summary">
+                Page {visiblePage} sur {totalPages} - {filteredArticles.length}{' '}
+                articles
+              </span>
+
+              <div className="kb-pagination-controls">
+                <button
+                  className="secondary-button"
+                  disabled={visiblePage <= 1}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  type="button"
+                >
+                  Precedent
+                </button>
+                <span aria-current="page" className="kb-pagination-current">
+                  {visiblePage}
+                </span>
+                <button
+                  className="secondary-button"
+                  disabled={visiblePage >= totalPages}
+                  onClick={() =>
+                    setPage((current) => Math.min(totalPages, current + 1))
+                  }
+                  type="button"
+                >
+                  Suivant
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </section>
   );
 }

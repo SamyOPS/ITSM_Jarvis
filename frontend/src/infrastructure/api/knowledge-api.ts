@@ -62,6 +62,19 @@ export async function deleteKnowledgeArticle(
   });
 }
 
+export async function toggleKnowledgeArticleLike(
+  accessToken: string,
+  articleId: string,
+): Promise<KnowledgeArticle> {
+  return requestKnowledge<KnowledgeArticle>(
+    `/knowledge/articles/${articleId}/like`,
+    accessToken,
+    {
+      method: 'POST',
+    },
+  );
+}
+
 async function requestKnowledge<T>(
   path: string,
   accessToken: string,

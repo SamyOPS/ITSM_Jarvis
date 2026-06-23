@@ -11,5 +11,7 @@ export class KnowledgeArticle {
     public readonly createdByUserId: string,
     public readonly createdAt: string,
     public readonly updatedAt: string,
+    public readonly likesCount: number,
+    public readonly likedByMe: boolean,
   ) {}
 }

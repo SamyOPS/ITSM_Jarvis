@@ -12,9 +12,10 @@ export class UpdateKnowledgeArticleUseCase {
 
   async execute(
     id: string,
+    currentUserId: string,
     input: KnowledgeArticleInput,
   ): Promise<KnowledgeArticle> {
-    const existing = await this.repository.getArticleById(id);
+    const existing = await this.repository.getArticleById(id, currentUserId);
 
     if (!existing) {
       throw new NotFoundException('Knowledge article not found.');
@@ -23,7 +24,7 @@ export class UpdateKnowledgeArticleUseCase {
     const { category, content, status, title } =
       validateKnowledgeArticleInput(input);
 
-    return this.repository.updateArticle(id, {
+    return this.repository.updateArticle(id, currentUserId, {
       category,
       content,
       status,
