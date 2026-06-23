@@ -8,6 +8,7 @@ import { RolesGuard } from './http/auth/roles.guard';
 import { HealthController } from './http/health/health.controller';
 import { KnowledgeController } from './http/knowledge/knowledge.controller';
 import { PlanningController } from './http/planning/planning.controller';
+import { NotificationsController } from './http/notifications/notifications.controller';
 import { AdminReferentialsController } from './http/referentials/admin-referentials.controller';
 import { ReferentialsController } from './http/referentials/referentials.controller';
 import { ReportsController } from './http/reports/reports.controller';
@@ -22,6 +23,7 @@ import { TicketsController } from './http/tickets/tickets.controller';
     ReferentialsController,
     AdminReferentialsController,
     KnowledgeController,
+    NotificationsController,
     PlanningController,
     ReportsController,
     TicketsController,

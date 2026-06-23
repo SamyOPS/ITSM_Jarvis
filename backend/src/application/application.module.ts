@@ -10,6 +10,10 @@ import { RegisterRequesterUseCase } from './auth/use-cases/register-requester.us
 import { UpdateAdminUserUseCase } from './auth/use-cases/update-admin-user.use-case';
 import { UpdateAdminUserGroupsUseCase } from './auth/use-cases/update-admin-user-groups.use-case';
 import { UpdateAdminUserStatusUseCase } from './auth/use-cases/update-admin-user-status.use-case';
+import { TicketNotificationService } from './notifications/ticket-notification.service';
+import { ListNotificationsUseCase } from './notifications/use-cases/list-notifications.use-case';
+import { MarkAllNotificationsReadUseCase } from './notifications/use-cases/mark-all-notifications-read.use-case';
+import { MarkNotificationReadUseCase } from './notifications/use-cases/mark-notification-read.use-case';
 import { CreateGroupChatMessageUseCase } from './group-chat/use-cases/create-group-chat-message.use-case';
 import { ListGroupChatMessagesUseCase } from './group-chat/use-cases/list-group-chat-messages.use-case';
 import { GetReferentialCatalogUseCase } from './referentials/use-cases/get-referential-catalog.use-case';
@@ -116,6 +120,13 @@ const groupChatUseCases = [
   ListGroupChatMessagesUseCase,
 ];
 
+const notificationUseCases = [
+  TicketNotificationService,
+  ListNotificationsUseCase,
+  MarkAllNotificationsReadUseCase,
+  MarkNotificationReadUseCase,
+];
+
 @Module({
   imports: [ScheduleModule.forRoot(), InfrastructureModule],
   providers: [
@@ -132,6 +143,7 @@ const groupChatUseCases = [
     GetAgentPerformanceReportUseCase,
     GetTicketReportingBreakdownUseCase,
     GetTicketReportingOverviewUseCase,
+    ...notificationUseCases,
     ...groupChatUseCases,
     ...knowledgeUseCases,
     ...planningUseCases,
@@ -152,6 +164,7 @@ const groupChatUseCases = [
     GetAgentPerformanceReportUseCase,
     GetTicketReportingBreakdownUseCase,
     GetTicketReportingOverviewUseCase,
+    ...notificationUseCases,
     ...groupChatUseCases,
     ...knowledgeUseCases,
     ...planningUseCases,
