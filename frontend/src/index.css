@@ -440,9 +440,16 @@ a {
   border-bottom: 1px solid rgba(207, 216, 234, 0.8);
 }
 
-.workspace-notification-header > div {
+.workspace-notification-header-copy {
   display: grid;
   gap: 3px;
+}
+
+.workspace-notification-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .workspace-notification-header strong {
@@ -469,6 +476,14 @@ a {
   cursor: default;
 }
 
+.workspace-notification-header button.is-danger {
+  color: #c62828;
+}
+
+.workspace-notification-header button.is-danger:disabled {
+  color: #c4a3a3;
+}
+
 .workspace-notification-list {
   max-height: 430px;
   overflow-y: auto;
@@ -476,15 +491,11 @@ a {
 
 .workspace-notification-item {
   display: grid;
-  grid-template-columns: 9px minmax(0, 1fr);
-  gap: 11px;
+  grid-template-columns: minmax(0, 1fr) auto;
   width: 100%;
-  padding: 15px 20px;
-  border: 0;
   border-bottom: 1px solid rgba(225, 232, 242, 0.9);
   background: #ffffff;
   color: #17335f;
-  text-align: left;
   transition: background-color 150ms ease;
 }
 
@@ -493,7 +504,19 @@ a {
   background: #f2f7ff;
 }
 
-.workspace-notification-item > i {
+.workspace-notification-open-button {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr);
+  gap: 11px;
+  width: 100%;
+  padding: 15px 10px 15px 20px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.workspace-notification-open-button > i {
   width: 8px;
   height: 8px;
   margin-top: 6px;
@@ -501,12 +524,14 @@ a {
   background: #cbd5e1;
 }
 
-.workspace-notification-item.is-unread > i {
+.workspace-notification-item.is-unread
+  > .workspace-notification-open-button
+  > i {
   background: #1976d2;
   box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.12);
 }
 
-.workspace-notification-item > span {
+.workspace-notification-open-button > span {
   display: grid;
   gap: 4px;
   min-width: 0;
@@ -525,6 +550,30 @@ a {
 .workspace-notification-item time {
   color: #8a99af;
   font-size: 0.7rem;
+}
+
+.workspace-notification-delete-button {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-right: 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #8a99af;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.workspace-notification-delete-button:hover {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #c62828;
 }
 
 .workspace-notification-empty,
