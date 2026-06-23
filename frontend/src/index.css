@@ -391,6 +391,158 @@ a {
   background: #f2f7ff;
 }
 
+.workspace-notification-menu {
+  position: relative;
+}
+
+.workspace-notification-button {
+  position: relative;
+}
+
+.workspace-notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.workspace-notification-popover {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 40;
+  width: min(420px, calc(100vw - 32px));
+  overflow: hidden;
+  border: 1px solid rgba(190, 210, 242, 0.95);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(23, 51, 95, 0.2);
+}
+
+.workspace-notification-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(207, 216, 234, 0.8);
+}
+
+.workspace-notification-header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.workspace-notification-header strong {
+  color: #17335f;
+  font-size: 1rem;
+}
+
+.workspace-notification-header span {
+  color: #7183a0;
+  font-size: 0.76rem;
+}
+
+.workspace-notification-header button {
+  padding: 7px 0;
+  border: 0;
+  background: transparent;
+  color: #1956b3;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.workspace-notification-header button:disabled {
+  color: #9aa8bc;
+  cursor: default;
+}
+
+.workspace-notification-list {
+  max-height: 430px;
+  overflow-y: auto;
+}
+
+.workspace-notification-item {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr);
+  gap: 11px;
+  width: 100%;
+  padding: 15px 20px;
+  border: 0;
+  border-bottom: 1px solid rgba(225, 232, 242, 0.9);
+  background: #ffffff;
+  color: #17335f;
+  text-align: left;
+  transition: background-color 150ms ease;
+}
+
+.workspace-notification-item:hover,
+.workspace-notification-item.is-unread {
+  background: #f2f7ff;
+}
+
+.workspace-notification-item > i {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
+.workspace-notification-item.is-unread > i {
+  background: #1976d2;
+  box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.12);
+}
+
+.workspace-notification-item > span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.workspace-notification-item strong {
+  font-size: 0.86rem;
+}
+
+.workspace-notification-item span span {
+  color: #536987;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.workspace-notification-item time {
+  color: #8a99af;
+  font-size: 0.7rem;
+}
+
+.workspace-notification-empty,
+.workspace-notification-error {
+  margin: 0;
+  padding: 30px 20px;
+  color: #7183a0;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.workspace-notification-error {
+  padding: 10px 20px;
+  border-bottom: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #b42318;
+}
+
 .workspace-ticket-menu-popover {
   position: absolute;
   top: calc(100% + 10px);

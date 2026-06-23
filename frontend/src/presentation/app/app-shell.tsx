@@ -31,6 +31,12 @@ import {
 import type { RoutePath } from '../../domain/navigation/route';
 import { ROUTES } from '../../domain/navigation/route';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
+import {
+  fetchNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type NotificationSnapshot,
+} from '../../infrastructure/api/notifications-api';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -130,6 +136,27 @@ function getUserDisplayName(session: AuthSessionSnapshot | null): string {
   return fullName || session.user.email;
 }
 
+function formatNotificationDate(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  const today = new Date();
+  const isToday =
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate();
+
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: isToday ? undefined : '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: isToday ? undefined : 'short',
+  }).format(date);
+}
+
 function navigateToHomeDashboard(homeRoute: RoutePath, pathname: string): void {
   if (homeRoute !== '/reports') {
     navigateTo(homeRoute);
@@ -203,8 +230,16 @@ export function AppShell({
   );
   const [isTicketMenuOpen, setIsTicketMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationSnapshot[]>(
+    [],
+  );
+  const [notificationError, setNotificationError] = useState<string | null>(
+    null,
+  );
   const ticketMenuRef = useRef<HTMLDivElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const notificationMenuRef = useRef<HTMLDivElement | null>(null);
   const visibleRoutePaths = getVisibleRoutes(session);
   const visibleRoutes = visibleRoutePaths
     .map((path) => ROUTES.find((route) => route.path === path) ?? null)
@@ -220,6 +255,9 @@ export function AppShell({
   const CurrentBreadcrumbIcon = currentBreadcrumbRoute.icon;
   const userInitials = useMemo(() => getUserInitials(session), [session]);
   const userDisplayName = useMemo(() => getUserDisplayName(session), [session]);
+  const unreadNotificationCount = notifications.filter(
+    (notification) => !notification.readAt,
+  ).length;
   const administrationRoutes = administrationRouteOrder
     .map((path) => visibleRoutes.find((route) => route.path === path) ?? null)
     .filter((route) => route !== null);
@@ -242,6 +280,13 @@ export function AppShell({
       if (profileMenuRef.current && !profileMenuRef.current.contains(target)) {
         setIsProfileMenuOpen(false);
       }
+
+      if (
+        notificationMenuRef.current &&
+        !notificationMenuRef.current.contains(target)
+      ) {
+        setIsNotificationMenuOpen(false);
+      }
     }
 
     window.addEventListener('mousedown', handlePointerDown);
@@ -250,6 +295,118 @@ export function AppShell({
       window.removeEventListener('mousedown', handlePointerDown);
     };
   }, []);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadNotifications(): Promise<void> {
+      try {
+        const nextNotifications = await fetchNotifications(
+          session!.accessToken,
+        );
+
+        if (!cancelled) {
+          setNotifications(nextNotifications);
+          setNotificationError(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setNotificationError('Notifications temporairement indisponibles.');
+        }
+      }
+    }
+
+    void loadNotifications();
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void loadNotifications();
+      }
+    }, 5 * 60_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [session]);
+
+  async function handleNotificationMenuToggle(): Promise<void> {
+    const willOpen = !isNotificationMenuOpen;
+
+    setIsNotificationMenuOpen(willOpen);
+    setIsProfileMenuOpen(false);
+    setIsTicketMenuOpen(false);
+
+    if (!willOpen || !session) {
+      return;
+    }
+
+    try {
+      setNotifications(await fetchNotifications(session.accessToken));
+      setNotificationError(null);
+    } catch {
+      setNotificationError('Notifications temporairement indisponibles.');
+    }
+  }
+
+  async function handleNotificationClick(
+    notification: NotificationSnapshot,
+  ): Promise<void> {
+    if (!session) {
+      return;
+    }
+
+    if (!notification.readAt) {
+      try {
+        await markNotificationRead(session.accessToken, notification.id);
+        const readAt = new Date().toISOString();
+
+        setNotifications((currentNotifications) =>
+          currentNotifications.map((currentNotification) =>
+            currentNotification.id === notification.id
+              ? { ...currentNotification, readAt }
+              : currentNotification,
+          ),
+        );
+      } catch {
+        setNotificationError(
+          'Impossible de marquer la notification comme lue.',
+        );
+      }
+    }
+
+    setIsNotificationMenuOpen(false);
+
+    if (notification.link?.startsWith('/')) {
+      navigateTo(notification.link);
+    }
+  }
+
+  async function handleMarkAllNotificationsRead(): Promise<void> {
+    if (!session || unreadNotificationCount === 0) {
+      return;
+    }
+
+    try {
+      await markAllNotificationsRead(session.accessToken);
+      const readAt = new Date().toISOString();
+
+      setNotifications((currentNotifications) =>
+        currentNotifications.map((notification) => ({
+          ...notification,
+          readAt: notification.readAt ?? readAt,
+        })),
+      );
+      setNotificationError(null);
+    } catch {
+      setNotificationError(
+        'Impossible de marquer les notifications comme lues.',
+      );
+    }
+  }
 
   function handleCreateIncidentClick(): void {
     setIsTicketMenuOpen(false);
@@ -790,13 +947,91 @@ export function AppShell({
               ) : null}
             </div>
 
-            <button
-              aria-label="Notifications"
-              className="workspace-notification-button"
-              type="button"
+            <div
+              className="workspace-notification-menu"
+              ref={notificationMenuRef}
             >
-              <Bell size={18} strokeWidth={2} />
-            </button>
+              <button
+                aria-expanded={isNotificationMenuOpen}
+                aria-label={`Notifications${unreadNotificationCount ? `, ${unreadNotificationCount} non lues` : ''}`}
+                className="workspace-notification-button"
+                onClick={() => void handleNotificationMenuToggle()}
+                type="button"
+              >
+                <Bell size={18} strokeWidth={2} />
+                {unreadNotificationCount > 0 ? (
+                  <span className="workspace-notification-badge">
+                    {unreadNotificationCount > 99
+                      ? '99+'
+                      : unreadNotificationCount}
+                  </span>
+                ) : null}
+              </button>
+
+              {isNotificationMenuOpen ? (
+                <section
+                  aria-label="Centre de notifications"
+                  className="workspace-notification-popover"
+                >
+                  <header className="workspace-notification-header">
+                    <div>
+                      <strong>Notifications</strong>
+                      <span>
+                        {unreadNotificationCount > 0
+                          ? `${unreadNotificationCount} non lue${unreadNotificationCount > 1 ? 's' : ''}`
+                          : 'Tout est à jour'}
+                      </span>
+                    </div>
+
+                    <button
+                      disabled={unreadNotificationCount === 0}
+                      onClick={() => void handleMarkAllNotificationsRead()}
+                      type="button"
+                    >
+                      Tout marquer comme lu
+                    </button>
+                  </header>
+
+                  {notificationError ? (
+                    <p className="workspace-notification-error">
+                      {notificationError}
+                    </p>
+                  ) : null}
+
+                  <div className="workspace-notification-list">
+                    {notifications.length === 0 ? (
+                      <p className="workspace-notification-empty">
+                        Aucune notification pour le moment.
+                      </p>
+                    ) : (
+                      notifications.map((notification) => (
+                        <button
+                          className={
+                            notification.readAt
+                              ? 'workspace-notification-item'
+                              : 'workspace-notification-item is-unread'
+                          }
+                          key={notification.id}
+                          onClick={() =>
+                            void handleNotificationClick(notification)
+                          }
+                          type="button"
+                        >
+                          <i aria-hidden="true" />
+                          <span>
+                            <strong>{notification.title}</strong>
+                            <span>{notification.message}</span>
+                            <time dateTime={notification.createdAt}>
+                              {formatNotificationDate(notification.createdAt)}
+                            </time>
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </section>
+              ) : null}
+            </div>
 
             <div className="workspace-profile-menu" ref={profileMenuRef}>
               <button
