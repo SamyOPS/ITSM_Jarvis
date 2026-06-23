@@ -6,6 +6,8 @@ export type KnowledgeArticle = {
   createdAt: string;
   createdByUserId: string;
   id: string;
+  likedByMe: boolean;
+  likesCount: number;
   slug: string;
   status: KnowledgeArticleStatus;
   title: string;

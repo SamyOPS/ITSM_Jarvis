@@ -36,6 +36,7 @@ import { CreateKnowledgeArticleUseCase } from './knowledge/use-cases/create-know
 import { DeleteKnowledgeArticleUseCase } from './knowledge/use-cases/delete-knowledge-article.use-case';
 import { GetKnowledgeArticleUseCase } from './knowledge/use-cases/get-knowledge-article.use-case';
 import { ListKnowledgeArticlesUseCase } from './knowledge/use-cases/list-knowledge-articles.use-case';
+import { ToggleKnowledgeArticleLikeUseCase } from './knowledge/use-cases/toggle-knowledge-article-like.use-case';
 import { UpdateKnowledgeArticleUseCase } from './knowledge/use-cases/update-knowledge-article.use-case';
 import { CreatePlanningTaskUseCase } from './planning/use-cases/create-planning-task.use-case';
 import { DeletePlanningTaskUseCase } from './planning/use-cases/delete-planning-task.use-case';
@@ -114,6 +115,7 @@ const knowledgeUseCases = [
   DeleteKnowledgeArticleUseCase,
   GetKnowledgeArticleUseCase,
   ListKnowledgeArticlesUseCase,
+  ToggleKnowledgeArticleLikeUseCase,
   UpdateKnowledgeArticleUseCase,
 ];
 

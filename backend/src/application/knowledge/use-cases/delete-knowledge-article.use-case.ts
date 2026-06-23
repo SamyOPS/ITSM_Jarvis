@@ -6,7 +6,7 @@ export class DeleteKnowledgeArticleUseCase {
   constructor(private readonly repository: KnowledgeArticleRepository) {}
 
   async execute(id: string): Promise<void> {
-    const existing = await this.repository.getArticleById(id);
+    const existing = await this.repository.getArticleById(id, '');
 
     if (!existing) {
       throw new NotFoundException('Knowledge article not found.');

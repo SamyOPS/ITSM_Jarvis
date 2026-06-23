@@ -7,11 +7,11 @@ import { KnowledgeArticleRepository } from '../repositories/knowledge-article.re
 export class ListKnowledgeArticlesUseCase {
   constructor(private readonly repository: KnowledgeArticleRepository) {}
 
-  execute(userRole: UserRole): Promise<KnowledgeArticle[]> {
+  execute(userRole: UserRole, currentUserId: string): Promise<KnowledgeArticle[]> {
     if (userRole === UserRole.ADMIN) {
-      return this.repository.listArticles();
+      return this.repository.listArticles(currentUserId);
     }
 
-    return this.repository.listPublishedArticles();
+    return this.repository.listPublishedArticles(currentUserId);
   }
 }

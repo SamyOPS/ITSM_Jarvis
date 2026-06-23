@@ -14,6 +14,7 @@ import { CreateKnowledgeArticleUseCase } from '../../../application/knowledge/us
 import { DeleteKnowledgeArticleUseCase } from '../../../application/knowledge/use-cases/delete-knowledge-article.use-case';
 import { GetKnowledgeArticleUseCase } from '../../../application/knowledge/use-cases/get-knowledge-article.use-case';
 import { ListKnowledgeArticlesUseCase } from '../../../application/knowledge/use-cases/list-knowledge-articles.use-case';
+import { ToggleKnowledgeArticleLikeUseCase } from '../../../application/knowledge/use-cases/toggle-knowledge-article-like.use-case';
 import { UpdateKnowledgeArticleUseCase } from '../../../application/knowledge/use-cases/update-knowledge-article.use-case';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
 import { UserRole } from '../../../domain/auth/user-role';
@@ -39,6 +40,7 @@ export class KnowledgeController {
     private readonly deleteKnowledgeArticleUseCase: DeleteKnowledgeArticleUseCase,
     private readonly getKnowledgeArticleUseCase: GetKnowledgeArticleUseCase,
     private readonly listKnowledgeArticlesUseCase: ListKnowledgeArticlesUseCase,
+    private readonly toggleKnowledgeArticleLikeUseCase: ToggleKnowledgeArticleLikeUseCase,
     private readonly updateKnowledgeArticleUseCase: UpdateKnowledgeArticleUseCase,
   ) {}
 
@@ -46,7 +48,7 @@ export class KnowledgeController {
   listArticles(
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<KnowledgeArticle[]> {
-    return this.listKnowledgeArticlesUseCase.execute(user.role);
+    return this.listKnowledgeArticlesUseCase.execute(user.role, user.id);
   }
 
   @Get(':id')
@@ -54,7 +56,15 @@ export class KnowledgeController {
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<KnowledgeArticle> {
-    return this.getKnowledgeArticleUseCase.execute(id, user.role);
+    return this.getKnowledgeArticleUseCase.execute(id, user.role, user.id);
+  }
+
+  @Post(':id/like')
+  toggleLike(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<KnowledgeArticle> {
+    return this.toggleKnowledgeArticleLikeUseCase.execute(id, user.id);
   }
 
   @Post()
@@ -71,8 +81,9 @@ export class KnowledgeController {
   updateArticle(
     @Param('id') id: string,
     @Body() body: KnowledgeArticleBodyDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<KnowledgeArticle> {
-    return this.updateKnowledgeArticleUseCase.execute(id, body);
+    return this.updateKnowledgeArticleUseCase.execute(id, user.id, body);
   }
 
   @Delete(':id')
