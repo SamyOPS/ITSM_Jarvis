@@ -1027,30 +1027,6 @@ a {
   background: transparent;
 }
 
-.admin-users-page .admin-users-add-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 38px;
-  padding: 0 16px;
-  border: 1px solid rgba(37, 99, 235, 0.24);
-  border-radius: 999px;
-  background-color: #e7f0ff;
-  color: #17335f;
-  font-weight: 400;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    transform 160ms ease;
-  appearance: none;
-}
-
-.admin-users-page .admin-users-add-button:hover {
-  transform: translateY(-1px);
-  border-color: rgba(37, 99, 235, 0.34);
-  background-color: #d8e7ff;
-}
-
 .admin-users-toolbar {
   display: grid;
   grid-template-columns: minmax(280px, 1fr) minmax(180px, 240px) auto;
@@ -1346,6 +1322,7 @@ a {
   min-height: 40px;
   width: auto;
   padding: 0 16px;
+  font-weight: 400;
 }
 
 .admin-user-save-button:hover:not(:disabled) {
