@@ -469,9 +469,7 @@ export function AppShell({
               <span className="workspace-nav-link-icon" aria-hidden="true">
                 <Ticket size={18} strokeWidth={2} />
               </span>
-              <strong className="workspace-nav-link-label">
-                Mes tickets
-              </strong>
+              <strong className="workspace-nav-link-label">Mes tickets</strong>
             </button>
           ) : null}
 
