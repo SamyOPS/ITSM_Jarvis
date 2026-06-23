@@ -58,6 +58,31 @@ export class SupabaseNotificationRepository implements NotificationRepository {
     await this.assertOk(response, 'creation');
   }
 
+  async delete(notificationId: string, userId: string): Promise<void> {
+    const url = this.buildUrl('notifications');
+    url.searchParams.set('id', `eq.${notificationId}`);
+    url.searchParams.set('recipient_user_id', `eq.${userId}`);
+
+    const response = await this.send(url, {
+      method: 'DELETE',
+      headers: { Prefer: 'return=minimal' },
+    });
+
+    await this.assertOk(response, 'deletion');
+  }
+
+  async deleteAll(userId: string): Promise<void> {
+    const url = this.buildUrl('notifications');
+    url.searchParams.set('recipient_user_id', `eq.${userId}`);
+
+    const response = await this.send(url, {
+      method: 'DELETE',
+      headers: { Prefer: 'return=minimal' },
+    });
+
+    await this.assertOk(response, 'bulk deletion');
+  }
+
   async listForUser(userId: string, limit: number): Promise<Notification[]> {
     const url = this.buildUrl('notifications');
     url.searchParams.set('select', NOTIFICATION_SELECT);

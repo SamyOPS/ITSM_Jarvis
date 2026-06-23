@@ -11,6 +11,8 @@ import { UpdateAdminUserUseCase } from './auth/use-cases/update-admin-user.use-c
 import { UpdateAdminUserGroupsUseCase } from './auth/use-cases/update-admin-user-groups.use-case';
 import { UpdateAdminUserStatusUseCase } from './auth/use-cases/update-admin-user-status.use-case';
 import { TicketNotificationService } from './notifications/ticket-notification.service';
+import { DeleteNotificationUseCase } from './notifications/use-cases/delete-notification.use-case';
+import { DeleteAllNotificationsUseCase } from './notifications/use-cases/delete-all-notifications.use-case';
 import { ListNotificationsUseCase } from './notifications/use-cases/list-notifications.use-case';
 import { MarkAllNotificationsReadUseCase } from './notifications/use-cases/mark-all-notifications-read.use-case';
 import { MarkNotificationReadUseCase } from './notifications/use-cases/mark-notification-read.use-case';
@@ -122,6 +124,8 @@ const groupChatUseCases = [
 
 const notificationUseCases = [
   TicketNotificationService,
+  DeleteAllNotificationsUseCase,
+  DeleteNotificationUseCase,
   ListNotificationsUseCase,
   MarkAllNotificationsReadUseCase,
   MarkNotificationReadUseCase,

@@ -19,6 +19,7 @@ import {
   Shield,
   SlidersHorizontal,
   Ticket,
+  Trash2,
   User,
   Users,
 } from 'lucide-react';
@@ -32,6 +33,8 @@ import type { RoutePath } from '../../domain/navigation/route';
 import { ROUTES } from '../../domain/navigation/route';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 import {
+  deleteAllNotifications,
+  deleteNotification,
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
@@ -237,6 +240,8 @@ export function AppShell({
   const [notificationError, setNotificationError] = useState<string | null>(
     null,
   );
+  const [isDeletingAllNotifications, setIsDeletingAllNotifications] =
+    useState(false);
   const ticketMenuRef = useRef<HTMLDivElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const notificationMenuRef = useRef<HTMLDivElement | null>(null);
@@ -405,6 +410,48 @@ export function AppShell({
       setNotificationError(
         'Impossible de marquer les notifications comme lues.',
       );
+    }
+  }
+
+  async function handleDeleteNotification(
+    notificationId: string,
+  ): Promise<void> {
+    if (!session) {
+      return;
+    }
+
+    try {
+      await deleteNotification(session.accessToken, notificationId);
+      setNotifications((currentNotifications) =>
+        currentNotifications.filter(
+          (notification) => notification.id !== notificationId,
+        ),
+      );
+      setNotificationError(null);
+    } catch {
+      setNotificationError('Impossible de supprimer la notification.');
+    }
+  }
+
+  async function handleDeleteAllNotifications(): Promise<void> {
+    if (
+      !session ||
+      notifications.length === 0 ||
+      !window.confirm('Supprimer définitivement toutes les notifications ?')
+    ) {
+      return;
+    }
+
+    setIsDeletingAllNotifications(true);
+
+    try {
+      await deleteAllNotifications(session.accessToken);
+      setNotifications([]);
+      setNotificationError(null);
+    } catch {
+      setNotificationError('Impossible de supprimer toutes les notifications.');
+    } finally {
+      setIsDeletingAllNotifications(false);
     }
   }
 
@@ -974,7 +1021,7 @@ export function AppShell({
                   className="workspace-notification-popover"
                 >
                   <header className="workspace-notification-header">
-                    <div>
+                    <div className="workspace-notification-header-copy">
                       <strong>Notifications</strong>
                       <span>
                         {unreadNotificationCount > 0
@@ -983,13 +1030,29 @@ export function AppShell({
                       </span>
                     </div>
 
-                    <button
-                      disabled={unreadNotificationCount === 0}
-                      onClick={() => void handleMarkAllNotificationsRead()}
-                      type="button"
-                    >
-                      Tout marquer comme lu
-                    </button>
+                    <div className="workspace-notification-header-actions">
+                      <button
+                        disabled={unreadNotificationCount === 0}
+                        onClick={() => void handleMarkAllNotificationsRead()}
+                        type="button"
+                      >
+                        Tout marquer comme lu
+                      </button>
+
+                      <button
+                        className="is-danger"
+                        disabled={
+                          notifications.length === 0 ||
+                          isDeletingAllNotifications
+                        }
+                        onClick={() => void handleDeleteAllNotifications()}
+                        type="button"
+                      >
+                        {isDeletingAllNotifications
+                          ? 'Suppression...'
+                          : 'Tout supprimer'}
+                      </button>
+                    </div>
                   </header>
 
                   {notificationError ? (
@@ -1005,27 +1068,43 @@ export function AppShell({
                       </p>
                     ) : (
                       notifications.map((notification) => (
-                        <button
+                        <div
                           className={
                             notification.readAt
                               ? 'workspace-notification-item'
                               : 'workspace-notification-item is-unread'
                           }
                           key={notification.id}
-                          onClick={() =>
-                            void handleNotificationClick(notification)
-                          }
-                          type="button"
                         >
-                          <i aria-hidden="true" />
-                          <span>
-                            <strong>{notification.title}</strong>
-                            <span>{notification.message}</span>
-                            <time dateTime={notification.createdAt}>
-                              {formatNotificationDate(notification.createdAt)}
-                            </time>
-                          </span>
-                        </button>
+                          <button
+                            className="workspace-notification-open-button"
+                            onClick={() =>
+                              void handleNotificationClick(notification)
+                            }
+                            type="button"
+                          >
+                            <i aria-hidden="true" />
+                            <span>
+                              <strong>{notification.title}</strong>
+                              <span>{notification.message}</span>
+                              <time dateTime={notification.createdAt}>
+                                {formatNotificationDate(notification.createdAt)}
+                              </time>
+                            </span>
+                          </button>
+
+                          <button
+                            aria-label={`Supprimer la notification ${notification.title}`}
+                            className="workspace-notification-delete-button"
+                            onClick={() =>
+                              void handleDeleteNotification(notification.id)
+                            }
+                            title="Supprimer"
+                            type="button"
+                          >
+                            <Trash2 size={15} strokeWidth={2} />
+                          </button>
+                        </div>
                       ))
                     )}
                   </div>

@@ -54,6 +54,48 @@ export async function markAllNotificationsRead(
   await patchNotification(accessToken, '/notifications/read-all');
 }
 
+export async function deleteNotification(
+  accessToken: string,
+  notificationId: string,
+): Promise<void> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(
+    `${apiUrl}/notifications/${encodeURIComponent(notificationId)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      (await response.text()) ||
+        `La suppression de la notification a échoué (${response.status}).`,
+    );
+  }
+}
+
+export async function deleteAllNotifications(
+  accessToken: string,
+): Promise<void> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/notifications`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      (await response.text()) ||
+        `La suppression des notifications a échoué (${response.status}).`,
+    );
+  }
+}
+
 async function patchNotification(
   accessToken: string,
   path: string,

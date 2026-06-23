@@ -20,6 +20,8 @@ export type NotificationRecipientProfile = {
 
 export abstract class NotificationRepository {
   abstract createMany(records: CreateNotificationRecord[]): Promise<void>;
+  abstract delete(notificationId: string, userId: string): Promise<void>;
+  abstract deleteAll(userId: string): Promise<void>;
   abstract listActiveRecipients(): Promise<NotificationRecipientProfile[]>;
   abstract listForUser(userId: string, limit: number): Promise<Notification[]>;
   abstract markAllRead(userId: string): Promise<void>;
