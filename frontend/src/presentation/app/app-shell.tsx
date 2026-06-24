@@ -1,15 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
-  Archive,
-  BarChart3,
   Bell,
   ChevronDown,
   FileText,
-  BookOpen,
   House,
-  LayoutDashboard,
-  ListChecks,
   LogOut,
   Menu,
   Moon,
@@ -21,15 +16,11 @@ import {
   Ticket,
   Trash2,
   User,
-  Users,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import {
   getHomeRoute,
   getVisibleRoutes,
 } from '../../application/auth/access-control';
-import type { RoutePath } from '../../domain/navigation/route';
 import { ROUTES } from '../../domain/navigation/route';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 import {
@@ -40,185 +31,18 @@ import {
   markNotificationRead,
   type NotificationSnapshot,
 } from '../../infrastructure/api/notifications-api';
-
-interface AppShellProps {
-  children: React.ReactNode;
-  isAuthenticated: boolean;
-  onLogout: () => void;
-  pathname: string;
-  session: AuthSessionSnapshot | null;
-}
-
-type SidebarMenuId = 'administration' | 'create-ticket' | 'parc';
-
-const administrationRouteOrder: RoutePath[] = [
-  '/admin/users',
-  '/admin/groups',
-  '/agent/archives',
-];
-
-const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
-  '/': LayoutDashboard,
-  '/admin/groups': Users,
-  '/admin/users': User,
-  '/agent': LayoutDashboard,
-  '/agent/archives': Archive,
-  '/agent/incidents/new': AlertTriangle,
-  '/agent/my-tickets': Ticket,
-  '/agent/requests/new': FileText,
-  '/agent/tickets': ListChecks,
-  '/knowledge/articles': BookOpen,
-  '/parc/ci-types': SlidersHorizontal,
-  '/parc/cis': Settings,
-  '/reports': BarChart3,
-};
-
-function isRouteActive(routePath: RoutePath, pathname: string): boolean {
-  if (routePath === '/agent/tickets') {
-    return (
-      pathname === '/agent/tickets' || pathname.startsWith('/agent/tickets/')
-    );
-  }
-
-  if (routePath === '/agent/archives') {
-    return (
-      pathname === '/agent/archives' || pathname.startsWith('/agent/archives/')
-    );
-  }
-
-  if (routePath === '/agent') {
-    return pathname === '/agent';
-  }
-
-  return pathname === routePath;
-}
-
-function getRouteDisplayTitle(
-  routePath: RoutePath,
-  routeTitle: string,
-  session: AuthSessionSnapshot | null,
-): string {
-  if (routePath === '/agent/tickets' && session?.user.role === 'DEMANDEUR') {
-    return 'Mes tickets';
-  }
-
-  if (routePath === '/agent/tickets') {
-    return 'Liste des tickets';
-  }
-
-  return routeTitle;
-}
-
-function getUserInitials(session: AuthSessionSnapshot | null): string {
-  if (!session) {
-    return 'VI';
-  }
-
-  const initials = [session.user.firstName, session.user.lastName]
-    .filter(Boolean)
-    .map((value) => value!.trim().charAt(0).toUpperCase())
-    .join('');
-
-  if (initials) {
-    return initials.slice(0, 2);
-  }
-
-  return session.user.email.slice(0, 2).toUpperCase();
-}
-
-function getUserDisplayName(session: AuthSessionSnapshot | null): string {
-  if (!session) {
-    return 'Session locale';
-  }
-
-  const fullName = [session.user.firstName, session.user.lastName]
-    .filter(Boolean)
-    .join(' ')
-    .trim();
-
-  return fullName || session.user.email;
-}
-
-function formatNotificationDate(value: string): string {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  const today = new Date();
-  const isToday =
-    date.getFullYear() === today.getFullYear() &&
-    date.getMonth() === today.getMonth() &&
-    date.getDate() === today.getDate();
-
-  return new Intl.DateTimeFormat('fr-FR', {
-    day: isToday ? undefined : '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    month: isToday ? undefined : 'short',
-  }).format(date);
-}
-
-function navigateToHomeDashboard(homeRoute: RoutePath, pathname: string): void {
-  if (homeRoute !== '/reports') {
-    navigateTo(homeRoute);
-
-    return;
-  }
-
-  if (pathname === '/reports') {
-    window.dispatchEvent(new CustomEvent('reports:show-dashboard'));
-
-    return;
-  }
-
-  navigateTo('/reports');
-}
-
-function getCurrentBreadcrumbRoute(
-  pathname: string,
-
-  session: AuthSessionSnapshot | null,
-): { icon: LucideIcon; title: string } {
-  const exactRoute = ROUTES.find((route) => route.path === pathname);
-
-  if (exactRoute) {
-    return {
-      icon: routeIcons[exactRoute.path] ?? FileText,
-      title:
-        exactRoute.path === '/agent/tickets'
-          ? 'Tous les tickets'
-          : getRouteDisplayTitle(exactRoute.path, exactRoute.title, session),
-    };
-  }
-
-  if (pathname.startsWith('/agent/tickets/')) {
-    return {
-      icon: Ticket,
-      title: 'Ticket',
-    };
-  }
-
-  if (pathname.startsWith('/admin/users/')) {
-    return {
-      icon: User,
-      title: 'Utilisateur',
-    };
-  }
-
-  if (pathname.startsWith('/admin/groups/')) {
-    return {
-      icon: Users,
-      title: 'Groupe',
-    };
-  }
-
-  return {
-    icon: LayoutDashboard,
-    title: 'Tableau de bord',
-  };
-}
+import {
+  administrationRouteOrder,
+  formatNotificationDate,
+  getCurrentBreadcrumbRoute,
+  getRouteDisplayTitle,
+  getUserDisplayName,
+  getUserInitials,
+  isRouteActive,
+  navigateToHomeDashboard,
+  routeIcons,
+} from './app-shell.helpers';
+import type { AppShellProps, SidebarMenuId } from './app-shell.types';
 
 export function AppShell({
   children,
