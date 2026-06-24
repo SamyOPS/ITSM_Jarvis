@@ -10,27 +10,21 @@ import {
 } from 'react';
 import {
   ArrowLeft,
-  ArrowUpDown,
   Eye,
   FileText,
-  Flame,
-  History,
   Pencil,
   Plus,
   Search,
   SlidersHorizontal,
-  ThumbsUp,
   Trash2,
   X,
 } from 'lucide-react';
-import type { CSSProperties } from 'react';
 import type {
   CreateKnowledgeArticlePayload,
   KnowledgeArticle,
   KnowledgeArticleStatus,
   UpdateKnowledgeArticlePayload,
 } from '../../domain/knowledge/knowledge-article';
-import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import {
   createKnowledgeArticle,
   deleteKnowledgeArticle,
@@ -40,184 +34,24 @@ import {
   updateKnowledgeArticle,
 } from '../../infrastructure/api/knowledge-api';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
-
-type KnowledgePageProps = {
-  articleId?: string;
-  session: AuthSessionSnapshot;
-};
-
-type KnowledgeFormState = {
-  category: string;
-  content: string;
-  status: KnowledgeArticleStatus;
-  title: string;
-};
-
-type ModalState =
-  | { type: 'none' }
-  | { type: 'create' }
-  | { type: 'edit'; article: KnowledgeArticle }
-  | { type: 'delete'; article: KnowledgeArticle };
-
-type KnowledgeSortOption = 'POPULAR' | 'NEWEST' | 'OLDEST';
-
-const KNOWLEDGE_CATEGORY_OPTIONS = [
-  'Compte & accès',
-  'Réseau & Internet',
-  'Matériel',
-  'Logiciels & applications',
-  'Messagerie',
-  'Impression',
-  'Sécurité',
-  'Téléphonie',
-  'Procédures internes',
-  'Dépannage général',
-] as const;
-
-const KNOWLEDGE_PAGE_SIZE = 20;
-
-const EMPTY_FORM: KnowledgeFormState = {
-  category: '',
-  content: '',
-  status: 'PUBLISHED',
-  title: '',
-};
-
-const KNOWLEDGE_SORT_OPTIONS: Array<{
-  description: string;
-  icon: typeof Flame;
-  label: string;
-  value: KnowledgeSortOption;
-}> = [
-  {
-    value: 'POPULAR',
-    label: 'Plus populaire',
-    description: 'Trie par nombre de likes',
-    icon: Flame,
-  },
-  {
-    value: 'NEWEST',
-    label: 'Plus recentes',
-    description: 'Articles les plus recemment mis a jour',
-    icon: ArrowUpDown,
-  },
-  {
-    value: 'OLDEST',
-    label: 'Plus anciennes',
-    description: 'Articles les plus anciens en premier',
-    icon: History,
-  },
-];
-
-function KnowledgeArticleCard({
-  article,
-  isLiking,
-  onToggleLike,
-}: {
-  article: KnowledgeArticle;
-  isLiking: boolean;
-  onToggleLike: (
-    articleId: string,
-    event: MouseEvent<HTMLButtonElement>,
-  ) => void;
-}) {
-  const titleRef = useRef<HTMLElement | null>(null);
-  const [excerptLineClamp, setExcerptLineClamp] = useState(3);
-
-  useEffect(() => {
-    const element = titleRef.current;
-
-    if (!element) {
-      return;
-    }
-
-    const updateExcerptLineClamp = (): void => {
-      const computedStyle = window.getComputedStyle(element);
-      const lineHeight = Number.parseFloat(computedStyle.lineHeight);
-
-      if (!Number.isFinite(lineHeight) || lineHeight <= 0) {
-        setExcerptLineClamp(3);
-        return;
-      }
-
-      const titleLineCount = Math.max(
-        1,
-        Math.round(element.getBoundingClientRect().height / lineHeight),
-      );
-
-      setExcerptLineClamp(titleLineCount <= 1 ? 4 : 3);
-    };
-
-    updateExcerptLineClamp();
-
-    const resizeObserver = new ResizeObserver(() => {
-      updateExcerptLineClamp();
-    });
-
-    resizeObserver.observe(element);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [article.title]);
-
-  return (
-    <article
-      className="kb-card"
-      onClick={() => navigateTo(`/knowledge/articles/${article.id}`)}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          navigateTo(`/knowledge/articles/${article.id}`);
-        }
-      }}
-      role="button"
-      tabIndex={0}
-    >
-      <div className="kb-card-top">
-        <span className="kb-card-category">{article.category}</span>
-        <span
-          className={`kb-card-status ${article.status === 'PUBLISHED' ? 'is-published' : 'is-draft'}`}
-        >
-          {article.status === 'PUBLISHED' ? 'Publie' : 'Brouillon'}
-        </span>
-      </div>
-      <strong className="kb-card-title" ref={titleRef}>
-        {article.title}
-      </strong>
-      <p
-        className="kb-card-excerpt"
-        style={
-          {
-            '--kb-excerpt-lines': excerptLineClamp,
-          } as CSSProperties
-        }
-      >
-        {article.content}
-      </p>
-      <div className="kb-card-footer">
-        <small className="kb-card-meta">
-          Mis a jour le {formatDate(article.updatedAt)}
-        </small>
-
-        <button
-          aria-label={
-            article.likedByMe
-              ? "Retirer le like de l'article"
-              : "Liker l'article"
-          }
-          className={`kb-like-button${article.likedByMe ? ' is-active' : ''}`}
-          disabled={isLiking}
-          onClick={(event) => onToggleLike(article.id, event)}
-          type="button"
-        >
-          <ThumbsUp size={15} />
-          <span>{article.likesCount}</span>
-        </button>
-      </div>
-    </article>
-  );
-}
+import { KnowledgeArticleCard } from './knowledge-article-card';
+import {
+  EMPTY_FORM,
+  KNOWLEDGE_CATEGORY_OPTIONS,
+  KNOWLEDGE_PAGE_SIZE,
+  KNOWLEDGE_SORT_OPTIONS,
+} from './knowledge-page.constants';
+import {
+  formatDate,
+  normalizeText,
+  renderMarkdown,
+} from './knowledge-page.helpers';
+import type {
+  KnowledgeFormState,
+  KnowledgePageProps,
+  KnowledgeSortOption,
+  ModalState,
+} from './knowledge-page.types';
 
 export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
@@ -997,134 +831,4 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
       </div>
     </section>
   );
-}
-
-function renderMarkdown(content: string): ReactNode {
-  const lines = content.split('\n');
-  const nodes: ReactNode[] = [];
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i];
-
-    // Code fence
-    if (line.trimStart().startsWith('```')) {
-      const codeLines: string[] = [];
-      i++;
-      while (i < lines.length && !lines[i].trimStart().startsWith('```')) {
-        codeLines.push(lines[i]);
-        i++;
-      }
-      i++; // skip closing ```
-      nodes.push(
-        <pre key={`pre-${i}`}>
-          <code>{codeLines.join('\n')}</code>
-        </pre>,
-      );
-      continue;
-    }
-
-    // Headings
-    if (line.startsWith('### ')) {
-      nodes.push(<h3 key={`h3-${i}`}>{inlineMarkdown(line.slice(4))}</h3>);
-    } else if (line.startsWith('## ')) {
-      nodes.push(<h2 key={`h2-${i}`}>{inlineMarkdown(line.slice(3))}</h2>);
-    } else if (line.startsWith('# ')) {
-      nodes.push(<h1 key={`h1-${i}`}>{inlineMarkdown(line.slice(2))}</h1>);
-    }
-    // Horizontal rule
-    else if (/^-{3,}$/.test(line.trim()) || /^_{3,}$/.test(line.trim())) {
-      nodes.push(<hr key={`hr-${i}`} />);
-    }
-    // Unordered list
-    else if (line.startsWith('- ') || line.startsWith('* ')) {
-      const items: string[] = [];
-      while (
-        i < lines.length &&
-        (lines[i].startsWith('- ') || lines[i].startsWith('* '))
-      ) {
-        items.push(lines[i].slice(2));
-        i++;
-      }
-      nodes.push(
-        <ul key={`ul-${i}`}>
-          {items.map((item, j) => (
-            <li key={j}>{inlineMarkdown(item)}</li>
-          ))}
-        </ul>,
-      );
-      continue;
-    }
-    // Ordered list
-    else if (/^\d+\.\s/.test(line)) {
-      const items: string[] = [];
-      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
-        items.push(lines[i].replace(/^\d+\.\s/, ''));
-        i++;
-      }
-      nodes.push(
-        <ol key={`ol-${i}`}>
-          {items.map((item, j) => (
-            <li key={j}>{inlineMarkdown(item)}</li>
-          ))}
-        </ol>,
-      );
-      continue;
-    }
-    // Blank line — skip
-    else if (line.trim() === '') {
-      // intentionally empty
-    }
-    // Paragraph
-    else {
-      nodes.push(<p key={`p-${i}`}>{inlineMarkdown(line)}</p>);
-    }
-
-    i++;
-  }
-
-  return <>{nodes}</>;
-}
-
-function inlineMarkdown(text: string): ReactNode {
-  const parts = text.split(/(\*\*[^*\n]+\*\*|\*[^*\n]+\*|`[^`\n]+`)/);
-  return (
-    <>
-      {parts.map((part, i) => {
-        if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
-          return <strong key={i}>{part.slice(2, -2)}</strong>;
-        }
-        if (
-          part.startsWith('*') &&
-          part.endsWith('*') &&
-          part.length > 2 &&
-          !part.startsWith('**')
-        ) {
-          return <em key={i}>{part.slice(1, -1)}</em>;
-        }
-        if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
-          return <code key={i}>{part.slice(1, -1)}</code>;
-        }
-        return part || null;
-      })}
-    </>
-  );
-}
-
-function normalizeText(value: string): string {
-  return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date);
 }
