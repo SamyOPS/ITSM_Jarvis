@@ -7,8 +7,6 @@ import {
 } from 'react';
 import { ArrowLeft, Plus, Trash2, X } from 'lucide-react';
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
-import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
-import type { UserRole } from '../../domain/auth/user-role';
 import type {
   ReferentialCatalogSnapshot,
   ReferentialGroup,
@@ -23,42 +21,28 @@ import {
   fetchReferentialCatalog,
   updateAdminReferential,
 } from '../../infrastructure/api/referentials-api';
-
-type GroupsPageProps = {
-  session: AuthSessionSnapshot;
-};
-
-type GroupFormMode = 'create' | 'edit' | null;
-type GroupSearchField = 'IDENTIFIER' | 'NAME';
-type MemberSearchField =
-  | 'EMAIL'
-  | 'FIRST_NAME'
-  | 'IDENTIFIER'
-  | 'LAST_NAME'
-  | 'ROLE';
-
-type GroupFormState = {
-  description: string;
-  name: string;
-};
-
-const GROUPS_PER_PAGE = 12;
-const GROUP_NAME_MAX_LENGTH = 40;
-const MEMBERS_PER_PAGE = 5;
-
-const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
-  categories: [],
-  channels: [],
-  cis: [],
-  ciTypes: [],
-  groups: [],
-  priorities: [],
-};
-
-const EMPTY_GROUP_FORM: GroupFormState = {
-  description: '',
-  name: '',
-};
+import {
+  EMPTY_CATALOG,
+  EMPTY_GROUP_FORM,
+  GROUP_NAME_MAX_LENGTH,
+  GROUPS_PER_PAGE,
+  MEMBERS_PER_PAGE,
+} from './groups-page.constants';
+import {
+  filterGroups,
+  formatRoleLabel,
+  formatUserIdentifier,
+  getUserGroupIds,
+  isUserInGroup,
+  matchesMemberSearch,
+} from './groups-page.helpers';
+import type {
+  GroupFormMode,
+  GroupFormState,
+  GroupSearchField,
+  GroupsPageProps,
+  MemberSearchField,
+} from './groups-page.types';
 
 export function GroupsPage({ session }: GroupsPageProps) {
   const [catalog, setCatalog] =
@@ -843,90 +827,4 @@ export function GroupsPage({ session }: GroupsPageProps) {
       )}
     </section>
   );
-}
-
-function filterGroups(
-  groups: ReferentialGroup[],
-  searchText: string,
-  searchField: GroupSearchField,
-): ReferentialGroup[] {
-  const normalizedSearch = normalizeSearchText(searchText);
-
-  if (!normalizedSearch) {
-    return groups;
-  }
-
-  return groups.filter((group) => {
-    const value =
-      searchField === 'IDENTIFIER' || searchField === 'NAME' ? group.name : '';
-
-    return normalizeSearchText(value).includes(normalizedSearch);
-  });
-}
-
-function normalizeSearchText(value: string): string {
-  return value.trim().toLocaleLowerCase('fr-FR');
-}
-
-function getUserGroupIds(user: AdminUserSummary): string[] {
-  const groupIds = user.groupIds ?? [];
-
-  if (user.groupId && !groupIds.includes(user.groupId)) {
-    return [user.groupId, ...groupIds];
-  }
-
-  return groupIds;
-}
-
-function isUserInGroup(user: AdminUserSummary, groupId: string): boolean {
-  return getUserGroupIds(user).includes(groupId);
-}
-
-function matchesMemberSearch(
-  user: AdminUserSummary,
-  searchText: string,
-  searchField: MemberSearchField,
-): boolean {
-  const normalizedSearch = normalizeSearchText(searchText);
-
-  if (!normalizedSearch) {
-    return true;
-  }
-
-  return normalizeSearchText(getMemberSearchValue(user, searchField)).includes(
-    normalizedSearch,
-  );
-}
-
-function getMemberSearchValue(
-  user: AdminUserSummary,
-  searchField: MemberSearchField,
-): string {
-  if (searchField === 'FIRST_NAME') {
-    return user.firstName ?? '';
-  }
-
-  if (searchField === 'LAST_NAME') {
-    return user.lastName ?? '';
-  }
-
-  if (searchField === 'EMAIL') {
-    return user.email ?? '';
-  }
-
-  if (searchField === 'ROLE') {
-    return formatRoleLabel(user.role);
-  }
-
-  return formatUserIdentifier(user);
-}
-
-function formatUserIdentifier(user: AdminUserSummary): string {
-  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
-
-  return fullName || user.displayName || user.email || user.id;
-}
-
-function formatRoleLabel(role: UserRole): string {
-  return role;
 }
