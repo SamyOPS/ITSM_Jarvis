@@ -103,7 +103,7 @@ function getRouteDisplayTitle(
   }
 
   if (routePath === '/agent/tickets') {
-    return 'Tous les tickets';
+    return 'Liste des tickets';
   }
 
   return routeTitle;

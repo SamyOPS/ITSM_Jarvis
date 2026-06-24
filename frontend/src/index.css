@@ -9531,8 +9531,8 @@ a {
   color: var(--text-muted);
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: var(--kb-excerpt-lines, 3);
+  line-clamp: var(--kb-excerpt-lines, 3);
   -webkit-box-orient: vertical;
   line-height: 1.55;
   overflow-wrap: anywhere;
