@@ -7,7 +7,6 @@ import {
 } from 'react';
 import { ArrowLeft, Plus, RotateCcw, Trash2, X } from 'lucide-react';
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
-import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { UserRole } from '../../domain/auth/user-role';
 import { translateUserRole } from '../../domain/i18n/ticketing-labels';
 import type {
@@ -23,47 +22,29 @@ import {
   updateAdminUserStatus,
 } from '../../infrastructure/api/auth-api';
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
-
-type UsersPageProps = {
-  session: AuthSessionSnapshot;
-};
-
-type UserFormState = {
-  email: string;
-  firstName: string;
-  lastName: string;
-  password: string;
-  role: UserRole;
-};
-
-type UserFormMode = 'create' | 'edit' | null;
-
-type UserSearchField = 'IDENTIFIER' | 'FIRST_NAME' | 'LAST_NAME';
-
-type UserRoleFilter = UserRole | 'ALL';
-
-type UserGroupSearchField = 'DESCRIPTION' | 'IDENTIFIER' | 'NAME';
-
-const USER_ROLES: UserRole[] = ['DEMANDEUR', 'AGENT', 'ADMIN'];
-const USERS_PER_PAGE = 12;
-const USER_GROUPS_PER_PAGE = 5;
-
-const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
-  categories: [],
-  channels: [],
-  cis: [],
-  ciTypes: [],
-  groups: [],
-  priorities: [],
-};
-
-const EMPTY_USER_FORM: UserFormState = {
-  email: '',
-  firstName: '',
-  lastName: '',
-  password: '',
-  role: 'DEMANDEUR',
-};
+import {
+  EMPTY_CATALOG,
+  EMPTY_USER_FORM,
+  filterUserLookupGroups,
+  filterUsers,
+  formatUserIdentifier,
+  getUserGroupIds,
+  inferUserNameParts,
+  mapCreateUserErrorMessage,
+  normalizeOptionalText,
+  normalizeUserGroupIds,
+  USER_GROUPS_PER_PAGE,
+  USER_ROLES,
+  USERS_PER_PAGE,
+} from './users-page.helpers';
+import type {
+  UserFormMode,
+  UserFormState,
+  UserGroupSearchField,
+  UserRoleFilter,
+  UsersPageProps,
+  UserSearchField,
+} from './users-page.types';
 
 export function UsersPage({ session }: UsersPageProps) {
   const [catalog, setCatalog] =
@@ -1069,160 +1050,4 @@ export function UsersPage({ session }: UsersPageProps) {
       )}
     </section>
   );
-}
-
-function normalizeOptionalText(value: string): string | null {
-  const normalized = value.trim();
-
-  return normalized ? normalized : null;
-}
-
-function filterUsers(
-  users: AdminUserSummary[],
-  searchText: string,
-  searchField: UserSearchField,
-  roleFilter: UserRoleFilter,
-  showTrash: boolean,
-): AdminUserSummary[] {
-  const normalizedSearch = normalizeSearchText(searchText);
-
-  return users.filter((user) => {
-    if (showTrash ? user.isActive : !user.isActive) {
-      return false;
-    }
-
-    if (roleFilter !== 'ALL' && user.role !== roleFilter) {
-      return false;
-    }
-
-    if (!normalizedSearch) {
-      return true;
-    }
-
-    const value =
-      searchField === 'IDENTIFIER'
-        ? formatUserIdentifier(user)
-        : searchField === 'FIRST_NAME'
-          ? (user.firstName ?? '')
-          : (user.lastName ?? '');
-
-    return normalizeSearchText(value).includes(normalizedSearch);
-  });
-}
-
-function normalizeSearchText(value: string): string {
-  return value.trim().toLocaleLowerCase('fr-FR');
-}
-
-function getUserGroupIds(user: AdminUserSummary): string[] {
-  const groupIds = user.groupIds ?? [];
-
-  if (user.groupId && !groupIds.includes(user.groupId)) {
-    return normalizeUserGroupIds([user.groupId, ...groupIds]);
-  }
-
-  return normalizeUserGroupIds(groupIds);
-}
-
-function normalizeUserGroupIds(groupIds: string[]): string[] {
-  return [...new Set(groupIds.map((groupId) => groupId.trim()))].filter(
-    Boolean,
-  );
-}
-
-function filterUserLookupGroups(
-  groups: ReferentialGroup[],
-  searchText: string,
-  searchField: UserGroupSearchField,
-): ReferentialGroup[] {
-  const normalizedSearch = normalizeSearchText(searchText);
-
-  if (!normalizedSearch) {
-    return groups;
-  }
-
-  return groups.filter((group) =>
-    normalizeSearchText(
-      getUserLookupGroupSearchValue(group, searchField),
-    ).includes(normalizedSearch),
-  );
-}
-
-function getUserLookupGroupSearchValue(
-  group: ReferentialGroup,
-  searchField: UserGroupSearchField,
-): string {
-  if (searchField === 'NAME' || searchField === 'IDENTIFIER') {
-    return group.name;
-  }
-
-  return group.description ?? '';
-}
-
-function inferUserNameParts(user: AdminUserSummary): {
-  firstName: string;
-  lastName: string;
-} {
-  if (user.firstName || user.lastName) {
-    return {
-      firstName: user.firstName ?? '',
-      lastName: user.lastName ?? '',
-    };
-  }
-
-  const displayName = user.displayName?.trim();
-
-  if (!displayName) {
-    return {
-      firstName: '',
-      lastName: '',
-    };
-  }
-
-  const [firstName, ...lastNameParts] = displayName.split(/\s+/);
-
-  return {
-    firstName: firstName ?? '',
-    lastName: lastNameParts.join(' '),
-  };
-}
-
-function formatUserIdentifier(user: AdminUserSummary): string {
-  return (
-    [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
-    user.displayName ||
-    user.email ||
-    user.id
-  );
-}
-
-function mapCreateUserErrorMessage(error: unknown): string {
-  if (!(error instanceof Error)) {
-    return 'Erreur inconnue lors de la creation du compte';
-  }
-
-  const normalizedMessage = normalizeSearchText(error.message);
-
-  if (
-    normalizedMessage.includes('already') &&
-    normalizedMessage.includes('registered')
-  ) {
-    return 'Un compte avec cette adresse email existe deja.';
-  }
-
-  if (
-    normalizedMessage.includes('already') &&
-    normalizedMessage.includes('exists')
-  ) {
-    return 'Un compte avec cette adresse email existe deja.';
-  }
-
-  if (
-    normalizedMessage.includes('email') &&
-    normalizedMessage.includes('duplicate')
-  ) {
-    return 'Un compte avec cette adresse email existe deja.';
-  }
-
-  return error.message;
 }
