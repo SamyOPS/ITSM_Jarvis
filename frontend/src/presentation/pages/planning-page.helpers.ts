@@ -325,7 +325,7 @@ export function formatDuration(minutes: number): string {
   const units: string[] = [];
 
   if (days) {
-    units.push(`${days} journÃ©e${days > 1 ? 's' : ''}`);
+    units.push(`${days} journée${days > 1 ? 's' : ''}`);
   }
 
   if (hours) {
