@@ -1,8 +1,5 @@
 import {
-  type ChangeEvent,
-  type Dispatch,
   type FormEvent,
-  type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -10,7 +7,6 @@ import {
 } from 'react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
-import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import {
   type ReferentialCatalogSnapshot,
   type ReferentialCi,
@@ -23,114 +19,30 @@ import {
   deleteAdminReferential,
   fetchReferentialCatalog,
 } from '../../infrastructure/api/referentials-api';
-
-type ParkSection = 'CI_TYPES' | 'CIS';
-
-type ParkPageProps = {
-  section: ParkSection;
-  session: AuthSessionSnapshot;
-};
-
-type EquipmentFilters = {
-  assignedUserId: string;
-  brand: string;
-  location: string;
-  search: string;
-  status: string;
-  typeId: string;
-};
-
-type EquipmentFormState = {
-  archivedAt: string;
-  assignedUserId: string;
-  brand: string;
-  comment: string;
-  ciTypeId: string;
-  ipAddress: string;
-  location: string;
-  macAddress: string;
-  model: string;
-  name: string;
-  purchaseDate: string;
-  serialNumber: string;
-  status: string;
-  warrantyEndDate: string;
-};
-
-const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
-  categories: [],
-  channels: [],
-  cis: [],
-  ciTypes: [],
-  groups: [],
-  priorities: [],
-};
-
-const INITIAL_FILTERS: EquipmentFilters = {
-  assignedUserId: '',
-  brand: '',
-  location: '',
-  search: '',
-  status: '',
-  typeId: '',
-};
-
-const EMPTY_EQUIPMENT_FORM: EquipmentFormState = {
-  archivedAt: '',
-  assignedUserId: '',
-  brand: '',
-  comment: '',
-  ciTypeId: '',
-  ipAddress: '',
-  location: '',
-  macAddress: '',
-  model: '',
-  name: '',
-  purchaseDate: '',
-  serialNumber: '',
-  status: 'IN_SERVICE',
-  warrantyEndDate: '',
-};
-
-const CI_STATUS_OPTIONS = [
-  'IN_SERVICE',
-  'IN_STOCK',
-  'MAINTENANCE',
-  'OUT_OF_SERVICE',
-  'LOST',
-  'RETIRED',
-  'ARCHIVED',
-] as const;
-
-const PARK_CI_TYPE_NAMES = [
-  'Ordinateur',
-  'Serveur',
-  'Imprimante',
-  'Ecran',
-  'Reseau',
-  'Logiciel',
-  'Peripherique',
-  'Consommable',
-  'Cable',
-  'Telephone',
-  'Autre',
-] as const;
-
-const PARK_SECTION_COPY: Record<
-  ParkSection,
-  { description: string; title: string }
-> = {
-  CI_TYPES: {
-    description:
-      'Structure les familles de materiel qui seront utilisees dans le nouveau module parc.',
-    title: 'Types d equipements',
-  },
-  CIS: {
-    description:
-      'Consulte les equipements, leur affectation, leur statut et les principales informations techniques.',
-    title: 'Equipements',
-  },
-};
+import {
+  CI_STATUS_OPTIONS,
+  EMPTY_CATALOG,
+  EMPTY_EQUIPMENT_FORM,
+  INITIAL_FILTERS,
+  PARK_CI_TYPE_NAMES,
+  PARK_SECTION_COPY,
+} from './park-page.constants';
+import {
+  buildEquipmentSubtitle,
+  buildUniqueValues,
+  filterEquipment,
+  formatDateValue,
+  formatEquipmentIdentifier,
+  formatUserName,
+  handleEquipmentFieldChange,
+  handleFilterInput,
+  normalizeOptionalText,
+} from './park-page.helpers';
+import type {
+  EquipmentFilters,
+  EquipmentFormState,
+  ParkPageProps,
+} from './park-page.types';
 
 export function ParkPage({ section, session }: ParkPageProps) {
   const [catalog, setCatalog] =
@@ -818,150 +730,4 @@ function EquipmentTypeCard({
       <span>{count} equipement(s)</span>
     </article>
   );
-}
-
-function handleFilterInput(
-  setFilters: Dispatch<SetStateAction<EquipmentFilters>>,
-  field: keyof EquipmentFilters,
-) {
-  return (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = event.target.value;
-    setFilters((currentFilters) => ({
-      ...currentFilters,
-      [field]: value,
-    }));
-  };
-}
-
-function handleEquipmentFieldChange(
-  setEquipmentForm: Dispatch<SetStateAction<EquipmentFormState>>,
-  field: keyof EquipmentFormState,
-) {
-  return (
-    event: ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >,
-  ) => {
-    const value = event.target.value;
-    setEquipmentForm((currentState) => ({
-      ...currentState,
-      [field]: value,
-    }));
-  };
-}
-
-function filterEquipment(
-  cis: ReferentialCi[],
-  filters: EquipmentFilters,
-  ciTypesById: Map<string, ReferentialCiType>,
-  usersById: Map<string, AdminUserSummary>,
-): ReferentialCi[] {
-  const normalizedSearch = filters.search.trim().toLowerCase();
-
-  return cis.filter((ci) => {
-    if (filters.typeId && ci.ciTypeId !== filters.typeId) {
-      return false;
-    }
-
-    if (filters.status && ci.status !== filters.status) {
-      return false;
-    }
-
-    if (filters.brand && ci.brand !== filters.brand) {
-      return false;
-    }
-
-    if (filters.location && ci.location !== filters.location) {
-      return false;
-    }
-
-    if (
-      filters.assignedUserId === '__UNASSIGNED__' &&
-      ci.assignedUserId !== null
-    ) {
-      return false;
-    }
-
-    if (
-      filters.assignedUserId &&
-      filters.assignedUserId !== '__UNASSIGNED__' &&
-      ci.assignedUserId !== filters.assignedUserId
-    ) {
-      return false;
-    }
-
-    if (!normalizedSearch) {
-      return true;
-    }
-
-    const assignedUser = ci.assignedUserId
-      ? (usersById.get(ci.assignedUserId) ?? null)
-      : null;
-    const searchValue = [
-      ci.name,
-      ci.brand,
-      ci.model,
-      ci.serialNumber,
-      ci.ipAddress,
-      ci.macAddress,
-      ci.location,
-      ciTypeById(ciTypesById, ci.ciTypeId),
-      assignedUser ? formatUserName(assignedUser) : '',
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase();
-
-    return searchValue.includes(normalizedSearch);
-  });
-}
-
-function ciTypeById(
-  ciTypesById: Map<string, ReferentialCiType>,
-  ciTypeId: string,
-): string {
-  return ciTypesById.get(ciTypeId)?.name ?? '';
-}
-
-function buildEquipmentSubtitle(ci: ReferentialCi): string {
-  const parts = [ci.brand, ci.model].filter(Boolean);
-  return parts.length > 0 ? parts.join(' ') : 'Equipement non detaille';
-}
-
-function formatEquipmentIdentifier(ci: ReferentialCi): string {
-  const suffix = ci.id.slice(0, 8).toUpperCase();
-  return `EQ-${suffix}`;
-}
-
-function formatUserName(user: AdminUserSummary): string {
-  const fullName = [user.firstName, user.lastName]
-    .filter(Boolean)
-    .join(' ')
-    .trim();
-
-  return fullName || user.displayName || user.email || user.id;
-}
-
-function buildUniqueValues(values: Array<string | null>): string[] {
-  return [
-    ...new Set(values.filter((value): value is string => Boolean(value))),
-  ].sort((left, right) => left.localeCompare(right, 'fr'));
-}
-
-function formatDateValue(value: string | null): string {
-  if (!value) {
-    return '-';
-  }
-
-  const date = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat('fr-FR').format(date);
-}
-
-function normalizeOptionalText(value: string): string | null {
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : null;
 }
