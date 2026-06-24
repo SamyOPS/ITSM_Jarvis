@@ -742,13 +742,8 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
         <div className="kb-detail">
           <div className="kb-detail-nav">
             <button
-              className="secondary-button"
+              className="tdp-back-btn kb-inline-button"
               onClick={() => navigateTo('/knowledge/articles')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
               type="button"
             >
               <ArrowLeft size={16} />
@@ -757,26 +752,16 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
             {isAdmin ? (
               <div className="kb-detail-actions">
                 <button
-                  className="secondary-button"
+                  className="primary-button admin-user-save-button kb-inline-button"
                   onClick={() => openEdit(selectedArticle)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                  }}
                   type="button"
                 >
                   <Pencil size={15} />
                   Modifier
                 </button>
                 <button
-                  className="danger-button"
+                  className="admin-user-delete-button kb-inline-button"
                   onClick={() => openDelete(selectedArticle)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                  }}
                   type="button"
                 >
                   <Trash2 size={15} />
@@ -834,13 +819,8 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
 
             {isAdmin ? (
               <button
-                className="primary-button kb-light-button kb-toolbar-create-button"
+                className="primary-button admin-user-save-button kb-inline-button kb-toolbar-create-button"
                 onClick={openCreate}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
                 type="button"
               >
                 <Plus size={16} />
