@@ -23,6 +23,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import type {
   CreateKnowledgeArticlePayload,
   KnowledgeArticle,
@@ -108,6 +109,116 @@ const KNOWLEDGE_SORT_OPTIONS: Array<{
   },
 ];
 
+function KnowledgeArticleCard({
+  article,
+  isLiking,
+  onToggleLike,
+}: {
+  article: KnowledgeArticle;
+  isLiking: boolean;
+  onToggleLike: (
+    articleId: string,
+    event: MouseEvent<HTMLButtonElement>,
+  ) => void;
+}) {
+  const titleRef = useRef<HTMLElement | null>(null);
+  const [excerptLineClamp, setExcerptLineClamp] = useState(3);
+
+  useEffect(() => {
+    const element = titleRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    const updateExcerptLineClamp = (): void => {
+      const computedStyle = window.getComputedStyle(element);
+      const lineHeight = Number.parseFloat(computedStyle.lineHeight);
+
+      if (!Number.isFinite(lineHeight) || lineHeight <= 0) {
+        setExcerptLineClamp(3);
+        return;
+      }
+
+      const titleLineCount = Math.max(
+        1,
+        Math.round(element.getBoundingClientRect().height / lineHeight),
+      );
+
+      setExcerptLineClamp(titleLineCount <= 1 ? 4 : 3);
+    };
+
+    updateExcerptLineClamp();
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateExcerptLineClamp();
+    });
+
+    resizeObserver.observe(element);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [article.title]);
+
+  return (
+    <article
+      className="kb-card"
+      onClick={() => navigateTo(`/knowledge/articles/${article.id}`)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          navigateTo(`/knowledge/articles/${article.id}`);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    >
+      <div className="kb-card-top">
+        <span className="kb-card-category">{article.category}</span>
+        <span
+          className={`kb-card-status ${article.status === 'PUBLISHED' ? 'is-published' : 'is-draft'}`}
+        >
+          {article.status === 'PUBLISHED' ? 'Publie' : 'Brouillon'}
+        </span>
+      </div>
+      <strong className="kb-card-title" ref={titleRef}>
+        {article.title}
+      </strong>
+      <p
+        className="kb-card-excerpt"
+        style={
+          {
+            '--kb-excerpt-lines': excerptLineClamp,
+          } as CSSProperties
+        }
+      >
+        {article.content}
+      </p>
+      <div className="kb-card-footer">
+        <small className="kb-card-meta">
+          Mis a jour le {formatDate(article.updatedAt)}
+        </small>
+
+        <button
+          aria-label={
+            article.likedByMe
+              ? "Retirer le like de l'article"
+              : "Liker l'article"
+          }
+          className={`kb-like-button${article.likedByMe ? ' is-active' : ''}`}
+          disabled={isLiking}
+          onClick={(event) => onToggleLike(article.id, event)}
+          type="button"
+        >
+          <ThumbsUp size={15} />
+          <span>{article.likesCount}</span>
+        </button>
+      </div>
+    </article>
+  );
+}
+
 export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
   const [selectedArticle, setSelectedArticle] =
@@ -176,14 +287,6 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
       cancelled = true;
     };
   }, [articleId, session.accessToken]);
-
-  const categories = useMemo(
-    () =>
-      Array.from(new Set(articles.map((a) => a.category))).sort((a, b) =>
-        a.localeCompare(b, 'fr'),
-      ),
-    [articles],
-  );
 
   const filteredArticles = useMemo(() => {
     const normalizedSearch = normalizeText(search);
@@ -639,13 +742,8 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
         <div className="kb-detail">
           <div className="kb-detail-nav">
             <button
-              className="secondary-button"
+              className="tdp-back-btn kb-inline-button"
               onClick={() => navigateTo('/knowledge/articles')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
               type="button"
             >
               <ArrowLeft size={16} />
@@ -654,26 +752,16 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
             {isAdmin ? (
               <div className="kb-detail-actions">
                 <button
-                  className="secondary-button"
+                  className="primary-button admin-user-save-button kb-inline-button"
                   onClick={() => openEdit(selectedArticle)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                  }}
                   type="button"
                 >
                   <Pencil size={15} />
                   Modifier
                 </button>
                 <button
-                  className="danger-button"
+                  className="admin-user-delete-button kb-inline-button"
                   onClick={() => openDelete(selectedArticle)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                  }}
                   type="button"
                 >
                   <Trash2 size={15} />
@@ -731,13 +819,8 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
 
             {isAdmin ? (
               <button
-                className="primary-button kb-light-button kb-toolbar-create-button"
+                className="primary-button admin-user-save-button kb-inline-button kb-toolbar-create-button"
                 onClick={openCreate}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
                 type="button"
               >
                 <Plus size={16} />
@@ -832,7 +915,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                 value={categoryFilter}
               >
                 <option value="">Tous</option>
-                {categories.map((category) => (
+                {KNOWLEDGE_CATEGORY_OPTIONS.map((category) => (
                   <option key={category} value={category}>
                     {category}
                   </option>
@@ -868,54 +951,14 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
           <>
             <div className="kb-grid">
               {paginatedArticles.map((article) => (
-                <article
-                  className="kb-card"
+                <KnowledgeArticleCard
+                  article={article}
+                  isLiking={likingArticleIds.includes(article.id)}
                   key={article.id}
-                  onClick={() =>
-                    navigateTo(`/knowledge/articles/${article.id}`)
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      navigateTo(`/knowledge/articles/${article.id}`);
-                    }
+                  onToggleLike={(articleId, event) => {
+                    void handleToggleLike(articleId, event);
                   }}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div className="kb-card-top">
-                    <span className="kb-card-category">{article.category}</span>
-                    <span
-                      className={`kb-card-status ${article.status === 'PUBLISHED' ? 'is-published' : 'is-draft'}`}
-                    >
-                      {article.status === 'PUBLISHED' ? 'Publie' : 'Brouillon'}
-                    </span>
-                  </div>
-                  <strong className="kb-card-title">{article.title}</strong>
-                  <p className="kb-card-excerpt">{article.content}</p>
-                  <div className="kb-card-footer">
-                    <small className="kb-card-meta">
-                      Mis a jour le {formatDate(article.updatedAt)}
-                    </small>
-
-                    <button
-                      aria-label={
-                        article.likedByMe
-                          ? "Retirer le like de l'article"
-                          : "Liker l'article"
-                      }
-                      className={`kb-like-button${article.likedByMe ? ' is-active' : ''}`}
-                      disabled={likingArticleIds.includes(article.id)}
-                      onClick={(event) =>
-                        void handleToggleLike(article.id, event)
-                      }
-                      type="button"
-                    >
-                      <ThumbsUp size={15} />
-                      <span>{article.likesCount}</span>
-                    </button>
-                  </div>
-                </article>
+                />
               ))}
             </div>
 

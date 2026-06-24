@@ -9371,6 +9371,16 @@ a {
   font-weight: 400;
 }
 
+.kb-inline-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kb-detail-actions .admin-user-delete-button {
+  background: #ffffff;
+}
+
 .kb-filter-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
@@ -9380,8 +9390,6 @@ a {
 
 .kb-toolbar-create-button {
   min-height: 40px;
-  padding: 0 16px;
-  font-weight: 400;
 }
 
 .kb-filter-field {
@@ -9531,8 +9539,8 @@ a {
   color: var(--text-muted);
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: var(--kb-excerpt-lines, 3);
+  line-clamp: var(--kb-excerpt-lines, 3);
   -webkit-box-orient: vertical;
   line-height: 1.55;
   overflow-wrap: anywhere;
