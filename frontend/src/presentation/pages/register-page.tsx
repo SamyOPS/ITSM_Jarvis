@@ -22,6 +22,8 @@ export function RegisterPage() {
   const [form, setForm] = useState<RegisterFormState>(EMPTY_REGISTER_FORM);
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   function updateField(field: keyof RegisterFormState, value: string): void {
     setForm((currentForm) => ({
@@ -73,7 +75,7 @@ export function RegisterPage() {
         <div className="login-panel-header">
           <div className="login-brand">
             <span className="login-brand-icon">
-              <i className="bi bi-person-circle" aria-hidden="true" />
+              <RegisterAuthIcon />
             </span>
             <strong>Compte Vision</strong>
           </div>
@@ -88,13 +90,13 @@ export function RegisterPage() {
             type="button"
           >
             <span className="login-mode-tab-icon">
-              <i className="bi bi-box-arrow-in-right" aria-hidden="true" />
+              <LoginAuthIcon />
             </span>
             Connexion
           </button>
           <button className="login-mode-tab is-active" type="button">
             <span className="login-mode-tab-icon">
-              <i className="bi bi-person-plus" aria-hidden="true" />
+              <RegisterAuthIcon />
             </span>
             Inscription
           </button>
@@ -140,9 +142,17 @@ export function RegisterPage() {
               minLength={8}
               onChange={(event) => updateField('password', event.target.value)}
               required
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={form.password}
             />
+          </label>
+          <label className="login-password-toggle">
+            <input
+              checked={showPassword}
+              onChange={(event) => setShowPassword(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Afficher le mot de passe</span>
           </label>
 
           <label className="field">
@@ -154,9 +164,17 @@ export function RegisterPage() {
                 updateField('confirmPassword', event.target.value)
               }
               required
-              type="password"
+              type={showConfirmPassword ? 'text' : 'password'}
               value={form.confirmPassword}
             />
+          </label>
+          <label className="login-password-toggle">
+            <input
+              checked={showConfirmPassword}
+              onChange={(event) => setShowConfirmPassword(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Afficher le mot de passe</span>
           </label>
 
           <button
@@ -171,6 +189,46 @@ export function RegisterPage() {
         </form>
       </section>
     </section>
+  );
+}
+
+function LoginAuthIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="16"
+      viewBox="0 0 16 16"
+      width="16"
+    >
+      <path
+        d="M6.5 3.5 10 7l-3.5 3.5M10 7H1.75M10.75 2.25h1.75A1.5 1.5 0 0 1 14 3.75v6.5a1.5 1.5 0 0 1-1.5 1.5h-1.75"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
+function RegisterAuthIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="16"
+      viewBox="0 0 16 16"
+      width="16"
+    >
+      <path
+        d="M5.75 8.25a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM1.5 13.75c.45-2.12 2.08-3.5 4.25-3.5 1.2 0 2.2.42 2.95 1.15M12.25 5.25v5M9.75 7.75h5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
   );
 }
 

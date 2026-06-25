@@ -737,9 +737,9 @@ a {
   font-size: 1rem;
 }
 
-.login-brand-icon i,
-.login-mode-tab-icon i {
-  line-height: 1;
+.login-brand-icon svg,
+.login-mode-tab-icon svg {
+  display: block;
 }
 
 .login-brand strong {
@@ -803,6 +803,23 @@ a {
   position: relative;
   display: grid;
   gap: 14px;
+}
+
+.login-password-toggle {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  margin-top: -4px;
+  color: #4a5d7d;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.login-password-toggle input {
+  width: 15px;
+  height: 15px;
+  accent-color: #071b34;
 }
 
 .login-submit-button {

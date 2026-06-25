@@ -8,42 +8,19 @@ type LoginPageProps = {
   onSubmit: (email: string, password: string) => Promise<void>;
 };
 
-type DemoAccount = {
-  email: string;
-  password: string;
-  role: string;
-};
-
-const DEMO_ACCOUNTS: DemoAccount[] = [
-  {
-    email: 'demandeur@jarvis.fr',
-    password: 'Demandeur123!',
-    role: 'DEMANDEUR',
-  },
-  {
-    email: 'agent@jarvis.fr',
-    password: 'Agent123!',
-    role: 'AGENT',
-  },
-  {
-    email: 'admin@jarvis.fr',
-    password: 'Admin123!',
-    role: 'ADMIN',
-  },
-];
-
 export function LoginPage({
   errorMessage,
   isBusy,
   onPasswordResetRequest,
   onSubmit,
 }: LoginPageProps) {
-  const [email, setEmail] = useState(DEMO_ACCOUNTS[0].email);
+  const [email, setEmail] = useState('');
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotMessage, setForgotMessage] = useState<string | null>(null);
   const [forgotMode, setForgotMode] = useState(false);
   const [isForgotBusy, setIsForgotBusy] = useState(false);
-  const [password, setPassword] = useState(DEMO_ACCOUNTS[0].password);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -77,7 +54,7 @@ export function LoginPage({
         <div className="login-panel-header">
           <div className="login-brand">
             <span className="login-brand-icon">
-              <i className="bi bi-person-circle" aria-hidden="true" />
+              <LoginAuthIcon />
             </span>
             <strong>Compte Vision</strong>
           </div>
@@ -88,7 +65,7 @@ export function LoginPage({
         <div className="login-mode-tabs" aria-label="Choix du mode">
           <button className="login-mode-tab is-active" type="button">
             <span className="login-mode-tab-icon">
-              <i className="bi bi-box-arrow-in-right" aria-hidden="true" />
+              <LoginAuthIcon />
             </span>
             Connexion
           </button>
@@ -98,7 +75,7 @@ export function LoginPage({
             type="button"
           >
             <span className="login-mode-tab-icon">
-              <i className="bi bi-person-plus" aria-hidden="true" />
+              <RegisterAuthIcon />
             </span>
             Inscription
           </button>
@@ -125,9 +102,17 @@ export function LoginPage({
               autoComplete="current-password"
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Mot de passe"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={password}
             />
+          </label>
+          <label className="login-password-toggle">
+            <input
+              checked={showPassword}
+              onChange={(event) => setShowPassword(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Afficher le mot de passe</span>
           </label>
 
           <button
@@ -187,5 +172,45 @@ export function LoginPage({
         ) : null}
       </section>
     </section>
+  );
+}
+
+function LoginAuthIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="16"
+      viewBox="0 0 16 16"
+      width="16"
+    >
+      <path
+        d="M6.5 3.5 10 7l-3.5 3.5M10 7H1.75M10.75 2.25h1.75A1.5 1.5 0 0 1 14 3.75v6.5a1.5 1.5 0 0 1-1.5 1.5h-1.75"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
+function RegisterAuthIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="16"
+      viewBox="0 0 16 16"
+      width="16"
+    >
+      <path
+        d="M5.75 8.25a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM1.5 13.75c.45-2.12 2.08-3.5 4.25-3.5 1.2 0 2.2.42 2.95 1.15M12.25 5.25v5M9.75 7.75h5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
   );
 }
