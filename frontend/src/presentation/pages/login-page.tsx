@@ -90,7 +90,7 @@ export function LoginPage({
             <input
               autoComplete="email"
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="nom@jarvis.fr"
+              placeholder="Email"
               type="email"
               value={email}
             />
@@ -98,21 +98,27 @@ export function LoginPage({
 
           <label className="field">
             <span>Mot de passe</span>
-            <input
-              autoComplete="current-password"
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Mot de passe"
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-            />
-          </label>
-          <label className="login-password-toggle">
-            <input
-              checked={showPassword}
-              onChange={(event) => setShowPassword(event.target.checked)}
-              type="checkbox"
-            />
-            <span>Afficher le mot de passe</span>
+            <span className="login-password-field">
+              <input
+                autoComplete="current-password"
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Mot de passe"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+              />
+              <button
+                aria-label={
+                  showPassword
+                    ? 'Masquer le mot de passe'
+                    : 'Afficher le mot de passe'
+                }
+                className="login-password-eye"
+                onClick={() => setShowPassword((current) => !current)}
+                type="button"
+              >
+                <EyeIcon isVisible={showPassword} />
+              </button>
+            </span>
           </label>
 
           <button
@@ -211,6 +217,41 @@ function RegisterAuthIcon() {
         strokeLinejoin="round"
         strokeWidth="1.6"
       />
+    </svg>
+  );
+}
+
+function EyeIcon({ isVisible }: { isVisible: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="18"
+      viewBox="0 0 18 18"
+      width="18"
+    >
+      <path
+        d="M2.25 9s2.35-4.25 6.75-4.25S15.75 9 15.75 9 13.4 13.25 9 13.25 2.25 9 2.25 9Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M9 10.75A1.75 1.75 0 1 0 9 7.25a1.75 1.75 0 0 0 0 3.5Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+      {!isVisible ? (
+        <path
+          d="M14.25 3.75 3.75 14.25"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.5"
+        />
+      ) : null}
     </svg>
   );
 }

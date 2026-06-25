@@ -111,6 +111,7 @@ export function RegisterPage() {
             <input
               autoComplete="email"
               onChange={(event) => updateField('email', event.target.value)}
+              placeholder="Email"
               required
               type="email"
               value={form.email}
@@ -122,6 +123,7 @@ export function RegisterPage() {
             <input
               autoComplete="given-name"
               onChange={(event) => updateField('firstName', event.target.value)}
+              placeholder="Prénom"
               value={form.firstName}
             />
           </label>
@@ -131,50 +133,67 @@ export function RegisterPage() {
             <input
               autoComplete="family-name"
               onChange={(event) => updateField('lastName', event.target.value)}
+              placeholder="Nom"
               value={form.lastName}
             />
           </label>
 
           <label className="field">
             <span>Mot de passe</span>
-            <input
-              autoComplete="new-password"
-              minLength={8}
-              onChange={(event) => updateField('password', event.target.value)}
-              required
-              type={showPassword ? 'text' : 'password'}
-              value={form.password}
-            />
-          </label>
-          <label className="login-password-toggle">
-            <input
-              checked={showPassword}
-              onChange={(event) => setShowPassword(event.target.checked)}
-              type="checkbox"
-            />
-            <span>Afficher le mot de passe</span>
+            <span className="login-password-field">
+              <input
+                autoComplete="new-password"
+                minLength={8}
+                onChange={(event) =>
+                  updateField('password', event.target.value)
+                }
+                placeholder="Mot de passe"
+                required
+                type={showPassword ? 'text' : 'password'}
+                value={form.password}
+              />
+              <button
+                aria-label={
+                  showPassword
+                    ? 'Masquer le mot de passe'
+                    : 'Afficher le mot de passe'
+                }
+                className="login-password-eye"
+                onClick={() => setShowPassword((current) => !current)}
+                type="button"
+              >
+                <EyeIcon isVisible={showPassword} />
+              </button>
+            </span>
           </label>
 
           <label className="field">
             <span>Confirmer le mot de passe</span>
-            <input
-              autoComplete="new-password"
-              minLength={8}
-              onChange={(event) =>
-                updateField('confirmPassword', event.target.value)
-              }
-              required
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={form.confirmPassword}
-            />
-          </label>
-          <label className="login-password-toggle">
-            <input
-              checked={showConfirmPassword}
-              onChange={(event) => setShowConfirmPassword(event.target.checked)}
-              type="checkbox"
-            />
-            <span>Afficher le mot de passe</span>
+            <span className="login-password-field">
+              <input
+                autoComplete="new-password"
+                minLength={8}
+                onChange={(event) =>
+                  updateField('confirmPassword', event.target.value)
+                }
+                placeholder="Confirmer le mot de passe"
+                required
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={form.confirmPassword}
+              />
+              <button
+                aria-label={
+                  showConfirmPassword
+                    ? 'Masquer le mot de passe'
+                    : 'Afficher le mot de passe'
+                }
+                className="login-password-eye"
+                onClick={() => setShowConfirmPassword((current) => !current)}
+                type="button"
+              >
+                <EyeIcon isVisible={showConfirmPassword} />
+              </button>
+            </span>
           </label>
 
           <button
@@ -228,6 +247,41 @@ function RegisterAuthIcon() {
         strokeLinejoin="round"
         strokeWidth="1.6"
       />
+    </svg>
+  );
+}
+
+function EyeIcon({ isVisible }: { isVisible: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="18"
+      viewBox="0 0 18 18"
+      width="18"
+    >
+      <path
+        d="M2.25 9s2.35-4.25 6.75-4.25S15.75 9 15.75 9 13.4 13.25 9 13.25 2.25 9 2.25 9Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M9 10.75A1.75 1.75 0 1 0 9 7.25a1.75 1.75 0 0 0 0 3.5Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+      {!isVisible ? (
+        <path
+          d="M14.25 3.75 3.75 14.25"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.5"
+        />
+      ) : null}
     </svg>
   );
 }
