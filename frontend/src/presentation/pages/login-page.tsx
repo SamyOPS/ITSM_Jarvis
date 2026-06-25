@@ -71,31 +71,37 @@ export function LoginPage({
     }
   }
 
-  function applyDemoAccount(account: DemoAccount): void {
-    setEmail(account.email);
-    setPassword(account.password);
-  }
-
   return (
     <section className="login-layout">
-      <aside className="login-showcase">
-        <div className="login-showcase-overlay" />
-        <div className="login-showcase-copy">
-          <span className="login-showcase-eyebrow">Jarvis Connect</span>
-          <h1>Vision</h1>
-          <p>
-            Portail de ticketing interne pour incidents, demandes et suivi des
-            opérations support.
-          </p>
-        </div>
-        <div className="login-showcase-glow" />
-      </aside>
-
       <section className="login-panel">
         <div className="login-panel-header">
-          <span className="panel-tag">Connexion</span>
-          <h2>Accès à la plateforme</h2>
-          <p>Authentifie-toi avec un compte de test pour accéder à Vision.</p>
+          <div className="login-brand">
+            <span className="login-brand-icon">
+              <i className="bi bi-person-circle" aria-hidden="true" />
+            </span>
+            <strong>Compte Vision</strong>
+          </div>
+          <h2>Connexion</h2>
+          <p>Un seul écran pour se connecter ou créer un compte demandeur.</p>
+        </div>
+
+        <div className="login-mode-tabs" aria-label="Choix du mode">
+          <button className="login-mode-tab is-active" type="button">
+            <span className="login-mode-tab-icon">
+              <i className="bi bi-box-arrow-in-right" aria-hidden="true" />
+            </span>
+            Connexion
+          </button>
+          <button
+            className="login-mode-tab"
+            onClick={() => navigateTo('/register')}
+            type="button"
+          >
+            <span className="login-mode-tab-icon">
+              <i className="bi bi-person-plus" aria-hidden="true" />
+            </span>
+            Inscription
+          </button>
         </div>
 
         <form
@@ -179,39 +185,6 @@ export function LoginPage({
             ) : null}
           </form>
         ) : null}
-
-        <button
-          className="login-forgot-button"
-          onClick={() => navigateTo('/register')}
-          type="button"
-        >
-          Créer un compte demandeur
-        </button>
-
-        <div className="login-demo-section">
-          <div className="login-demo-heading">
-            <h3>Comptes de test</h3>
-            <p>
-              Les trois adresses et mots de passe restent visibles pour tester
-              rapidement.
-            </p>
-          </div>
-
-          <div className="login-demo-grid">
-            {DEMO_ACCOUNTS.map((account) => (
-              <button
-                className="login-demo-card"
-                key={account.email}
-                onClick={() => applyDemoAccount(account)}
-                type="button"
-              >
-                <span>{account.role}</span>
-                <strong>{account.email}</strong>
-                <code>{account.password}</code>
-              </button>
-            ))}
-          </div>
-        </div>
       </section>
     </section>
   );

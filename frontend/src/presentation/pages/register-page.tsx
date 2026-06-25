@@ -69,27 +69,35 @@ export function RegisterPage() {
 
   return (
     <section className="login-layout">
-      <aside className="login-showcase">
-        <div className="login-showcase-overlay" />
-        <div className="login-showcase-copy">
-          <span className="login-showcase-eyebrow">Jarvis Connect</span>
-          <h1>Vision</h1>
-          <p>
-            Crée ton accès demandeur pour suivre tes tickets et consulter la
-            base de connaissances.
-          </p>
-        </div>
-        <div className="login-showcase-glow" />
-      </aside>
-
       <section className="login-panel">
         <div className="login-panel-header">
-          <span className="panel-tag">Inscription</span>
+          <div className="login-brand">
+            <span className="login-brand-icon">
+              <i className="bi bi-person-circle" aria-hidden="true" />
+            </span>
+            <strong>Compte Vision</strong>
+          </div>
           <h2>Créer un compte</h2>
-          <p>
-            Les comptes créés ici sont automatiquement limités au rôle
-            demandeur.
-          </p>
+          <p>Un seul écran pour se connecter ou créer un compte demandeur.</p>
+        </div>
+
+        <div className="login-mode-tabs" aria-label="Choix du mode">
+          <button
+            className="login-mode-tab"
+            onClick={() => navigateTo('/login')}
+            type="button"
+          >
+            <span className="login-mode-tab-icon">
+              <i className="bi bi-box-arrow-in-right" aria-hidden="true" />
+            </span>
+            Connexion
+          </button>
+          <button className="login-mode-tab is-active" type="button">
+            <span className="login-mode-tab-icon">
+              <i className="bi bi-person-plus" aria-hidden="true" />
+            </span>
+            Inscription
+          </button>
         </div>
 
         <form
@@ -161,14 +169,6 @@ export function RegisterPage() {
 
           {message ? <p className="ticket-form-helper">{message}</p> : null}
         </form>
-
-        <button
-          className="login-forgot-button"
-          onClick={() => navigateTo('/login')}
-          type="button"
-        >
-          J’ai déjà un compte
-        </button>
       </section>
     </section>
   );

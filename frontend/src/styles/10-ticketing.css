@@ -1613,12 +1613,12 @@
   }
 
   .login-layout {
-    grid-template-columns: 1fr;
+    padding: 22px 14px;
   }
 
-  .login-showcase,
   .login-panel {
     padding: 28px 20px;
+    border-radius: 24px;
   }
 
   .workspace-sidebar {
