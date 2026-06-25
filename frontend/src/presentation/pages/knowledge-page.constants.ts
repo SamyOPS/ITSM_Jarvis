@@ -35,19 +35,19 @@ export const KNOWLEDGE_SORT_OPTIONS: Array<{
   {
     value: 'POPULAR',
     label: 'Plus populaire',
-    description: 'Trie par nombre de likes',
+    description: 'Appliquer ce tri',
     icon: Flame,
   },
   {
     value: 'NEWEST',
-    label: 'Plus recentes',
-    description: 'Articles les plus recemment mis a jour',
+    label: "Plus récents d'abord",
+    description: 'Appliquer ce tri',
     icon: ArrowUpDown,
   },
   {
     value: 'OLDEST',
-    label: 'Plus anciennes',
-    description: 'Articles les plus anciens en premier',
+    label: "Plus anciens d'abord",
+    description: 'Appliquer ce tri',
     icon: History,
   },
 ];

@@ -22,6 +22,8 @@ export function RegisterPage() {
   const [form, setForm] = useState<RegisterFormState>(EMPTY_REGISTER_FORM);
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   function updateField(field: keyof RegisterFormState, value: string): void {
     setForm((currentForm) => ({
@@ -69,27 +71,35 @@ export function RegisterPage() {
 
   return (
     <section className="login-layout">
-      <aside className="login-showcase">
-        <div className="login-showcase-overlay" />
-        <div className="login-showcase-copy">
-          <span className="login-showcase-eyebrow">Jarvis Connect</span>
-          <h1>Vision</h1>
-          <p>
-            Crée ton accès demandeur pour suivre tes tickets et consulter la
-            base de connaissances.
-          </p>
-        </div>
-        <div className="login-showcase-glow" />
-      </aside>
-
       <section className="login-panel">
         <div className="login-panel-header">
-          <span className="panel-tag">Inscription</span>
+          <div className="login-brand">
+            <span className="login-brand-icon">
+              <RegisterAuthIcon />
+            </span>
+            <strong>Compte Vision</strong>
+          </div>
           <h2>Créer un compte</h2>
-          <p>
-            Les comptes créés ici sont automatiquement limités au rôle
-            demandeur.
-          </p>
+          <p>Un seul écran pour se connecter ou créer un compte demandeur.</p>
+        </div>
+
+        <div className="login-mode-tabs" aria-label="Choix du mode">
+          <button
+            className="login-mode-tab"
+            onClick={() => navigateTo('/login')}
+            type="button"
+          >
+            <span className="login-mode-tab-icon">
+              <LoginAuthIcon />
+            </span>
+            Connexion
+          </button>
+          <button className="login-mode-tab is-active" type="button">
+            <span className="login-mode-tab-icon">
+              <RegisterAuthIcon />
+            </span>
+            Inscription
+          </button>
         </div>
 
         <form
@@ -101,6 +111,7 @@ export function RegisterPage() {
             <input
               autoComplete="email"
               onChange={(event) => updateField('email', event.target.value)}
+              placeholder="Email"
               required
               type="email"
               value={form.email}
@@ -112,6 +123,7 @@ export function RegisterPage() {
             <input
               autoComplete="given-name"
               onChange={(event) => updateField('firstName', event.target.value)}
+              placeholder="Prénom"
               value={form.firstName}
             />
           </label>
@@ -121,34 +133,67 @@ export function RegisterPage() {
             <input
               autoComplete="family-name"
               onChange={(event) => updateField('lastName', event.target.value)}
+              placeholder="Nom"
               value={form.lastName}
             />
           </label>
 
           <label className="field">
             <span>Mot de passe</span>
-            <input
-              autoComplete="new-password"
-              minLength={8}
-              onChange={(event) => updateField('password', event.target.value)}
-              required
-              type="password"
-              value={form.password}
-            />
+            <span className="login-password-field">
+              <input
+                autoComplete="new-password"
+                minLength={8}
+                onChange={(event) =>
+                  updateField('password', event.target.value)
+                }
+                placeholder="Mot de passe"
+                required
+                type={showPassword ? 'text' : 'password'}
+                value={form.password}
+              />
+              <button
+                aria-label={
+                  showPassword
+                    ? 'Masquer le mot de passe'
+                    : 'Afficher le mot de passe'
+                }
+                className="login-password-eye"
+                onClick={() => setShowPassword((current) => !current)}
+                type="button"
+              >
+                <EyeIcon isVisible={showPassword} />
+              </button>
+            </span>
           </label>
 
           <label className="field">
             <span>Confirmer le mot de passe</span>
-            <input
-              autoComplete="new-password"
-              minLength={8}
-              onChange={(event) =>
-                updateField('confirmPassword', event.target.value)
-              }
-              required
-              type="password"
-              value={form.confirmPassword}
-            />
+            <span className="login-password-field">
+              <input
+                autoComplete="new-password"
+                minLength={8}
+                onChange={(event) =>
+                  updateField('confirmPassword', event.target.value)
+                }
+                placeholder="Confirmer le mot de passe"
+                required
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={form.confirmPassword}
+              />
+              <button
+                aria-label={
+                  showConfirmPassword
+                    ? 'Masquer le mot de passe'
+                    : 'Afficher le mot de passe'
+                }
+                className="login-password-eye"
+                onClick={() => setShowConfirmPassword((current) => !current)}
+                type="button"
+              >
+                <EyeIcon isVisible={showConfirmPassword} />
+              </button>
+            </span>
           </label>
 
           <button
@@ -161,16 +206,83 @@ export function RegisterPage() {
 
           {message ? <p className="ticket-form-helper">{message}</p> : null}
         </form>
-
-        <button
-          className="login-forgot-button"
-          onClick={() => navigateTo('/login')}
-          type="button"
-        >
-          J’ai déjà un compte
-        </button>
       </section>
     </section>
+  );
+}
+
+function LoginAuthIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="16"
+      viewBox="0 0 16 16"
+      width="16"
+    >
+      <path
+        d="M6.5 3.5 10 7l-3.5 3.5M10 7H1.75M10.75 2.25h1.75A1.5 1.5 0 0 1 14 3.75v6.5a1.5 1.5 0 0 1-1.5 1.5h-1.75"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
+function RegisterAuthIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="16"
+      viewBox="0 0 16 16"
+      width="16"
+    >
+      <path
+        d="M5.75 8.25a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM1.5 13.75c.45-2.12 2.08-3.5 4.25-3.5 1.2 0 2.2.42 2.95 1.15M12.25 5.25v5M9.75 7.75h5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
+function EyeIcon({ isVisible }: { isVisible: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="18"
+      viewBox="0 0 18 18"
+      width="18"
+    >
+      <path
+        d="M2.25 9s2.35-4.25 6.75-4.25S15.75 9 15.75 9 13.4 13.25 9 13.25 2.25 9 2.25 9Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M9 10.75A1.75 1.75 0 1 0 9 7.25a1.75 1.75 0 0 0 0 3.5Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+      {!isVisible ? (
+        <path
+          d="M14.25 3.75 3.75 14.25"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.5"
+        />
+      ) : null}
+    </svg>
   );
 }
 

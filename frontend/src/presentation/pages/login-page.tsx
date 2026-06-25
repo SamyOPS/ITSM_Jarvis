@@ -8,42 +8,19 @@ type LoginPageProps = {
   onSubmit: (email: string, password: string) => Promise<void>;
 };
 
-type DemoAccount = {
-  email: string;
-  password: string;
-  role: string;
-};
-
-const DEMO_ACCOUNTS: DemoAccount[] = [
-  {
-    email: 'demandeur@jarvis.fr',
-    password: 'Demandeur123!',
-    role: 'DEMANDEUR',
-  },
-  {
-    email: 'agent@jarvis.fr',
-    password: 'Agent123!',
-    role: 'AGENT',
-  },
-  {
-    email: 'admin@jarvis.fr',
-    password: 'Admin123!',
-    role: 'ADMIN',
-  },
-];
-
 export function LoginPage({
   errorMessage,
   isBusy,
   onPasswordResetRequest,
   onSubmit,
 }: LoginPageProps) {
-  const [email, setEmail] = useState(DEMO_ACCOUNTS[0].email);
+  const [email, setEmail] = useState('');
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotMessage, setForgotMessage] = useState<string | null>(null);
   const [forgotMode, setForgotMode] = useState(false);
   const [isForgotBusy, setIsForgotBusy] = useState(false);
-  const [password, setPassword] = useState(DEMO_ACCOUNTS[0].password);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -71,31 +48,37 @@ export function LoginPage({
     }
   }
 
-  function applyDemoAccount(account: DemoAccount): void {
-    setEmail(account.email);
-    setPassword(account.password);
-  }
-
   return (
     <section className="login-layout">
-      <aside className="login-showcase">
-        <div className="login-showcase-overlay" />
-        <div className="login-showcase-copy">
-          <span className="login-showcase-eyebrow">Jarvis Connect</span>
-          <h1>Vision</h1>
-          <p>
-            Portail de ticketing interne pour incidents, demandes et suivi des
-            opérations support.
-          </p>
-        </div>
-        <div className="login-showcase-glow" />
-      </aside>
-
       <section className="login-panel">
         <div className="login-panel-header">
-          <span className="panel-tag">Connexion</span>
-          <h2>Accès à la plateforme</h2>
-          <p>Authentifie-toi avec un compte de test pour accéder à Vision.</p>
+          <div className="login-brand">
+            <span className="login-brand-icon">
+              <LoginAuthIcon />
+            </span>
+            <strong>Compte Vision</strong>
+          </div>
+          <h2>Connexion</h2>
+          <p>Un seul écran pour se connecter ou créer un compte demandeur.</p>
+        </div>
+
+        <div className="login-mode-tabs" aria-label="Choix du mode">
+          <button className="login-mode-tab is-active" type="button">
+            <span className="login-mode-tab-icon">
+              <LoginAuthIcon />
+            </span>
+            Connexion
+          </button>
+          <button
+            className="login-mode-tab"
+            onClick={() => navigateTo('/register')}
+            type="button"
+          >
+            <span className="login-mode-tab-icon">
+              <RegisterAuthIcon />
+            </span>
+            Inscription
+          </button>
         </div>
 
         <form
@@ -107,7 +90,7 @@ export function LoginPage({
             <input
               autoComplete="email"
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="nom@jarvis.fr"
+              placeholder="Email"
               type="email"
               value={email}
             />
@@ -115,13 +98,27 @@ export function LoginPage({
 
           <label className="field">
             <span>Mot de passe</span>
-            <input
-              autoComplete="current-password"
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Mot de passe"
-              type="password"
-              value={password}
-            />
+            <span className="login-password-field">
+              <input
+                autoComplete="current-password"
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Mot de passe"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+              />
+              <button
+                aria-label={
+                  showPassword
+                    ? 'Masquer le mot de passe'
+                    : 'Afficher le mot de passe'
+                }
+                className="login-password-eye"
+                onClick={() => setShowPassword((current) => !current)}
+                type="button"
+              >
+                <EyeIcon isVisible={showPassword} />
+              </button>
+            </span>
           </label>
 
           <button
@@ -179,40 +176,82 @@ export function LoginPage({
             ) : null}
           </form>
         ) : null}
-
-        <button
-          className="login-forgot-button"
-          onClick={() => navigateTo('/register')}
-          type="button"
-        >
-          Créer un compte demandeur
-        </button>
-
-        <div className="login-demo-section">
-          <div className="login-demo-heading">
-            <h3>Comptes de test</h3>
-            <p>
-              Les trois adresses et mots de passe restent visibles pour tester
-              rapidement.
-            </p>
-          </div>
-
-          <div className="login-demo-grid">
-            {DEMO_ACCOUNTS.map((account) => (
-              <button
-                className="login-demo-card"
-                key={account.email}
-                onClick={() => applyDemoAccount(account)}
-                type="button"
-              >
-                <span>{account.role}</span>
-                <strong>{account.email}</strong>
-                <code>{account.password}</code>
-              </button>
-            ))}
-          </div>
-        </div>
       </section>
     </section>
+  );
+}
+
+function LoginAuthIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="16"
+      viewBox="0 0 16 16"
+      width="16"
+    >
+      <path
+        d="M6.5 3.5 10 7l-3.5 3.5M10 7H1.75M10.75 2.25h1.75A1.5 1.5 0 0 1 14 3.75v6.5a1.5 1.5 0 0 1-1.5 1.5h-1.75"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
+function RegisterAuthIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="16"
+      viewBox="0 0 16 16"
+      width="16"
+    >
+      <path
+        d="M5.75 8.25a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM1.5 13.75c.45-2.12 2.08-3.5 4.25-3.5 1.2 0 2.2.42 2.95 1.15M12.25 5.25v5M9.75 7.75h5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
+function EyeIcon({ isVisible }: { isVisible: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="18"
+      viewBox="0 0 18 18"
+      width="18"
+    >
+      <path
+        d="M2.25 9s2.35-4.25 6.75-4.25S15.75 9 15.75 9 13.4 13.25 9 13.25 2.25 9 2.25 9Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M9 10.75A1.75 1.75 0 1 0 9 7.25a1.75 1.75 0 0 0 0 3.5Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+      {!isVisible ? (
+        <path
+          d="M14.25 3.75 3.75 14.25"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.5"
+        />
+      ) : null}
+    </svg>
   );
 }
