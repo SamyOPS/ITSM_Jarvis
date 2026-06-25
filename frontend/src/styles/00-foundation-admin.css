@@ -794,8 +794,8 @@ a {
 }
 
 .login-mode-tab.is-active {
-  border-color: #071b34;
-  background: #071b34;
+  border-color: #15273a;
+  background: #15273a;
   color: #ffffff;
 }
 
@@ -844,16 +844,16 @@ a {
 }
 
 .login-submit-button {
-  border: 1px solid #071b34;
+  border: 1px solid #15273a;
   border-radius: 7px;
   padding: 12px 18px;
-  background: #071b34;
+  background: #15273a;
   color: #fff;
   font-weight: 600;
 }
 
 .login-submit-button:hover:not(:disabled) {
-  background: #0d2748;
+  background: #1a2d41;
 }
 
 .login-forgot-button {
