@@ -1,0 +1,137 @@
+.app-shell--workspace {
+  grid-template-columns: auto 1fr;
+  background: #edf2f8;
+}
+
+.app-shell--workspace .workspace-sidebar {
+  width: 268px;
+  gap: 0;
+  padding: 18px 14px 20px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, #112233 0%, #16283d 100%);
+  color: #e7edf6;
+  overflow: hidden;
+  will-change: width, padding;
+  transition:
+    width 180ms ease,
+    padding 180ms ease;
+  font-family:
+    'Manrope',
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.app-shell--workspace .workspace-sidebar.is-collapsed {
+  width: 74px;
+  padding: 14px 8px 18px;
+  overflow: visible;
+}
+
+.workspace-sidebar-search {
+  display: grid;
+  gap: 0;
+  margin: 0 8px 16px;
+}
+
+.workspace-sidebar-nav {
+  display: grid;
+  gap: 6px;
+  padding: 0 6px 12px;
+}
+
+.workspace-nav-link {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 10px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #e7edf6;
+  overflow: hidden;
+  text-align: left;
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    transform 160ms ease;
+  font-family:
+    'Manrope',
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.workspace-nav-link:hover {
+  transform: none;
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.workspace-nav-link.is-active {
+  border-color: rgba(46, 125, 233, 0.35);
+  border-radius: 14px;
+  background: rgba(46, 125, 233, 0.22);
+  color: #ffffff;
+}
+
+.workspace-topbar {
+  position: relative;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 24px;
+  border-bottom: 1px solid rgba(207, 216, 234, 0.9);
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(16px);
+}
+
+.workspace-breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 4px 5px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #66758d;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.workspace-breadcrumb-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.workspace-topbar-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: nowrap;
+}

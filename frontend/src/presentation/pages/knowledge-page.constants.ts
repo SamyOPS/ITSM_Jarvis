@@ -5,21 +5,22 @@ import type {
 } from './knowledge-page.types';
 
 export const KNOWLEDGE_CATEGORY_OPTIONS = [
-  'Compte & accÃ¨s',
-  'RÃ©seau & Internet',
-  'MatÃ©riel',
+  'Compte & accès',
+  'Réseau & Internet',
+  'Matériel',
   'Logiciels & applications',
   'Messagerie',
   'Impression',
-  'SÃ©curitÃ©',
-  'TÃ©lÃ©phonie',
-  'ProcÃ©dures internes',
-  'DÃ©pannage gÃ©nÃ©ral',
+  'Sécurité',
+  'Téléphonie',
+  'Procédures internes',
+  'Dépannage général',
 ] as const;
 
 export const KNOWLEDGE_PAGE_SIZE = 20;
 
 export const EMPTY_FORM: KnowledgeFormState = {
+  attachments: [],
   category: '',
   content: '',
   status: 'PUBLISHED',
@@ -40,8 +41,8 @@ export const KNOWLEDGE_SORT_OPTIONS: Array<{
   },
   {
     value: 'NEWEST',
-    label: 'Plus recentes',
-    description: 'Articles les plus recemment mis a jour',
+    label: 'Plus récentes',
+    description: 'Articles les plus récemment mis à jour',
     icon: ArrowUpDown,
   },
   {
