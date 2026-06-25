@@ -90,7 +90,7 @@ export function LoginPage({
             <input
               autoComplete="email"
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="Email"
+              placeholder="nom@exemple.com"
               type="email"
               value={email}
             />
@@ -156,7 +156,7 @@ export function LoginPage({
               <input
                 autoComplete="email"
                 onChange={(event) => setForgotEmail(event.target.value)}
-                placeholder="nom@jarvis.fr"
+                placeholder="nom@exemple.com"
                 required
                 type="email"
                 value={forgotEmail}

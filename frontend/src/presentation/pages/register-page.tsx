@@ -79,7 +79,7 @@ export function RegisterPage() {
             </span>
             <strong>Compte Vision</strong>
           </div>
-          <h2>Créer un compte</h2>
+          <h2>Inscription</h2>
           <p>Un seul écran pour se connecter ou créer un compte demandeur.</p>
         </div>
 
@@ -111,7 +111,7 @@ export function RegisterPage() {
             <input
               autoComplete="email"
               onChange={(event) => updateField('email', event.target.value)}
-              placeholder="Email"
+              placeholder="nom@exemple.com"
               required
               type="email"
               value={form.email}
@@ -124,6 +124,7 @@ export function RegisterPage() {
               autoComplete="given-name"
               onChange={(event) => updateField('firstName', event.target.value)}
               placeholder="Prénom"
+              required
               value={form.firstName}
             />
           </label>
@@ -134,6 +135,7 @@ export function RegisterPage() {
               autoComplete="family-name"
               onChange={(event) => updateField('lastName', event.target.value)}
               placeholder="Nom"
+              required
               value={form.lastName}
             />
           </label>
