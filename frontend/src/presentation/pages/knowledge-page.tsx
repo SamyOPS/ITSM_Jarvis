@@ -1,4 +1,5 @@
 import {
+  type DragEvent,
   type FormEvent,
   type MouseEvent,
   type ReactNode,
@@ -10,8 +11,10 @@ import {
 } from 'react';
 import {
   ArrowLeft,
+  Download,
   Eye,
   FileText,
+  Paperclip,
   Pencil,
   Plus,
   Search,
@@ -25,13 +28,20 @@ import type {
   KnowledgeArticleStatus,
   UpdateKnowledgeArticlePayload,
 } from '../../domain/knowledge/knowledge-article';
+import type { KnowledgeArticleAttachmentSnapshot } from '../../domain/knowledge/knowledge-article-attachment';
 import {
+  addKnowledgeArticleAttachment,
   createKnowledgeArticle,
   deleteKnowledgeArticle,
+  deleteKnowledgeArticleAttachment,
+  deleteKnowledgeArticleAttachmentBinary,
+  downloadKnowledgeArticleAttachmentBinary,
   fetchKnowledgeArticle,
+  fetchKnowledgeArticleAttachments,
   fetchKnowledgeArticles,
   toggleKnowledgeArticleLike,
   updateKnowledgeArticle,
+  uploadKnowledgeArticleAttachmentBinary,
 } from '../../infrastructure/api/knowledge-api';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 import { KnowledgeArticleCard } from './knowledge-article-card';
@@ -53,10 +63,16 @@ import type {
   ModalState,
 } from './knowledge-page.types';
 
+const KNOWLEDGE_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
+const KNOWLEDGE_ATTACHMENT_MAX_SIZE_BYTES = 2 * 1024 * 1024;
+
 export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
   const [selectedArticle, setSelectedArticle] =
     useState<KnowledgeArticle | null>(null);
+  const [selectedArticleAttachments, setSelectedArticleAttachments] = useState<
+    KnowledgeArticleAttachmentSnapshot[]
+  >([]);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [form, setForm] = useState<KnowledgeFormState>(EMPTY_FORM);
   const [contentTab, setContentTab] = useState<'edit' | 'preview'>('edit');
@@ -67,9 +83,25 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [attachmentErrorMessage, setAttachmentErrorMessage] = useState<
+    string | null
+  >(null);
+  const [attachmentSuccessMessage, setAttachmentSuccessMessage] = useState<
+    string | null
+  >(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
+  const [deletingAttachmentId, setDeletingAttachmentId] = useState<
+    string | null
+  >(null);
+  const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<
+    string | null
+  >(null);
+  const [isAttachmentDragOver, setIsAttachmentDragOver] = useState(false);
   const [likingArticleIds, setLikingArticleIds] = useState<string[]>([]);
+  const [attachmentInputKey, setAttachmentInputKey] = useState(0);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const isAdmin = session.user.role === 'ADMIN';
 
@@ -97,15 +129,19 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   useEffect(() => {
     if (!articleId) {
       setSelectedArticle(null);
+      setSelectedArticleAttachments([]);
       return;
     }
+
     const id = articleId;
     let cancelled = false;
 
     async function loadArticle(): Promise<void> {
       try {
         const article = await fetchKnowledgeArticle(session.accessToken, id);
-        if (!cancelled) setSelectedArticle(article);
+        if (!cancelled) {
+          setSelectedArticle(article);
+        }
       } catch (error) {
         if (!cancelled) {
           setErrorMessage(
@@ -116,11 +152,59 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
         }
       }
     }
+
     void loadArticle();
+
     return () => {
       cancelled = true;
     };
   }, [articleId, session.accessToken]);
+
+  useEffect(() => {
+    if (!selectedArticle) {
+      setSelectedArticleAttachments([]);
+      setAttachmentErrorMessage(null);
+      setAttachmentSuccessMessage(null);
+      return;
+    }
+
+    const selectedArticleId = selectedArticle.id;
+    let cancelled = false;
+
+    async function loadAttachments(): Promise<void> {
+      setIsLoadingAttachments(true);
+      setAttachmentErrorMessage(null);
+
+      try {
+        const attachments = await fetchKnowledgeArticleAttachments(
+          session.accessToken,
+          selectedArticleId,
+        );
+
+        if (!cancelled) {
+          setSelectedArticleAttachments(attachments);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setAttachmentErrorMessage(
+            error instanceof Error
+              ? error.message
+              : 'Erreur inconnue lors du chargement des pièces jointes',
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingAttachments(false);
+        }
+      }
+    }
+
+    void loadAttachments();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedArticle, session.accessToken]);
 
   const filteredArticles = useMemo(() => {
     const normalizedSearch = normalizeText(search);
@@ -209,20 +293,31 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
     Math.ceil(sortedArticles.length / KNOWLEDGE_PAGE_SIZE),
   );
   const visiblePage = Math.min(page, totalPages);
+
   const paginatedArticles = useMemo(() => {
     const startIndex = (visiblePage - 1) * KNOWLEDGE_PAGE_SIZE;
     return sortedArticles.slice(startIndex, startIndex + KNOWLEDGE_PAGE_SIZE);
   }, [sortedArticles, visiblePage]);
 
-  function openCreate() {
+  function resetAttachmentDraft(): void {
+    setForm((currentForm) => ({ ...currentForm, attachments: [] }));
+    setAttachmentInputKey((currentKey) => currentKey + 1);
+    setIsAttachmentDragOver(false);
+    setAttachmentErrorMessage(null);
+    setAttachmentSuccessMessage(null);
+  }
+
+  function openCreate(): void {
     setForm(EMPTY_FORM);
     setContentTab('edit');
     setErrorMessage(null);
+    resetAttachmentDraft();
     setModal({ type: 'create' });
   }
 
-  function openEdit(article: KnowledgeArticle) {
+  function openEdit(article: KnowledgeArticle): void {
     setForm({
+      attachments: [],
       title: article.title,
       category: article.category,
       content: article.content,
@@ -230,17 +325,120 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
     });
     setContentTab('edit');
     setErrorMessage(null);
+    resetAttachmentDraft();
     setModal({ type: 'edit', article });
   }
 
-  function openDelete(article: KnowledgeArticle) {
+  function openDelete(article: KnowledgeArticle): void {
     setErrorMessage(null);
     setModal({ type: 'delete', article });
   }
 
-  function closeModal() {
+  function closeModal(): void {
     setModal({ type: 'none' });
     setErrorMessage(null);
+    resetAttachmentDraft();
+  }
+
+  function appendDraftAttachments(files: File[]): void {
+    const acceptedFiles: File[] = [];
+    const rejectedFiles: string[] = [];
+
+    for (const file of files) {
+      if (file.size > KNOWLEDGE_ATTACHMENT_MAX_SIZE_BYTES) {
+        rejectedFiles.push(file.name);
+        continue;
+      }
+
+      acceptedFiles.push(file);
+    }
+
+    setForm((currentForm) => ({
+      ...currentForm,
+      attachments: [...currentForm.attachments, ...acceptedFiles],
+    }));
+
+    if (rejectedFiles.length > 0) {
+      setAttachmentErrorMessage(
+        `Fichier(s) trop volumineux : ${rejectedFiles.join(', ')}. Taille maximale : 2 Mo par fichier.`,
+      );
+    } else {
+      setAttachmentErrorMessage(null);
+    }
+  }
+
+  function handleAttachmentSelection(fileList: FileList | null): void {
+    if (!fileList || fileList.length === 0) {
+      return;
+    }
+
+    appendDraftAttachments(Array.from(fileList));
+    setAttachmentInputKey((currentKey) => currentKey + 1);
+  }
+
+  function handleAttachmentDrop(event: DragEvent<HTMLDivElement>): void {
+    event.preventDefault();
+    setIsAttachmentDragOver(false);
+
+    if (event.dataTransfer.files.length === 0) {
+      return;
+    }
+
+    appendDraftAttachments(Array.from(event.dataTransfer.files));
+  }
+
+  function removeDraftAttachment(fileToRemove: File): void {
+    setForm((currentForm) => ({
+      ...currentForm,
+      attachments: currentForm.attachments.filter(
+        (file) => getLocalFileKey(file) !== getLocalFileKey(fileToRemove),
+      ),
+    }));
+  }
+
+  async function uploadDraftAttachments(
+    articleId: string,
+  ): Promise<KnowledgeArticleAttachmentSnapshot[]> {
+    if (form.attachments.length === 0) {
+      return [];
+    }
+
+    setIsUploadingAttachments(true);
+    const createdAttachments: KnowledgeArticleAttachmentSnapshot[] = [];
+
+    try {
+      for (const file of form.attachments) {
+        const storagePath = buildKnowledgeAttachmentStoragePath(
+          articleId,
+          file.name,
+        );
+
+        await uploadKnowledgeArticleAttachmentBinary(
+          session.accessToken,
+          KNOWLEDGE_ATTACHMENTS_BUCKET_ID,
+          storagePath,
+          file,
+        );
+
+        const createdAttachment = await addKnowledgeArticleAttachment(
+          session.accessToken,
+          articleId,
+          {
+            bucketId: KNOWLEDGE_ATTACHMENTS_BUCKET_ID,
+            fileName: file.name,
+            mimeType: file.type || null,
+            sizeBytes: file.size,
+            storagePath,
+          },
+        );
+
+        createdAttachments.push(createdAttachment);
+      }
+
+      return createdAttachments;
+    } finally {
+      setIsUploadingAttachments(false);
+    }
   }
 
   async function handleCreate(
@@ -249,6 +447,8 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
     event.preventDefault();
     setIsSaving(true);
     setErrorMessage(null);
+    setAttachmentErrorMessage(null);
+
     try {
       const payload: CreateKnowledgeArticlePayload = {
         category: form.category,
@@ -256,12 +456,27 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
         status: form.status,
         title: form.title,
       };
+
       const article = await createKnowledgeArticle(
         session.accessToken,
         payload,
       );
-      setArticles((current) => [article, ...current]);
+      setArticles((currentArticles) => [article, ...currentArticles]);
+      let postSaveWarning: string | null = null;
+
+      try {
+        await uploadDraftAttachments(article.id);
+      } catch (attachmentError) {
+        postSaveWarning =
+          attachmentError instanceof Error
+            ? `Article créé, mais l'ajout des pièces jointes a échoué: ${attachmentError.message}`
+            : "Article créé, mais l'ajout des pièces jointes a échoué.";
+      }
+
       closeModal();
+      if (postSaveWarning) {
+        setErrorMessage(postSaveWarning);
+      }
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -277,9 +492,15 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
-    if (modal.type !== 'edit') return;
+
+    if (modal.type !== 'edit') {
+      return;
+    }
+
     setIsSaving(true);
     setErrorMessage(null);
+    setAttachmentErrorMessage(null);
+
     try {
       const payload: UpdateKnowledgeArticlePayload = {
         category: form.category,
@@ -287,16 +508,49 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
         status: form.status,
         title: form.title,
       };
-      const updated = await updateKnowledgeArticle(
+
+      const updatedArticle = await updateKnowledgeArticle(
         session.accessToken,
         modal.article.id,
         payload,
       );
-      setArticles((current) =>
-        current.map((a) => (a.id === updated.id ? updated : a)),
+
+      setArticles((currentArticles) =>
+        currentArticles.map((article) =>
+          article.id === updatedArticle.id ? updatedArticle : article,
+        ),
       );
-      if (selectedArticle?.id === updated.id) setSelectedArticle(updated);
+
+      if (selectedArticle?.id === updatedArticle.id) {
+        setSelectedArticle(updatedArticle);
+      }
+      let postSaveWarning: string | null = null;
+
+      try {
+        const createdAttachments = await uploadDraftAttachments(
+          updatedArticle.id,
+        );
+
+        if (
+          selectedArticle?.id === updatedArticle.id &&
+          createdAttachments.length > 0
+        ) {
+          setSelectedArticleAttachments((currentAttachments) => [
+            ...currentAttachments,
+            ...createdAttachments,
+          ]);
+        }
+      } catch (attachmentError) {
+        postSaveWarning =
+          attachmentError instanceof Error
+            ? `Article mis à jour, mais l'ajout des pièces jointes a échoué: ${attachmentError.message}`
+            : "Article mis à jour, mais l'ajout des pièces jointes a échoué.";
+      }
+
       closeModal();
+      if (postSaveWarning) {
+        setErrorMessage(postSaveWarning);
+      }
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -309,18 +563,26 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   }
 
   async function handleDelete(): Promise<void> {
-    if (modal.type !== 'delete') return;
+    if (modal.type !== 'delete') {
+      return;
+    }
+
     const articleToDelete = modal.article;
     const wasViewing = selectedArticle?.id === articleToDelete.id;
+
     setIsSaving(true);
     setErrorMessage(null);
+
     try {
       await deleteKnowledgeArticle(session.accessToken, articleToDelete.id);
-      setArticles((current) =>
-        current.filter((a) => a.id !== articleToDelete.id),
+      setArticles((currentArticles) =>
+        currentArticles.filter((article) => article.id !== articleToDelete.id),
       );
       closeModal();
-      if (wasViewing) navigateTo('/knowledge/articles');
+
+      if (wasViewing) {
+        navigateTo('/knowledge/articles');
+      }
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -343,7 +605,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
       return;
     }
 
-    setLikingArticleIds((current) => [...current, articleId]);
+    setLikingArticleIds((currentIds) => [...currentIds, articleId]);
 
     try {
       const updatedArticle = await toggleKnowledgeArticleLike(
@@ -351,8 +613,8 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
         articleId,
       );
 
-      setArticles((current) =>
-        current.map((article) =>
+      setArticles((currentArticles) =>
+        currentArticles.map((article) =>
           article.id === updatedArticle.id ? updatedArticle : article,
         ),
       );
@@ -364,24 +626,96 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Erreur inconnue lors de la mise a jour du like de l'article",
+          : "Erreur inconnue lors de la mise à jour du like de l'article",
       );
     } finally {
-      setLikingArticleIds((current) =>
-        current.filter((currentId) => currentId !== articleId),
+      setLikingArticleIds((currentIds) =>
+        currentIds.filter((currentId) => currentId !== articleId),
       );
     }
   }
 
-  // Build modal node before conditional branches so it can be used in both views
+  async function handleDownloadAttachment(
+    attachment: KnowledgeArticleAttachmentSnapshot,
+  ): Promise<void> {
+    setDownloadingAttachmentId(attachment.id);
+    setAttachmentErrorMessage(null);
+
+    try {
+      const blob = await downloadKnowledgeArticleAttachmentBinary(
+        session.accessToken,
+        attachment.bucketId,
+        attachment.storagePath,
+      );
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = attachment.fileName;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      setAttachmentErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Erreur inconnue lors du téléchargement du fichier',
+      );
+    } finally {
+      setDownloadingAttachmentId(null);
+    }
+  }
+
+  async function handleDeleteAttachment(
+    attachment: KnowledgeArticleAttachmentSnapshot,
+  ): Promise<void> {
+    if (!selectedArticle) {
+      return;
+    }
+
+    setDeletingAttachmentId(attachment.id);
+    setAttachmentErrorMessage(null);
+    setAttachmentSuccessMessage(null);
+
+    try {
+      await deleteKnowledgeArticleAttachmentBinary(
+        session.accessToken,
+        attachment.bucketId,
+        attachment.storagePath,
+      );
+      await deleteKnowledgeArticleAttachment(
+        session.accessToken,
+        selectedArticle.id,
+        attachment.id,
+      );
+
+      setSelectedArticleAttachments((currentAttachments) =>
+        currentAttachments.filter(
+          (currentAttachment) => currentAttachment.id !== attachment.id,
+        ),
+      );
+      setAttachmentSuccessMessage('Pièce jointe supprimée.');
+    } catch (error) {
+      setAttachmentErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Erreur inconnue lors de la suppression de la pièce jointe',
+      );
+    } finally {
+      setDeletingAttachmentId(null);
+    }
+  }
+
   let modalNode: ReactNode = null;
 
   if (modal.type === 'delete') {
     modalNode = (
       <div
         className="kb-modal-overlay"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) closeModal();
+        onClick={(event) => {
+          if (event.target === event.currentTarget) {
+            closeModal();
+          }
         }}
       >
         <div className="kb-modal">
@@ -415,7 +749,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               <button
                 className="danger-button"
                 disabled={isSaving}
-                onClick={handleDelete}
+                onClick={() => void handleDelete()}
                 type="button"
               >
                 {isSaving ? 'Suppression...' : 'Supprimer'}
@@ -427,11 +761,14 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
     );
   } else if (modal.type === 'create' || modal.type === 'edit') {
     const isEdit = modal.type === 'edit';
+
     modalNode = (
       <div
         className="kb-modal-overlay"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) closeModal();
+        onClick={(event) => {
+          if (event.target === event.currentTarget) {
+            closeModal();
+          }
         }}
       >
         <div className="kb-modal">
@@ -445,9 +782,11 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               <X size={16} />
             </button>
           </div>
+
           {errorMessage ? (
             <p className="referentials-error">{errorMessage}</p>
           ) : null}
+
           <form
             className="kb-modal-form"
             onSubmit={isEdit ? handleUpdate : handleCreate}
@@ -456,18 +795,25 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               <span>Titre</span>
               <input
                 maxLength={50}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, title: e.target.value }))
+                onChange={(event) =>
+                  setForm((currentForm) => ({
+                    ...currentForm,
+                    title: event.target.value,
+                  }))
                 }
                 required
                 value={form.title}
               />
             </label>
+
             <label className="field">
               <span>Catégorie</span>
               <select
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, category: e.target.value }))
+                onChange={(event) =>
+                  setForm((currentForm) => ({
+                    ...currentForm,
+                    category: event.target.value,
+                  }))
                 }
                 required
                 value={form.category}
@@ -480,13 +826,14 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                 ))}
               </select>
             </label>
+
             <label className="field">
               <span>Statut</span>
               <select
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    status: e.target.value as KnowledgeArticleStatus,
+                onChange={(event) =>
+                  setForm((currentForm) => ({
+                    ...currentForm,
+                    status: event.target.value as KnowledgeArticleStatus,
                   }))
                 }
                 value={form.status}
@@ -495,6 +842,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                 <option value="DRAFT">Brouillon</option>
               </select>
             </label>
+
             <div className="field">
               <span>Contenu (Markdown)</span>
               <div className="kb-markdown-tabs">
@@ -515,11 +863,15 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                   Aperçu
                 </button>
               </div>
+
               {contentTab === 'edit' ? (
                 <textarea
                   className="kb-markdown-editor"
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, content: e.target.value }))
+                  onChange={(event) =>
+                    setForm((currentForm) => ({
+                      ...currentForm,
+                      content: event.target.value,
+                    }))
                   }
                   placeholder="Rédigez votre article en Markdown..."
                   required
@@ -538,6 +890,138 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                 </div>
               )}
             </div>
+
+            <div className="field">
+              <span>Pièces jointes</span>
+
+              {isEdit && selectedArticleAttachments.length > 0 ? (
+                <div className="kb-attachment-list">
+                  {selectedArticleAttachments.map((attachment) => (
+                    <div className="kb-attachment-item" key={attachment.id}>
+                      <div className="kb-attachment-item-copy">
+                        <button
+                          className="kb-attachment-link"
+                          onClick={() =>
+                            void handleDownloadAttachment(attachment)
+                          }
+                          type="button"
+                        >
+                          {attachment.fileName}
+                        </button>
+                        <span>
+                          {formatFileSize(attachment.sizeBytes)} - ajouté le{' '}
+                          {formatDateTime(attachment.createdAt)}
+                        </span>
+                      </div>
+
+                      <div className="kb-attachment-item-actions">
+                        <button
+                          className="secondary-button"
+                          disabled={downloadingAttachmentId === attachment.id}
+                          onClick={() =>
+                            void handleDownloadAttachment(attachment)
+                          }
+                          type="button"
+                        >
+                          {downloadingAttachmentId === attachment.id
+                            ? 'Téléchargement...'
+                            : 'Télécharger'}
+                        </button>
+
+                        <button
+                          className="tdp-delete-btn"
+                          disabled={deletingAttachmentId === attachment.id}
+                          onClick={() =>
+                            void handleDeleteAttachment(attachment)
+                          }
+                          type="button"
+                        >
+                          {deletingAttachmentId === attachment.id
+                            ? 'Suppression...'
+                            : 'Supprimer'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              <div
+                className={
+                  isAttachmentDragOver
+                    ? 'kb-upload-zone is-dragover'
+                    : 'kb-upload-zone'
+                }
+                onDragEnter={(event) => {
+                  event.preventDefault();
+                  setIsAttachmentDragOver(true);
+                }}
+                onDragLeave={(event) => {
+                  event.preventDefault();
+                  if (event.currentTarget === event.target) {
+                    setIsAttachmentDragOver(false);
+                  }
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                }}
+                onDrop={handleAttachmentDrop}
+              >
+                <div className="kb-upload-actions">
+                  <label className="ticket-upload-button">
+                    Choisir des fichiers
+                    <input
+                      accept="*/*"
+                      key={attachmentInputKey}
+                      multiple
+                      onChange={(event) =>
+                        handleAttachmentSelection(event.target.files)
+                      }
+                      type="file"
+                    />
+                  </label>
+                  <span className="ticket-upload-note">
+                    {formatSelectedFilesLabel(form.attachments.length)}
+                  </span>
+                </div>
+
+                <p className="kb-upload-hint">
+                  Glissez et déposez vos fichiers ici, ou sélectionnez des
+                  fichiers. 2 Mo max par fichier.
+                </p>
+              </div>
+
+              {form.attachments.length > 0 ? (
+                <div className="kb-pending-file-list">
+                  {form.attachments.map((file) => {
+                    const fileKey = getLocalFileKey(file);
+
+                    return (
+                      <div className="kb-pending-file-chip" key={fileKey}>
+                        <span>
+                          {file.name} ({formatFileSize(file.size)})
+                        </span>
+                        <button
+                          onClick={() => removeDraftAttachment(file)}
+                          type="button"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {attachmentErrorMessage ? (
+                <p className="tdp-form-error">{attachmentErrorMessage}</p>
+              ) : null}
+
+              {attachmentSuccessMessage ? (
+                <p className="tdp-form-success">{attachmentSuccessMessage}</p>
+              ) : null}
+            </div>
+
             <div className="kb-modal-actions">
               <button
                 className="secondary-button"
@@ -548,9 +1032,9 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               </button>
               <button
                 className="primary-button kb-light-button"
-                disabled={isSaving}
+                disabled={isSaving || isUploadingAttachments}
               >
-                {isSaving
+                {isSaving || isUploadingAttachments
                   ? isEdit
                     ? 'Sauvegarde...'
                     : 'Création...'
@@ -565,14 +1049,15 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
     );
   }
 
-  // Detail view
   if (selectedArticle) {
     return (
       <section className="kb-page">
         {modalNode}
+
         {errorMessage && modal.type === 'none' ? (
           <p className="referentials-error">{errorMessage}</p>
         ) : null}
+
         <div className="kb-detail">
           <div className="kb-detail-nav">
             <button
@@ -583,6 +1068,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               <ArrowLeft size={16} />
               Retour aux articles
             </button>
+
             {isAdmin ? (
               <div className="kb-detail-actions">
                 <button
@@ -627,12 +1113,90 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
           <div className="kb-markdown">
             {renderMarkdown(selectedArticle.content)}
           </div>
+
+          <section className="kb-attachments-card">
+            <div className="kb-attachments-header">
+              <h2>
+                <Paperclip size={18} />
+                Pièces jointes
+              </h2>
+              <span>{selectedArticleAttachments.length}</span>
+            </div>
+
+            {attachmentErrorMessage ? (
+              <p className="tdp-form-error">{attachmentErrorMessage}</p>
+            ) : null}
+
+            {attachmentSuccessMessage ? (
+              <p className="tdp-form-success">{attachmentSuccessMessage}</p>
+            ) : null}
+
+            {isLoadingAttachments ? (
+              <p className="kb-attachment-empty">
+                Chargement des pièces jointes...
+              </p>
+            ) : selectedArticleAttachments.length === 0 ? (
+              <p className="kb-attachment-empty">Aucune pièce jointe.</p>
+            ) : (
+              <div className="kb-attachment-list">
+                {selectedArticleAttachments.map((attachment) => (
+                  <div className="kb-attachment-item" key={attachment.id}>
+                    <div className="kb-attachment-item-copy">
+                      <button
+                        className="kb-attachment-link"
+                        onClick={() =>
+                          void handleDownloadAttachment(attachment)
+                        }
+                        type="button"
+                      >
+                        {attachment.fileName}
+                      </button>
+                      <span>
+                        {formatFileSize(attachment.sizeBytes)} - ajouté le{' '}
+                        {formatDateTime(attachment.createdAt)}
+                      </span>
+                    </div>
+
+                    <div className="kb-attachment-item-actions">
+                      <button
+                        className="secondary-button kb-inline-button"
+                        disabled={downloadingAttachmentId === attachment.id}
+                        onClick={() =>
+                          void handleDownloadAttachment(attachment)
+                        }
+                        type="button"
+                      >
+                        <Download size={15} />
+                        {downloadingAttachmentId === attachment.id
+                          ? 'Téléchargement...'
+                          : 'Télécharger'}
+                      </button>
+
+                      {isAdmin ? (
+                        <button
+                          className="tdp-delete-btn"
+                          disabled={deletingAttachmentId === attachment.id}
+                          onClick={() =>
+                            void handleDeleteAttachment(attachment)
+                          }
+                          type="button"
+                        >
+                          {deletingAttachmentId === attachment.id
+                            ? 'Suppression...'
+                            : 'Supprimer'}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       </section>
     );
   }
 
-  // Grid view
   return (
     <section className="kb-page">
       {modalNode}
@@ -641,7 +1205,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
           <div>
             <h3>Base de connaissances</h3>
             <p>
-              Retrouvez les procedures utiles ainsi que les articles de support.
+              Retrouvez les procédures utiles ainsi que les articles de support.
             </p>
           </div>
 
@@ -704,8 +1268,8 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                           type="button"
                         >
                           <span
-                            className="ticket-sort-option-icon"
                             aria-hidden="true"
+                            className="ticket-sort-option-icon"
                           >
                             <Icon size={16} strokeWidth={2} />
                           </span>
@@ -714,7 +1278,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                             <strong>{option.label}</strong>
                             <span>
                               {sortBy === option.value
-                                ? 'Selection actuelle'
+                                ? 'Sélection actuelle'
                                 : option.description}
                             </span>
                           </span>
@@ -734,7 +1298,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
             <div className="kb-search">
               <Search size={16} />
               <input
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(event) => setSearch(event.target.value)}
                 placeholder="Rechercher un article..."
                 value={search}
               />
@@ -742,10 +1306,10 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
           </div>
 
           <div className="field kb-filter-field">
-            <span>Categorie</span>
+            <span>Catégorie</span>
             <div className="kb-category-select">
               <select
-                onChange={(e) => setCategoryFilter(e.target.value)}
+                onChange={(event) => setCategoryFilter(event.target.value)}
                 value={categoryFilter}
               >
                 <option value="">Tous</option>
@@ -762,11 +1326,11 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
             <span>Statut</span>
             <div className="kb-category-select">
               <select
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(event) => setStatusFilter(event.target.value)}
                 value={statusFilter}
               >
                 <option value="">Tous</option>
-                <option value="PUBLISHED">Publie</option>
+                <option value="PUBLISHED">Publié</option>
                 <option value="DRAFT">Brouillon</option>
               </select>
             </div>
@@ -780,7 +1344,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
         {isLoading ? (
           <p className="kb-empty">Chargement des articles...</p>
         ) : filteredArticles.length === 0 ? (
-          <p className="kb-empty">Aucun article trouve.</p>
+          <p className="kb-empty">Aucun article trouvé.</p>
         ) : (
           <>
             <div className="kb-grid">
@@ -789,8 +1353,8 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                   article={article}
                   isLiking={likingArticleIds.includes(article.id)}
                   key={article.id}
-                  onToggleLike={(articleId, event) => {
-                    void handleToggleLike(articleId, event);
+                  onToggleLike={(currentArticleId, event) => {
+                    void handleToggleLike(currentArticleId, event);
                   }}
                 />
               ))}
@@ -806,10 +1370,12 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                 <button
                   className="secondary-button"
                   disabled={visiblePage <= 1}
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  onClick={() =>
+                    setPage((currentPage) => Math.max(1, currentPage - 1))
+                  }
                   type="button"
                 >
-                  Precedent
+                  Précédent
                 </button>
                 <span aria-current="page" className="kb-pagination-current">
                   {visiblePage}
@@ -818,7 +1384,9 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                   className="secondary-button"
                   disabled={visiblePage >= totalPages}
                   onClick={() =>
-                    setPage((current) => Math.min(totalPages, current + 1))
+                    setPage((currentPage) =>
+                      Math.min(totalPages, currentPage + 1),
+                    )
                   }
                   type="button"
                 >
@@ -831,4 +1399,56 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
       </div>
     </section>
   );
+}
+
+function getLocalFileKey(file: File): string {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
+function formatSelectedFilesLabel(fileCount: number): string {
+  if (fileCount === 0) {
+    return 'Aucun fichier sélectionné';
+  }
+
+  if (fileCount === 1) {
+    return '1 fichier sélectionné';
+  }
+
+  return `${fileCount} fichiers sélectionnés`;
+}
+
+function buildKnowledgeAttachmentStoragePath(
+  articleId: string,
+  fileName: string,
+): string {
+  return `articles/${articleId}/${Date.now()}-${sanitizeFileName(fileName)}`;
+}
+
+function sanitizeFileName(fileName: string): string {
+  return fileName.replace(/[^a-zA-Z0-9._-]/g, '-');
+}
+
+function formatFileSize(sizeBytes: number): string {
+  if (sizeBytes >= 1024 * 1024) {
+    return `${(sizeBytes / (1024 * 1024)).toFixed(1)} Mo`;
+  }
+
+  if (sizeBytes >= 1024) {
+    return `${Math.round(sizeBytes / 1024)} Ko`;
+  }
+
+  return `${sizeBytes} octets`;
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('fr-FR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(date);
 }
