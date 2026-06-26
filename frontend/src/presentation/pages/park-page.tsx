@@ -314,10 +314,6 @@ export function ParkPage({ mode, session }: ParkPageProps) {
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
-    if (!equipmentForm.assignedUserId) {
-      setFormMessage('Selectionne un utilisateur assigne.');
-      return;
-    }
 
     setIsSaving(true);
     setFormMessage(null);
@@ -541,9 +537,7 @@ export function ParkPage({ mode, session }: ParkPageProps) {
 
                 <div className="park-form-section-fields">
                   <label className="field">
-                    <span>
-                      Utilisateur assigne <RequiredMark />
-                    </span>
+                    <span>Utilisateur assigne</span>
                     <div className="incident-lookup-field">
                       <input
                         className={
