@@ -434,6 +434,9 @@ export function ParkPage({ mode, session }: ParkPageProps) {
                       Type <RequiredMark />
                     </span>
                     <select
+                      className={
+                        equipmentForm.ciTypeId ? '' : 'select-placeholder'
+                      }
                       onChange={handleEquipmentFieldChange(
                         setEquipmentForm,
                         'ciTypeId',
@@ -457,6 +460,9 @@ export function ParkPage({ mode, session }: ParkPageProps) {
                       Statut <RequiredMark />
                     </span>
                     <select
+                      className={
+                        equipmentForm.status ? '' : 'select-placeholder'
+                      }
                       onChange={handleEquipmentFieldChange(
                         setEquipmentForm,
                         'status',

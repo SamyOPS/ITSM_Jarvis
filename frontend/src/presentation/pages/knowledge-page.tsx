@@ -809,6 +809,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
             <label className="field">
               <span>Catégorie</span>
               <select
+                className={form.category ? '' : 'select-placeholder'}
                 onChange={(event) =>
                   setForm((currentForm) => ({
                     ...currentForm,
