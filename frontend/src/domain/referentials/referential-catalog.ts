@@ -18,11 +18,17 @@ export type ReferentialCi = {
   serialNumber: string | null;
   brand: string | null;
   model: string | null;
+  operatingSystem: string | null;
   location: string | null;
   purchaseDate: string | null;
   warrantyEndDate: string | null;
   ipAddress: string | null;
   macAddress: string | null;
+  cpuName: string | null;
+  diskSpaceGb: number | null;
+  ramMb: number | null;
+  keyboardLayout: string | null;
+  osVersion: string | null;
   comment: string | null;
   archivedAt: string | null;
   createdAt: string | null;

@@ -46,11 +46,17 @@ type CiBody = {
   serialNumber?: string | null;
   brand?: string | null;
   model?: string | null;
+  operatingSystem?: string | null;
   location?: string | null;
   purchaseDate?: string | null;
   warrantyEndDate?: string | null;
   ipAddress?: string | null;
   macAddress?: string | null;
+  cpuName?: string | null;
+  diskSpaceGb?: number | null;
+  ramMb?: number | null;
+  keyboardLayout?: string | null;
+  osVersion?: string | null;
   comment?: string | null;
   archivedAt?: string | null;
 };
@@ -186,11 +192,17 @@ export class AdminReferentialsController {
       serialNumber: body.serialNumber ?? null,
       brand: body.brand ?? null,
       model: body.model ?? null,
+      operatingSystem: body.operatingSystem ?? null,
       location: body.location ?? null,
       purchaseDate: body.purchaseDate ?? null,
       warrantyEndDate: body.warrantyEndDate ?? null,
       ipAddress: body.ipAddress ?? null,
       macAddress: body.macAddress ?? null,
+      cpuName: body.cpuName ?? null,
+      diskSpaceGb: body.diskSpaceGb ?? null,
+      ramMb: body.ramMb ?? null,
+      keyboardLayout: body.keyboardLayout ?? null,
+      osVersion: body.osVersion ?? null,
       comment: body.comment ?? null,
       archivedAt: body.archivedAt ?? null,
     });
@@ -207,11 +219,17 @@ export class AdminReferentialsController {
       serialNumber: body.serialNumber ?? null,
       brand: body.brand ?? null,
       model: body.model ?? null,
+      operatingSystem: body.operatingSystem ?? null,
       location: body.location ?? null,
       purchaseDate: body.purchaseDate ?? null,
       warrantyEndDate: body.warrantyEndDate ?? null,
       ipAddress: body.ipAddress ?? null,
       macAddress: body.macAddress ?? null,
+      cpuName: body.cpuName ?? null,
+      diskSpaceGb: body.diskSpaceGb ?? null,
+      ramMb: body.ramMb ?? null,
+      keyboardLayout: body.keyboardLayout ?? null,
+      osVersion: body.osVersion ?? null,
       comment: body.comment ?? null,
       archivedAt: body.archivedAt ?? null,
     });

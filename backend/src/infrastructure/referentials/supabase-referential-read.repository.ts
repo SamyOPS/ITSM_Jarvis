@@ -56,13 +56,19 @@ type SupabaseCiRow = {
   ci_type_id: string;
   comment: string | null;
   created_at: string | null;
+  cpu_name: string | null;
+  disk_space_gb: number | null;
   id: string;
   ip_address: string | null;
+  keyboard_layout: string | null;
   location: string | null;
   mac_address: string | null;
   model: string | null;
   name: string;
+  operating_system: string | null;
+  os_version: string | null;
   purchase_date: string | null;
+  ram_mb: number | null;
   serial_number: string | null;
   status: CiStatus;
   warranty_end_date: string | null;
@@ -195,7 +201,7 @@ export class SupabaseReferentialReadRepository
   async listCis(): Promise<ReferentialCi[]> {
     const rows = await this.fetchTable<SupabaseCiRow>(
       'cis',
-      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,location,purchase_date,warranty_end_date,ip_address,mac_address,comment,archived_at,created_at',
+      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,operating_system,location,purchase_date,warranty_end_date,ip_address,mac_address,cpu_name,disk_space_gb,ram_mb,keyboard_layout,os_version,comment,archived_at,created_at',
       'created_at.desc',
     );
     return rows.map((row) => this.mapCi(row));
@@ -213,15 +219,21 @@ export class SupabaseReferentialReadRepository
         serial_number: command.serialNumber,
         brand: command.brand,
         model: command.model,
+        operating_system: command.operatingSystem,
         location: command.location,
         purchase_date: command.purchaseDate,
         warranty_end_date: command.warrantyEndDate,
         ip_address: command.ipAddress,
         mac_address: command.macAddress,
+        cpu_name: command.cpuName,
+        disk_space_gb: command.diskSpaceGb,
+        ram_mb: command.ramMb,
+        keyboard_layout: command.keyboardLayout,
+        os_version: command.osVersion,
         comment: command.comment,
         archived_at: command.archivedAt,
       },
-      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,location,purchase_date,warranty_end_date,ip_address,mac_address,comment,archived_at,created_at',
+      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,operating_system,location,purchase_date,warranty_end_date,ip_address,mac_address,cpu_name,disk_space_gb,ram_mb,keyboard_layout,os_version,comment,archived_at,created_at',
     );
     return this.expectSingle(rows, 'cis', (row) => this.mapCi(row));
   }
@@ -238,15 +250,21 @@ export class SupabaseReferentialReadRepository
         serial_number: command.serialNumber,
         brand: command.brand,
         model: command.model,
+        operating_system: command.operatingSystem,
         location: command.location,
         purchase_date: command.purchaseDate,
         warranty_end_date: command.warrantyEndDate,
         ip_address: command.ipAddress,
         mac_address: command.macAddress,
+        cpu_name: command.cpuName,
+        disk_space_gb: command.diskSpaceGb,
+        ram_mb: command.ramMb,
+        keyboard_layout: command.keyboardLayout,
+        os_version: command.osVersion,
         comment: command.comment,
         archived_at: command.archivedAt,
       },
-      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,location,purchase_date,warranty_end_date,ip_address,mac_address,comment,archived_at,created_at',
+      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,operating_system,location,purchase_date,warranty_end_date,ip_address,mac_address,cpu_name,disk_space_gb,ram_mb,keyboard_layout,os_version,comment,archived_at,created_at',
       [{ column: 'id', value: command.id }],
     );
     return this.expectSingle(rows, 'cis', (row) => this.mapCi(row), command.id);
@@ -422,11 +440,17 @@ export class SupabaseReferentialReadRepository
       row.serial_number,
       row.brand,
       row.model,
+      row.operating_system,
       row.location,
       row.purchase_date,
       row.warranty_end_date,
       row.ip_address,
       row.mac_address,
+      row.cpu_name,
+      row.disk_space_gb,
+      row.ram_mb,
+      row.keyboard_layout,
+      row.os_version,
       row.comment,
       row.archived_at,
       row.created_at,
