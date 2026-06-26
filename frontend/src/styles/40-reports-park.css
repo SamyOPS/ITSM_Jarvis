@@ -521,18 +521,6 @@
   box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.13);
 }
 
-/* Sidebar compact recalibration from docs/htm */
-.app-shell--workspace .workspace-sidebar {
-  width: 268px;
-  padding: 18px 14px 20px;
-  overflow: hidden;
-  will-change: width, padding;
-}
-
-.app-shell--workspace .workspace-sidebar.is-collapsed {
-  overflow: visible;
-}
-
 .workspace-sidebar-header {
   margin-bottom: 14px;
 }
@@ -556,10 +544,6 @@
   white-space: nowrap;
 }
 
-.workspace-sidebar-search {
-  margin: 0 8px 16px;
-}
-
 .workspace-sidebar-search-shell {
   padding: 10px 11px;
 }
@@ -571,17 +555,6 @@
 .workspace-sidebar-section-label {
   margin: 0 8px 9px;
   font-size: 10.5px;
-}
-
-.workspace-sidebar-nav {
-  gap: 6px;
-}
-
-.workspace-nav-link {
-  gap: 10px;
-  min-height: 42px;
-  padding: 10px 10px;
-  overflow: hidden;
 }
 
 .workspace-nav-link-label {
@@ -599,10 +572,6 @@
 
 .workspace-sidebar-footer span {
   font-size: 0.8rem;
-}
-
-.workspace-breadcrumb-item {
-  font-size: 0.9rem;
 }
 
 /* Reporting filters responsive width fix */
@@ -1465,4 +1434,3 @@
 .workspace-nav-flyout .workspace-nav-dropdown-item.is-active svg {
   color: currentColor !important;
 }
-

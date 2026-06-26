@@ -18,6 +18,8 @@ import { ReferentialPriorityWriteRepository } from '../application/referentials/
 import { PlanningTaskRepository } from '../application/planning/repositories/planning-task.repository';
 import { NotificationRepository } from '../application/notifications/repositories/notification.repository';
 import { KnowledgeArticleRepository } from '../application/knowledge/repositories/knowledge-article.repository';
+import { KnowledgeArticleAttachmentReadRepository } from '../application/knowledge/repositories/knowledge-article-attachment-read.repository';
+import { KnowledgeArticleAttachmentWriteRepository } from '../application/knowledge/repositories/knowledge-article-attachment-write.repository';
 import { TicketAttachmentReadRepository } from '../application/ticketing/repositories/ticket-attachment-read.repository';
 import { TicketAttachmentWriteRepository } from '../application/ticketing/repositories/ticket-attachment-write.repository';
 import { TicketCommentReadRepository } from '../application/ticketing/repositories/ticket-comment-read.repository';
@@ -81,6 +83,14 @@ const referentialRepositoryBindings = [
       useExisting: SupabaseKnowledgeArticleRepository,
     },
     {
+      provide: KnowledgeArticleAttachmentReadRepository,
+      useExisting: SupabaseKnowledgeArticleRepository,
+    },
+    {
+      provide: KnowledgeArticleAttachmentWriteRepository,
+      useExisting: SupabaseKnowledgeArticleRepository,
+    },
+    {
       provide: PlanningTaskRepository,
       useExisting: SupabasePlanningTaskRepository,
     },
@@ -138,6 +148,8 @@ const referentialRepositoryBindings = [
     NotificationRepository,
     GroupChatMessageRepository,
     KnowledgeArticleRepository,
+    KnowledgeArticleAttachmentReadRepository,
+    KnowledgeArticleAttachmentWriteRepository,
     PlanningTaskRepository,
     TicketReadRepository,
     TicketWriteRepository,

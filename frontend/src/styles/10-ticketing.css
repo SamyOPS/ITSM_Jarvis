@@ -1724,27 +1724,6 @@
   }
 }
 
-.app-shell--workspace {
-  grid-template-columns: auto 1fr;
-  background: #edf2f8;
-}
-
-.app-shell--workspace .workspace-sidebar {
-  width: 260px;
-  padding: 18px 14px 20px;
-  gap: 14px;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, #13253a 0%, #17293f 100%);
-  transition:
-    width 180ms ease,
-    padding 180ms ease;
-}
-
-.app-shell--workspace .workspace-sidebar.is-collapsed {
-  width: 78px;
-  padding-inline: 10px;
-}
-
 .workspace-sidebar-header {
   display: flex;
   align-items: flex-start;
@@ -1789,10 +1768,6 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
-.workspace-sidebar-search {
-  gap: 0;
-}
-
 .workspace-sidebar-search-shell {
   display: flex;
   align-items: center;
@@ -1823,38 +1798,6 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(188, 204, 228, 0.56);
-}
-
-.workspace-sidebar-nav {
-  gap: 8px;
-}
-
-.workspace-nav-link {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  padding: 13px 14px;
-  border: 1px solid transparent;
-  border-radius: 16px;
-  background: transparent;
-  color: #f3f7fe;
-}
-
-.workspace-nav-link:hover {
-  transform: none;
-  border-color: rgba(143, 179, 229, 0.18);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.workspace-nav-link.is-active {
-  border-color: rgba(125, 171, 245, 0.22);
-  background: linear-gradient(
-    180deg,
-    rgba(88, 140, 242, 0.22) 0%,
-    rgba(63, 112, 207, 0.12) 100%
-  );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .workspace-nav-link-icon {
@@ -1897,38 +1840,10 @@
   display: none;
 }
 
-.workspace-topbar {
-  position: relative;
-  z-index: 30;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 18px;
-  padding: 10px 24px;
-  background: rgba(255, 255, 255, 0.76);
-}
-
 .workspace-topbar-copy {
   display: flex;
   align-items: center;
   min-width: 0;
-}
-
-.workspace-breadcrumb-item {
-  gap: 6px;
-  margin: 0;
-  font-size: 0.84rem;
-  font-weight: 600;
-}
-
-.workspace-breadcrumb-icon {
-  width: 16px;
-  height: 16px;
-}
-
-.workspace-topbar-actions {
-  gap: 10px;
-  flex-wrap: nowrap;
 }
 
 .workspace-cta-button,
@@ -3307,12 +3222,6 @@
   font-size: 0.75rem;
 }
 
-.workspace-nav-link {
-  grid-template-columns: 22px minmax(0, 1fr);
-  gap: 14px;
-  padding: 14px 15px;
-}
-
 .workspace-nav-link-icon {
   width: 22px;
   height: 22px;
@@ -3437,26 +3346,6 @@
   letter-spacing: -0.04em;
 }
 
-/* Sidebar refinement: reference-aligned */
-.app-shell--workspace .workspace-sidebar {
-  width: 312px;
-  gap: 0;
-  padding: 22px 16px 22px;
-  background: linear-gradient(180deg, #112233 0%, #16283d 100%);
-  color: #e7edf6;
-  font-family:
-    'Manrope',
-    'Segoe UI',
-    system-ui,
-    -apple-system,
-    sans-serif;
-}
-
-.app-shell--workspace .workspace-sidebar.is-collapsed {
-  width: 72px;
-  padding: 14px 8px 18px;
-}
-
 .workspace-sidebar-header {
   align-items: flex-start;
   gap: 12px;
@@ -3524,10 +3413,6 @@
   color: #ffffff;
 }
 
-.workspace-sidebar-search {
-  margin: 0 8px 18px;
-}
-
 .workspace-sidebar-search-shell {
   gap: 10px;
   padding: 11px 12px;
@@ -3557,38 +3442,6 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(230, 238, 248, 0.55);
-}
-
-.workspace-sidebar-nav {
-  gap: 8px;
-  padding: 0 6px 12px;
-}
-
-.workspace-nav-link {
-  grid-template-columns: 22px minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
-  padding: 11px 10px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  background: transparent;
-  color: #e7edf6;
-  transition:
-    color 180ms ease,
-    border-color 180ms ease,
-    background-color 180ms ease;
-}
-
-.workspace-nav-link:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.16);
-}
-
-.workspace-nav-link.is-active {
-  background: rgba(46, 125, 233, 0.22);
-  border-color: rgba(46, 125, 233, 0.35);
-  border-radius: 14px;
-  color: #ffffff;
 }
 
 .workspace-nav-link-icon {
@@ -3731,17 +3584,6 @@
   color: rgba(231, 237, 246, 0.72);
 }
 
-.workspace-breadcrumb-item {
-  gap: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.workspace-breadcrumb-icon {
-  width: 18px;
-  height: 18px;
-}
-
 .workspace-sidebar.is-collapsed .workspace-sidebar-header {
   display: grid;
   justify-items: center;
@@ -3872,16 +3714,6 @@
 }
 
 /* Shell refinements: compact sidebar and profile menu */
-.app-shell--workspace .workspace-sidebar {
-  width: 286px;
-  padding: 18px 14px 20px;
-}
-
-.app-shell--workspace .workspace-sidebar.is-collapsed {
-  width: 74px;
-  padding: 14px 8px 18px;
-}
-
 .workspace-sidebar-header {
   margin-bottom: 12px;
 }
@@ -3892,23 +3724,9 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
-.workspace-sidebar-search {
-  margin: 0 8px 18px;
-}
-
-.workspace-sidebar-nav {
-  padding: 0 6px 14px;
-}
-
 .workspace-sidebar.is-collapsed .workspace-sidebar-divider {
   width: 44px;
   margin: 0 auto 14px;
-}
-
-.workspace-topbar-actions {
-  position: relative;
-  z-index: 1;
-  gap: 12px;
 }
 
 .workspace-profile-menu {
@@ -4155,4 +3973,3 @@
 .workspace-profile-trigger.is-compact .workspace-profile-copy {
   display: none;
 }
-

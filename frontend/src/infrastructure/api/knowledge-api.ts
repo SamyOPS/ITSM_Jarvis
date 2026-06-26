@@ -3,7 +3,18 @@ import type {
   KnowledgeArticle,
   UpdateKnowledgeArticlePayload,
 } from '../../domain/knowledge/knowledge-article';
+import type { KnowledgeArticleAttachmentSnapshot } from '../../domain/knowledge/knowledge-article-attachment';
+import { getFrontendSupabaseConfig } from '../config/supabase-env';
 import { getFrontendRuntimeConfig } from '../config/env';
+import { encodeStoragePath } from './ticketing-api.helpers';
+
+export type AddKnowledgeArticleAttachmentPayload = {
+  bucketId: string;
+  fileName: string;
+  mimeType?: string | null;
+  sizeBytes: number;
+  storagePath: string;
+};
 
 export async function fetchKnowledgeArticles(
   accessToken: string,
@@ -20,6 +31,16 @@ export async function fetchKnowledgeArticle(
 ): Promise<KnowledgeArticle> {
   return requestKnowledge<KnowledgeArticle>(
     `/knowledge/articles/${articleId}`,
+    accessToken,
+  );
+}
+
+export async function fetchKnowledgeArticleAttachments(
+  accessToken: string,
+  articleId: string,
+): Promise<KnowledgeArticleAttachmentSnapshot[]> {
+  return requestKnowledge<KnowledgeArticleAttachmentSnapshot[]>(
+    `/knowledge/articles/${articleId}/attachments`,
     accessToken,
   );
 }
@@ -73,6 +94,121 @@ export async function toggleKnowledgeArticleLike(
       method: 'POST',
     },
   );
+}
+
+export async function addKnowledgeArticleAttachment(
+  accessToken: string,
+  articleId: string,
+  payload: AddKnowledgeArticleAttachmentPayload,
+): Promise<KnowledgeArticleAttachmentSnapshot> {
+  return requestKnowledge<KnowledgeArticleAttachmentSnapshot>(
+    `/knowledge/articles/${articleId}/attachments`,
+    accessToken,
+    {
+      body: JSON.stringify(payload),
+      method: 'POST',
+    },
+  );
+}
+
+export async function deleteKnowledgeArticleAttachment(
+  accessToken: string,
+  articleId: string,
+  attachmentId: string,
+): Promise<void> {
+  await requestKnowledgeVoid(
+    `/knowledge/articles/${articleId}/attachments/${attachmentId}`,
+    accessToken,
+    {
+      method: 'DELETE',
+    },
+  );
+}
+
+export async function uploadKnowledgeArticleAttachmentBinary(
+  accessToken: string,
+  bucketId: string,
+  storagePath: string,
+  file: File,
+): Promise<void> {
+  const supabaseConfig = getFrontendSupabaseConfig();
+  const encodedPath = encodeStoragePath(storagePath);
+  const response = await fetch(
+    `${supabaseConfig.url}/storage/v1/object/${bucketId}/${encodedPath}`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: supabaseConfig.anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': file.type || 'application/octet-stream',
+        'x-upsert': 'false',
+      },
+      body: file,
+    },
+  );
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      message ||
+        `L'upload du fichier a échoué avec le statut ${response.status}`,
+    );
+  }
+}
+
+export async function downloadKnowledgeArticleAttachmentBinary(
+  accessToken: string,
+  bucketId: string,
+  storagePath: string,
+): Promise<Blob> {
+  const supabaseConfig = getFrontendSupabaseConfig();
+  const encodedPath = encodeStoragePath(storagePath);
+  const response = await fetch(
+    `${supabaseConfig.url}/storage/v1/object/authenticated/${bucketId}/${encodedPath}`,
+    {
+      headers: {
+        apikey: supabaseConfig.anonKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      message ||
+        `Le chargement du fichier a échoué avec le statut ${response.status}`,
+    );
+  }
+
+  return await response.blob();
+}
+
+export async function deleteKnowledgeArticleAttachmentBinary(
+  accessToken: string,
+  bucketId: string,
+  storagePath: string,
+): Promise<void> {
+  const supabaseConfig = getFrontendSupabaseConfig();
+  const encodedPath = encodeStoragePath(storagePath);
+  const response = await fetch(
+    `${supabaseConfig.url}/storage/v1/object/${bucketId}/${encodedPath}`,
+    {
+      method: 'DELETE',
+      headers: {
+        apikey: supabaseConfig.anonKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      message ||
+        `La suppression du fichier a échoué avec le statut ${response.status}`,
+    );
+  }
 }
 
 async function requestKnowledge<T>(
