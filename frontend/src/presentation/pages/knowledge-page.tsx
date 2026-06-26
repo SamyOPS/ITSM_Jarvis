@@ -809,6 +809,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
             <label className="field">
               <span>Catégorie</span>
               <select
+                className={form.category ? '' : 'select-placeholder'}
                 onChange={(event) =>
                   setForm((currentForm) => ({
                     ...currentForm,
@@ -818,7 +819,9 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                 required
                 value={form.category}
               >
-                <option value="">Choisir une catégorie</option>
+                <option disabled hidden value="">
+                  Choisir une categorie
+                </option>
                 {KNOWLEDGE_CATEGORY_OPTIONS.map((category) => (
                   <option key={category} value={category}>
                     {category}
@@ -1204,9 +1207,6 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
         <div className="ticket-list-header kb-list-header">
           <div>
             <h3>Base de connaissances</h3>
-            <p>
-              Retrouvez les procédures utiles ainsi que les articles de support.
-            </p>
           </div>
 
           <div className="ticket-list-toolbar">

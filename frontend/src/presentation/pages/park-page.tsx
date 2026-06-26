@@ -404,7 +404,6 @@ export function ParkPage({ mode, session }: ParkPageProps) {
             <header className="park-panel-header">
               <div>
                 <h3>Ajouter un equipement</h3>
-                <p>Ajoute un nouvel equipement au parc informatique.</p>
               </div>
             </header>
 
@@ -435,6 +434,9 @@ export function ParkPage({ mode, session }: ParkPageProps) {
                       Type <RequiredMark />
                     </span>
                     <select
+                      className={
+                        equipmentForm.ciTypeId ? '' : 'select-placeholder'
+                      }
                       onChange={handleEquipmentFieldChange(
                         setEquipmentForm,
                         'ciTypeId',
@@ -442,7 +444,9 @@ export function ParkPage({ mode, session }: ParkPageProps) {
                       required
                       value={equipmentForm.ciTypeId}
                     >
-                      <option value="">Selectionner</option>
+                      <option disabled hidden value="">
+                        Choisir un type
+                      </option>
                       {parkCiTypes.map((ciType) => (
                         <option key={ciType.id} value={ciType.id}>
                           {ciType.name}
@@ -456,6 +460,9 @@ export function ParkPage({ mode, session }: ParkPageProps) {
                       Statut <RequiredMark />
                     </span>
                     <select
+                      className={
+                        equipmentForm.status ? '' : 'select-placeholder'
+                      }
                       onChange={handleEquipmentFieldChange(
                         setEquipmentForm,
                         'status',
@@ -463,6 +470,9 @@ export function ParkPage({ mode, session }: ParkPageProps) {
                       required
                       value={equipmentForm.status}
                     >
+                      <option disabled hidden value="">
+                        Choisir un statut
+                      </option>
                       {CI_STATUS_OPTIONS.map((status) => (
                         <option key={status} value={status}>
                           {translateCiStatus(status)}
@@ -538,7 +548,13 @@ export function ParkPage({ mode, session }: ParkPageProps) {
                 <div className="park-form-section-fields">
                   <label className="field">
                     <span>Utilisateur assigne</span>
-                    <div className="incident-lookup-field">
+                    <div
+                      className={
+                        equipmentForm.assignedUserId
+                          ? 'incident-lookup-field has-clear'
+                          : 'incident-lookup-field'
+                      }
+                    >
                       <input
                         className={
                           equipmentForm.assignedUserId
@@ -564,6 +580,20 @@ export function ParkPage({ mode, session }: ParkPageProps) {
                             : 'Selectionner un utilisateur'
                         }
                       />
+                      {equipmentForm.assignedUserId ? (
+                        <button
+                          aria-label="Retirer l'utilisateur assigne"
+                          onClick={() =>
+                            setEquipmentForm((currentForm) => ({
+                              ...currentForm,
+                              assignedUserId: '',
+                            }))
+                          }
+                          type="button"
+                        >
+                          <X size={16} />
+                        </button>
+                      ) : null}
                       <button
                         aria-label="Selectionner un utilisateur"
                         onClick={() => {

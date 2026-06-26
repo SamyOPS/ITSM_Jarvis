@@ -879,10 +879,6 @@ export function UsersPage({ session }: UsersPageProps) {
             <header className="referentials-card-header">
               <div>
                 <h3>Liste des utilisateurs</h3>
-                <p>
-                  Controle les profils disponibles pour les droits et les
-                  assignations.
-                </p>
               </div>
               <div className="ticket-list-toolbar">
                 <div className="ticket-list-count" aria-live="polite">
