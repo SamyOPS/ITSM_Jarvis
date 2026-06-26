@@ -9,7 +9,7 @@ export type RoutePath =
   | '/agent/my-tickets'
   | '/agent/tickets'
   | '/knowledge/articles'
-  | '/parc/ci-types'
+  | '/parc/cis/new'
   | '/parc/cis'
   | '/reports'
   | '/login'
@@ -71,14 +71,14 @@ export const ROUTES: RouteDefinition[] = [
     title: 'Base de connaissances',
   },
   {
-    description: 'Gestion des types de CI du parc informatique.',
-    path: '/parc/ci-types',
-    title: 'Types de CI',
-  },
-  {
     description: 'Gestion des elements du parc informatique.',
     path: '/parc/cis',
-    title: 'Equipements',
+    title: 'Liste des equipements',
+  },
+  {
+    description: 'Creation d un nouvel equipement du parc informatique.',
+    path: '/parc/cis/new',
+    title: 'Ajouter un equipement',
   },
   {
     description: 'Liste des utilisateurs et de leurs roles.',

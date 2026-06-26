@@ -12,7 +12,7 @@ const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
   '/agent/requests/new': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/agent/tickets': ['DEMANDEUR', 'AGENT', 'ADMIN'],
   '/knowledge/articles': ['DEMANDEUR', 'AGENT', 'ADMIN'],
-  '/parc/ci-types': ['ADMIN'],
+  '/parc/cis/new': ['ADMIN'],
   '/parc/cis': ['ADMIN'],
   '/reports': ['AGENT', 'ADMIN'],
 };
@@ -58,8 +58,8 @@ export function getVisibleRoutes(
       '/agent/tickets',
       '/agent/my-tickets',
       '/agent/archives',
+      '/parc/cis/new',
       '/parc/cis',
-      '/parc/ci-types',
       '/admin/users',
       '/admin/groups',
       '/login',

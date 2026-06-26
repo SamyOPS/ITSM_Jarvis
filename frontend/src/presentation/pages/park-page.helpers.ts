@@ -88,8 +88,12 @@ export function filterEquipment(
       ci.brand,
       ci.model,
       ci.serialNumber,
-      ci.ipAddress,
-      ci.macAddress,
+      ci.operatingSystem,
+      ci.cpuName,
+      ci.diskSpaceGb === null ? '' : String(ci.diskSpaceGb),
+      ci.ramMb === null ? '' : String(ci.ramMb),
+      ci.keyboardLayout,
+      ci.osVersion,
       ci.location,
       ciTypeById(ciTypesById, ci.ciTypeId),
       assignedUser ? formatUserName(assignedUser) : '',
@@ -150,4 +154,14 @@ export function formatDateValue(value: string | null): string {
 export function normalizeOptionalText(value: string): string | null {
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
+}
+
+export function normalizeOptionalNumber(value: string): number | null {
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const parsedValue = Number(normalized);
+  return Number.isFinite(parsedValue) ? parsedValue : null;
 }

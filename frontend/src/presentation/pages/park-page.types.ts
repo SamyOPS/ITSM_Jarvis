@@ -1,10 +1,8 @@
 import type { ChangeEvent, Dispatch, SetStateAction } from 'react';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 
-export type ParkSection = 'CI_TYPES' | 'CIS';
-
 export type ParkPageProps = {
-  section: ParkSection;
+  mode: 'CREATE' | 'LIST';
   session: AuthSessionSnapshot;
 };
 
@@ -23,12 +21,16 @@ export type EquipmentFormState = {
   brand: string;
   comment: string;
   ciTypeId: string;
-  ipAddress: string;
+  cpuName: string;
+  diskSpaceGb: string;
+  keyboardLayout: string;
   location: string;
-  macAddress: string;
   model: string;
   name: string;
+  operatingSystem: string;
+  osVersion: string;
   purchaseDate: string;
+  ramMb: string;
   serialNumber: string;
   status: string;
   warrantyEndDate: string;

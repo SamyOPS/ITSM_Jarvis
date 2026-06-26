@@ -246,7 +246,7 @@ const INITIAL_ATTACHMENT_DRAFT: AttachmentDraftState = {
 
 const TICKET_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
 const INCIDENT_LOOKUP_PAGE_SIZE = 10;
-const TICKETS_PER_PAGE = 12;
+const TICKETS_PER_PAGE = 15;
 const TICKET_SORT_OPTIONS = [
   {
     value: 'OPERATIONAL_PRIORITY' as const,
