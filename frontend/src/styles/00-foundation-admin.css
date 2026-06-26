@@ -46,6 +46,10 @@ select {
   font: inherit;
 }
 
+.park-required-mark {
+  color: #d92d20;
+}
+
 input,
 textarea,
 select {

@@ -371,6 +371,7 @@
 
 .ticket-form-actions .primary-button {
   background: #e7f0ff;
+  font-weight: 500;
 }
 
 .ticket-form-actions .primary-button:hover:not(:disabled) {

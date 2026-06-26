@@ -138,6 +138,10 @@ import type {
   TicketEditDraftState,
 } from './agent-page.types';
 
+function RequiredMark() {
+  return <span className="park-required-mark">*</span>;
+}
+
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],
 
@@ -2894,7 +2898,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
               <div className="ticket-form-layout ticket-form-layout--single">
                 <form className="ticket-form-grid" onSubmit={handleSubmit}>
                   <label className="field ticket-form-span-2 ticket-create-order-title">
-                    <span>Titre</span>
+                    <span>
+                      Titre <RequiredMark />
+                    </span>
 
                     <input
                       onChange={(event) =>
@@ -2934,7 +2940,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   </label>
 
                   <label className="field ticket-form-span-2 ticket-create-order-description">
-                    <span>Description</span>
+                    <span>
+                      Description <RequiredMark />
+                    </span>
 
                     <textarea
                       onChange={(event) =>
@@ -2980,7 +2988,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                   {mode === 'INCIDENT' ? (
                     <label className="field ticket-create-order-incident-category">
-                      <span>Categorie</span>
+                      <span>
+                        Categorie <RequiredMark />
+                      </span>
 
                       <select
                         className={
@@ -3111,7 +3121,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   {mode === 'INCIDENT' ? (
                     <>
                       <label className="field ticket-create-order-incident-impact">
-                        <span>Impact</span>
+                        <span>
+                          Impact <RequiredMark />
+                        </span>
 
                         <select
                           className={
@@ -3142,7 +3154,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       </label>
 
                       <label className="field ticket-create-order-incident-urgency">
-                        <span>Urgence</span>
+                        <span>
+                          Urgence <RequiredMark />
+                        </span>
 
                         <select
                           className={
@@ -3279,7 +3293,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                       {showCreationRequesterField ? (
                         <label className="field ticket-create-order-incident-requester">
-                          <span>Demandeur</span>
+                          <span>
+                            Demandeur <RequiredMark />
+                          </span>
 
                           <div className="incident-lookup-field">
                             <input
@@ -3314,7 +3330,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   ) : (
                     <>
                       <label className="field ticket-create-order-request-priority">
-                        <span>Priorite</span>
+                        <span>
+                          Priorite <RequiredMark />
+                        </span>
 
                         <select
                           className={
@@ -3452,7 +3470,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                       {showCreationRequesterField ? (
                         <label className="field ticket-create-order-request-requester">
-                          <span>Demandeur</span>
+                          <span>
+                            Demandeur <RequiredMark />
+                          </span>
 
                           <div className="incident-lookup-field">
                             <input
@@ -3479,7 +3499,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       ) : null}
 
                       <label className="field ticket-create-order-request-category">
-                        <span>Categorie</span>
+                        <span>
+                          Categorie <RequiredMark />
+                        </span>
 
                         <select
                           className={
