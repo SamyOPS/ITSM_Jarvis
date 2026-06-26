@@ -36,7 +36,7 @@ export const EMPTY_EQUIPMENT_FORM: EquipmentFormState = {
   purchaseDate: '',
   ramMb: '',
   serialNumber: '',
-  status: 'IN_SERVICE',
+  status: '',
   warrantyEndDate: '',
 };
 

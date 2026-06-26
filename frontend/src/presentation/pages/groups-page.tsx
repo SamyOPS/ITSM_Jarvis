@@ -426,11 +426,6 @@ export function GroupsPage({ session }: GroupsPageProps) {
                       ? 'Modifier un groupe'
                       : 'Ajouter un groupe'}
                   </h3>
-                  <p>
-                    {selectedGroupId
-                      ? 'Modifie le nom et la description du groupe selectionne.'
-                      : 'Ajoute un groupe disponible pour les assignations.'}
-                  </p>
                 </div>
               </header>
 
@@ -701,10 +696,6 @@ export function GroupsPage({ session }: GroupsPageProps) {
           <header className="referentials-card-header">
             <div>
               <h3>Liste des groupes</h3>
-              <p>
-                Controle les groupes disponibles pour les assignations et les
-                droits de support.
-              </p>
             </div>
 
             <div className="ticket-list-toolbar">

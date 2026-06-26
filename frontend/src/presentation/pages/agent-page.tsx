@@ -98,7 +98,6 @@ import {
   getLocalFileKey,
   getStatusOptionsForRole,
   getTicketHistoryEntryClassName,
-  getTicketListDescription,
   getTicketListEmptyMessage,
   getTicketListTitle,
   getUserSupportGroupIds,
@@ -554,7 +553,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   );
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const ticketListTitle = getTicketListTitle(section, session.user.role);
-  const ticketListDescription = getTicketListDescription(section);
   const ticketListEmptyMessage = getTicketListEmptyMessage(section);
 
   useEffect(() => {
@@ -2881,11 +2879,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   ? 'Creer un incident'
                   : 'Creer une demande'}
               </h2>
-              <p>
-                {mode === 'INCIDENT'
-                  ? 'Declare rapidement un incident avec les informations utiles au support.'
-                  : 'Saisis une demande claire avec les informations essentielles pour traitement.'}
-              </p>
             </div>
 
             {isLoading ? (
@@ -3988,8 +3981,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                 <div className="ticket-list-header">
                   <div>
                     <h3>{ticketListTitle}</h3>
-
-                    <p>{ticketListDescription}</p>
                   </div>
 
                   <div className="ticket-list-toolbar">
