@@ -25,6 +25,7 @@ export type ReferentialCi = {
   macAddress: string | null;
   comment: string | null;
   archivedAt: string | null;
+  createdAt: string | null;
 };
 
 export type ReferentialCiType = {

@@ -55,6 +55,7 @@ type SupabaseCiRow = {
   brand: string | null;
   ci_type_id: string;
   comment: string | null;
+  created_at: string | null;
   id: string;
   ip_address: string | null;
   location: string | null;
@@ -194,8 +195,8 @@ export class SupabaseReferentialReadRepository
   async listCis(): Promise<ReferentialCi[]> {
     const rows = await this.fetchTable<SupabaseCiRow>(
       'cis',
-      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,location,purchase_date,warranty_end_date,ip_address,mac_address,comment,archived_at',
-      'name.asc',
+      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,location,purchase_date,warranty_end_date,ip_address,mac_address,comment,archived_at,created_at',
+      'created_at.desc',
     );
     return rows.map((row) => this.mapCi(row));
   }
@@ -220,7 +221,7 @@ export class SupabaseReferentialReadRepository
         comment: command.comment,
         archived_at: command.archivedAt,
       },
-      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,location,purchase_date,warranty_end_date,ip_address,mac_address,comment,archived_at',
+      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,location,purchase_date,warranty_end_date,ip_address,mac_address,comment,archived_at,created_at',
     );
     return this.expectSingle(rows, 'cis', (row) => this.mapCi(row));
   }
@@ -245,7 +246,7 @@ export class SupabaseReferentialReadRepository
         comment: command.comment,
         archived_at: command.archivedAt,
       },
-      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,location,purchase_date,warranty_end_date,ip_address,mac_address,comment,archived_at',
+      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,location,purchase_date,warranty_end_date,ip_address,mac_address,comment,archived_at,created_at',
       [{ column: 'id', value: command.id }],
     );
     return this.expectSingle(rows, 'cis', (row) => this.mapCi(row), command.id);
@@ -428,6 +429,7 @@ export class SupabaseReferentialReadRepository
       row.mac_address,
       row.comment,
       row.archived_at,
+      row.created_at,
     );
   }
 

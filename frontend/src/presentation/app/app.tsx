@@ -96,15 +96,15 @@ function renderPage({
       }
 
       return <HomePage />;
-    case '/parc/ci-types':
+    case '/parc/cis/new':
       return session ? (
-        <ParkPage section="CI_TYPES" session={session} />
+        <ParkPage mode="CREATE" session={session} />
       ) : (
         <NotFoundPage />
       );
     case '/parc/cis':
       return session ? (
-        <ParkPage section="CIS" session={session} />
+        <ParkPage mode="LIST" session={session} />
       ) : (
         <NotFoundPage />
       );

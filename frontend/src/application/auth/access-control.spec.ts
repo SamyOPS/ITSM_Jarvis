@@ -51,7 +51,7 @@ describe('access-control', () => {
 
     expect(canAccessRoute('/reports', session)).toBe(true);
     expect(canAccessRoute('/parc/cis', session)).toBe(true);
-    expect(canAccessRoute('/parc/ci-types', session)).toBe(true);
+    expect(canAccessRoute('/parc/cis/new', session)).toBe(true);
     expect(canAccessRoute('/admin/users', session)).toBe(true);
   });
 
@@ -72,8 +72,8 @@ describe('access-control', () => {
     const visibleRoutes = getVisibleRoutes(buildSession('ADMIN'));
 
     expect(visibleRoutes).toContain('/reports');
+    expect(visibleRoutes).toContain('/parc/cis/new');
     expect(visibleRoutes).toContain('/parc/cis');
-    expect(visibleRoutes).toContain('/parc/ci-types');
     expect(visibleRoutes).toContain('/admin/users');
     expect(visibleRoutes).not.toContain('/login');
   });

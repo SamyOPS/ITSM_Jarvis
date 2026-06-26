@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Bell,
+  Boxes,
   ChevronDown,
   FileText,
   House,
@@ -94,8 +95,8 @@ export function AppShell({
   const isParcMenuOpen = openSidebarMenu === 'parc';
   const isTicketCreateMenuOpen = openSidebarMenu === 'create-ticket';
   const parcRoutes = [
+    visibleRoutes.find((route) => route.path === '/parc/cis/new') ?? null,
     visibleRoutes.find((route) => route.path === '/parc/cis') ?? null,
-    visibleRoutes.find((route) => route.path === '/parc/ci-types') ?? null,
   ].filter((route) => route !== null);
 
   useEffect(() => {
@@ -513,7 +514,7 @@ export function AppShell({
             if (
               route.path === '/admin/groups' ||
               route.path === '/admin/users' ||
-              route.path === '/parc/ci-types' ||
+              route.path === '/parc/cis/new' ||
               route.path === '/parc/cis' ||
               route.path === '/agent/archives'
             ) {
@@ -581,7 +582,7 @@ export function AppShell({
                 type="button"
               >
                 <span className="workspace-nav-link-icon" aria-hidden="true">
-                  <Settings size={18} strokeWidth={2} />
+                  <Boxes size={18} strokeWidth={2} />
                 </span>
                 <strong className="workspace-nav-link-label">Parc</strong>
                 <ChevronDown
@@ -594,7 +595,7 @@ export function AppShell({
               {isParcMenuOpen ? (
                 <div className="workspace-nav-dropdown-list">
                   {parcRoutes.map((route) => {
-                    const Icon = routeIcons[route.path] ?? Settings;
+                    const Icon = routeIcons[route.path] ?? Boxes;
 
                     return (
                       <button
@@ -619,7 +620,7 @@ export function AppShell({
                 <div className="workspace-nav-flyout-title">Parc</div>
                 <div className="workspace-nav-flyout-list">
                   {parcRoutes.map((route) => {
-                    const Icon = routeIcons[route.path] ?? Settings;
+                    const Icon = routeIcons[route.path] ?? Boxes;
 
                     return (
                       <button

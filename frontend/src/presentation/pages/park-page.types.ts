@@ -1,10 +1,8 @@
 import type { ChangeEvent, Dispatch, SetStateAction } from 'react';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 
-export type ParkSection = 'CI_TYPES' | 'CIS';
-
 export type ParkPageProps = {
-  section: ParkSection;
+  mode: 'CREATE' | 'LIST';
   session: AuthSessionSnapshot;
 };
 

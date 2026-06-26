@@ -6,8 +6,8 @@ import {
   FileText,
   LayoutDashboard,
   ListChecks,
-  Settings,
-  SlidersHorizontal,
+  Monitor,
+  Plus,
   Ticket,
   User,
   Users,
@@ -35,8 +35,8 @@ export const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/agent/requests/new': FileText,
   '/agent/tickets': ListChecks,
   '/knowledge/articles': BookOpen,
-  '/parc/ci-types': SlidersHorizontal,
-  '/parc/cis': Settings,
+  '/parc/cis/new': Plus,
+  '/parc/cis': Monitor,
   '/reports': BarChart3,
 };
 

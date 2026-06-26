@@ -17,6 +17,7 @@ export class ReferentialCi {
     public readonly macAddress: string | null,
     public readonly comment: string | null,
     public readonly archivedAt: string | null,
+    public readonly createdAt: string | null = null,
   ) {}
 
   isAssigned(): boolean {

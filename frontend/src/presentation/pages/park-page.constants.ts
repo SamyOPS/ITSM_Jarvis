@@ -1,9 +1,5 @@
 import type { ReferentialCatalogSnapshot } from '../../domain/referentials/referential-catalog';
-import type {
-  EquipmentFilters,
-  EquipmentFormState,
-  ParkSection,
-} from './park-page.types';
+import type { EquipmentFilters, EquipmentFormState } from './park-page.types';
 
 export const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],
@@ -64,18 +60,8 @@ export const PARK_CI_TYPE_NAMES = [
   'Autre',
 ] as const;
 
-export const PARK_SECTION_COPY: Record<
-  ParkSection,
-  { description: string; title: string }
-> = {
-  CI_TYPES: {
-    description:
-      'Structure les familles de materiel qui seront utilisees dans le nouveau module parc.',
-    title: 'Types d equipements',
-  },
-  CIS: {
-    description:
-      'Consulte les equipements, leur affectation, leur statut et les principales informations techniques.',
-    title: 'Equipements',
-  },
+export const PARK_PAGE_COPY = {
+  description:
+    'Consulte les equipements, leur affectation, leur statut et les principales informations techniques.',
+  title: 'Equipements',
 };
