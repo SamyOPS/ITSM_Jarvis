@@ -70,6 +70,7 @@ export type CreateReferentialCiCommand = {
   ramMb: number | null;
   keyboardLayout: string | null;
   osVersion: string | null;
+  price: number | null;
   comment: string | null;
   archivedAt: string | null;
 };

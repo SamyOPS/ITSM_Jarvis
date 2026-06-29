@@ -17,6 +17,10 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
     return routeMap.get('/knowledge/articles') ?? null;
   }
 
+  if (pathname.startsWith('/parc/cis/') && pathname !== '/parc/cis/new') {
+    return routeMap.get('/parc/cis') ?? null;
+  }
+
   if (
     pathname === '/' ||
     pathname === '/admin/groups' ||

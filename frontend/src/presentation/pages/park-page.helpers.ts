@@ -1,9 +1,6 @@
 import type { ChangeEvent, Dispatch, SetStateAction } from 'react';
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
-import type {
-  ReferentialCi,
-  ReferentialCiType,
-} from '../../domain/referentials/referential-catalog';
+import type { ReferentialCi } from '../../domain/referentials/referential-catalog';
 import type { EquipmentFilters, EquipmentFormState } from './park-page.types';
 
 export function handleFilterInput(
@@ -39,7 +36,6 @@ export function handleEquipmentFieldChange(
 export function filterEquipment(
   cis: ReferentialCi[],
   filters: EquipmentFilters,
-  ciTypesById: Map<string, ReferentialCiType>,
   usersById: Map<string, AdminUserSummary>,
 ): ReferentialCi[] {
   const normalizedSearch = filters.search.trim().toLowerCase();
@@ -53,29 +49,6 @@ export function filterEquipment(
       return false;
     }
 
-    if (filters.brand && ci.brand !== filters.brand) {
-      return false;
-    }
-
-    if (filters.location && ci.location !== filters.location) {
-      return false;
-    }
-
-    if (
-      filters.assignedUserId === '__UNASSIGNED__' &&
-      ci.assignedUserId !== null
-    ) {
-      return false;
-    }
-
-    if (
-      filters.assignedUserId &&
-      filters.assignedUserId !== '__UNASSIGNED__' &&
-      ci.assignedUserId !== filters.assignedUserId
-    ) {
-      return false;
-    }
-
     if (!normalizedSearch) {
       return true;
     }
@@ -83,34 +56,18 @@ export function filterEquipment(
     const assignedUser = ci.assignedUserId
       ? (usersById.get(ci.assignedUserId) ?? null)
       : null;
-    const searchValue = [
-      ci.name,
-      ci.brand,
-      ci.model,
-      ci.serialNumber,
-      ci.operatingSystem,
-      ci.cpuName,
-      ci.diskSpaceGb === null ? '' : String(ci.diskSpaceGb),
-      ci.ramMb === null ? '' : String(ci.ramMb),
-      ci.keyboardLayout,
-      ci.osVersion,
-      ci.location,
-      ciTypeById(ciTypesById, ci.ciTypeId),
-      assignedUser ? formatUserName(assignedUser) : '',
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase();
+    const searchValues: Record<EquipmentFilters['searchField'], string> = {
+      ASSIGNED_USER: assignedUser ? formatUserName(assignedUser) : '',
+      BRAND: ci.brand ?? '',
+      MODEL: ci.model ?? '',
+      NAME: ci.name,
+      SERIAL_NUMBER: ci.serialNumber ?? '',
+    };
 
-    return searchValue.includes(normalizedSearch);
+    return searchValues[filters.searchField]
+      .toLowerCase()
+      .includes(normalizedSearch);
   });
-}
-
-function ciTypeById(
-  ciTypesById: Map<string, ReferentialCiType>,
-  ciTypeId: string,
-): string {
-  return ciTypesById.get(ciTypeId)?.name ?? '';
 }
 
 export function buildEquipmentSubtitle(ci: ReferentialCi): string {

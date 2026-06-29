@@ -1128,6 +1128,14 @@
   align-items: flex-start;
 }
 
+.park-panel-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
 .park-panel-header h3 {
   margin: 0 0 6px;
   font-size: 1.18rem;
@@ -1140,8 +1148,30 @@
 
 .park-filter-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 2fr repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.park-filter-search {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  min-height: 48px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.park-filter-search select,
+.park-filter-search input {
+  min-height: 46px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.park-filter-search select {
+  border-right: 1px solid var(--border);
 }
 
 .park-create-form {
@@ -1200,7 +1230,7 @@
 }
 
 .park-equipment-table {
-  min-width: 1180px;
+  min-width: 1120px;
 }
 
 .park-equipment-table th:first-child,
@@ -1211,20 +1241,21 @@
 
 .park-equipment-table th:nth-child(2),
 .park-equipment-table td:nth-child(2) {
-  width: 220px;
-  min-width: 220px;
-  max-width: 220px;
+  width: 190px;
+  min-width: 190px;
+  max-width: 190px;
 }
 
 .park-equipment-table th:nth-child(3),
 .park-equipment-table td:nth-child(3) {
-  min-width: 150px;
+  min-width: 130px;
 }
 
-.park-equipment-table th:nth-child(9),
-.park-equipment-table td:nth-child(9) {
-  width: 130px;
-  min-width: 130px;
+.park-equipment-table th:nth-child(4),
+.park-equipment-table td:nth-child(4),
+.park-equipment-table th:nth-child(8),
+.park-equipment-table td:nth-child(8) {
+  min-width: 150px;
 }
 
 .park-equipment-row .ticket-status-badge--in_service .ticket-status-badge-icon {
@@ -1244,18 +1275,15 @@
   box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.14);
 }
 
-.park-equipment-row .ticket-status-badge--lost .ticket-status-badge-icon {
-  background: #ef4444;
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.14);
-}
-
 .park-equipment-row
   .ticket-status-badge--out_of_service
-  .ticket-status-badge-icon,
-.park-equipment-row .ticket-status-badge--retired .ticket-status-badge-icon,
-.park-equipment-row .ticket-status-badge--archived .ticket-status-badge-icon {
+  .ticket-status-badge-icon {
   background: #64748b;
   box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.13);
+}
+
+.park-equipment-row--clickable {
+  cursor: pointer;
 }
 
 .park-table-action {

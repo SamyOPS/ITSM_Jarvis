@@ -57,6 +57,10 @@ export function isRouteActive(routePath: RoutePath, pathname: string): boolean {
     return pathname === '/agent';
   }
 
+  if (routePath === '/parc/cis') {
+    return pathname === '/parc/cis' || pathname.startsWith('/parc/cis/');
+  }
+
   return pathname === routePath;
 }
 

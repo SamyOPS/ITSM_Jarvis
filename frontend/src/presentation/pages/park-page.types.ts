@@ -2,15 +2,14 @@ import type { ChangeEvent, Dispatch, SetStateAction } from 'react';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 
 export type ParkPageProps = {
-  mode: 'CREATE' | 'LIST';
+  ciId?: string;
+  mode: 'CREATE' | 'DETAIL' | 'LIST';
   session: AuthSessionSnapshot;
 };
 
 export type EquipmentFilters = {
-  assignedUserId: string;
-  brand: string;
-  location: string;
   search: string;
+  searchField: 'ASSIGNED_USER' | 'BRAND' | 'MODEL' | 'NAME' | 'SERIAL_NUMBER';
   status: string;
   typeId: string;
 };
@@ -29,6 +28,7 @@ export type EquipmentFormState = {
   name: string;
   operatingSystem: string;
   osVersion: string;
+  price: string;
   purchaseDate: string;
   ramMb: string;
   serialNumber: string;

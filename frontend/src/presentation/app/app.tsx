@@ -103,6 +103,16 @@ function renderPage({
         <NotFoundPage />
       );
     case '/parc/cis':
+      if (pathname.startsWith('/parc/cis/')) {
+        const ciId = pathname.replace('/parc/cis/', '').trim();
+
+        return session && ciId ? (
+          <ParkPage ciId={ciId} mode="DETAIL" session={session} />
+        ) : (
+          <NotFoundPage />
+        );
+      }
+
       return session ? (
         <ParkPage mode="LIST" session={session} />
       ) : (

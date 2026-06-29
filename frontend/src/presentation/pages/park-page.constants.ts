@@ -11,10 +11,8 @@ export const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
 };
 
 export const INITIAL_FILTERS: EquipmentFilters = {
-  assignedUserId: '',
-  brand: '',
-  location: '',
   search: '',
+  searchField: 'NAME',
   status: '',
   typeId: '',
 };
@@ -33,6 +31,7 @@ export const EMPTY_EQUIPMENT_FORM: EquipmentFormState = {
   name: '',
   operatingSystem: '',
   osVersion: '',
+  price: '',
   purchaseDate: '',
   ramMb: '',
   serialNumber: '',

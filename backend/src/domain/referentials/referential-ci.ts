@@ -21,6 +21,7 @@ export class ReferentialCi {
     public readonly ramMb: number | null,
     public readonly keyboardLayout: string | null,
     public readonly osVersion: string | null,
+    public readonly price: number | null,
     public readonly comment: string | null,
     public readonly archivedAt: string | null,
     public readonly createdAt: string | null = null,

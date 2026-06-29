@@ -109,12 +109,6 @@ export function translateCiStatus(status: string): string {
       return 'En maintenance';
     case 'OUT_OF_SERVICE':
       return 'Hors service';
-    case 'LOST':
-      return 'Perdu';
-    case 'RETIRED':
-      return 'Retire';
-    case 'ARCHIVED':
-      return 'Archive';
     default:
       return status;
   }

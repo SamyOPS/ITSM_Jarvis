@@ -57,6 +57,7 @@ type CiBody = {
   ramMb?: number | null;
   keyboardLayout?: string | null;
   osVersion?: string | null;
+  price?: number | null;
   comment?: string | null;
   archivedAt?: string | null;
 };
@@ -203,6 +204,7 @@ export class AdminReferentialsController {
       ramMb: body.ramMb ?? null,
       keyboardLayout: body.keyboardLayout ?? null,
       osVersion: body.osVersion ?? null,
+      price: body.price ?? null,
       comment: body.comment ?? null,
       archivedAt: body.archivedAt ?? null,
     });
@@ -230,6 +232,7 @@ export class AdminReferentialsController {
       ramMb: body.ramMb ?? null,
       keyboardLayout: body.keyboardLayout ?? null,
       osVersion: body.osVersion ?? null,
+      price: body.price ?? null,
       comment: body.comment ?? null,
       archivedAt: body.archivedAt ?? null,
     });
