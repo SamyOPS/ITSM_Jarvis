@@ -1278,7 +1278,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                             <strong>{option.label}</strong>
                             <span>
                               {sortBy === option.value
-                                ? 'Sélection actuelle'
+                                ? 'Selection actuelle'
                                 : option.description}
                             </span>
                           </span>

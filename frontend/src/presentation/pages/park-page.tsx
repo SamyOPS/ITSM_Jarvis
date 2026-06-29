@@ -1,8 +1,11 @@
 import {
+  ArrowLeft,
   ArrowDown,
   ArrowUp,
+  Plus,
   Search,
   SlidersHorizontal,
+  Trash2,
   type LucideIcon,
   X,
 } from 'lucide-react';
@@ -54,6 +57,7 @@ import type {
 } from './park-page.types';
 
 const EQUIPMENT_PER_PAGE = 15;
+const EQUIPMENT_FORM_ID = 'park-equipment-form';
 const USER_LOOKUP_PER_PAGE = 10;
 type EquipmentSortOption = 'CREATED_AT_ASC' | 'CREATED_AT_DESC';
 type UserLookupSearchField =
@@ -282,6 +286,14 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
   );
 
   useEffect(() => {
+    if (mode === 'CREATE') {
+      setEquipmentForm(EMPTY_EQUIPMENT_FORM);
+      setFormMessage(null);
+      setIsUserPickerOpen(false);
+      setUserLookupSearchText('');
+      setUserLookupPage(1);
+    }
+
     if (mode === 'DETAIL' && selectedEquipment) {
       setEquipmentForm(mapEquipmentToForm(selectedEquipment));
       setFormMessage(null);
@@ -485,42 +497,103 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
 
       <section className="park-layout">
         {isCreateMode || isDetailMode ? (
-          <section className="park-panel">
-            <header className="park-panel-header">
-              <div>
-                <h3>
-                  {isCreateMode
-                    ? 'Ajouter un equipement'
-                    : 'Modifier un equipement'}
-                </h3>
-              </div>
-
-              {isDetailMode ? (
-                <div className="park-panel-actions">
+          <section
+            className={
+              isDetailMode ? 'park-panel park-panel--detail' : 'park-panel'
+            }
+          >
+            {isDetailMode ? (
+              <header className="tdp-topbar park-detail-topbar">
+                <div className="tdp-topbar-left">
                   <button
-                    className="secondary-button"
+                    className="tdp-back-btn"
                     onClick={() => navigateTo('/parc/cis')}
                     type="button"
                   >
+                    <ArrowLeft size={15} />
                     Retour a la liste
                   </button>
+                </div>
+
+                {selectedEquipment ? (
+                  <strong className="tdp-topbar-ticket-title">
+                    {selectedEquipment.name}
+                  </strong>
+                ) : null}
+
+                <div className="tdp-topbar-right">
+                  {selectedEquipment ? (
+                    <span className="tdp-ticket-number">
+                      {formatEquipmentIdentifier(selectedEquipment)}
+                    </span>
+                  ) : null}
+
+                  {selectedEquipment ? (
+                    <div className="tdp-status-form">
+                      <select
+                        className={
+                          equipmentForm.status ? '' : 'select-placeholder'
+                        }
+                        disabled={isSaving}
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'status',
+                        )}
+                        required
+                        value={equipmentForm.status}
+                      >
+                        <option disabled hidden value="">
+                          Choisir un statut
+                        </option>
+                        {CI_STATUS_OPTIONS.map((status) => (
+                          <option key={status} value={status}>
+                            {translateCiStatus(status)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
+
                   {selectedEquipment ? (
                     <button
-                      className="danger-button"
+                      className="primary-button admin-user-save-button"
+                      disabled={isSaving}
+                      form={EQUIPMENT_FORM_ID}
+                      type="submit"
+                    >
+                      <Plus
+                        size={16}
+                        strokeWidth={2.3}
+                        style={{ marginRight: 8 }}
+                      />
+                      {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
+                    </button>
+                  ) : null}
+
+                  {selectedEquipment ? (
+                    <button
+                      className="admin-user-delete-button"
                       disabled={deletingEquipmentId === selectedEquipment.id}
                       onClick={() =>
                         void handleDeleteEquipment(selectedEquipment)
                       }
                       type="button"
                     >
+                      <Trash2 size={16} strokeWidth={2.2} />
                       {deletingEquipmentId === selectedEquipment.id
                         ? 'Suppression...'
                         : 'Supprimer'}
                     </button>
                   ) : null}
                 </div>
-              ) : null}
-            </header>
+              </header>
+            ) : (
+              <header className="park-panel-header">
+                <div>
+                  <h3>Ajouter un equipement</h3>
+                </div>
+              </header>
+            )}
 
             {isDetailMode && !isLoading && !selectedEquipment ? (
               <p className="referentials-empty-state">
@@ -537,6 +610,7 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
             {isCreateMode || selectedEquipment ? (
               <form
                 className="park-create-form"
+                id={EQUIPMENT_FORM_ID}
                 onSubmit={(event) =>
                   isCreateMode
                     ? void handleCreateEquipment(event)
@@ -587,31 +661,33 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                       </select>
                     </label>
 
-                    <label className="field">
-                      <span>
-                        Statut <RequiredMark />
-                      </span>
-                      <select
-                        className={
-                          equipmentForm.status ? '' : 'select-placeholder'
-                        }
-                        onChange={handleEquipmentFieldChange(
-                          setEquipmentForm,
-                          'status',
-                        )}
-                        required
-                        value={equipmentForm.status}
-                      >
-                        <option disabled hidden value="">
-                          Choisir un statut
-                        </option>
-                        {CI_STATUS_OPTIONS.map((status) => (
-                          <option key={status} value={status}>
-                            {translateCiStatus(status)}
+                    {isCreateMode ? (
+                      <label className="field">
+                        <span>
+                          Statut <RequiredMark />
+                        </span>
+                        <select
+                          className={
+                            equipmentForm.status ? '' : 'select-placeholder'
+                          }
+                          onChange={handleEquipmentFieldChange(
+                            setEquipmentForm,
+                            'status',
+                          )}
+                          required
+                          value={equipmentForm.status}
+                        >
+                          <option disabled hidden value="">
+                            Choisir un statut
                           </option>
-                        ))}
-                      </select>
-                    </label>
+                          {CI_STATUS_OPTIONS.map((status) => (
+                            <option key={status} value={status}>
+                              {translateCiStatus(status)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
                   </div>
                 </section>
 
@@ -891,21 +967,16 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                   </div>
                 </section>
 
-                <div className="park-create-form-actions">
-                  <button
-                    className="primary-button"
-                    disabled={isSaving}
-                    type="submit"
-                  >
-                    {isSaving
-                      ? isCreateMode
-                        ? 'Creation...'
-                        : 'Sauvegarde...'
-                      : isCreateMode
-                        ? 'Creer l equipement'
-                        : 'Sauvegarder'}
-                  </button>
-                  {isCreateMode ? (
+                {isCreateMode ? (
+                  <div className="park-create-form-actions">
+                    <button
+                      className="primary-button"
+                      disabled={isSaving}
+                      type="submit"
+                    >
+                      {isSaving ? 'Creation...' : 'Creer l equipement'}
+                    </button>
+
                     <button
                       className="secondary-button"
                       onClick={() => {
@@ -916,8 +987,8 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                     >
                       Reinitialiser
                     </button>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
               </form>
             ) : null}
 

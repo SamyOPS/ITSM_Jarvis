@@ -67,6 +67,7 @@ import { searchTickets } from '../../infrastructure/api/ticketing-api';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 
 import { PlanningPage } from './planning-page';
+import { formatEquipmentIdentifier } from './park-page.helpers';
 import {
   applyPeriodPreset,
   buildPersonalTicketPreview,
@@ -149,8 +150,6 @@ const PERSONAL_TICKET_LIMIT = 8;
 const PERSONAL_EQUIPMENT_LIMIT = 8;
 
 const GROUP_TICKET_LIMIT = 8;
-
-const EMPTY_PERSONAL_EQUIPMENT: PersonalEquipmentItem[] = [];
 
 const PERSONAL_TICKET_SORT_OPTIONS = [
   {
@@ -441,6 +440,22 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
     [catalog.priorities],
   );
+
+  const personalEquipment = useMemo<PersonalEquipmentItem[]>(() => {
+    const ciTypesById = new Map(
+      catalog.ciTypes.map((ciType) => [ciType.id, ciType.name]),
+    );
+
+    return catalog.cis
+      .filter((ci) => ci.assignedUserId === session.user.id)
+      .map((ci) => ({
+        displayId: formatEquipmentIdentifier(ci),
+        id: ci.id,
+        name: ci.name,
+        serialNumber: ci.serialNumber ?? 'Non renseigne',
+        type: ciTypesById.get(ci.ciTypeId) ?? 'Non renseigne',
+      }));
+  }, [catalog.cis, catalog.ciTypes, session.user.id]);
 
   const assignedToMeTickets = useMemo(
     () =>
@@ -1189,7 +1204,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
             technicians={technicians}
           />
 
-          <PersonalEquipmentPanel equipment={EMPTY_PERSONAL_EQUIPMENT} />
+          <PersonalEquipmentPanel equipment={personalEquipment} />
         </section>
       ) : (
         <section aria-label="Vue groupe" className="group-view">
@@ -1619,7 +1634,7 @@ function PersonalEquipmentPanel({
               ) : (
                 visibleEquipment.map((item) => (
                   <tr key={item.id}>
-                    <td className="personal-ticket-id">{item.id}</td>
+                    <td className="personal-ticket-id">{item.displayId}</td>
 
                     <td>{item.name}</td>
 

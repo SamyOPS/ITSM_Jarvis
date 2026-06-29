@@ -1121,6 +1121,26 @@
   padding: 20px;
 }
 
+.park-panel--detail {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.park-detail-topbar {
+  border-radius: 0;
+}
+
+.park-detail-topbar + .referentials-empty-state,
+.park-detail-topbar + .park-create-form {
+  margin: 0;
+  padding: 20px;
+}
+
+.park-detail-topbar + .referentials-empty-state {
+  min-height: 180px;
+}
+
 .park-panel-header {
   display: flex;
   justify-content: space-between;

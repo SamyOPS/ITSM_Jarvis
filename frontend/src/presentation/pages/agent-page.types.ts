@@ -25,11 +25,7 @@ export type TicketStatus =
   | 'RESOLVED'
   | 'CLOSED';
 
-export type IncidentLookupKind =
-  | 'ASSIGNEE'
-  | 'ASSIGNMENT_GROUP'
-  | 'INCIDENT_EQUIPMENT'
-  | 'REQUESTER';
+export type IncidentLookupKind = 'ASSIGNEE' | 'ASSIGNMENT_GROUP' | 'REQUESTER';
 
 export type IncidentLookupSearchField =
   | 'IDENTIFIER'
