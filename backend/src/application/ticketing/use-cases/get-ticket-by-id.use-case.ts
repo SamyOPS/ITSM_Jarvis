@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
 import { assertTicketDetailAccess } from '../ticket-detail-access';
@@ -20,6 +21,8 @@ export class GetTicketByIdUseCase {
   constructor(
     @Inject(TicketReadRepository)
     private readonly ticketReadRepository: TicketReadRepository,
+    @Inject(UserAssignmentProfileRepository)
+    private readonly userAssignmentProfileRepository: UserAssignmentProfileRepository,
   ) {}
 
   async execute(command: GetTicketByIdCommand): Promise<TicketDetail> {
@@ -34,8 +37,12 @@ export class GetTicketByIdUseCase {
       throw new BadRequestException('requesterUserId is required.');
     }
 
-    const ticket =
-      await this.ticketReadRepository.getTicketById(normalizedTicketId);
+    const [ticket, userProfile] = await Promise.all([
+      this.ticketReadRepository.getTicketById(normalizedTicketId),
+      command.requesterUserRole === UserRole.AGENT
+        ? this.userAssignmentProfileRepository.getById(normalizedRequesterUserId)
+        : Promise.resolve(null),
+    ]);
 
     if (!ticket) {
       throw new NotFoundException(
@@ -46,6 +53,7 @@ export class GetTicketByIdUseCase {
     assertTicketDetailAccess({
       ticket,
       userId: normalizedRequesterUserId,
+      userProfile,
       userRole: command.requesterUserRole,
     });
 

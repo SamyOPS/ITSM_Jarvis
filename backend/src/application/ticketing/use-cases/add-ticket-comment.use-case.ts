@@ -5,6 +5,7 @@
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketComment } from '../../../domain/ticketing/ticket-comment';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
@@ -30,6 +31,8 @@ export class AddTicketCommentUseCase {
     private readonly ticketCommentWriteRepository: TicketCommentWriteRepository,
     @Inject(TicketReadRepository)
     private readonly ticketReadRepository: TicketReadRepository,
+    @Inject(UserAssignmentProfileRepository)
+    private readonly userAssignmentProfileRepository: UserAssignmentProfileRepository,
     private readonly ticketAuditService: TicketAuditService,
   ) {}
 
@@ -57,8 +60,12 @@ export class AddTicketCommentUseCase {
       );
     }
 
-    const ticket =
-      await this.ticketReadRepository.getTicketById(normalizedTicketId);
+    const [ticket, userProfile] = await Promise.all([
+      this.ticketReadRepository.getTicketById(normalizedTicketId),
+      command.authorRole === UserRole.AGENT
+        ? this.userAssignmentProfileRepository.getById(normalizedAuthorUserId)
+        : Promise.resolve(null),
+    ]);
 
     if (!ticket) {
       throw new NotFoundException(
@@ -69,6 +76,7 @@ export class AddTicketCommentUseCase {
     assertTicketCommentAccess({
       ticket,
       userId: normalizedAuthorUserId,
+      userProfile,
       userRole: command.authorRole,
     });
 

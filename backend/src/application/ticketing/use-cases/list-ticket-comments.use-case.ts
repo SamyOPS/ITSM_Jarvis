@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketComment } from '../../../domain/ticketing/ticket-comment';
 import { TicketCommentReadRepository } from '../repositories/ticket-comment-read.repository';
@@ -17,6 +18,8 @@ export class ListTicketCommentsUseCase {
     private readonly ticketCommentReadRepository: TicketCommentReadRepository,
     @Inject(TicketReadRepository)
     private readonly ticketReadRepository: TicketReadRepository,
+    @Inject(UserAssignmentProfileRepository)
+    private readonly userAssignmentProfileRepository: UserAssignmentProfileRepository,
   ) {}
 
   async execute(
@@ -35,8 +38,12 @@ export class ListTicketCommentsUseCase {
       throw new BadRequestException('userId is required.');
     }
 
-    const ticket =
-      await this.ticketReadRepository.getTicketById(normalizedTicketId);
+    const [ticket, userProfile] = await Promise.all([
+      this.ticketReadRepository.getTicketById(normalizedTicketId),
+      userRole === UserRole.AGENT
+        ? this.userAssignmentProfileRepository.getById(normalizedUserId)
+        : Promise.resolve(null),
+    ]);
 
     if (!ticket) {
       throw new NotFoundException(
@@ -47,6 +54,7 @@ export class ListTicketCommentsUseCase {
     assertTicketCommentAccess({
       ticket,
       userId: normalizedUserId,
+      userProfile,
       userRole,
     });
 

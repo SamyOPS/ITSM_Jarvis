@@ -1,26 +1,19 @@
-import { ForbiddenException } from '@nestjs/common';
+import { type UserAssignmentProfile } from '../../domain/auth/user-assignment-profile';
 import { UserRole } from '../../domain/auth/user-role';
 import { TicketDetail } from '../../domain/ticketing/ticket-detail';
+import { assertTicketAccess } from './ticket-detail-access';
 
 export function assertTicketAttachmentAccess(params: {
   ticket: TicketDetail;
   userId: string;
+  userProfile?: UserAssignmentProfile | null;
   userRole: UserRole;
 }): void {
-  if (
-    params.userRole === UserRole.AGENT ||
-    params.userRole === UserRole.ADMIN
-  ) {
-    return;
-  }
-
-  const canAccess =
-    params.ticket.ticket.createdByUserId === params.userId ||
-    params.ticket.ticket.requestedForUserId === params.userId;
-
-  if (!canAccess) {
-    throw new ForbiddenException(
-      'You do not have access to attachments for this ticket.',
-    );
-  }
+  assertTicketAccess({
+    forbiddenMessage: 'You do not have access to attachments for this ticket.',
+    ticket: params.ticket,
+    userId: params.userId,
+    userProfile: params.userProfile,
+    userRole: params.userRole,
+  });
 }
