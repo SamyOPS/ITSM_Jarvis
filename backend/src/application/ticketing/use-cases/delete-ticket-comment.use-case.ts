@@ -4,16 +4,18 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
+import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 import { TicketCommentReadRepository } from '../repositories/ticket-comment-read.repository';
 import { TicketCommentWriteRepository } from '../repositories/ticket-comment-write.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketAuditService } from '../ticket-audit.service';
 import { assertTicketCommentAccess } from '../ticket-comment-access';
 import { assertTicketCanBeModifiedByRole } from '../ticketing-rules';
-import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 
 export type DeleteTicketCommentCommand = {
   actorRole: UserRole;
@@ -32,6 +34,9 @@ export class DeleteTicketCommentUseCase {
     @Inject(TicketReadRepository)
     private readonly ticketReadRepository: TicketReadRepository,
     private readonly ticketAuditService: TicketAuditService,
+    @Optional()
+    @Inject(UserAssignmentProfileRepository)
+    private readonly userAssignmentProfileRepository?: UserAssignmentProfileRepository,
   ) {}
 
   async execute(command: DeleteTicketCommentCommand): Promise<void> {
@@ -51,8 +56,14 @@ export class DeleteTicketCommentUseCase {
       throw new BadRequestException('actorUserId is required.');
     }
 
-    const ticket =
-      await this.ticketReadRepository.getTicketById(normalizedTicketId);
+    const [ticket, userProfile] = await Promise.all([
+      this.ticketReadRepository.getTicketById(normalizedTicketId),
+      command.actorRole === UserRole.AGENT
+        ? this.userAssignmentProfileRepository?.getById(
+            normalizedActorUserId,
+          ) ?? Promise.resolve(null)
+        : Promise.resolve(null),
+    ]);
 
     if (!ticket) {
       throw new NotFoundException(
@@ -63,6 +74,7 @@ export class DeleteTicketCommentUseCase {
     assertTicketCommentAccess({
       ticket,
       userId: normalizedActorUserId,
+      userProfile,
       userRole: command.actorRole,
     });
 
