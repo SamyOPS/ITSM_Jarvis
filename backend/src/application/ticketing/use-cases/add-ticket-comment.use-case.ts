@@ -1,9 +1,10 @@
-﻿import {
+import {
   BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { UserRole } from '../../../domain/auth/user-role';
@@ -31,9 +32,10 @@ export class AddTicketCommentUseCase {
     private readonly ticketCommentWriteRepository: TicketCommentWriteRepository,
     @Inject(TicketReadRepository)
     private readonly ticketReadRepository: TicketReadRepository,
-    @Inject(UserAssignmentProfileRepository)
-    private readonly userAssignmentProfileRepository: UserAssignmentProfileRepository,
     private readonly ticketAuditService: TicketAuditService,
+    @Optional()
+    @Inject(UserAssignmentProfileRepository)
+    private readonly userAssignmentProfileRepository?: UserAssignmentProfileRepository,
   ) {}
 
   async execute(command: AddTicketCommentCommand): Promise<TicketComment> {
@@ -63,7 +65,9 @@ export class AddTicketCommentUseCase {
     const [ticket, userProfile] = await Promise.all([
       this.ticketReadRepository.getTicketById(normalizedTicketId),
       command.authorRole === UserRole.AGENT
-        ? this.userAssignmentProfileRepository.getById(normalizedAuthorUserId)
+        ? this.userAssignmentProfileRepository?.getById(
+            normalizedAuthorUserId,
+          ) ?? Promise.resolve(null)
         : Promise.resolve(null),
     ]);
 

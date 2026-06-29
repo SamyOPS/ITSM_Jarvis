@@ -3,6 +3,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { UserRole } from '../../../domain/auth/user-role';
@@ -18,8 +19,9 @@ export class ListTicketHistoryUseCase {
     private readonly ticketHistoryReadRepository: TicketHistoryReadRepository,
     @Inject(TicketReadRepository)
     private readonly ticketReadRepository: TicketReadRepository,
+    @Optional()
     @Inject(UserAssignmentProfileRepository)
-    private readonly userAssignmentProfileRepository: UserAssignmentProfileRepository,
+    private readonly userAssignmentProfileRepository?: UserAssignmentProfileRepository,
   ) {}
 
   async execute(
@@ -41,9 +43,9 @@ export class ListTicketHistoryUseCase {
     const [ticket, userProfile] = await Promise.all([
       this.ticketReadRepository.getTicketById(normalizedTicketId),
       requesterUserRole === UserRole.AGENT
-        ? this.userAssignmentProfileRepository.getById(
+        ? this.userAssignmentProfileRepository?.getById(
             normalizedRequesterUserId,
-          )
+          ) ?? Promise.resolve(null)
         : Promise.resolve(null),
     ]);
 

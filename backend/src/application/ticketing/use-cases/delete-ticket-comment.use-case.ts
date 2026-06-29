@@ -4,17 +4,18 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
+import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 import { TicketCommentReadRepository } from '../repositories/ticket-comment-read.repository';
 import { TicketCommentWriteRepository } from '../repositories/ticket-comment-write.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketAuditService } from '../ticket-audit.service';
 import { assertTicketCommentAccess } from '../ticket-comment-access';
 import { assertTicketCanBeModifiedByRole } from '../ticketing-rules';
-import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 
 export type DeleteTicketCommentCommand = {
   actorRole: UserRole;
@@ -32,9 +33,10 @@ export class DeleteTicketCommentUseCase {
     private readonly ticketCommentWriteRepository: TicketCommentWriteRepository,
     @Inject(TicketReadRepository)
     private readonly ticketReadRepository: TicketReadRepository,
-    @Inject(UserAssignmentProfileRepository)
-    private readonly userAssignmentProfileRepository: UserAssignmentProfileRepository,
     private readonly ticketAuditService: TicketAuditService,
+    @Optional()
+    @Inject(UserAssignmentProfileRepository)
+    private readonly userAssignmentProfileRepository?: UserAssignmentProfileRepository,
   ) {}
 
   async execute(command: DeleteTicketCommentCommand): Promise<void> {
@@ -57,7 +59,9 @@ export class DeleteTicketCommentUseCase {
     const [ticket, userProfile] = await Promise.all([
       this.ticketReadRepository.getTicketById(normalizedTicketId),
       command.actorRole === UserRole.AGENT
-        ? this.userAssignmentProfileRepository.getById(normalizedActorUserId)
+        ? this.userAssignmentProfileRepository?.getById(
+            normalizedActorUserId,
+          ) ?? Promise.resolve(null)
         : Promise.resolve(null),
     ]);
 
