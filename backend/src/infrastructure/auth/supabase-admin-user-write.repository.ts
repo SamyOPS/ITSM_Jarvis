@@ -65,6 +65,15 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
           record,
         );
 
+    if (!shouldConfirmEmail) {
+      await resendSignupConfirmationEmail(
+        config.supabaseUrl,
+        config.supabaseAnonKey,
+        record.email,
+        resolveEmailRedirectTo(config.corsOrigin),
+      );
+    }
+
     return upsertPublicUser(config.supabaseUrl, supabaseApiKey, {
       displayName: buildDisplayName(record),
       email: record.email,
@@ -352,6 +361,64 @@ async function signUpSupabaseAuthUser(
   }
 
   return userId;
+}
+
+async function resendSignupConfirmationEmail(
+  supabaseUrl: string,
+  supabaseAnonKey: string,
+  email: string,
+  emailRedirectTo: string | null,
+): Promise<void> {
+  let response: Response;
+  const body: {
+    email: string;
+    options?: {
+      emailRedirectTo: string;
+    };
+    type: 'signup';
+  } = {
+    email,
+    type: 'signup',
+  };
+
+  if (emailRedirectTo) {
+    body.options = {
+      emailRedirectTo,
+    };
+  }
+
+  try {
+    response = await fetch(`${supabaseUrl}/auth/v1/resend`, {
+      method: 'POST',
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase confirmation email resend is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+    const supabaseError = parseSupabaseError(message);
+
+    if (
+      response.status === 429 ||
+      supabaseError.errorCode === 'over_email_send_rate_limit'
+    ) {
+      return;
+    }
+
+    throw new BadRequestException(
+      supabaseError.message ||
+        `Supabase confirmation email resend returned status ${response.status}.`,
+    );
+  }
 }
 
 async function updateSupabaseAuthUser(
@@ -1008,6 +1075,24 @@ function buildDisplayName(record: {
     .trim();
 
   return displayName || record.email;
+}
+
+function resolveEmailRedirectTo(corsOrigin: string | boolean): string | null {
+  if (typeof corsOrigin !== 'string') {
+    return null;
+  }
+
+  const normalizedOrigin = corsOrigin.trim();
+
+  if (!normalizedOrigin) {
+    return null;
+  }
+
+  try {
+    return new URL(normalizedOrigin).toString();
+  } catch {
+    return null;
+  }
 }
 
 function resolveUserRole(role: string): UserRole {

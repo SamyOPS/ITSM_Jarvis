@@ -64,20 +64,18 @@ export class SupabaseKnowledgeArticleRepository
 {
   async listArticles(currentUserId: string): Promise<KnowledgeArticle[]> {
     const rows = await this.fetchRows();
-    const likes = await this.fetchLikeRows(
-      rows.map((row) => row.id),
-    );
+    const likes = await this.fetchLikeRows(rows.map((row) => row.id));
 
     return rows.map((row) => this.mapRow(row, likes, currentUserId));
   }
 
-  async listPublishedArticles(currentUserId: string): Promise<KnowledgeArticle[]> {
+  async listPublishedArticles(
+    currentUserId: string,
+  ): Promise<KnowledgeArticle[]> {
     const rows = await this.fetchRows([
       { column: 'status', value: 'PUBLISHED' },
     ]);
-    const likes = await this.fetchLikeRows(
-      rows.map((row) => row.id),
-    );
+    const likes = await this.fetchLikeRows(rows.map((row) => row.id));
 
     return rows.map((row) => this.mapRow(row, likes, currentUserId));
   }
