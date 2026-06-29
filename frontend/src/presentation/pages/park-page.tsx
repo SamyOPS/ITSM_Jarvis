@@ -34,6 +34,7 @@ import {
   EMPTY_CATALOG,
   EMPTY_EQUIPMENT_FORM,
   INITIAL_FILTERS,
+  PARK_HARDWARE_REQUIRED_CI_TYPE_NAMES,
   PARK_CI_TYPE_NAMES,
 } from './park-page.constants';
 import {
@@ -54,7 +55,7 @@ import type {
 } from './park-page.types';
 
 const EQUIPMENT_PER_PAGE = 15;
-const USER_LOOKUP_PER_PAGE = 5;
+const USER_LOOKUP_PER_PAGE = 10;
 type EquipmentSortOption = 'CREATED_AT_ASC' | 'CREATED_AT_DESC';
 type UserLookupSearchField =
   | 'EMAIL'
@@ -190,6 +191,24 @@ export function ParkPage({ mode, session }: ParkPageProps) {
   const usersById = useMemo(
     () => new Map(users.map((user) => [user.id, user])),
     [users],
+  );
+
+  const selectedEquipmentType = useMemo(
+    () =>
+      equipmentForm.ciTypeId
+        ? (ciTypesById.get(equipmentForm.ciTypeId) ?? null)
+        : null,
+    [ciTypesById, equipmentForm.ciTypeId],
+  );
+
+  const requiresHardwareDetails = useMemo(
+    () =>
+      selectedEquipmentType
+        ? PARK_HARDWARE_REQUIRED_CI_TYPE_NAMES.includes(
+            selectedEquipmentType.name as (typeof PARK_HARDWARE_REQUIRED_CI_TYPE_NAMES)[number],
+          )
+        : false,
+    [selectedEquipmentType],
   );
 
   const filteredEquipment = useMemo(
@@ -489,42 +508,59 @@ export function ParkPage({ mode, session }: ParkPageProps) {
                 <div className="park-form-section-fields">
                   <label className="field">
                     <span>
-                      Marque/Constructeur <RequiredMark />
+                      Marque/Constructeur{' '}
+                      {requiresHardwareDetails ? <RequiredMark /> : null}
                     </span>
                     <input
                       onChange={handleEquipmentFieldChange(
                         setEquipmentForm,
                         'brand',
                       )}
-                      required
+                      required={requiresHardwareDetails}
                       value={equipmentForm.brand}
                     />
                   </label>
 
                   <label className="field">
                     <span>
-                      Modele <RequiredMark />
+                      Modele {requiresHardwareDetails ? <RequiredMark /> : null}
                     </span>
                     <input
                       onChange={handleEquipmentFieldChange(
                         setEquipmentForm,
                         'model',
                       )}
-                      required
+                      required={requiresHardwareDetails}
                       value={equipmentForm.model}
                     />
                   </label>
 
                   <label className="field">
                     <span>
-                      Numero de serie <RequiredMark />
+                      Numero de serie{' '}
+                      {requiresHardwareDetails ? <RequiredMark /> : null}
                     </span>
                     <input
+                      onInvalid={(event) => {
+                        if (!requiresHardwareDetails) {
+                          event.currentTarget.setCustomValidity('');
+                          return;
+                        }
+
+                        if (!event.currentTarget.value.trim()) {
+                          event.currentTarget.setCustomValidity(
+                            'Numero de serie obligatoire pour ce type d equipement.',
+                          );
+                        }
+                      }}
                       onChange={handleEquipmentFieldChange(
                         setEquipmentForm,
                         'serialNumber',
                       )}
-                      required
+                      onInput={(event) =>
+                        event.currentTarget.setCustomValidity('')
+                      }
+                      required={requiresHardwareDetails}
                       value={equipmentForm.serialNumber}
                     />
                   </label>
@@ -637,7 +673,7 @@ export function ParkPage({ mode, session }: ParkPageProps) {
                   </label>
 
                   <label className="field">
-                    <span>Date de garantie</span>
+                    <span>Fin de garantie</span>
                     <input
                       onChange={handleEquipmentFieldChange(
                         setEquipmentForm,
