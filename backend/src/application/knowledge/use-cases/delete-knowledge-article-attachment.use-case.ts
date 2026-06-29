@@ -26,7 +26,9 @@ export class DeleteKnowledgeArticleAttachmentUseCase {
     private readonly getKnowledgeArticleUseCase: GetKnowledgeArticleUseCase,
   ) {}
 
-  async execute(command: DeleteKnowledgeArticleAttachmentCommand): Promise<void> {
+  async execute(
+    command: DeleteKnowledgeArticleAttachmentCommand,
+  ): Promise<void> {
     const normalizedArticleId = command.articleId.trim();
     const normalizedAttachmentId = command.attachmentId.trim();
     const normalizedActorUserId = command.actorUserId.trim();
