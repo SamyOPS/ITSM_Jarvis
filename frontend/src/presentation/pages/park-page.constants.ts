@@ -11,10 +11,8 @@ export const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
 };
 
 export const INITIAL_FILTERS: EquipmentFilters = {
-  assignedUserId: '',
-  brand: '',
-  location: '',
   search: '',
+  searchField: 'NAME',
   status: '',
   typeId: '',
 };
@@ -33,6 +31,7 @@ export const EMPTY_EQUIPMENT_FORM: EquipmentFormState = {
   name: '',
   operatingSystem: '',
   osVersion: '',
+  price: '',
   purchaseDate: '',
   ramMb: '',
   serialNumber: '',
@@ -45,9 +44,6 @@ export const CI_STATUS_OPTIONS = [
   'IN_STOCK',
   'MAINTENANCE',
   'OUT_OF_SERVICE',
-  'LOST',
-  'RETIRED',
-  'ARCHIVED',
 ] as const;
 
 export const PARK_CI_TYPE_NAMES = [
@@ -62,6 +58,15 @@ export const PARK_CI_TYPE_NAMES = [
   'Cable',
   'Telephone',
   'Autre',
+] as const;
+
+export const PARK_HARDWARE_REQUIRED_CI_TYPE_NAMES = [
+  'Ordinateur',
+  'Serveur',
+  'Imprimante',
+  'Ecran',
+  'Telephone',
+  'Reseau',
 ] as const;
 
 export const PARK_PAGE_COPY = {

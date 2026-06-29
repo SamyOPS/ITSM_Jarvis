@@ -60,6 +60,7 @@ export class ManageCisUseCase {
       ramMb: command.ramMb,
       keyboardLayout: normalizeNullableText(command.keyboardLayout),
       osVersion: normalizeNullableText(command.osVersion),
+      price: command.price,
       comment: normalizeNullableText(command.comment),
       archivedAt: assertNullableDateTime(command.archivedAt, 'archivedAt'),
     });
@@ -104,6 +105,7 @@ export class ManageCisUseCase {
       ramMb: command.ramMb,
       keyboardLayout: normalizeNullableText(command.keyboardLayout),
       osVersion: normalizeNullableText(command.osVersion),
+      price: command.price,
       comment: normalizeNullableText(command.comment),
       archivedAt: assertNullableDateTime(command.archivedAt, 'archivedAt'),
     });

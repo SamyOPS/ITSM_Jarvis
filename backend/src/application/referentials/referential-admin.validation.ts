@@ -72,7 +72,7 @@ export function assertPriorityName(value: PriorityName): PriorityName {
 export function assertCiStatus(value: CiStatus): CiStatus {
   if (!DEFAULT_CI_STATUSES.includes(value)) {
     throw new BadRequestException(
-      'CI status must be one of IN_SERVICE, IN_STOCK, MAINTENANCE, LOST, OUT_OF_SERVICE, RETIRED or ARCHIVED.',
+      'CI status must be one of IN_SERVICE, IN_STOCK, MAINTENANCE or OUT_OF_SERVICE.',
     );
   }
 

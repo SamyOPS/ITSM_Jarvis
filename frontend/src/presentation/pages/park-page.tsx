@@ -28,19 +28,19 @@ import {
   createAdminReferential,
   deleteAdminReferential,
   fetchReferentialCatalog,
+  updateAdminReferential,
 } from '../../infrastructure/api/referentials-api';
+import { navigateTo } from '../../infrastructure/routing/browser-router';
 import {
   CI_STATUS_OPTIONS,
   EMPTY_CATALOG,
   EMPTY_EQUIPMENT_FORM,
   INITIAL_FILTERS,
+  PARK_HARDWARE_REQUIRED_CI_TYPE_NAMES,
   PARK_CI_TYPE_NAMES,
 } from './park-page.constants';
 import {
-  buildEquipmentSubtitle,
-  buildUniqueValues,
   filterEquipment,
-  formatDateValue,
   formatEquipmentIdentifier,
   formatUserName,
   handleEquipmentFieldChange,
@@ -54,7 +54,7 @@ import type {
 } from './park-page.types';
 
 const EQUIPMENT_PER_PAGE = 15;
-const USER_LOOKUP_PER_PAGE = 5;
+const USER_LOOKUP_PER_PAGE = 10;
 type EquipmentSortOption = 'CREATED_AT_ASC' | 'CREATED_AT_DESC';
 type UserLookupSearchField =
   | 'EMAIL'
@@ -95,7 +95,55 @@ function RequiredMark() {
   );
 }
 
-export function ParkPage({ mode, session }: ParkPageProps) {
+function buildCiPayload(form: EquipmentFormState): Record<string, unknown> {
+  return {
+    name: form.name.trim(),
+    ciTypeId: form.ciTypeId,
+    status: form.status,
+    assignedUserId: normalizeOptionalText(form.assignedUserId),
+    serialNumber: normalizeOptionalText(form.serialNumber),
+    brand: normalizeOptionalText(form.brand),
+    model: normalizeOptionalText(form.model),
+    operatingSystem: normalizeOptionalText(form.operatingSystem),
+    location: normalizeOptionalText(form.location),
+    purchaseDate: normalizeOptionalText(form.purchaseDate),
+    warrantyEndDate: normalizeOptionalText(form.warrantyEndDate),
+    cpuName: normalizeOptionalText(form.cpuName),
+    diskSpaceGb: normalizeOptionalNumber(form.diskSpaceGb),
+    ramMb: normalizeOptionalNumber(form.ramMb),
+    keyboardLayout: normalizeOptionalText(form.keyboardLayout),
+    osVersion: normalizeOptionalText(form.osVersion),
+    price: normalizeOptionalNumber(form.price),
+    comment: normalizeOptionalText(form.comment),
+    archivedAt: normalizeOptionalText(form.archivedAt),
+  };
+}
+
+function mapEquipmentToForm(ci: ReferentialCi): EquipmentFormState {
+  return {
+    archivedAt: ci.archivedAt ?? '',
+    assignedUserId: ci.assignedUserId ?? '',
+    brand: ci.brand ?? '',
+    comment: ci.comment ?? '',
+    ciTypeId: ci.ciTypeId,
+    cpuName: ci.cpuName ?? '',
+    diskSpaceGb: ci.diskSpaceGb === null ? '' : String(ci.diskSpaceGb),
+    keyboardLayout: ci.keyboardLayout ?? '',
+    location: ci.location ?? '',
+    model: ci.model ?? '',
+    name: ci.name,
+    operatingSystem: ci.operatingSystem ?? '',
+    osVersion: ci.osVersion ?? '',
+    price: ci.price === null ? '' : String(ci.price),
+    purchaseDate: ci.purchaseDate ?? '',
+    ramMb: ci.ramMb === null ? '' : String(ci.ramMb),
+    serialNumber: ci.serialNumber ?? '',
+    status: ci.status,
+    warrantyEndDate: ci.warrantyEndDate ?? '',
+  };
+}
+
+export function ParkPage({ ciId, mode, session }: ParkPageProps) {
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
@@ -192,9 +240,27 @@ export function ParkPage({ mode, session }: ParkPageProps) {
     [users],
   );
 
+  const selectedEquipmentType = useMemo(
+    () =>
+      equipmentForm.ciTypeId
+        ? (ciTypesById.get(equipmentForm.ciTypeId) ?? null)
+        : null,
+    [ciTypesById, equipmentForm.ciTypeId],
+  );
+
+  const requiresHardwareDetails = useMemo(
+    () =>
+      selectedEquipmentType
+        ? PARK_HARDWARE_REQUIRED_CI_TYPE_NAMES.includes(
+            selectedEquipmentType.name as (typeof PARK_HARDWARE_REQUIRED_CI_TYPE_NAMES)[number],
+          )
+        : false,
+    [selectedEquipmentType],
+  );
+
   const filteredEquipment = useMemo(
-    () => filterEquipment(catalog.cis, filters, ciTypesById, usersById),
-    [catalog.cis, filters, ciTypesById, usersById],
+    () => filterEquipment(catalog.cis, filters, usersById),
+    [catalog.cis, filters, usersById],
   );
 
   const sortedEquipment = useMemo(() => {
@@ -210,6 +276,18 @@ export function ParkPage({ mode, session }: ParkPageProps) {
     });
   }, [equipmentSortBy, filteredEquipment]);
 
+  const selectedEquipment = useMemo(
+    () => catalog.cis.find((ci) => ci.id === ciId) ?? null,
+    [catalog.cis, ciId],
+  );
+
+  useEffect(() => {
+    if (mode === 'DETAIL' && selectedEquipment) {
+      setEquipmentForm(mapEquipmentToForm(selectedEquipment));
+      setFormMessage(null);
+    }
+  }, [mode, selectedEquipment]);
+
   const totalEquipmentPages = Math.max(
     1,
     Math.ceil(sortedEquipment.length / EQUIPMENT_PER_PAGE),
@@ -219,21 +297,6 @@ export function ParkPage({ mode, session }: ParkPageProps) {
     const startIndex = (equipmentPage - 1) * EQUIPMENT_PER_PAGE;
     return sortedEquipment.slice(startIndex, startIndex + EQUIPMENT_PER_PAGE);
   }, [equipmentPage, sortedEquipment]);
-
-  const visibleBrands = useMemo(
-    () => buildUniqueValues(catalog.cis.map((ci) => ci.brand)),
-    [catalog.cis],
-  );
-
-  const visibleLocations = useMemo(
-    () => buildUniqueValues(catalog.cis.map((ci) => ci.location)),
-    [catalog.cis],
-  );
-
-  const visibleStatuses = useMemo(
-    () => buildUniqueValues(catalog.cis.map((ci) => ci.status)),
-    [catalog.cis],
-  );
 
   const filteredUserLookupResults = useMemo(() => {
     const normalizedSearch = userLookupSearchText.trim().toLowerCase();
@@ -319,26 +382,11 @@ export function ParkPage({ mode, session }: ParkPageProps) {
     setFormMessage(null);
 
     try {
-      await createAdminReferential('cis', session.accessToken, {
-        name: equipmentForm.name.trim(),
-        ciTypeId: equipmentForm.ciTypeId,
-        status: equipmentForm.status,
-        assignedUserId: normalizeOptionalText(equipmentForm.assignedUserId),
-        serialNumber: normalizeOptionalText(equipmentForm.serialNumber),
-        brand: normalizeOptionalText(equipmentForm.brand),
-        model: normalizeOptionalText(equipmentForm.model),
-        operatingSystem: normalizeOptionalText(equipmentForm.operatingSystem),
-        location: normalizeOptionalText(equipmentForm.location),
-        purchaseDate: normalizeOptionalText(equipmentForm.purchaseDate),
-        warrantyEndDate: normalizeOptionalText(equipmentForm.warrantyEndDate),
-        cpuName: normalizeOptionalText(equipmentForm.cpuName),
-        diskSpaceGb: normalizeOptionalNumber(equipmentForm.diskSpaceGb),
-        ramMb: normalizeOptionalNumber(equipmentForm.ramMb),
-        keyboardLayout: normalizeOptionalText(equipmentForm.keyboardLayout),
-        osVersion: normalizeOptionalText(equipmentForm.osVersion),
-        comment: normalizeOptionalText(equipmentForm.comment),
-        archivedAt: normalizeOptionalText(equipmentForm.archivedAt),
-      });
+      await createAdminReferential(
+        'cis',
+        session.accessToken,
+        buildCiPayload(equipmentForm),
+      );
 
       setEquipmentForm(EMPTY_EQUIPMENT_FORM);
       await loadParkData();
@@ -348,6 +396,39 @@ export function ParkPage({ mode, session }: ParkPageProps) {
         error instanceof Error
           ? error.message
           : 'La creation de l equipement a echoue.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleUpdateEquipment(
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> {
+    event.preventDefault();
+
+    if (!selectedEquipment) {
+      return;
+    }
+
+    setIsSaving(true);
+    setFormMessage(null);
+
+    try {
+      await updateAdminReferential(
+        'cis',
+        selectedEquipment.id,
+        session.accessToken,
+        buildCiPayload(equipmentForm),
+      );
+
+      await loadParkData();
+      setFormMessage('Equipement sauvegarde.');
+    } catch (error) {
+      setFormMessage(
+        error instanceof Error
+          ? error.message
+          : 'La sauvegarde de l equipement a echoue.',
       );
     } finally {
       setIsSaving(false);
@@ -379,6 +460,9 @@ export function ParkPage({ mode, session }: ParkPageProps) {
       await deleteAdminReferential('cis', ci.id, session.accessToken);
       await loadParkData();
       setFormMessage('Equipement supprime.');
+      if (mode === 'DETAIL') {
+        navigateTo('/parc/cis');
+      }
     } catch (error) {
       setFormMessage(
         error instanceof Error
@@ -391,6 +475,7 @@ export function ParkPage({ mode, session }: ParkPageProps) {
   }
 
   const isCreateMode = mode === 'CREATE';
+  const isDetailMode = mode === 'DETAIL';
 
   return (
     <section className="reports-page">
@@ -399,354 +484,442 @@ export function ParkPage({ mode, session }: ParkPageProps) {
       ) : null}
 
       <section className="park-layout">
-        {isCreateMode ? (
+        {isCreateMode || isDetailMode ? (
           <section className="park-panel">
             <header className="park-panel-header">
               <div>
-                <h3>Ajouter un equipement</h3>
+                <h3>
+                  {isCreateMode
+                    ? 'Ajouter un equipement'
+                    : 'Modifier un equipement'}
+                </h3>
               </div>
+
+              {isDetailMode ? (
+                <div className="park-panel-actions">
+                  <button
+                    className="secondary-button"
+                    onClick={() => navigateTo('/parc/cis')}
+                    type="button"
+                  >
+                    Retour a la liste
+                  </button>
+                  {selectedEquipment ? (
+                    <button
+                      className="danger-button"
+                      disabled={deletingEquipmentId === selectedEquipment.id}
+                      onClick={() =>
+                        void handleDeleteEquipment(selectedEquipment)
+                      }
+                      type="button"
+                    >
+                      {deletingEquipmentId === selectedEquipment.id
+                        ? 'Suppression...'
+                        : 'Supprimer'}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
             </header>
 
-            <form
-              className="park-create-form"
-              onSubmit={(event) => void handleCreateEquipment(event)}
-            >
-              <section className="park-form-section">
-                <h4>Informations principales</h4>
+            {isDetailMode && !isLoading && !selectedEquipment ? (
+              <p className="referentials-empty-state">
+                Equipement introuvable.
+              </p>
+            ) : null}
 
-                <div className="park-form-section-fields">
-                  <label className="field">
-                    <span>
-                      Nom <RequiredMark />
-                    </span>
-                    <input
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'name',
-                      )}
-                      required
-                      value={equipmentForm.name}
-                    />
-                  </label>
+            {isDetailMode && isLoading ? (
+              <p className="referentials-empty-state">
+                Chargement de l equipement...
+              </p>
+            ) : null}
 
-                  <label className="field">
-                    <span>
-                      Type <RequiredMark />
-                    </span>
-                    <select
-                      className={
-                        equipmentForm.ciTypeId ? '' : 'select-placeholder'
-                      }
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'ciTypeId',
-                      )}
-                      required
-                      value={equipmentForm.ciTypeId}
-                    >
-                      <option disabled hidden value="">
-                        Choisir un type
-                      </option>
-                      {parkCiTypes.map((ciType) => (
-                        <option key={ciType.id} value={ciType.id}>
-                          {ciType.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+            {isCreateMode || selectedEquipment ? (
+              <form
+                className="park-create-form"
+                onSubmit={(event) =>
+                  isCreateMode
+                    ? void handleCreateEquipment(event)
+                    : void handleUpdateEquipment(event)
+                }
+              >
+                <section className="park-form-section">
+                  <h4>Informations principales</h4>
 
-                  <label className="field">
-                    <span>
-                      Statut <RequiredMark />
-                    </span>
-                    <select
-                      className={
-                        equipmentForm.status ? '' : 'select-placeholder'
-                      }
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'status',
-                      )}
-                      required
-                      value={equipmentForm.status}
-                    >
-                      <option disabled hidden value="">
-                        Choisir un statut
-                      </option>
-                      {CI_STATUS_OPTIONS.map((status) => (
-                        <option key={status} value={status}>
-                          {translateCiStatus(status)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-              </section>
-
-              <section className="park-form-section">
-                <h4>Informations materiel</h4>
-
-                <div className="park-form-section-fields">
-                  <label className="field">
-                    <span>
-                      Marque/Constructeur <RequiredMark />
-                    </span>
-                    <input
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'brand',
-                      )}
-                      required
-                      value={equipmentForm.brand}
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>
-                      Modele <RequiredMark />
-                    </span>
-                    <input
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'model',
-                      )}
-                      required
-                      value={equipmentForm.model}
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>
-                      Numero de serie <RequiredMark />
-                    </span>
-                    <input
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'serialNumber',
-                      )}
-                      required
-                      value={equipmentForm.serialNumber}
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>Systeme d'exploitation</span>
-                    <input
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'operatingSystem',
-                      )}
-                      value={equipmentForm.operatingSystem}
-                    />
-                  </label>
-                </div>
-              </section>
-
-              <section className="park-form-section">
-                <h4>Affectation</h4>
-
-                <div className="park-form-section-fields">
-                  <label className="field">
-                    <span>Utilisateur assigne</span>
-                    <div
-                      className={
-                        equipmentForm.assignedUserId
-                          ? 'incident-lookup-field has-clear'
-                          : 'incident-lookup-field'
-                      }
-                    >
+                  <div className="park-form-section-fields">
+                    <label className="field">
+                      <span>
+                        Nom <RequiredMark />
+                      </span>
                       <input
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'name',
+                        )}
+                        required
+                        value={equipmentForm.name}
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span>
+                        Type <RequiredMark />
+                      </span>
+                      <select
+                        className={
+                          equipmentForm.ciTypeId ? '' : 'select-placeholder'
+                        }
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'ciTypeId',
+                        )}
+                        required
+                        value={equipmentForm.ciTypeId}
+                      >
+                        <option disabled hidden value="">
+                          Choisir un type
+                        </option>
+                        {parkCiTypes.map((ciType) => (
+                          <option key={ciType.id} value={ciType.id}>
+                            {ciType.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="field">
+                      <span>
+                        Statut <RequiredMark />
+                      </span>
+                      <select
+                        className={
+                          equipmentForm.status ? '' : 'select-placeholder'
+                        }
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'status',
+                        )}
+                        required
+                        value={equipmentForm.status}
+                      >
+                        <option disabled hidden value="">
+                          Choisir un statut
+                        </option>
+                        {CI_STATUS_OPTIONS.map((status) => (
+                          <option key={status} value={status}>
+                            {translateCiStatus(status)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </section>
+
+                <section className="park-form-section">
+                  <h4>Informations materiel</h4>
+
+                  <div className="park-form-section-fields">
+                    <label className="field">
+                      <span>
+                        Marque/Constructeur{' '}
+                        {requiresHardwareDetails ? <RequiredMark /> : null}
+                      </span>
+                      <input
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'brand',
+                        )}
+                        required={requiresHardwareDetails}
+                        value={equipmentForm.brand}
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span>
+                        Modele{' '}
+                        {requiresHardwareDetails ? <RequiredMark /> : null}
+                      </span>
+                      <input
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'model',
+                        )}
+                        required={requiresHardwareDetails}
+                        value={equipmentForm.model}
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span>
+                        Numero de serie{' '}
+                        {requiresHardwareDetails ? <RequiredMark /> : null}
+                      </span>
+                      <input
+                        onInvalid={(event) => {
+                          if (!requiresHardwareDetails) {
+                            event.currentTarget.setCustomValidity('');
+                            return;
+                          }
+
+                          if (!event.currentTarget.value.trim()) {
+                            event.currentTarget.setCustomValidity(
+                              'Numero de serie obligatoire pour ce type d equipement.',
+                            );
+                          }
+                        }}
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'serialNumber',
+                        )}
+                        onInput={(event) =>
+                          event.currentTarget.setCustomValidity('')
+                        }
+                        required={requiresHardwareDetails}
+                        value={equipmentForm.serialNumber}
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span>Systeme d'exploitation</span>
+                      <input
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'operatingSystem',
+                        )}
+                        value={equipmentForm.operatingSystem}
+                      />
+                    </label>
+                  </div>
+                </section>
+
+                <section className="park-form-section">
+                  <h4>Affectation</h4>
+
+                  <div className="park-form-section-fields">
+                    <label className="field">
+                      <span>Utilisateur assigne</span>
+                      <div
                         className={
                           equipmentForm.assignedUserId
-                            ? ''
-                            : 'lookup-placeholder'
+                            ? 'incident-lookup-field has-clear'
+                            : 'incident-lookup-field'
                         }
-                        readOnly
-                        value={
-                          equipmentForm.assignedUserId
-                            ? formatUserName(
-                                usersById.get(equipmentForm.assignedUserId) ??
-                                  ({
-                                    displayName: null,
-                                    email: null,
-                                    firstName: null,
-                                    groupId: null,
-                                    id: equipmentForm.assignedUserId,
-                                    isActive: true,
-                                    lastName: null,
-                                    role: 'DEMANDEUR',
-                                  } satisfies AdminUserSummary),
-                              )
-                            : 'Selectionner un utilisateur'
-                        }
-                      />
-                      {equipmentForm.assignedUserId ? (
-                        <button
-                          aria-label="Retirer l'utilisateur assigne"
-                          onClick={() =>
-                            setEquipmentForm((currentForm) => ({
-                              ...currentForm,
-                              assignedUserId: '',
-                            }))
+                      >
+                        <input
+                          className={
+                            equipmentForm.assignedUserId
+                              ? ''
+                              : 'lookup-placeholder'
                           }
+                          readOnly
+                          value={
+                            equipmentForm.assignedUserId
+                              ? formatUserName(
+                                  usersById.get(equipmentForm.assignedUserId) ??
+                                    ({
+                                      displayName: null,
+                                      email: null,
+                                      firstName: null,
+                                      groupId: null,
+                                      id: equipmentForm.assignedUserId,
+                                      isActive: true,
+                                      lastName: null,
+                                      role: 'DEMANDEUR',
+                                    } satisfies AdminUserSummary),
+                                )
+                              : 'Selectionner un utilisateur'
+                          }
+                        />
+                        {equipmentForm.assignedUserId ? (
+                          <button
+                            aria-label="Retirer l'utilisateur assigne"
+                            onClick={() =>
+                              setEquipmentForm((currentForm) => ({
+                                ...currentForm,
+                                assignedUserId: '',
+                              }))
+                            }
+                            type="button"
+                          >
+                            <X size={16} />
+                          </button>
+                        ) : null}
+                        <button
+                          aria-label="Selectionner un utilisateur"
+                          onClick={() => {
+                            setIsUserPickerOpen(true);
+                            setUserLookupPage(1);
+                          }}
                           type="button"
                         >
-                          <X size={16} />
+                          <Search size={18} strokeWidth={2.1} />
                         </button>
-                      ) : null}
-                      <button
-                        aria-label="Selectionner un utilisateur"
-                        onClick={() => {
-                          setIsUserPickerOpen(true);
-                          setUserLookupPage(1);
-                        }}
-                        type="button"
-                      >
-                        <Search size={18} strokeWidth={2.1} />
-                      </button>
-                    </div>
-                  </label>
+                      </div>
+                    </label>
 
-                  <label className="field">
-                    <span>Localisation</span>
-                    <input
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'location',
-                      )}
-                      value={equipmentForm.location}
-                    />
-                  </label>
+                    <label className="field">
+                      <span>Localisation</span>
+                      <input
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'location',
+                        )}
+                        value={equipmentForm.location}
+                      />
+                    </label>
+                  </div>
+                </section>
+
+                <section className="park-form-section">
+                  <h4>Suivi</h4>
+
+                  <div className="park-form-section-fields">
+                    <label className="field">
+                      <span>Date d'achat</span>
+                      <input
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'purchaseDate',
+                        )}
+                        type="date"
+                        value={equipmentForm.purchaseDate}
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span>Fin de garantie</span>
+                      <input
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'warrantyEndDate',
+                        )}
+                        type="date"
+                        value={equipmentForm.warrantyEndDate}
+                      />
+                    </label>
+                  </div>
+                </section>
+
+                <section className="park-form-section">
+                  <h4>Information complementaire</h4>
+
+                  <div className="park-form-section-fields">
+                    <label className="field">
+                      <span>CPU</span>
+                      <input
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'cpuName',
+                        )}
+                        value={equipmentForm.cpuName}
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span>Espace Disque dur (GB)</span>
+                      <input
+                        min="0"
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'diskSpaceGb',
+                        )}
+                        type="number"
+                        value={equipmentForm.diskSpaceGb}
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span>RAM (MB)</span>
+                      <input
+                        min="0"
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'ramMb',
+                        )}
+                        type="number"
+                        value={equipmentForm.ramMb}
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span>Clavier (langue/type)</span>
+                      <input
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'keyboardLayout',
+                        )}
+                        value={equipmentForm.keyboardLayout}
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span>OS version</span>
+                      <input
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'osVersion',
+                        )}
+                        value={equipmentForm.osVersion}
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span>Prix</span>
+                      <input
+                        min="0"
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'price',
+                        )}
+                        step="0.01"
+                        type="number"
+                        value={equipmentForm.price}
+                      />
+                    </label>
+
+                    <label className="field park-create-form-comment">
+                      <span>Commentaire</span>
+                      <textarea
+                        onChange={handleEquipmentFieldChange(
+                          setEquipmentForm,
+                          'comment',
+                        )}
+                        rows={4}
+                        value={equipmentForm.comment}
+                      />
+                    </label>
+                  </div>
+                </section>
+
+                <div className="park-create-form-actions">
+                  <button
+                    className="primary-button"
+                    disabled={isSaving}
+                    type="submit"
+                  >
+                    {isSaving
+                      ? isCreateMode
+                        ? 'Creation...'
+                        : 'Sauvegarde...'
+                      : isCreateMode
+                        ? 'Creer l equipement'
+                        : 'Sauvegarder'}
+                  </button>
+                  {isCreateMode ? (
+                    <button
+                      className="secondary-button"
+                      onClick={() => {
+                        setEquipmentForm(EMPTY_EQUIPMENT_FORM);
+                        setFormMessage(null);
+                      }}
+                      type="button"
+                    >
+                      Reinitialiser
+                    </button>
+                  ) : null}
                 </div>
-              </section>
-
-              <section className="park-form-section">
-                <h4>Suivi</h4>
-
-                <div className="park-form-section-fields">
-                  <label className="field">
-                    <span>Date d'achat</span>
-                    <input
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'purchaseDate',
-                      )}
-                      type="date"
-                      value={equipmentForm.purchaseDate}
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>Date de garantie</span>
-                    <input
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'warrantyEndDate',
-                      )}
-                      type="date"
-                      value={equipmentForm.warrantyEndDate}
-                    />
-                  </label>
-                </div>
-              </section>
-
-              <section className="park-form-section">
-                <h4>Information complementaire</h4>
-
-                <div className="park-form-section-fields">
-                  <label className="field">
-                    <span>CPU</span>
-                    <input
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'cpuName',
-                      )}
-                      value={equipmentForm.cpuName}
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>Espace Disque dur (GB)</span>
-                    <input
-                      min="0"
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'diskSpaceGb',
-                      )}
-                      type="number"
-                      value={equipmentForm.diskSpaceGb}
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>RAM (MB)</span>
-                    <input
-                      min="0"
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'ramMb',
-                      )}
-                      type="number"
-                      value={equipmentForm.ramMb}
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>Clavier (langue/type)</span>
-                    <input
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'keyboardLayout',
-                      )}
-                      value={equipmentForm.keyboardLayout}
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>OS version</span>
-                    <input
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'osVersion',
-                      )}
-                      value={equipmentForm.osVersion}
-                    />
-                  </label>
-
-                  <label className="field park-create-form-comment">
-                    <span>Commentaire</span>
-                    <textarea
-                      onChange={handleEquipmentFieldChange(
-                        setEquipmentForm,
-                        'comment',
-                      )}
-                      rows={4}
-                      value={equipmentForm.comment}
-                    />
-                  </label>
-                </div>
-              </section>
-
-              <div className="park-create-form-actions">
-                <button
-                  className="primary-button"
-                  disabled={isSaving}
-                  type="submit"
-                >
-                  {isSaving ? 'Creation...' : 'Creer l equipement'}
-                </button>
-                <button
-                  className="secondary-button"
-                  onClick={() => {
-                    setEquipmentForm(EMPTY_EQUIPMENT_FORM);
-                    setFormMessage(null);
-                  }}
-                  type="button"
-                >
-                  Reinitialiser
-                </button>
-              </div>
-            </form>
+              </form>
+            ) : null}
 
             {formMessage ? (
               <p className="referentials-feedback">{formMessage}</p>
@@ -978,11 +1151,24 @@ export function ParkPage({ mode, session }: ParkPageProps) {
               <div className="park-filter-grid">
                 <label className="field">
                   <span>Recherche</span>
-                  <input
-                    onChange={handleEquipmentFilterChange('search')}
-                    placeholder="Nom, modele, serie, IP, utilisateur..."
-                    value={filters.search}
-                  />
+                  <div className="park-filter-search">
+                    <select
+                      aria-label="Champ de recherche"
+                      onChange={handleEquipmentFilterChange('searchField')}
+                      value={filters.searchField}
+                    >
+                      <option value="NAME">Nom</option>
+                      <option value="BRAND">Marque</option>
+                      <option value="MODEL">Modele</option>
+                      <option value="SERIAL_NUMBER">Numero de serie</option>
+                      <option value="ASSIGNED_USER">Utilisateur assigne</option>
+                    </select>
+                    <input
+                      onChange={handleEquipmentFilterChange('search')}
+                      placeholder="Rechercher"
+                      value={filters.search}
+                    />
+                  </div>
                 </label>
 
                 <label className="field">
@@ -1007,55 +1193,9 @@ export function ParkPage({ mode, session }: ParkPageProps) {
                     value={filters.status}
                   >
                     <option value="">Tous</option>
-                    {visibleStatuses.map((status) => (
+                    {CI_STATUS_OPTIONS.map((status) => (
                       <option key={status} value={status}>
                         {translateCiStatus(status)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="field">
-                  <span>Utilisateur</span>
-                  <select
-                    onChange={handleEquipmentFilterChange('assignedUserId')}
-                    value={filters.assignedUserId}
-                  >
-                    <option value="">Tous</option>
-                    <option value="__UNASSIGNED__">Non assigne</option>
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {formatUserName(user)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="field">
-                  <span>Localisation</span>
-                  <select
-                    onChange={handleEquipmentFilterChange('location')}
-                    value={filters.location}
-                  >
-                    <option value="">Toutes</option>
-                    {visibleLocations.map((location) => (
-                      <option key={location} value={location}>
-                        {location}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="field">
-                  <span>Marque</span>
-                  <select
-                    onChange={handleEquipmentFilterChange('brand')}
-                    value={filters.brand}
-                  >
-                    <option value="">Toutes</option>
-                    {visibleBrands.map((brand) => (
-                      <option key={brand} value={brand}>
-                        {brand}
                       </option>
                     ))}
                   </select>
@@ -1077,14 +1217,13 @@ export function ParkPage({ mode, session }: ParkPageProps) {
                       <thead>
                         <tr>
                           <th>ID</th>
-                          <th>Equipement</th>
-                          <th>Statut</th>
+                          <th>Nom</th>
                           <th>Type</th>
-                          <th>Assigne a</th>
-                          <th>Localisation</th>
-                          <th>Serie</th>
-                          <th>Garantie</th>
-                          <th>Action</th>
+                          <th>Statut</th>
+                          <th>Marque</th>
+                          <th>Modele</th>
+                          <th>Numero de serie</th>
+                          <th>Utilisateur Assigne</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1092,9 +1231,7 @@ export function ParkPage({ mode, session }: ParkPageProps) {
                           <EquipmentRow
                             ci={ci}
                             ciType={ciTypesById.get(ci.ciTypeId) ?? null}
-                            isDeleting={deletingEquipmentId === ci.id}
                             key={ci.id}
-                            onDelete={() => void handleDeleteEquipment(ci)}
                             user={
                               ci.assignedUserId
                                 ? (usersById.get(ci.assignedUserId) ?? null)
@@ -1173,31 +1310,31 @@ export function ParkPage({ mode, session }: ParkPageProps) {
 function EquipmentRow({
   ci,
   ciType,
-  isDeleting,
-  onDelete,
   user,
 }: {
   ci: ReferentialCi;
   ciType: ReferentialCiType | null;
-  isDeleting: boolean;
-  onDelete: () => void;
   user: AdminUserSummary | null;
 }) {
   return (
-    <tr className="ticket-table-row park-equipment-row">
+    <tr
+      className="ticket-table-row park-equipment-row park-equipment-row--clickable"
+      onClick={() => navigateTo(`/parc/cis/${ci.id}`)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          navigateTo(`/parc/cis/${ci.id}`);
+        }
+      }}
+      tabIndex={0}
+    >
       <td>
         <strong className="ticket-table-number">
           <span>{formatEquipmentIdentifier(ci)}</span>
         </strong>
       </td>
-      <td>
-        <div className="ticket-table-primary">
-          <div className="ticket-table-title-row">
-            <strong>{ci.name}</strong>
-          </div>
-          <span>{buildEquipmentSubtitle(ci)}</span>
-        </div>
-      </td>
+      <td>{ci.name}</td>
+      <td>{ciType?.name ?? '-'}</td>
       <td>
         <span
           className={`ticket-status-badge ticket-status-badge--${ci.status.toLowerCase()}`}
@@ -1206,21 +1343,10 @@ function EquipmentRow({
           {translateCiStatus(ci.status)}
         </span>
       </td>
-      <td>{ciType?.name ?? '-'}</td>
-      <td>{user ? formatUserName(user) : 'Non assigne'}</td>
-      <td>{ci.location ?? '-'}</td>
+      <td>{ci.brand ?? '-'}</td>
+      <td>{ci.model ?? '-'}</td>
       <td>{ci.serialNumber ?? '-'}</td>
-      <td>{formatDateValue(ci.warrantyEndDate)}</td>
-      <td>
-        <button
-          className="danger-button park-table-action"
-          disabled={isDeleting}
-          onClick={onDelete}
-          type="button"
-        >
-          {isDeleting ? 'Suppression...' : 'Supprimer'}
-        </button>
-      </td>
+      <td>{user ? formatUserName(user) : 'Non assigne'}</td>
     </tr>
   );
 }

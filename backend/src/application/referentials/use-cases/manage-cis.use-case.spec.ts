@@ -36,6 +36,7 @@ describe('ManageCisUseCase', () => {
         ramMb: null,
         keyboardLayout: null,
         osVersion: null,
+        price: null,
         comment: null,
         archivedAt: null,
       }),
@@ -67,6 +68,7 @@ describe('ManageCisUseCase', () => {
       ramMb: 16384,
       keyboardLayout: ' AZERTY ',
       osVersion: ' 11 Pro ',
+      price: 1299.99,
       comment: ' Poste principal ',
       archivedAt: null,
     });
@@ -90,6 +92,7 @@ describe('ManageCisUseCase', () => {
       ramMb: 16384,
       keyboardLayout: 'AZERTY',
       osVersion: '11 Pro',
+      price: 1299.99,
       comment: 'Poste principal',
       archivedAt: null,
     });
@@ -118,6 +121,7 @@ describe('ManageCisUseCase', () => {
         ramMb: null,
         keyboardLayout: null,
         osVersion: null,
+        price: null,
         comment: null,
         archivedAt: null,
       }),

@@ -67,6 +67,7 @@ type SupabaseCiRow = {
   name: string;
   operating_system: string | null;
   os_version: string | null;
+  price: number | null;
   purchase_date: string | null;
   ram_mb: number | null;
   serial_number: string | null;
@@ -201,7 +202,7 @@ export class SupabaseReferentialReadRepository
   async listCis(): Promise<ReferentialCi[]> {
     const rows = await this.fetchTable<SupabaseCiRow>(
       'cis',
-      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,operating_system,location,purchase_date,warranty_end_date,ip_address,mac_address,cpu_name,disk_space_gb,ram_mb,keyboard_layout,os_version,comment,archived_at,created_at',
+      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,operating_system,location,purchase_date,warranty_end_date,ip_address,mac_address,cpu_name,disk_space_gb,ram_mb,keyboard_layout,os_version,price,comment,archived_at,created_at',
       'created_at.desc',
     );
     return rows.map((row) => this.mapCi(row));
@@ -230,10 +231,11 @@ export class SupabaseReferentialReadRepository
         ram_mb: command.ramMb,
         keyboard_layout: command.keyboardLayout,
         os_version: command.osVersion,
+        price: command.price,
         comment: command.comment,
         archived_at: command.archivedAt,
       },
-      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,operating_system,location,purchase_date,warranty_end_date,ip_address,mac_address,cpu_name,disk_space_gb,ram_mb,keyboard_layout,os_version,comment,archived_at,created_at',
+      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,operating_system,location,purchase_date,warranty_end_date,ip_address,mac_address,cpu_name,disk_space_gb,ram_mb,keyboard_layout,os_version,price,comment,archived_at,created_at',
     );
     return this.expectSingle(rows, 'cis', (row) => this.mapCi(row));
   }
@@ -261,10 +263,11 @@ export class SupabaseReferentialReadRepository
         ram_mb: command.ramMb,
         keyboard_layout: command.keyboardLayout,
         os_version: command.osVersion,
+        price: command.price,
         comment: command.comment,
         archived_at: command.archivedAt,
       },
-      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,operating_system,location,purchase_date,warranty_end_date,ip_address,mac_address,cpu_name,disk_space_gb,ram_mb,keyboard_layout,os_version,comment,archived_at,created_at',
+      'id,name,ci_type_id,status,assigned_user_id,serial_number,brand,model,operating_system,location,purchase_date,warranty_end_date,ip_address,mac_address,cpu_name,disk_space_gb,ram_mb,keyboard_layout,os_version,price,comment,archived_at,created_at',
       [{ column: 'id', value: command.id }],
     );
     return this.expectSingle(rows, 'cis', (row) => this.mapCi(row), command.id);
@@ -451,6 +454,7 @@ export class SupabaseReferentialReadRepository
       row.ram_mb,
       row.keyboard_layout,
       row.os_version,
+      row.price,
       row.comment,
       row.archived_at,
       row.created_at,
