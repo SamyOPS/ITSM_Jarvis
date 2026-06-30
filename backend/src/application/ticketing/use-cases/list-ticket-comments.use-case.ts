@@ -10,7 +10,7 @@ import { UserRole } from '../../../domain/auth/user-role';
 import { TicketComment } from '../../../domain/ticketing/ticket-comment';
 import { TicketCommentReadRepository } from '../repositories/ticket-comment-read.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
-import { assertTicketCommentAccess } from '../ticket-comment-access';
+import { resolveAccessibleTicket } from '../ticket-access-resolver';
 
 @Injectable()
 export class ListTicketCommentsUseCase {
@@ -40,24 +40,12 @@ export class ListTicketCommentsUseCase {
       throw new BadRequestException('userId is required.');
     }
 
-    const [ticket, userProfile] = await Promise.all([
-      this.ticketReadRepository.getTicketById(normalizedTicketId),
-      userRole === UserRole.AGENT
-        ? (this.userAssignmentProfileRepository?.getById(normalizedUserId) ??
-          Promise.resolve(null))
-        : Promise.resolve(null),
-    ]);
-
-    if (!ticket) {
-      throw new NotFoundException(
-        `Ticket ${normalizedTicketId} was not found.`,
-      );
-    }
-
-    assertTicketCommentAccess({
-      ticket,
+    await resolveAccessibleTicket({
+      scope: 'comment',
+      ticketId: normalizedTicketId,
+      ticketReadRepository: this.ticketReadRepository,
+      userAssignmentProfileRepository: this.userAssignmentProfileRepository,
       userId: normalizedUserId,
-      userProfile,
       userRole,
     });
 

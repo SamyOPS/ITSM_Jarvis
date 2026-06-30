@@ -13,8 +13,8 @@ import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history
 import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 import { TicketCommentWriteRepository } from '../repositories/ticket-comment-write.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
+import { resolveAccessibleTicket } from '../ticket-access-resolver';
 import { TicketAuditService } from '../ticket-audit.service';
-import { assertTicketCommentAccess } from '../ticket-comment-access';
 import { assertTicketCanBeModifiedByRole } from '../ticketing-rules';
 
 export type AddTicketCommentCommand = {
@@ -62,25 +62,12 @@ export class AddTicketCommentUseCase {
       );
     }
 
-    const [ticket, userProfile] = await Promise.all([
-      this.ticketReadRepository.getTicketById(normalizedTicketId),
-      command.authorRole === UserRole.AGENT
-        ? (this.userAssignmentProfileRepository?.getById(
-            normalizedAuthorUserId,
-          ) ?? Promise.resolve(null))
-        : Promise.resolve(null),
-    ]);
-
-    if (!ticket) {
-      throw new NotFoundException(
-        `Ticket ${normalizedTicketId} was not found.`,
-      );
-    }
-
-    assertTicketCommentAccess({
-      ticket,
+    const ticket = await resolveAccessibleTicket({
+      scope: 'comment',
+      ticketId: normalizedTicketId,
+      ticketReadRepository: this.ticketReadRepository,
+      userAssignmentProfileRepository: this.userAssignmentProfileRepository,
       userId: normalizedAuthorUserId,
-      userProfile,
       userRole: command.authorRole,
     });
 

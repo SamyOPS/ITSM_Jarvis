@@ -5,6 +5,7 @@ import {
   AdminUserWriteRepository,
   type CreateAdminUserRecord,
 } from '../repositories/admin-user-write.repository';
+import { assertPasswordMeetsPolicy } from '../password-policy';
 
 export type CreateAdminUserCommand = {
   email: string;
@@ -35,11 +36,7 @@ export class CreateAdminUserUseCase {
       throw new BadRequestException('email must be valid.');
     }
 
-    if (password.length < 6) {
-      throw new BadRequestException(
-        'password must contain at least 6 characters.',
-      );
-    }
+    assertPasswordMeetsPolicy(password);
 
     if (!Object.values(UserRole).includes(command.role)) {
       throw new BadRequestException('role is invalid.');

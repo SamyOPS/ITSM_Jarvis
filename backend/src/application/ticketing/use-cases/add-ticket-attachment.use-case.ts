@@ -12,7 +12,7 @@ import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history
 import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 import { TicketAttachmentWriteRepository } from '../repositories/ticket-attachment-write.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
-import { assertTicketAttachmentAccess } from '../ticket-attachment-access';
+import { resolveAccessibleTicket } from '../ticket-access-resolver';
 import { TicketAuditService } from '../ticket-audit.service';
 import { assertTicketCanBeModifiedByRole } from '../ticketing-rules';
 
@@ -76,25 +76,12 @@ export class AddTicketAttachmentUseCase {
       );
     }
 
-    const [ticket, userProfile] = await Promise.all([
-      this.ticketReadRepository.getTicketById(normalizedTicketId),
-      command.uploaderRole === UserRole.AGENT
-        ? (this.userAssignmentProfileRepository?.getById(
-            normalizedUploaderUserId,
-          ) ?? Promise.resolve(null))
-        : Promise.resolve(null),
-    ]);
-
-    if (!ticket) {
-      throw new NotFoundException(
-        `Ticket ${normalizedTicketId} was not found.`,
-      );
-    }
-
-    assertTicketAttachmentAccess({
-      ticket,
+    const ticket = await resolveAccessibleTicket({
+      scope: 'attachment',
+      ticketId: normalizedTicketId,
+      ticketReadRepository: this.ticketReadRepository,
+      userAssignmentProfileRepository: this.userAssignmentProfileRepository,
       userId: normalizedUploaderUserId,
-      userProfile,
       userRole: command.uploaderRole,
     });
 

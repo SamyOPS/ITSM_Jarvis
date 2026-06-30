@@ -1,4 +1,8 @@
 import { type FormEvent, useState } from 'react';
+import {
+  PASSWORD_MIN_LENGTH,
+  validatePasswordPolicy,
+} from '../../domain/auth/password-policy';
 import { registerRequester } from '../../infrastructure/api/auth-api';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 
@@ -37,8 +41,16 @@ export function RegisterPage() {
     event.preventDefault();
     setMessage(null);
 
-    if (form.password.length < 8) {
-      setMessage('Le mot de passe doit contenir au moins 8 caractères.');
+    if (!form.email.trim()) {
+      setMessage('Saisissez votre adresse email.');
+
+      return;
+    }
+
+    const passwordPolicyError = validatePasswordPolicy(form.password);
+
+    if (passwordPolicyError) {
+      setMessage(passwordPolicyError);
 
       return;
     }
@@ -58,9 +70,10 @@ export function RegisterPage() {
         lastName: normalizeOptionalText(form.lastName),
         password: form.password,
       });
-      setForm(EMPTY_REGISTER_FORM);
-      setMessage(
-        'Compte créé. Vérifiez vos emails pour confirmer votre compte avant de vous connecter.',
+      navigateTo(
+        `/login?registered=check-email&email=${encodeURIComponent(
+          form.email.trim(),
+        )}`,
       );
     } catch (error) {
       setMessage(mapRegisterError(error));
@@ -80,7 +93,7 @@ export function RegisterPage() {
             <strong>Compte Vision</strong>
           </div>
           <h2>Inscription</h2>
-          <p>Un seul écran pour se connecter ou créer un compte demandeur.</p>
+          <p>Un seul ecran pour se connecter ou creer un compte demandeur.</p>
         </div>
 
         <div className="login-mode-tabs" aria-label="Choix du mode">
@@ -119,11 +132,11 @@ export function RegisterPage() {
           </label>
 
           <label className="field">
-            <span>Prénom</span>
+            <span>Prenom</span>
             <input
               autoComplete="given-name"
               onChange={(event) => updateField('firstName', event.target.value)}
-              placeholder="Prénom"
+              placeholder="Prenom"
               required
               value={form.firstName}
             />
@@ -145,7 +158,7 @@ export function RegisterPage() {
             <span className="login-password-field">
               <input
                 autoComplete="new-password"
-                minLength={8}
+                minLength={PASSWORD_MIN_LENGTH}
                 onChange={(event) =>
                   updateField('password', event.target.value)
                 }
@@ -174,7 +187,7 @@ export function RegisterPage() {
             <span className="login-password-field">
               <input
                 autoComplete="new-password"
-                minLength={8}
+                minLength={PASSWORD_MIN_LENGTH}
                 onChange={(event) =>
                   updateField('confirmPassword', event.target.value)
                 }
@@ -203,7 +216,7 @@ export function RegisterPage() {
             disabled={isSubmitting}
             type="submit"
           >
-            {isSubmitting ? 'Création du compte...' : 'Créer mon compte'}
+            {isSubmitting ? 'Creation du compte...' : 'Creer mon compte'}
           </button>
 
           {message ? <p className="ticket-form-helper">{message}</p> : null}
@@ -296,7 +309,7 @@ function normalizeOptionalText(value: string): string | null {
 
 function mapRegisterError(error: unknown): string {
   if (!(error instanceof Error)) {
-    return 'Erreur inconnue lors de la création du compte.';
+    return 'Erreur inconnue lors de la creation du compte.';
   }
 
   const message = error.message.toLowerCase();
@@ -306,7 +319,7 @@ function mapRegisterError(error: unknown): string {
     message.includes('too many') ||
     message.includes('trop de mails')
   ) {
-    return 'Trop de mails ont été envoyés en peu de temps. Attends quelques minutes avant de réessayer.';
+    return 'Trop de mails ont ete envoyes en peu de temps. Attends quelques minutes avant de reessayer.';
   }
 
   if (
@@ -314,7 +327,7 @@ function mapRegisterError(error: unknown): string {
     message.includes('duplicate') ||
     message.includes('registered')
   ) {
-    return 'Un compte existe déjà avec cette adresse email.';
+    return 'Un compte existe deja avec cette adresse email.';
   }
 
   return error.message;

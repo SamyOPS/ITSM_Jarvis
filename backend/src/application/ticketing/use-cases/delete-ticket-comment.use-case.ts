@@ -13,8 +13,8 @@ import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 import { TicketCommentReadRepository } from '../repositories/ticket-comment-read.repository';
 import { TicketCommentWriteRepository } from '../repositories/ticket-comment-write.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
+import { resolveAccessibleTicket } from '../ticket-access-resolver';
 import { TicketAuditService } from '../ticket-audit.service';
-import { assertTicketCommentAccess } from '../ticket-comment-access';
 import { assertTicketCanBeModifiedByRole } from '../ticketing-rules';
 
 export type DeleteTicketCommentCommand = {
@@ -56,25 +56,12 @@ export class DeleteTicketCommentUseCase {
       throw new BadRequestException('actorUserId is required.');
     }
 
-    const [ticket, userProfile] = await Promise.all([
-      this.ticketReadRepository.getTicketById(normalizedTicketId),
-      command.actorRole === UserRole.AGENT
-        ? (this.userAssignmentProfileRepository?.getById(
-            normalizedActorUserId,
-          ) ?? Promise.resolve(null))
-        : Promise.resolve(null),
-    ]);
-
-    if (!ticket) {
-      throw new NotFoundException(
-        `Ticket ${normalizedTicketId} was not found.`,
-      );
-    }
-
-    assertTicketCommentAccess({
-      ticket,
+    const ticket = await resolveAccessibleTicket({
+      scope: 'comment',
+      ticketId: normalizedTicketId,
+      ticketReadRepository: this.ticketReadRepository,
+      userAssignmentProfileRepository: this.userAssignmentProfileRepository,
       userId: normalizedActorUserId,
-      userProfile,
       userRole: command.actorRole,
     });
 

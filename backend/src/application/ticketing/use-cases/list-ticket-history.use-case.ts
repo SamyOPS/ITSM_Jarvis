@@ -10,7 +10,7 @@ import { UserRole } from '../../../domain/auth/user-role';
 import { TicketHistoryEntry } from '../../../domain/ticketing/ticket-history-entry';
 import { TicketHistoryReadRepository } from '../repositories/ticket-history-read.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
-import { assertTicketCommentAccess } from '../ticket-comment-access';
+import { resolveAccessibleTicket } from '../ticket-access-resolver';
 
 @Injectable()
 export class ListTicketHistoryUseCase {
@@ -40,25 +40,12 @@ export class ListTicketHistoryUseCase {
       throw new BadRequestException('requesterUserId is required.');
     }
 
-    const [ticket, userProfile] = await Promise.all([
-      this.ticketReadRepository.getTicketById(normalizedTicketId),
-      requesterUserRole === UserRole.AGENT
-        ? (this.userAssignmentProfileRepository?.getById(
-            normalizedRequesterUserId,
-          ) ?? Promise.resolve(null))
-        : Promise.resolve(null),
-    ]);
-
-    if (!ticket) {
-      throw new NotFoundException(
-        `Ticket ${normalizedTicketId} was not found.`,
-      );
-    }
-
-    assertTicketCommentAccess({
-      ticket,
+    await resolveAccessibleTicket({
+      scope: 'history',
+      ticketId: normalizedTicketId,
+      ticketReadRepository: this.ticketReadRepository,
+      userAssignmentProfileRepository: this.userAssignmentProfileRepository,
       userId: normalizedRequesterUserId,
-      userProfile,
       userRole: requesterUserRole,
     });
 

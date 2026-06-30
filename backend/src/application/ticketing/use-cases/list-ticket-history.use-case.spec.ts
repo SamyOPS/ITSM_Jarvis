@@ -5,16 +5,17 @@ import {
 } from '@nestjs/common';
 import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { UserRole } from '../../../domain/auth/user-role';
-import { TicketAttachment } from '../../../domain/ticketing/ticket-attachment';
+import { TicketHistoryEntry } from '../../../domain/ticketing/ticket-history-entry';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { Ticket } from '../../../domain/ticketing/ticket';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
-import { TicketAttachmentReadRepository } from '../repositories/ticket-attachment-read.repository';
+import { TicketHistoryReadRepository } from '../repositories/ticket-history-read.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
-import { ListTicketAttachmentsUseCase } from './list-ticket-attachments.use-case';
+import { ListTicketHistoryUseCase } from './list-ticket-history.use-case';
 
-describe('ListTicketAttachmentsUseCase', () => {
+describe('ListTicketHistoryUseCase', () => {
   const ticketDetail = new TicketDetail(
     new Ticket(
       'ticket-1',
@@ -38,26 +39,21 @@ describe('ListTicketAttachmentsUseCase', () => {
     null,
   );
 
-  it('lists attachments for a demandeur on an allowed ticket', async () => {
-    const listTicketAttachments = jest
-      .fn()
-      .mockResolvedValue([
-        new TicketAttachment(
-          'attachment-1',
-          'ticket-1',
-          'creator-1',
-          'ticket-attachments',
-          'creator-1/test-upload.txt',
-          'test-upload.txt',
-          'text/plain',
-          21,
-          '2026-04-02T08:10:00.000Z',
-        ),
-      ]);
-    const useCase = new ListTicketAttachmentsUseCase(
+  it('lists ticket history for a demandeur on an allowed ticket', async () => {
+    const entries = [
+      new TicketHistoryEntry(
+        'history-1',
+        'ticket-1',
+        'creator-1',
+        TicketHistoryEventType.COMMENT_ADDED,
+        { commentId: 'comment-1' },
+        '2026-04-02T08:10:00.000Z',
+      ),
+    ];
+    const useCase = new ListTicketHistoryUseCase(
       {
-        listTicketAttachments,
-      } as TicketAttachmentReadRepository,
+        listTicketHistoryEntries: jest.fn().mockResolvedValue(entries),
+      } as TicketHistoryReadRepository,
       {
         getTicketById: jest.fn().mockResolvedValue(ticketDetail),
         searchTickets: jest.fn(),
@@ -66,71 +62,7 @@ describe('ListTicketAttachmentsUseCase', () => {
 
     await expect(
       useCase.execute(' ticket-1 ', 'creator-1', UserRole.DEMANDEUR),
-    ).resolves.toEqual([
-      new TicketAttachment(
-        'attachment-1',
-        'ticket-1',
-        'creator-1',
-        'ticket-attachments',
-        'creator-1/test-upload.txt',
-        'test-upload.txt',
-        'text/plain',
-        21,
-        '2026-04-02T08:10:00.000Z',
-      ),
-    ]);
-
-    expect(listTicketAttachments).toHaveBeenCalledWith({
-      ticketId: 'ticket-1',
-    });
-  });
-
-  it('rejects an empty ticket id', async () => {
-    const useCase = new ListTicketAttachmentsUseCase(
-      {
-        listTicketAttachments: jest.fn(),
-      } as TicketAttachmentReadRepository,
-      {
-        getTicketById: jest.fn(),
-        searchTickets: jest.fn(),
-      } as TicketReadRepository,
-    );
-
-    await expect(
-      useCase.execute('   ', 'admin-1', UserRole.ADMIN),
-    ).rejects.toBeInstanceOf(BadRequestException);
-  });
-
-  it('rejects an empty user id', async () => {
-    const useCase = new ListTicketAttachmentsUseCase(
-      {
-        listTicketAttachments: jest.fn(),
-      } as TicketAttachmentReadRepository,
-      {
-        getTicketById: jest.fn(),
-        searchTickets: jest.fn(),
-      } as TicketReadRepository,
-    );
-
-    await expect(
-      useCase.execute('ticket-1', '   ', UserRole.ADMIN),
-    ).rejects.toBeInstanceOf(BadRequestException);
-  });
-
-  it('rejects demandeur users outside the ticket perimeter', async () => {
-    const useCase = new ListTicketAttachmentsUseCase(
-      {
-        listTicketAttachments: jest.fn(),
-      } as TicketAttachmentReadRepository,
-      {
-        getTicketById: jest.fn().mockResolvedValue(ticketDetail),
-        searchTickets: jest.fn(),
-      } as TicketReadRepository,
-    );
-
-    await expect(
-      useCase.execute('ticket-1', 'outsider-1', UserRole.DEMANDEUR),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    ).resolves.toEqual(entries);
   });
 
   it('allows agent users in the assignment group', async () => {
@@ -156,10 +88,10 @@ describe('ListTicketAttachmentsUseCase', () => {
       null,
       null,
     );
-    const useCase = new ListTicketAttachmentsUseCase(
+    const useCase = new ListTicketHistoryUseCase(
       {
-        listTicketAttachments: jest.fn().mockResolvedValue([]),
-      } as TicketAttachmentReadRepository,
+        listTicketHistoryEntries: jest.fn().mockResolvedValue([]),
+      } as TicketHistoryReadRepository,
       {
         getTicketById: jest.fn().mockResolvedValue(groupedTicketDetail),
         searchTickets: jest.fn(),
@@ -203,10 +135,10 @@ describe('ListTicketAttachmentsUseCase', () => {
       null,
       null,
     );
-    const useCase = new ListTicketAttachmentsUseCase(
+    const useCase = new ListTicketHistoryUseCase(
       {
-        listTicketAttachments: jest.fn(),
-      } as TicketAttachmentReadRepository,
+        listTicketHistoryEntries: jest.fn(),
+      } as TicketHistoryReadRepository,
       {
         getTicketById: jest.fn().mockResolvedValue(groupedTicketDetail),
         searchTickets: jest.fn(),
@@ -227,11 +159,27 @@ describe('ListTicketAttachmentsUseCase', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('rejects unknown tickets', async () => {
-    const useCase = new ListTicketAttachmentsUseCase(
+  it('rejects an empty ticket id', async () => {
+    const useCase = new ListTicketHistoryUseCase(
       {
-        listTicketAttachments: jest.fn(),
-      } as TicketAttachmentReadRepository,
+        listTicketHistoryEntries: jest.fn(),
+      } as TicketHistoryReadRepository,
+      {
+        getTicketById: jest.fn(),
+        searchTickets: jest.fn(),
+      } as TicketReadRepository,
+    );
+
+    await expect(
+      useCase.execute('   ', 'admin-1', UserRole.ADMIN),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects unknown tickets', async () => {
+    const useCase = new ListTicketHistoryUseCase(
+      {
+        listTicketHistoryEntries: jest.fn(),
+      } as TicketHistoryReadRepository,
       {
         getTicketById: jest.fn().mockResolvedValue(null),
         searchTickets: jest.fn(),

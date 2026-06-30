@@ -7,6 +7,10 @@ import {
 } from 'react';
 import { ArrowLeft, Plus, RotateCcw, Trash2, X } from 'lucide-react';
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import {
+  PASSWORD_MIN_LENGTH,
+  validatePasswordPolicy,
+} from '../../domain/auth/password-policy';
 import type { UserRole } from '../../domain/auth/user-role';
 import { translateUserRole } from '../../domain/i18n/ticketing-labels';
 import type {
@@ -213,6 +217,14 @@ export function UsersPage({ session }: UsersPageProps) {
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
+    const passwordPolicyError = validatePasswordPolicy(formState.password);
+
+    if (passwordPolicyError) {
+      setFormMessage(passwordPolicyError);
+
+      return;
+    }
+
     setIsCreating(true);
     setFormMessage(null);
 
@@ -572,7 +584,7 @@ export function UsersPage({ session }: UsersPageProps) {
                   <label className="field">
                     <span>Mot de passe</span>
                     <input
-                      minLength={6}
+                      minLength={PASSWORD_MIN_LENGTH}
                       onChange={(event) =>
                         handleFieldChange('password', event.target.value)
                       }
