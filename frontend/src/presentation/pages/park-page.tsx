@@ -20,6 +20,7 @@ import {
 } from 'react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import { AppPagination } from '../components/app-pagination';
 import {
   type ReferentialCatalogSnapshot,
   type ReferentialCi,
@@ -1097,42 +1098,12 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                     </table>
                   </div>
 
-                  <footer className="incident-lookup-pagination">
-                    <p>
-                      Page {userLookupPage} sur {totalUserLookupPages} -{' '}
-                      {filteredUserLookupResults.length} resultats
-                    </p>
-
-                    <div>
-                      <button
-                        className="secondary-button incident-lookup-page-button"
-                        disabled={userLookupPage === 1}
-                        onClick={() =>
-                          setUserLookupPage((currentPage) =>
-                            Math.max(1, currentPage - 1),
-                          )
-                        }
-                        type="button"
-                      >
-                        Precedent
-                      </button>
-                      <span className="incident-lookup-current-page">
-                        {userLookupPage}
-                      </span>
-                      <button
-                        className="secondary-button incident-lookup-page-button"
-                        disabled={userLookupPage === totalUserLookupPages}
-                        onClick={() =>
-                          setUserLookupPage((currentPage) =>
-                            Math.min(totalUserLookupPages, currentPage + 1),
-                          )
-                        }
-                        type="button"
-                      >
-                        Suivant
-                      </button>
-                    </div>
-                  </footer>
+                  <AppPagination
+                    onPageChange={setUserLookupPage}
+                    page={userLookupPage}
+                    summary={`Page ${userLookupPage} sur ${totalUserLookupPages} - ${filteredUserLookupResults.length} resultats`}
+                    totalPages={totalUserLookupPages}
+                  />
                 </section>
               </div>
             ) : null}
@@ -1316,60 +1287,12 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                     </table>
                   </div>
 
-                  <div className="ticket-pagination">
-                    <p className="ticket-form-helper">
-                      Page {equipmentPage} sur {totalEquipmentPages} -{' '}
-                      {sortedEquipment.length} equipements
-                    </p>
-
-                    <div className="ticket-pagination-actions">
-                      <button
-                        className="secondary-button"
-                        disabled={equipmentPage <= 1}
-                        onClick={() =>
-                          setEquipmentPage((currentPage) => currentPage - 1)
-                        }
-                        type="button"
-                      >
-                        Precedent
-                      </button>
-
-                      <div className="ticket-pagination-pages">
-                        {Array.from(
-                          { length: totalEquipmentPages },
-                          (_, index) => {
-                            const pageNumber = index + 1;
-
-                            return (
-                              <button
-                                className={
-                                  pageNumber === equipmentPage
-                                    ? 'ticket-workspace-view-button is-active'
-                                    : 'ticket-workspace-view-button'
-                                }
-                                key={pageNumber}
-                                onClick={() => setEquipmentPage(pageNumber)}
-                                type="button"
-                              >
-                                {pageNumber}
-                              </button>
-                            );
-                          },
-                        )}
-                      </div>
-
-                      <button
-                        className="secondary-button"
-                        disabled={equipmentPage >= totalEquipmentPages}
-                        onClick={() =>
-                          setEquipmentPage((currentPage) => currentPage + 1)
-                        }
-                        type="button"
-                      >
-                        Suivant
-                      </button>
-                    </div>
-                  </div>
+                  <AppPagination
+                    onPageChange={setEquipmentPage}
+                    page={equipmentPage}
+                    summary={`Page ${equipmentPage} sur ${totalEquipmentPages} - ${sortedEquipment.length} equipements`}
+                    totalPages={totalEquipmentPages}
+                  />
                 </>
               )}
             </section>

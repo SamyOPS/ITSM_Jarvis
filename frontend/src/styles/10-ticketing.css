@@ -370,12 +370,15 @@
 }
 
 .ticket-form-actions .primary-button {
-  background: #e7f0ff;
+  border: 1px solid rgba(21, 49, 95, 0.2);
+  background: white;
+  color: #15315f;
   font-weight: 500;
 }
 
 .ticket-form-actions .primary-button:hover:not(:disabled) {
-  background: #dce9ff;
+  background: #f2f7ff;
+  border-color: rgba(158, 203, 255, 0.55);
 }
 
 .ticket-form-helper {

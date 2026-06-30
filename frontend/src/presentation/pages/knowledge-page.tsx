@@ -29,6 +29,7 @@ import type {
   UpdateKnowledgeArticlePayload,
 } from '../../domain/knowledge/knowledge-article';
 import type { KnowledgeArticleAttachmentSnapshot } from '../../domain/knowledge/knowledge-article-attachment';
+import { AppPagination } from '../components/app-pagination';
 import {
   addKnowledgeArticleAttachment,
   createKnowledgeArticle,
@@ -1360,40 +1361,12 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               ))}
             </div>
 
-            <div className="kb-pagination">
-              <span className="kb-pagination-summary">
-                Page {visiblePage} sur {totalPages} - {filteredArticles.length}{' '}
-                articles
-              </span>
-
-              <div className="kb-pagination-controls">
-                <button
-                  className="secondary-button"
-                  disabled={visiblePage <= 1}
-                  onClick={() =>
-                    setPage((currentPage) => Math.max(1, currentPage - 1))
-                  }
-                  type="button"
-                >
-                  Précédent
-                </button>
-                <span aria-current="page" className="kb-pagination-current">
-                  {visiblePage}
-                </span>
-                <button
-                  className="secondary-button"
-                  disabled={visiblePage >= totalPages}
-                  onClick={() =>
-                    setPage((currentPage) =>
-                      Math.min(totalPages, currentPage + 1),
-                    )
-                  }
-                  type="button"
-                >
-                  Suivant
-                </button>
-              </div>
-            </div>
+            <AppPagination
+              onPageChange={setPage}
+              page={visiblePage}
+              summary={`Page ${visiblePage} sur ${totalPages} - ${filteredArticles.length} articles`}
+              totalPages={totalPages}
+            />
           </>
         )}
       </div>

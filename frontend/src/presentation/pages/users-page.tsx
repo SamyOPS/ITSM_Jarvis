@@ -13,6 +13,7 @@ import {
 } from '../../domain/auth/password-policy';
 import type { UserRole } from '../../domain/auth/user-role';
 import { translateUserRole } from '../../domain/i18n/ticketing-labels';
+import { AppPagination } from '../components/app-pagination';
 import type {
   ReferentialCatalogSnapshot,
   ReferentialGroup,
@@ -769,44 +770,12 @@ export function UsersPage({ session }: UsersPageProps) {
                           </table>
                         </div>
 
-                        <footer className="incident-lookup-pagination">
-                          <p>
-                            Page {groupLookupPage} sur {totalGroupLookupPages} -{' '}
-                            {availableGroups.length} resultats
-                          </p>
-
-                          <div>
-                            <button
-                              className="secondary-button incident-lookup-page-button"
-                              disabled={groupLookupPage === 1}
-                              onClick={() =>
-                                setGroupLookupPage((current) =>
-                                  Math.max(1, current - 1),
-                                )
-                              }
-                              type="button"
-                            >
-                              Precedent
-                            </button>
-                            <span className="incident-lookup-current-page">
-                              {groupLookupPage}
-                            </span>
-                            <button
-                              className="secondary-button incident-lookup-page-button"
-                              disabled={
-                                groupLookupPage === totalGroupLookupPages
-                              }
-                              onClick={() =>
-                                setGroupLookupPage((current) =>
-                                  Math.min(totalGroupLookupPages, current + 1),
-                                )
-                              }
-                              type="button"
-                            >
-                              Suivant
-                            </button>
-                          </div>
-                        </footer>
+                        <AppPagination
+                          onPageChange={setGroupLookupPage}
+                          page={groupLookupPage}
+                          summary={`Page ${groupLookupPage} sur ${totalGroupLookupPages} - ${availableGroups.length} resultats`}
+                          totalPages={totalGroupLookupPages}
+                        />
                       </section>
                     </div>
                   ) : null}
@@ -1018,39 +987,12 @@ export function UsersPage({ session }: UsersPageProps) {
                   </table>
                 </div>
 
-                <div className="ticket-pagination">
-                  <p className="ticket-form-helper">
-                    Page {userPage} sur {totalUserPages} -{' '}
-                    {filteredUsers.length} utilisateurs
-                  </p>
-                  <div className="ticket-pagination-actions">
-                    <button
-                      className="secondary-button"
-                      disabled={userPage === 1}
-                      onClick={() =>
-                        setUserPage((current) => Math.max(1, current - 1))
-                      }
-                      type="button"
-                    >
-                      Precedent
-                    </button>
-                    <span className="ticket-pagination-current">
-                      {userPage}
-                    </span>
-                    <button
-                      className="secondary-button"
-                      disabled={userPage === totalUserPages}
-                      onClick={() =>
-                        setUserPage((current) =>
-                          Math.min(totalUserPages, current + 1),
-                        )
-                      }
-                      type="button"
-                    >
-                      Suivant
-                    </button>
-                  </div>
-                </div>
+                <AppPagination
+                  onPageChange={setUserPage}
+                  page={userPage}
+                  summary={`Page ${userPage} sur ${totalUserPages} - ${filteredUsers.length} utilisateurs`}
+                  totalPages={totalUserPages}
+                />
               </>
             )}
           </section>

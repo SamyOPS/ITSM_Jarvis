@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import { AppPagination } from '../components/app-pagination';
 
 import type { PlanningTask } from '../../domain/planning/planning-task';
 
@@ -1550,29 +1551,12 @@ function PersonalTicketPanel({
               </tbody>
             </table>
           </div>
-
-          <nav
-            aria-label={`Pagination ${title}`}
-            className="personal-ticket-pagination"
-          >
-            <button
-              disabled={visiblePage === 1}
-              onClick={() => setPage(visiblePage - 1)}
-              type="button"
-            >
-              Précédent
-            </button>
-
-            <span aria-current="page">{visiblePage}</span>
-
-            <button
-              disabled={visiblePage === totalPages}
-              onClick={() => setPage(visiblePage + 1)}
-              type="button"
-            >
-              Suivant
-            </button>
-          </nav>
+          <AppPagination
+            onPageChange={setPage}
+            page={visiblePage}
+            summary={`Page ${visiblePage} sur ${totalPages}`}
+            totalPages={totalPages}
+          />
         </div>
       )}
     </article>
@@ -1652,29 +1636,12 @@ function PersonalEquipmentPanel({
             </tbody>
           </table>
         </div>
-
-        <nav
-          aria-label="Pagination Mon équipement"
-          className="personal-ticket-pagination"
-        >
-          <button
-            disabled={visiblePage === 1}
-            onClick={() => setPage(visiblePage - 1)}
-            type="button"
-          >
-            Précédent
-          </button>
-
-          <span aria-current="page">{visiblePage}</span>
-
-          <button
-            disabled={visiblePage === totalPages}
-            onClick={() => setPage(visiblePage + 1)}
-            type="button"
-          >
-            Suivant
-          </button>
-        </nav>
+        <AppPagination
+          onPageChange={setPage}
+          page={visiblePage}
+          summary={`Page ${visiblePage} sur ${totalPages}`}
+          totalPages={totalPages}
+        />
       </div>
     </article>
   );
@@ -2061,29 +2028,12 @@ function GroupTicketPanel({
               </tbody>
             </table>
           </div>
-
-          <nav
-            aria-label={`Pagination ${title}`}
-            className="personal-ticket-pagination"
-          >
-            <button
-              disabled={visiblePage === 1}
-              onClick={() => setPage(visiblePage - 1)}
-              type="button"
-            >
-              Precedent
-            </button>
-
-            <span aria-current="page">{visiblePage}</span>
-
-            <button
-              disabled={visiblePage === totalPages}
-              onClick={() => setPage(visiblePage + 1)}
-              type="button"
-            >
-              Suivant
-            </button>
-          </nav>
+          <AppPagination
+            onPageChange={setPage}
+            page={visiblePage}
+            summary={`Page ${visiblePage} sur ${totalPages}`}
+            totalPages={totalPages}
+          />
         </div>
       )}
     </article>
