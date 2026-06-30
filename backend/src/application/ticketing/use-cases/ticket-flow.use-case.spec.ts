@@ -66,9 +66,18 @@ describe('Ticket flow', () => {
       } as UserAssignmentProfileRepository,
       auditService,
     );
+    const userAssignmentProfileRepository = {
+      getById: jest.fn().mockResolvedValue({
+        groupId: 'group-1',
+        id: 'agent-1',
+        isActive: true,
+        role: UserRole.AGENT,
+      }),
+    } as UserAssignmentProfileRepository;
     const changeTicketStatusUseCase = new ChangeTicketStatusUseCase(
       repository,
       repository,
+      userAssignmentProfileRepository,
       auditService,
     );
     const changeTicketPriorityUseCase = new ChangeTicketPriorityUseCase(

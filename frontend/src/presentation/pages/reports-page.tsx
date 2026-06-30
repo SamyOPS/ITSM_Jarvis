@@ -295,7 +295,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
             includeArchived: false,
           }),
 
-          fetchReferentialCatalog(),
+          fetchReferentialCatalog(session.accessToken),
 
           session.user.role === 'DEMANDEUR'
             ? Promise.resolve([])

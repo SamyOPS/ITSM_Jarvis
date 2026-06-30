@@ -7,11 +7,7 @@ import { assertTicketCommentAccess } from './ticket-comment-access';
 import { assertTicketDetailAccess } from './ticket-detail-access';
 import { TicketReadRepository } from './repositories/ticket-read.repository';
 
-export type TicketAccessScope =
-  | 'attachment'
-  | 'comment'
-  | 'detail'
-  | 'history';
+export type TicketAccessScope = 'attachment' | 'comment' | 'detail' | 'history';
 
 export async function resolveAccessibleTicket(params: {
   scope: TicketAccessScope;

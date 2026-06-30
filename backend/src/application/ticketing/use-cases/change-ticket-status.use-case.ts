@@ -1,4 +1,5 @@
 ﻿import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
@@ -6,6 +7,7 @@ import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
+import { resolveAccessibleTicket } from '../ticket-access-resolver';
 import { TicketAuditService } from '../ticket-audit.service';
 import {
   assertAllowedTicketStatusTransition,
@@ -26,6 +28,8 @@ export class ChangeTicketStatusUseCase {
     private readonly ticketReadRepository: TicketReadRepository,
     @Inject(TicketWriteRepository)
     private readonly ticketWriteRepository: TicketWriteRepository,
+    @Inject(UserAssignmentProfileRepository)
+    private readonly userAssignmentProfileRepository: UserAssignmentProfileRepository,
     private readonly ticketAuditService: TicketAuditService,
   ) {}
 
@@ -41,12 +45,14 @@ export class ChangeTicketStatusUseCase {
       throw new BadRequestException('actorUserId is required.');
     }
 
-    const existingTicket =
-      await this.ticketReadRepository.getTicketById(ticketId);
-
-    if (!existingTicket) {
-      throw new BadRequestException(`Ticket ${ticketId} does not exist.`);
-    }
+    const existingTicket = await resolveAccessibleTicket({
+      scope: 'detail',
+      ticketId,
+      ticketReadRepository: this.ticketReadRepository,
+      userAssignmentProfileRepository: this.userAssignmentProfileRepository,
+      userId: actorUserId,
+      userRole: command.actorRole ?? UserRole.AGENT,
+    });
 
     try {
       assertTicketCanBeModifiedByRole(

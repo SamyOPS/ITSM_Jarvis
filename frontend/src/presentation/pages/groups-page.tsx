@@ -119,7 +119,7 @@ export function GroupsPage({ session }: GroupsPageProps) {
 
     try {
       const [nextCatalog, nextUsers] = await Promise.all([
-        fetchReferentialCatalog(),
+        fetchReferentialCatalog(session.accessToken),
         fetchAdminUsers(session.accessToken),
       ]);
 

@@ -266,6 +266,57 @@ describe('AuthController', () => {
     expect(updateStatus).not.toHaveBeenCalled();
   });
 
+  it('rejects changing the current admin account role', () => {
+    const updateUser = jest.fn();
+
+    controller = new AuthController(
+      {
+        execute: jest.fn(),
+      } as unknown as CreateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as DeleteAdminUserUseCase,
+      new GetAuthSetupUseCase(),
+      {
+        execute: jest.fn(),
+      } as unknown as GetAuthenticatedUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as ListAdminUsersUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as RegisterRequesterUseCase,
+      {
+        execute: updateUser,
+      } as unknown as UpdateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserGroupsUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserStatusUseCase,
+    );
+
+    expect(() =>
+      controller.updateAdminUser(
+        'admin-1',
+        {
+          accessToken: 'token',
+          email: 'admin@example.com',
+          id: 'admin-1',
+          role: UserRole.ADMIN,
+        },
+        {
+          email: 'admin@example.com',
+          firstName: 'Admin',
+          lastName: 'Vision',
+          role: UserRole.DEMANDEUR,
+        },
+      ),
+    ).toThrow('You cannot change your own role.');
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+
   it('rejects deleting the current admin account', async () => {
     const deleteUser = jest.fn();
 

@@ -232,6 +232,10 @@ function readLoginFeedback(): string | null {
     return 'Compte cree. Verifiez votre boite mail pour confirmer votre adresse email avant de vous connecter.';
   }
 
+  if (queryParams.get('emailConfirmed') === 'success') {
+    return 'Email confirme. Vous pouvez maintenant vous connecter.';
+  }
+
   return null;
 }
 

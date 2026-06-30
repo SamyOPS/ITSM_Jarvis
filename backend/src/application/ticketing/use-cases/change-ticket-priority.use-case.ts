@@ -1,10 +1,17 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Optional,
+} from '@nestjs/common';
+import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { UserRole } from '../../../domain/auth/user-role';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
+import { resolveAccessibleTicket } from '../ticket-access-resolver';
 import { TicketAuditService } from '../ticket-audit.service';
 import { calculateSlaTargets } from '../sla-targets';
 import { assertTicketCanBeModifiedByRole } from '../ticketing-rules';
@@ -27,6 +34,9 @@ export class ChangeTicketPriorityUseCase {
     @Inject(ReferentialPriorityReadRepository)
     private readonly priorityRepository: ReferentialPriorityReadRepository,
     private readonly ticketAuditService: TicketAuditService,
+    @Optional()
+    @Inject(UserAssignmentProfileRepository)
+    private readonly userAssignmentProfileRepository?: UserAssignmentProfileRepository,
   ) {}
 
   async execute(command: ChangeTicketPriorityCommand): Promise<TicketDetail> {
@@ -46,12 +56,14 @@ export class ChangeTicketPriorityUseCase {
       throw new BadRequestException('priorityId is required.');
     }
 
-    const existingTicket =
-      await this.ticketReadRepository.getTicketById(ticketId);
-
-    if (!existingTicket) {
-      throw new BadRequestException(`Ticket ${ticketId} does not exist.`);
-    }
+    const existingTicket = await resolveAccessibleTicket({
+      scope: 'detail',
+      ticketId,
+      ticketReadRepository: this.ticketReadRepository,
+      userAssignmentProfileRepository: this.userAssignmentProfileRepository,
+      userId: actorUserId,
+      userRole: command.actorRole ?? UserRole.AGENT,
+    });
 
     try {
       assertTicketCanBeModifiedByRole(
