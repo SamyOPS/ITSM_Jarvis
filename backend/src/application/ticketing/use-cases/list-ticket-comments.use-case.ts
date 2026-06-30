@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Inject,
   Injectable,
-  NotFoundException,
   Optional,
 } from '@nestjs/common';
 import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
