@@ -119,6 +119,59 @@ describe('SupabaseReferentialReadRepository', () => {
     );
   });
 
+  it('detaches CI references before deleting a CI', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue([{ id: 'ticket-1' }]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue([{ id: 'ci-1' }]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue([{ id: 'ci-1' }]),
+      });
+
+    const repository = new SupabaseReferentialReadRepository();
+
+    await expect(repository.deleteCi('ci-1')).resolves.toBeUndefined();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        pathname: '/rest/v1/tickets',
+        search: expect.stringContaining('ci_id=eq.ci-1'),
+      }),
+      expect.objectContaining({
+        body: JSON.stringify({ ci_id: null }),
+        method: 'PATCH',
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        pathname: '/rest/v1/cis',
+        search: expect.stringContaining('id=eq.ci-1'),
+      }),
+      expect.objectContaining({
+        body: JSON.stringify({ assigned_user_id: null }),
+        method: 'PATCH',
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        pathname: '/rest/v1/cis',
+        search: expect.stringContaining('id=eq.ci-1'),
+      }),
+      expect.objectContaining({
+        method: 'DELETE',
+      }),
+    );
+  });
+
   it('fails when Supabase config is missing', async () => {
     process.env.SUPABASE_URL = '';
 

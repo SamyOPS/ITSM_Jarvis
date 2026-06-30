@@ -1300,9 +1300,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     const requesterId =
       incidentDraft.requestedForUserId || session.user.id || null;
 
-    return catalog.cis.filter(
-      (ci) => ci.assignedUserId === null || ci.assignedUserId === requesterId,
-    );
+    return catalog.cis.filter((ci) => ci.assignedUserId === requesterId);
   }, [catalog.cis, incidentDraft.requestedForUserId, session.user.id]);
   const filteredIncidentLookupEquipment = useMemo(
     () =>
@@ -1386,6 +1384,18 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         : catalog.groups,
     [catalog.groups, selectedTicketDetailTechnician?.groupId],
   );
+  const ticketDetailEquipmentOptions = useMemo(() => {
+    const requesterId =
+      ticketEditDraft.requestedForUserId ||
+      selectedTicketDetail?.ticket.createdByUserId ||
+      null;
+
+    return catalog.cis.filter((ci) => ci.assignedUserId === requesterId);
+  }, [
+    catalog.cis,
+    selectedTicketDetail?.ticket.createdByUserId,
+    ticketEditDraft.requestedForUserId,
+  ]);
   const ticketDetailLookupUsers =
     ticketDetailLookupKind === 'ASSIGNEE'
       ? ticketDetailLookupTechnicians
@@ -1421,14 +1431,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const filteredTicketDetailLookupEquipment = useMemo(
     () =>
       filterIncidentLookupEquipment(
-        catalog.cis,
+        ticketDetailEquipmentOptions,
         ticketDetailLookupSearch,
         ticketDetailLookupSearchField,
         ciTypesById,
       ),
     [
-      catalog.cis,
       ciTypesById,
+      ticketDetailEquipmentOptions,
       ticketDetailLookupSearch,
       ticketDetailLookupSearchField,
     ],
@@ -1705,7 +1715,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   function openTicketDetailLookup(kind: TicketDetailLookupKind): void {
     if (kind === 'EQUIPMENT') {
       const selectedEquipmentIndex = filterIncidentLookupEquipment(
-        catalog.cis,
+        ticketDetailEquipmentOptions,
         '',
         'IDENTIFIER',
         ciTypesById,
@@ -2243,10 +2253,25 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       return;
     }
 
-    setTicketEditDraft((currentDraft) => ({
-      ...currentDraft,
-      [field]: value,
-    }));
+    setTicketEditDraft((currentDraft) => {
+      if (field === 'requestedForUserId' && currentDraft.ciId) {
+        const selectedEquipment = cisById.get(currentDraft.ciId);
+
+        return {
+          ...currentDraft,
+          requestedForUserId: value,
+          ciId:
+            selectedEquipment?.assignedUserId === value
+              ? currentDraft.ciId
+              : '',
+        };
+      }
+
+      return {
+        ...currentDraft,
+        [field]: value,
+      };
+    });
 
     setDetailActionErrorMessage(null);
     setDetailActionSuccessMessage(null);
