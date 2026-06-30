@@ -159,6 +159,18 @@
   scrollbar-gutter: stable;
 }
 
+.personal-ticket-panel .app-pagination,
+.personal-equipment-panel .app-pagination {
+  min-height: 56px;
+  padding: 10px 14px 0;
+  align-items: center;
+}
+
+.personal-ticket-panel .app-pagination-summary,
+.personal-equipment-panel .app-pagination-summary {
+  line-height: 34px;
+}
+
 .personal-ticket-table {
   width: 100%;
   border-collapse: collapse;

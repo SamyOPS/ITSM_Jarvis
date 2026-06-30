@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import { AppPagination } from '../components/app-pagination';
 
 import {
   translateChannel,
@@ -3894,51 +3895,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         </table>
                       </div>
 
-                      <footer className="incident-lookup-pagination">
-                        <span>
-                          Page {incidentLookupPage} sur{' '}
-                          {incidentLookupTotalPages} -{' '}
-                          {incidentLookupResultCount} resultat
-                          {incidentLookupResultCount > 1 ? 's' : ''}
-                        </span>
-
-                        <div>
-                          <button
-                            className="secondary-button incident-lookup-page-button"
-                            disabled={incidentLookupPage <= 1}
-                            onClick={() =>
-                              setIncidentLookupPage((currentPage) =>
-                                Math.max(1, currentPage - 1),
-                              )
-                            }
-                            type="button"
-                          >
-                            Precedent
-                          </button>
-
-                          <span className="incident-lookup-current-page">
-                            {incidentLookupPage}
-                          </span>
-
-                          <button
-                            className="secondary-button incident-lookup-page-button"
-                            disabled={
-                              incidentLookupPage >= incidentLookupTotalPages
-                            }
-                            onClick={() =>
-                              setIncidentLookupPage((currentPage) =>
-                                Math.min(
-                                  incidentLookupTotalPages,
-                                  currentPage + 1,
-                                ),
-                              )
-                            }
-                            type="button"
-                          >
-                            Suivant
-                          </button>
-                        </div>
-                      </footer>
+                      <AppPagination
+                        onPageChange={setIncidentLookupPage}
+                        page={incidentLookupPage}
+                        summary={`Page ${incidentLookupPage} sur ${incidentLookupTotalPages} - ${incidentLookupResultCount} resultat${incidentLookupResultCount > 1 ? 's' : ''}`}
+                        totalPages={incidentLookupTotalPages}
+                      />
                     </section>
                   </div>
                 ) : null}
@@ -4316,60 +4278,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       </div>
                     </div>
 
-                    <div className="ticket-pagination">
-                      <p className="ticket-form-helper">
-                        Page {ticketPage} sur {totalTicketPages} -{' '}
-                        {searchedTickets.length} tickets
-                      </p>
-
-                      <div className="ticket-pagination-actions">
-                        <button
-                          className="secondary-button"
-                          disabled={ticketPage <= 1}
-                          onClick={() =>
-                            setTicketPage((currentPage) => currentPage - 1)
-                          }
-                          type="button"
-                        >
-                          Precedent
-                        </button>
-
-                        <div className="ticket-pagination-pages">
-                          {Array.from(
-                            { length: totalTicketPages },
-                            (_, index) => {
-                              const pageNumber = index + 1;
-
-                              return (
-                                <button
-                                  className={
-                                    pageNumber === ticketPage
-                                      ? 'ticket-workspace-view-button is-active'
-                                      : 'ticket-workspace-view-button'
-                                  }
-                                  key={pageNumber}
-                                  onClick={() => setTicketPage(pageNumber)}
-                                  type="button"
-                                >
-                                  {pageNumber}
-                                </button>
-                              );
-                            },
-                          )}
-                        </div>
-
-                        <button
-                          className="secondary-button"
-                          disabled={ticketPage >= totalTicketPages}
-                          onClick={() =>
-                            setTicketPage((currentPage) => currentPage + 1)
-                          }
-                          type="button"
-                        >
-                          Suivant
-                        </button>
-                      </div>
-                    </div>
+                    <AppPagination
+                      onPageChange={setTicketPage}
+                      page={ticketPage}
+                      summary={`Page ${ticketPage} sur ${totalTicketPages} - ${searchedTickets.length} tickets`}
+                      totalPages={totalTicketPages}
+                    />
                   </>
                 )}
               </section>
@@ -5541,52 +5455,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             </table>
                           </div>
 
-                          <footer className="incident-lookup-pagination">
-                            <span>
-                              Page {ticketDetailLookupPage} sur{' '}
-                              {ticketDetailLookupTotalPages} -{' '}
-                              {ticketDetailLookupResultCount} resultat
-                              {ticketDetailLookupResultCount > 1 ? 's' : ''}
-                            </span>
-
-                            <div>
-                              <button
-                                className="secondary-button incident-lookup-page-button"
-                                disabled={ticketDetailLookupPage <= 1}
-                                onClick={() =>
-                                  setTicketDetailLookupPage((currentPage) =>
-                                    Math.max(1, currentPage - 1),
-                                  )
-                                }
-                                type="button"
-                              >
-                                Precedent
-                              </button>
-
-                              <span className="incident-lookup-current-page">
-                                {ticketDetailLookupPage}
-                              </span>
-
-                              <button
-                                className="secondary-button incident-lookup-page-button"
-                                disabled={
-                                  ticketDetailLookupPage >=
-                                  ticketDetailLookupTotalPages
-                                }
-                                onClick={() =>
-                                  setTicketDetailLookupPage((currentPage) =>
-                                    Math.min(
-                                      ticketDetailLookupTotalPages,
-                                      currentPage + 1,
-                                    ),
-                                  )
-                                }
-                                type="button"
-                              >
-                                Suivant
-                              </button>
-                            </div>
-                          </footer>
+                          <AppPagination
+                            onPageChange={setTicketDetailLookupPage}
+                            page={ticketDetailLookupPage}
+                            summary={`Page ${ticketDetailLookupPage} sur ${ticketDetailLookupTotalPages} - ${ticketDetailLookupResultCount} resultat${ticketDetailLookupResultCount > 1 ? 's' : ''}`}
+                            totalPages={ticketDetailLookupTotalPages}
+                          />
                         </section>
                       </div>
                     ) : null}

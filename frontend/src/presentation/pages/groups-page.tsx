@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { ArrowLeft, Plus, Trash2, X } from 'lucide-react';
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import { AppPagination } from '../components/app-pagination';
 import type {
   ReferentialCatalogSnapshot,
   ReferentialGroup,
@@ -594,42 +595,12 @@ export function GroupsPage({ session }: GroupsPageProps) {
                           </table>
                         </div>
 
-                        <footer className="incident-lookup-pagination">
-                          <p>
-                            Page {memberPage} sur {totalMemberPages} -{' '}
-                            {availableTechnicians.length} resultats
-                          </p>
-
-                          <div>
-                            <button
-                              className="secondary-button incident-lookup-page-button"
-                              disabled={memberPage === 1}
-                              onClick={() =>
-                                setMemberPage((current) =>
-                                  Math.max(1, current - 1),
-                                )
-                              }
-                              type="button"
-                            >
-                              Precedent
-                            </button>
-                            <span className="incident-lookup-current-page">
-                              {memberPage}
-                            </span>
-                            <button
-                              className="secondary-button incident-lookup-page-button"
-                              disabled={memberPage === totalMemberPages}
-                              onClick={() =>
-                                setMemberPage((current) =>
-                                  Math.min(totalMemberPages, current + 1),
-                                )
-                              }
-                              type="button"
-                            >
-                              Suivant
-                            </button>
-                          </div>
-                        </footer>
+                        <AppPagination
+                          onPageChange={setMemberPage}
+                          page={memberPage}
+                          summary={`Page ${memberPage} sur ${totalMemberPages} - ${availableTechnicians.length} resultats`}
+                          totalPages={totalMemberPages}
+                        />
                       </section>
                     </div>
                   ) : null}
@@ -781,37 +752,12 @@ export function GroupsPage({ session }: GroupsPageProps) {
                 </table>
               </div>
 
-              <div className="ticket-pagination">
-                <p className="ticket-form-helper">
-                  Page {groupPage} sur {totalGroupPages} -{' '}
-                  {filteredGroups.length} groupes
-                </p>
-                <div className="ticket-pagination-actions">
-                  <button
-                    className="secondary-button"
-                    disabled={groupPage === 1}
-                    onClick={() =>
-                      setGroupPage((current) => Math.max(1, current - 1))
-                    }
-                    type="button"
-                  >
-                    Precedent
-                  </button>
-                  <span className="ticket-pagination-current">{groupPage}</span>
-                  <button
-                    className="secondary-button"
-                    disabled={groupPage === totalGroupPages}
-                    onClick={() =>
-                      setGroupPage((current) =>
-                        Math.min(totalGroupPages, current + 1),
-                      )
-                    }
-                    type="button"
-                  >
-                    Suivant
-                  </button>
-                </div>
-              </div>
+              <AppPagination
+                onPageChange={setGroupPage}
+                page={groupPage}
+                summary={`Page ${groupPage} sur ${totalGroupPages} - ${filteredGroups.length} groupes`}
+                totalPages={totalGroupPages}
+              />
             </>
           )}
         </section>
