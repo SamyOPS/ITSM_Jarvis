@@ -59,9 +59,9 @@ export class DeleteTicketAttachmentUseCase {
     const [ticket, userProfile] = await Promise.all([
       this.ticketReadRepository.getTicketById(normalizedTicketId),
       command.actorRole === UserRole.AGENT
-        ? this.userAssignmentProfileRepository?.getById(
+        ? (this.userAssignmentProfileRepository?.getById(
             normalizedActorUserId,
-          ) ?? Promise.resolve(null)
+          ) ?? Promise.resolve(null))
         : Promise.resolve(null),
     ]);
 

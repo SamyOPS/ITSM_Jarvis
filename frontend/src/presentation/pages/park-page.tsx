@@ -1222,7 +1222,7 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
               <div className="park-filter-grid">
                 <label className="field">
                   <span>Recherche</span>
-                  <div className="park-filter-search">
+                  <div className="ticket-list-target-search park-filter-search">
                     <select
                       aria-label="Champ de recherche"
                       onChange={handleEquipmentFilterChange('searchField')}
@@ -1234,11 +1234,13 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                       <option value="SERIAL_NUMBER">Numero de serie</option>
                       <option value="ASSIGNED_USER">Utilisateur assigne</option>
                     </select>
-                    <input
-                      onChange={handleEquipmentFilterChange('search')}
-                      placeholder="Rechercher"
-                      value={filters.search}
-                    />
+                    <div className="ticket-list-target-search-input">
+                      <input
+                        onChange={handleEquipmentFilterChange('search')}
+                        placeholder="Rechercher"
+                        value={filters.search}
+                      />
+                    </div>
                   </div>
                 </label>
 

@@ -79,9 +79,9 @@ export class AddTicketAttachmentUseCase {
     const [ticket, userProfile] = await Promise.all([
       this.ticketReadRepository.getTicketById(normalizedTicketId),
       command.uploaderRole === UserRole.AGENT
-        ? this.userAssignmentProfileRepository?.getById(
+        ? (this.userAssignmentProfileRepository?.getById(
             normalizedUploaderUserId,
-          ) ?? Promise.resolve(null)
+          ) ?? Promise.resolve(null))
         : Promise.resolve(null),
     ]);
 

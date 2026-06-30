@@ -42,9 +42,9 @@ export class GetTicketByIdUseCase {
     const [ticket, userProfile] = await Promise.all([
       this.ticketReadRepository.getTicketById(normalizedTicketId),
       command.requesterUserRole === UserRole.AGENT
-        ? this.userAssignmentProfileRepository?.getById(
+        ? (this.userAssignmentProfileRepository?.getById(
             normalizedRequesterUserId,
-          ) ?? Promise.resolve(null)
+          ) ?? Promise.resolve(null))
         : Promise.resolve(null),
     ]);
 

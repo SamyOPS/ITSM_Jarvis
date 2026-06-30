@@ -274,6 +274,7 @@ export class SupabaseReferentialReadRepository
   }
 
   async deleteCi(id: string): Promise<void> {
+    await this.detachCiReferences(id);
     await this.deleteById('cis', id);
   }
 
@@ -535,6 +536,24 @@ export class SupabaseReferentialReadRepository
     if (rows.length === 0) {
       throw new NotFoundException(`No ${table} row found for id ${id}.`);
     }
+  }
+
+  private async detachCiReferences(id: string): Promise<void> {
+    await this.mutateTable<{ id: string }>(
+      'PATCH',
+      'tickets',
+      { ci_id: null },
+      'id',
+      [{ column: 'ci_id', value: id }],
+    );
+
+    await this.mutateTable<{ id: string }>(
+      'PATCH',
+      'cis',
+      { assigned_user_id: null },
+      'id',
+      [{ column: 'id', value: id }],
+    );
   }
 
   private expectSingle<Row, Entity>(

@@ -1173,25 +1173,7 @@
 }
 
 .park-filter-search {
-  display: grid;
   grid-template-columns: 150px minmax(0, 1fr);
-  min-height: 48px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: #fff;
-}
-
-.park-filter-search select,
-.park-filter-search input {
-  min-height: 46px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.park-filter-search select {
-  border-right: 1px solid var(--border);
 }
 
 .park-create-form {
@@ -1251,6 +1233,13 @@
 
 .park-equipment-table {
   min-width: 1120px;
+}
+
+.park-equipment-table th,
+.park-equipment-table td {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  word-break: normal;
 }
 
 .park-equipment-table th:first-child,

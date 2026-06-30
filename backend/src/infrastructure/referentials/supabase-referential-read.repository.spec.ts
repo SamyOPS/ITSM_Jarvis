@@ -119,6 +119,52 @@ describe('SupabaseReferentialReadRepository', () => {
     );
   });
 
+  it('detaches CI references before deleting a CI', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue([{ id: 'ticket-1' }]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue([{ id: 'ci-1' }]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue([{ id: 'ci-1' }]),
+      });
+
+    const repository = new SupabaseReferentialReadRepository();
+
+    await expect(repository.deleteCi('ci-1')).resolves.toBeUndefined();
+
+    const fetchCalls = fetchMock.mock.calls as unknown as Array<
+      [URL, RequestInit | undefined]
+    >;
+    const [ticketDetachUrl, ticketDetachInit] = fetchCalls[0];
+    const [ciDetachUrl, ciDetachInit] = fetchCalls[1];
+    const [ciDeleteUrl, ciDeleteInit] = fetchCalls[2];
+
+    expect(fetchCalls).toHaveLength(3);
+    expect(ticketDetachUrl.pathname).toBe('/rest/v1/tickets');
+    expect(ticketDetachUrl.search).toContain('ci_id=eq.ci-1');
+    expect(ticketDetachInit).toMatchObject({
+      body: JSON.stringify({ ci_id: null }),
+      method: 'PATCH',
+    });
+    expect(ciDetachUrl.pathname).toBe('/rest/v1/cis');
+    expect(ciDetachUrl.search).toContain('id=eq.ci-1');
+    expect(ciDetachInit).toMatchObject({
+      body: JSON.stringify({ assigned_user_id: null }),
+      method: 'PATCH',
+    });
+    expect(ciDeleteUrl.pathname).toBe('/rest/v1/cis');
+    expect(ciDeleteUrl.search).toContain('id=eq.ci-1');
+    expect(ciDeleteInit).toMatchObject({
+      method: 'DELETE',
+    });
+  });
+
   it('fails when Supabase config is missing', async () => {
     process.env.SUPABASE_URL = '';
 

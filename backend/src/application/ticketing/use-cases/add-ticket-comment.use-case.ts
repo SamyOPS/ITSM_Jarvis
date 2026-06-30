@@ -65,9 +65,9 @@ export class AddTicketCommentUseCase {
     const [ticket, userProfile] = await Promise.all([
       this.ticketReadRepository.getTicketById(normalizedTicketId),
       command.authorRole === UserRole.AGENT
-        ? this.userAssignmentProfileRepository?.getById(
+        ? (this.userAssignmentProfileRepository?.getById(
             normalizedAuthorUserId,
-          ) ?? Promise.resolve(null)
+          ) ?? Promise.resolve(null))
         : Promise.resolve(null),
     ]);
 
