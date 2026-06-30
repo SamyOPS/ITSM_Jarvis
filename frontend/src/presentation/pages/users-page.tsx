@@ -138,7 +138,7 @@ export function UsersPage({ session }: UsersPageProps) {
     try {
       const [nextUsers, nextCatalog] = await Promise.all([
         fetchAdminUsers(session.accessToken),
-        fetchReferentialCatalog(),
+        fetchReferentialCatalog(session.accessToken),
       ]);
 
       setUsers(nextUsers);
@@ -623,6 +623,7 @@ export function UsersPage({ session }: UsersPageProps) {
                 <label className="field">
                   <span>Role</span>
                   <select
+                    disabled={isSelectedCurrentUser}
                     onChange={(event) =>
                       handleFieldChange('role', event.target.value as UserRole)
                     }
@@ -635,6 +636,12 @@ export function UsersPage({ session }: UsersPageProps) {
                     ))}
                   </select>
                 </label>
+                {isSelectedCurrentUser ? (
+                  <p className="ticket-form-helper">
+                    Votre propre role ne peut pas etre modifie depuis ce
+                    formulaire.
+                  </p>
+                ) : null}
               </form>
 
               {formMessage ? (

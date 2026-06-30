@@ -219,8 +219,13 @@ export class AuthController {
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
   updateAdminUser(
     @Param('userId') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() body: UpdateAdminUserDto,
   ): Promise<AdminUserSummary> {
+    if (user.id === userId && body.role !== user.role) {
+      throw new BadRequestException('You cannot change your own role.');
+    }
+
     return this.updateAdminUserUseCase.execute({
       email: body.email,
       firstName: body.firstName ?? null,

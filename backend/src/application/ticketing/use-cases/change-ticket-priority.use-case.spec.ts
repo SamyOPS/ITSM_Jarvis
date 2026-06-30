@@ -1,5 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
+import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
+import { UserRole } from '../../../domain/auth/user-role';
 import { ReferentialPriority } from '../../../domain/referentials/referential-priority';
 import { PriorityName } from '../../../domain/ticketing/priority-name';
 import { Ticket } from '../../../domain/ticketing/ticket';
@@ -190,5 +192,69 @@ describe('ChangeTicketPriorityUseCase', () => {
         ticketId: 'ticket-1',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects an agent outside the assignment group', async () => {
+    const ticket = new Ticket(
+      'ticket-1',
+      'TICK-000001',
+      TicketType.INCIDENT,
+      TicketStatus.OPEN,
+      'VPN KO',
+      'VPN inaccessible',
+      'priority-low',
+      'category-1',
+      'creator-1',
+      null,
+      null,
+      'group-9',
+      null,
+      null,
+      '2026-04-03T09:00:00.000Z',
+    );
+    const updatePriority = jest.fn();
+    const useCase = new ChangeTicketPriorityUseCase(
+      {
+        getTicketById: jest
+          .fn()
+          .mockResolvedValue(
+            new TicketDetail(ticket, PriorityName.LOW, null, null),
+          ),
+        searchTickets: jest.fn(),
+      } as unknown as TicketReadRepository,
+      {
+        createIncident: jest.fn(),
+        createRequest: jest.fn(),
+        updateAssignment: jest.fn(),
+        updatePriority,
+        updateStatus: jest.fn(),
+        updateTicket: jest.fn(),
+      } as unknown as TicketWriteRepository,
+      {
+        listPriorities: jest.fn(),
+      } as unknown as ReferentialPriorityReadRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
+      {
+        getById: jest.fn().mockResolvedValue({
+          groupId: 'group-1',
+          groupIds: ['group-1'],
+          id: 'agent-1',
+          isActive: true,
+          role: UserRole.AGENT,
+        }),
+      } as unknown as UserAssignmentProfileRepository,
+    );
+
+    await expect(
+      useCase.execute({
+        actorRole: UserRole.AGENT,
+        actorUserId: 'agent-1',
+        priorityId: 'priority-high',
+        ticketId: 'ticket-1',
+      }),
+    ).rejects.toThrow('You do not have access to this ticket.');
+    expect(updatePriority).not.toHaveBeenCalled();
   });
 });

@@ -9,11 +9,14 @@ export type AdminReferentialKind =
   | 'groups'
   | 'priorities';
 
-export async function fetchReferentialCatalog(): Promise<ReferentialCatalogSnapshot> {
+export async function fetchReferentialCatalog(
+  accessToken: string,
+): Promise<ReferentialCatalogSnapshot> {
   const { apiUrl } = getFrontendRuntimeConfig();
   const response = await fetch(`${apiUrl}/referentials`, {
     headers: {
       Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
     },
   });
 

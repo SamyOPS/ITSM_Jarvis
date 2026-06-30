@@ -240,6 +240,20 @@ export function App() {
     let cancelled = false;
 
     async function restoreSession(): Promise<void> {
+      const signupConfirmation = readSignupConfirmationCallback();
+
+      if (signupConfirmation) {
+        clearStoredAuthSession();
+
+        if (!cancelled) {
+          setSession(null);
+          setSessionState('anonymous');
+          redirectToLoginAfterSignupConfirmation(signupConfirmation.email);
+        }
+
+        return;
+      }
+
       const storedSession = readStoredAuthSession();
 
       if (!storedSession) {
@@ -478,4 +492,61 @@ function mapLoginErrorMessage(error: unknown): string {
   }
 
   return error.message || 'Connexion impossible pour le moment.';
+}
+
+function readSignupConfirmationCallback(): { email: string | null } | null {
+  const hashParams = new URLSearchParams(
+    window.location.hash.replace(/^#/, ''),
+  );
+  const queryParams = new URLSearchParams(window.location.search);
+  const type = hashParams.get('type') ?? queryParams.get('type');
+
+  if (type !== 'signup') {
+    return null;
+  }
+
+  const accessToken =
+    hashParams.get('access_token') ?? queryParams.get('access_token');
+
+  return {
+    email: accessToken ? readEmailFromJwt(accessToken) : null,
+  };
+}
+
+function redirectToLoginAfterSignupConfirmation(email: string | null): void {
+  const loginPath = email
+    ? `/login?emailConfirmed=success&email=${encodeURIComponent(email)}`
+    : '/login?emailConfirmed=success';
+
+  window.history.replaceState({}, '', loginPath);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
+function readEmailFromJwt(token: string): string | null {
+  const parts = token.split('.');
+
+  if (parts.length < 2) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(decodeBase64Url(parts[1])) as {
+      email?: unknown;
+    };
+
+    return typeof payload.email === 'string' ? payload.email : null;
+  } catch {
+    return null;
+  }
+}
+
+function decodeBase64Url(value: string): string {
+  const normalizedValue = value.replace(/-/g, '+').replace(/_/g, '/');
+  const paddingLength = (4 - (normalizedValue.length % 4)) % 4;
+  const paddedValue = normalizedValue.padEnd(
+    normalizedValue.length + paddingLength,
+    '=',
+  );
+
+  return window.atob(paddedValue);
 }

@@ -298,7 +298,7 @@ describe('AssignTicketUseCase', () => {
 
     await expect(
       useCase.execute({
-        actorUserId: 'agent-2',
+        actorUserId: 'agent-1',
         assignedToUserId: null,
         assignmentGroupId: null,
         ticketId: 'ticket-1',
@@ -315,7 +315,7 @@ describe('AssignTicketUseCase', () => {
       assignmentGroupId: null,
     });
     expect(write).toHaveBeenCalledWith({
-      actorUserId: 'agent-2',
+      actorUserId: 'agent-1',
       eventType: TicketHistoryEventType.UNASSIGNED,
       payload: {
         fromAssignedToUserId: 'agent-1',
@@ -378,5 +378,61 @@ describe('AssignTicketUseCase', () => {
         ticketId: 'ticket-1',
       }),
     ).rejects.toThrow('Assigned user must belong to the assignment group.');
+  });
+
+  it('rejects an agent outside the current assignment group', async () => {
+    const detail = new TicketDetail(
+      new Ticket(
+        'ticket-1',
+        'TICK-000001',
+        TicketType.INCIDENT,
+        TicketStatus.OPEN,
+        'VPN KO',
+        'Impossible de se connecter',
+        'priority-1',
+        'category-1',
+        'creator-1',
+        null,
+        null,
+        'group-9',
+        null,
+        null,
+        '2026-03-31T10:00:00.000Z',
+      ),
+      null,
+      null,
+      null,
+    );
+    const updateAssignment = jest.fn();
+    const useCase = new AssignTicketUseCase(
+      {
+        getTicketById: jest.fn().mockResolvedValue(detail),
+      } as unknown as TicketReadRepository,
+      {
+        updateAssignment,
+      } as unknown as TicketWriteRepository,
+      {
+        getById: jest.fn().mockResolvedValue({
+          groupId: 'group-1',
+          groupIds: ['group-1'],
+          id: 'agent-1',
+          isActive: true,
+          role: UserRole.AGENT,
+        }),
+      } as unknown as UserAssignmentProfileRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
+    );
+
+    await expect(
+      useCase.execute({
+        actorRole: UserRole.AGENT,
+        actorUserId: 'agent-1',
+        assignmentGroupId: 'group-1',
+        ticketId: 'ticket-1',
+      }),
+    ).rejects.toThrow('You do not have access to this ticket.');
+    expect(updateAssignment).not.toHaveBeenCalled();
   });
 });

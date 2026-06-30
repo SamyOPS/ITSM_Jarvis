@@ -574,7 +574,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       setLoadErrorMessage(null);
 
       try {
-        const nextCatalog = await fetchReferentialCatalog();
+        const nextCatalog = await fetchReferentialCatalog(session.accessToken);
 
         if (cancelled) {
           return;
@@ -601,7 +601,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [session.accessToken]);
 
   useEffect(() => {
     let cancelled = false;

@@ -6,6 +6,7 @@ import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history
 import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
+import { resolveAccessibleTicket } from '../ticket-access-resolver';
 import { TicketAuditService } from '../ticket-audit.service';
 import {
   assertTicketCanBeModifiedByRole,
@@ -44,12 +45,14 @@ export class AssignTicketUseCase {
       throw new BadRequestException('actorUserId is required.');
     }
 
-    const existingTicket =
-      await this.ticketReadRepository.getTicketById(ticketId);
-
-    if (!existingTicket) {
-      throw new BadRequestException(`Ticket ${ticketId} does not exist.`);
-    }
+    const existingTicket = await resolveAccessibleTicket({
+      scope: 'detail',
+      ticketId,
+      ticketReadRepository: this.ticketReadRepository,
+      userAssignmentProfileRepository: this.userAssignmentProfileRepository,
+      userId: actorUserId,
+      userRole: command.actorRole ?? UserRole.AGENT,
+    });
 
     const assignedToUserId = normalizeOptionalId(command.assignedToUserId);
     const assignmentGroupId = normalizeOptionalId(command.assignmentGroupId);

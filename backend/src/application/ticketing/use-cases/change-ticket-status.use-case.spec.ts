@@ -4,12 +4,19 @@ import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { Ticket } from '../../../domain/ticketing/ticket';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
 import { UserRole } from '../../../domain/auth/user-role';
+import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
 import { TicketAuditService } from '../ticket-audit.service';
 import { ChangeTicketStatusUseCase } from './change-ticket-status.use-case';
 
 describe('ChangeTicketStatusUseCase', () => {
+  function createUserAssignmentProfileRepository(): UserAssignmentProfileRepository {
+    return {
+      getById: jest.fn().mockResolvedValue(null),
+    };
+  }
+
   it('updates the ticket status when the workflow allows it and writes audit', async () => {
     const detail = new TicketDetail(
       new Ticket(
@@ -52,6 +59,7 @@ describe('ChangeTicketStatusUseCase', () => {
       {
         updateStatus,
       } as unknown as TicketWriteRepository,
+      createUserAssignmentProfileRepository(),
       {
         write,
       } as unknown as TicketAuditService,
@@ -114,6 +122,7 @@ describe('ChangeTicketStatusUseCase', () => {
       {
         updateStatus: jest.fn(),
       } as unknown as TicketWriteRepository,
+      createUserAssignmentProfileRepository(),
       {
         write: jest.fn(),
       } as unknown as TicketAuditService,
@@ -173,6 +182,7 @@ describe('ChangeTicketStatusUseCase', () => {
       {
         updateStatus,
       } as unknown as TicketWriteRepository,
+      createUserAssignmentProfileRepository(),
       {
         write,
       } as unknown as TicketAuditService,
@@ -234,6 +244,7 @@ describe('ChangeTicketStatusUseCase', () => {
       {
         updateStatus,
       } as unknown as TicketWriteRepository,
+      createUserAssignmentProfileRepository(),
       {
         write,
       } as unknown as TicketAuditService,
@@ -283,6 +294,7 @@ describe('ChangeTicketStatusUseCase', () => {
       {
         updateStatus: jest.fn(),
       } as unknown as TicketWriteRepository,
+      createUserAssignmentProfileRepository(),
       {
         write: jest.fn(),
       } as unknown as TicketAuditService,
@@ -295,9 +307,7 @@ describe('ChangeTicketStatusUseCase', () => {
         status: TicketStatus.CLOSED,
         ticketId: 'ticket-1',
       }),
-    ).rejects.toThrow(
-      'Requesters can only change the status of their own tickets.',
-    );
+    ).rejects.toThrow('You do not have access to this ticket.');
   });
 
   it('allows moving a ticket from in progress to pending', async () => {
@@ -342,6 +352,7 @@ describe('ChangeTicketStatusUseCase', () => {
       {
         updateStatus,
       } as unknown as TicketWriteRepository,
+      createUserAssignmentProfileRepository(),
       {
         write,
       } as unknown as TicketAuditService,
@@ -358,5 +369,61 @@ describe('ChangeTicketStatusUseCase', () => {
         status: TicketStatus.PENDING,
       },
     });
+  });
+
+  it('rejects an agent outside the assignment group', async () => {
+    const detail = new TicketDetail(
+      new Ticket(
+        'ticket-3',
+        'TICK-000003',
+        TicketType.INCIDENT,
+        TicketStatus.OPEN,
+        'VPN KO',
+        'Impossible de se connecter',
+        'priority-1',
+        'category-1',
+        'creator-1',
+        null,
+        null,
+        'group-9',
+        null,
+        null,
+        '2026-03-31T10:00:00.000Z',
+      ),
+      null,
+      null,
+      null,
+    );
+    const updateStatus = jest.fn();
+    const useCase = new ChangeTicketStatusUseCase(
+      {
+        getTicketById: jest.fn().mockResolvedValue(detail),
+      } as unknown as TicketReadRepository,
+      {
+        updateStatus,
+      } as unknown as TicketWriteRepository,
+      {
+        getById: jest.fn().mockResolvedValue({
+          groupId: 'group-1',
+          groupIds: ['group-1'],
+          id: 'agent-1',
+          isActive: true,
+          role: UserRole.AGENT,
+        }),
+      } as unknown as UserAssignmentProfileRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
+    );
+
+    await expect(
+      useCase.execute({
+        actorRole: UserRole.AGENT,
+        actorUserId: 'agent-1',
+        status: TicketStatus.IN_PROGRESS,
+        ticketId: 'ticket-3',
+      }),
+    ).rejects.toThrow('You do not have access to this ticket.');
+    expect(updateStatus).not.toHaveBeenCalled();
   });
 });

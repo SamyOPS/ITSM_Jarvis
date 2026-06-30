@@ -175,7 +175,7 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
 
   const loadParkData = useCallback(async (): Promise<void> => {
     const [nextCatalog, nextUsers] = await Promise.all([
-      fetchReferentialCatalog(),
+      fetchReferentialCatalog(session.accessToken),
       fetchUserDirectory(session.accessToken),
     ]);
 
@@ -192,7 +192,7 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
 
       try {
         const [nextCatalog, nextUsers] = await Promise.all([
-          fetchReferentialCatalog(),
+          fetchReferentialCatalog(session.accessToken),
           fetchUserDirectory(session.accessToken),
         ]);
 
