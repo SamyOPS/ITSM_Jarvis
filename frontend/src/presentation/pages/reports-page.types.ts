@@ -31,7 +31,9 @@ export type PersonalTicketSort =
   | 'OPERATIONAL_PRIORITY';
 
 export type PersonalEquipmentItem = {
+  displayId: string;
   id: string;
+  model: string;
   name: string;
   serialNumber: string;
   type: string;

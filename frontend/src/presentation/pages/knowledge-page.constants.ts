@@ -41,8 +41,8 @@ export const KNOWLEDGE_SORT_OPTIONS: Array<{
   },
   {
     value: 'NEWEST',
-    label: 'Plus récentes',
-    description: 'Articles les plus récemment mis à jour',
+    label: "Plus recents d'abord",
+    description: 'Appliquer ce tri',
     icon: ArrowUpDown,
   },
   {

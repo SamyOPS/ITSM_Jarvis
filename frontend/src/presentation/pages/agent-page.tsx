@@ -1296,23 +1296,30 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       ),
     [incidentLookupGroups, incidentLookupSearch, incidentLookupSearchField],
   );
-  const filteredIncidentLookupEquipment = useMemo(() => {
-    const equipmentSource =
-      incidentLookupKind === 'INCIDENT_EQUIPMENT' ? [] : catalog.cis;
+  const incidentEquipmentOptions = useMemo(() => {
+    const requesterId =
+      incidentDraft.requestedForUserId || session.user.id || null;
 
-    return filterIncidentLookupEquipment(
-      equipmentSource,
+    return catalog.cis.filter(
+      (ci) => ci.assignedUserId === null || ci.assignedUserId === requesterId,
+    );
+  }, [catalog.cis, incidentDraft.requestedForUserId, session.user.id]);
+  const filteredIncidentLookupEquipment = useMemo(
+    () =>
+      filterIncidentLookupEquipment(
+        incidentEquipmentOptions,
+        incidentLookupSearch,
+        incidentLookupSearchField,
+        ciTypesById,
+      ),
+    [
+      ciTypesById,
+      incidentEquipmentOptions,
       incidentLookupSearch,
       incidentLookupSearchField,
-      ciTypesById,
-    );
-  }, [
-    catalog.cis,
-    ciTypesById,
-    incidentLookupKind,
-    incidentLookupSearch,
-    incidentLookupSearchField,
-  ]);
+    ],
+  );
+
   const incidentLookupResultCount =
     incidentLookupKind === 'ASSIGNMENT_GROUP'
       ? filteredIncidentLookupGroups.length
@@ -1621,7 +1628,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   function openIncidentLookup(kind: IncidentLookupKind): void {
     if (kind === 'INCIDENT_EQUIPMENT') {
       const selectedEquipmentIndex = filterIncidentLookupEquipment(
-        [],
+        incidentEquipmentOptions,
         '',
         'IDENTIFIER',
         ciTypesById,
@@ -1787,7 +1794,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   function handleIncidentEquipmentLookupSelect(ci: ReferentialCi): void {
     handleIncidentFieldChange('ciId', ci.id);
-
     closeIncidentLookup();
   }
 
@@ -3708,6 +3714,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 <th>Identifiant</th>
                                 <th>Nom</th>
                                 <th>Type</th>
+                                <th>Modele</th>
                                 <th>Statut</th>
                                 <th>Numero de serie</th>
                               </tr>
@@ -3766,7 +3773,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ? (
                               paginatedIncidentLookupEquipment.length === 0 ? (
                                 <tr>
-                                  <td colSpan={5}>
+                                  <td colSpan={6}>
                                     Aucun equipement disponible dans le parc
                                     informatique pour le moment.
                                   </td>
@@ -3809,6 +3816,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                       </td>
                                       <td>{ci.name}</td>
                                       <td>{ciType?.name ?? 'Type inconnu'}</td>
+                                      <td>{ci.model ?? '-'}</td>
                                       <td>{ci.status}</td>
                                       <td>{ci.serialNumber ?? '-'}</td>
                                     </tr>
@@ -5322,6 +5330,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     <th>Identifiant</th>
                                     <th>Nom</th>
                                     <th>Type</th>
+                                    <th>Modele</th>
                                     <th>Statut</th>
                                     <th>Numero de serie</th>
                                   </tr>
@@ -5392,7 +5401,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   paginatedTicketDetailLookupEquipment.length ===
                                   0 ? (
                                     <tr>
-                                      <td colSpan={5}>
+                                      <td colSpan={6}>
                                         Aucun equipement ne correspond a la
                                         recherche.
                                       </td>
@@ -5442,6 +5451,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                             <td>
                                               {ciType?.name ?? 'Type inconnu'}
                                             </td>
+                                            <td>{ci.model ?? '-'}</td>
                                             <td>{ci.status}</td>
                                             <td>{ci.serialNumber ?? '-'}</td>
                                           </tr>
