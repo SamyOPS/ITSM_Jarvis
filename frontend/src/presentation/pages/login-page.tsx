@@ -14,18 +14,36 @@ export function LoginPage({
   onPasswordResetRequest,
   onSubmit,
 }: LoginPageProps) {
+  const loginFeedback = useMemo(() => readLoginFeedback(), []);
   const prefilledEmail = useMemo(() => readPrefilledEmail(), []);
   const [email, setEmail] = useState(prefilledEmail);
   const [forgotEmail, setForgotEmail] = useState(prefilledEmail);
   const [forgotMessage, setForgotMessage] = useState<string | null>(null);
   const [forgotMode, setForgotMode] = useState(false);
+  const [localErrorMessage, setLocalErrorMessage] = useState<string | null>(
+    null,
+  );
   const [isForgotBusy, setIsForgotBusy] = useState(false);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await onSubmit(email, password);
+    setLocalErrorMessage(null);
+
+    if (!email.trim()) {
+      setLocalErrorMessage('Saisissez votre adresse email.');
+
+      return;
+    }
+
+    if (!password) {
+      setLocalErrorMessage('Saisissez votre mot de passe.');
+
+      return;
+    }
+
+    await onSubmit(email.trim(), password);
   }
 
   async function handleForgotSubmit(event: FormEvent<HTMLFormElement>) {
@@ -36,7 +54,7 @@ export function LoginPage({
     try {
       await onPasswordResetRequest(forgotEmail.trim());
       setForgotMessage(
-        'Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.',
+        'Si un compte existe avec cet email, un lien de reinitialisation a ete envoye. Pensez aussi a verifier vos spams.',
       );
     } catch (error) {
       setForgotMessage(
@@ -60,7 +78,7 @@ export function LoginPage({
             <strong>Compte Vision</strong>
           </div>
           <h2>Connexion</h2>
-          <p>Un seul écran pour se connecter ou créer un compte demandeur.</p>
+          <p>Un seul ecran pour se connecter ou creer un compte demandeur.</p>
         </div>
 
         <div className="login-mode-tabs" aria-label="Choix du mode">
@@ -82,6 +100,10 @@ export function LoginPage({
           </button>
         </div>
 
+        {loginFeedback ? (
+          <p className="ticket-form-helper">{loginFeedback}</p>
+        ) : null}
+
         <form
           className="login-form"
           onSubmit={(event) => void handleSubmit(event)}
@@ -90,7 +112,10 @@ export function LoginPage({
             <span>Email</span>
             <input
               autoComplete="email"
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setLocalErrorMessage(null);
+              }}
               placeholder="nom@exemple.com"
               type="email"
               value={email}
@@ -102,7 +127,10 @@ export function LoginPage({
             <span className="login-password-field">
               <input
                 autoComplete="current-password"
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setLocalErrorMessage(null);
+                }}
                 placeholder="Mot de passe"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -130,7 +158,11 @@ export function LoginPage({
             {isBusy ? 'Connexion en cours...' : 'Se connecter'}
           </button>
 
-          {errorMessage ? (
+          {localErrorMessage ? (
+            <p className="ticket-form-error">{localErrorMessage}</p>
+          ) : null}
+
+          {!localErrorMessage && errorMessage ? (
             <p className="ticket-form-error">{errorMessage}</p>
           ) : null}
         </form>
@@ -139,12 +171,12 @@ export function LoginPage({
           className="login-forgot-button"
           onClick={() => {
             setForgotMode((current) => !current);
-            setForgotEmail(email);
+            setForgotEmail(email.trim());
             setForgotMessage(null);
           }}
           type="button"
         >
-          Mot de passe oublié ?
+          Mot de passe oublie ?
         </button>
 
         {forgotMode ? (
@@ -187,6 +219,20 @@ function readPrefilledEmail(): string {
   const email = queryParams.get('email');
 
   return email?.trim() ?? '';
+}
+
+function readLoginFeedback(): string | null {
+  const queryParams = new URLSearchParams(window.location.search);
+
+  if (queryParams.get('passwordReset') === 'success') {
+    return 'Mot de passe mis a jour. Vous pouvez maintenant vous connecter.';
+  }
+
+  if (queryParams.get('registered') === 'check-email') {
+    return 'Compte cree. Verifiez votre boite mail pour confirmer votre adresse email avant de vous connecter.';
+  }
+
+  return null;
 }
 
 function LoginAuthIcon() {

@@ -378,7 +378,7 @@ export function App() {
         } catch {
           clearStoredAuthSession();
           setAuthErrorMessage(
-            'Votre session a expiré ou votre compte est désactivé.',
+            'Votre session a expire ou votre compte est desactive. Reconnectez-vous pour continuer.',
           );
           setSession(null);
           setSessionState('anonymous');
@@ -456,7 +456,7 @@ export function App() {
 
 function mapLoginErrorMessage(error: unknown): string {
   if (!(error instanceof Error)) {
-    return 'Erreur de connexion inconnue';
+    return 'Erreur de connexion inconnue.';
   }
 
   const normalizedMessage = error.message.toLowerCase();
@@ -466,8 +466,16 @@ function mapLoginErrorMessage(error: unknown): string {
     normalizedMessage.includes('email_not_confirmed') ||
     normalizedMessage.includes('not confirmed')
   ) {
-    return 'Votre email n’est pas encore confirmé. Vérifiez votre boîte mail avant de vous connecter.';
+    return 'Votre email n est pas encore confirme. Verifiez votre boite mail avant de vous connecter.';
   }
 
-  return error.message;
+  if (
+    normalizedMessage.includes('invalid login credentials') ||
+    normalizedMessage.includes('invalid_credentials') ||
+    normalizedMessage.includes('invalid credentials')
+  ) {
+    return 'Email ou mot de passe incorrect.';
+  }
+
+  return error.message || 'Connexion impossible pour le moment.';
 }

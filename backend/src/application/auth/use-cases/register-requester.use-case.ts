@@ -5,6 +5,7 @@ import {
   AdminUserWriteRepository,
   type CreateAdminUserRecord,
 } from '../repositories/admin-user-write.repository';
+import { assertPasswordMeetsPolicy } from '../password-policy';
 
 export type RegisterRequesterCommand = {
   email: string;
@@ -32,11 +33,7 @@ export class RegisterRequesterUseCase {
       throw new BadRequestException('email must be valid.');
     }
 
-    if (password.length < 8) {
-      throw new BadRequestException(
-        'password must contain at least 8 characters.',
-      );
-    }
+    assertPasswordMeetsPolicy(password);
 
     const record: CreateAdminUserRecord = {
       email,

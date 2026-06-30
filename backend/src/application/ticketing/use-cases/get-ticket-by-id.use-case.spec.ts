@@ -1,4 +1,5 @@
 import { UserRole } from '../../../domain/auth/user-role';
+import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { Ticket } from '../../../domain/ticketing/ticket';
@@ -109,7 +110,7 @@ describe('GetTicketByIdUseCase', () => {
         'owner-1',
         null,
         null,
-        null,
+        'group-1',
         null,
         null,
         '2026-03-31T10:00:00.000Z',
@@ -118,9 +119,20 @@ describe('GetTicketByIdUseCase', () => {
       null,
       null,
     );
-    const useCase = new GetTicketByIdUseCase({
-      getTicketById: jest.fn().mockResolvedValue(detail),
-    } as unknown as TicketReadRepository);
+    const useCase = new GetTicketByIdUseCase(
+      {
+        getTicketById: jest.fn().mockResolvedValue(detail),
+      } as unknown as TicketReadRepository,
+      {
+        getById: jest.fn().mockResolvedValue({
+          groupId: 'group-1',
+          groupIds: ['group-1'],
+          id: 'agent-1',
+          isActive: true,
+          role: UserRole.AGENT,
+        }),
+      } as unknown as UserAssignmentProfileRepository,
+    );
 
     await expect(
       useCase.execute({
@@ -129,5 +141,52 @@ describe('GetTicketByIdUseCase', () => {
         ticketId: 'ticket-1',
       }),
     ).resolves.toBe(detail);
+  });
+
+  it('rejects an agent outside the ticket assignment perimeter', async () => {
+    const detail = new TicketDetail(
+      new Ticket(
+        'ticket-1',
+        'TICK-000001',
+        TicketType.INCIDENT,
+        TicketStatus.OPEN,
+        'VPN KO',
+        'Impossible de se connecter',
+        'priority-1',
+        'category-1',
+        'owner-1',
+        null,
+        null,
+        'group-9',
+        null,
+        null,
+        '2026-03-31T10:00:00.000Z',
+      ),
+      null,
+      null,
+      null,
+    );
+    const useCase = new GetTicketByIdUseCase(
+      {
+        getTicketById: jest.fn().mockResolvedValue(detail),
+      } as unknown as TicketReadRepository,
+      {
+        getById: jest.fn().mockResolvedValue({
+          groupId: 'group-1',
+          groupIds: ['group-1'],
+          id: 'agent-1',
+          isActive: true,
+          role: UserRole.AGENT,
+        }),
+      } as unknown as UserAssignmentProfileRepository,
+    );
+
+    await expect(
+      useCase.execute({
+        requesterUserId: 'agent-1',
+        requesterUserRole: UserRole.AGENT,
+        ticketId: 'ticket-1',
+      }),
+    ).rejects.toThrow('You do not have access to this ticket.');
   });
 });

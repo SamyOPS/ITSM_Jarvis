@@ -18,6 +18,10 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_MIN_LENGTH_MESSAGE,
+} from '../../../application/auth/password-policy';
 import { CreateAdminUserUseCase } from '../../../application/auth/use-cases/create-admin-user.use-case';
 import { DeleteAdminUserUseCase } from '../../../application/auth/use-cases/delete-admin-user.use-case';
 import {
@@ -62,7 +66,9 @@ class CreateAdminUserDto {
   lastName?: string | null;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(PASSWORD_MIN_LENGTH, {
+    message: PASSWORD_MIN_LENGTH_MESSAGE,
+  })
   password!: string;
 
   @IsEnum(UserRole)
@@ -118,7 +124,9 @@ class RegisterRequesterDto {
   lastName?: string | null;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(PASSWORD_MIN_LENGTH, {
+    message: PASSWORD_MIN_LENGTH_MESSAGE,
+  })
   password!: string;
 }
 

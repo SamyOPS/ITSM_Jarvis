@@ -1,4 +1,8 @@
 import { type FormEvent, useMemo, useState } from 'react';
+import {
+  PASSWORD_MIN_LENGTH,
+  validatePasswordPolicy,
+} from '../../domain/auth/password-policy';
 import { updatePasswordWithRecoveryToken } from '../../infrastructure/api/auth-api';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 
@@ -31,8 +35,10 @@ export function ResetPasswordPage({
       return;
     }
 
-    if (password.length < 8) {
-      setMessage('Le mot de passe doit contenir au moins 8 caracteres.');
+    const passwordPolicyError = validatePasswordPolicy(password);
+
+    if (passwordPolicyError) {
+      setMessage(passwordPolicyError);
 
       return;
     }
@@ -50,10 +56,9 @@ export function ResetPasswordPage({
       onPasswordUpdated?.();
 
       const loginPath = recoveryEmail
-        ? `/login?email=${encodeURIComponent(recoveryEmail)}`
-        : '/login';
+        ? `/login?passwordReset=success&email=${encodeURIComponent(recoveryEmail)}`
+        : '/login?passwordReset=success';
 
-      // Clear recovery tokens from the URL before sending the user back.
       window.history.replaceState({}, '', loginPath);
       window.dispatchEvent(new PopStateEvent('popstate'));
     } catch (error) {
@@ -94,7 +99,7 @@ export function ResetPasswordPage({
             <span>Nouveau mot de passe</span>
             <input
               autoComplete="new-password"
-              minLength={8}
+              minLength={PASSWORD_MIN_LENGTH}
               onChange={(event) => setPassword(event.target.value)}
               required
               type="password"
@@ -106,7 +111,7 @@ export function ResetPasswordPage({
             <span>Confirmer le mot de passe</span>
             <input
               autoComplete="new-password"
-              minLength={8}
+              minLength={PASSWORD_MIN_LENGTH}
               onChange={(event) => setConfirmPassword(event.target.value)}
               required
               type="password"
