@@ -14,6 +14,10 @@ export function ResetPasswordPage({
   const [password, setPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const recoveryToken = useMemo(() => readRecoveryAccessToken(), []);
+  const recoveryEmail = useMemo(
+    () => (recoveryToken ? readEmailFromRecoveryToken(recoveryToken) : null),
+    [recoveryToken],
+  );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -21,14 +25,14 @@ export function ResetPasswordPage({
 
     if (!recoveryToken) {
       setMessage(
-        'Le lien de réinitialisation est invalide ou expiré. Relance une demande depuis la page de connexion.',
+        'Le lien de reinitialisation est invalide ou expire. Relance une demande depuis la page de connexion.',
       );
 
       return;
     }
 
     if (password.length < 8) {
-      setMessage('Le mot de passe doit contenir au moins 8 caractères.');
+      setMessage('Le mot de passe doit contenir au moins 8 caracteres.');
 
       return;
     }
@@ -43,14 +47,20 @@ export function ResetPasswordPage({
 
     try {
       await updatePasswordWithRecoveryToken(recoveryToken, password);
-      setMessage('Mot de passe mis à jour. Tu peux maintenant te connecter.');
       onPasswordUpdated?.();
-      window.history.replaceState({}, '', '/auth/reset-password');
+
+      const loginPath = recoveryEmail
+        ? `/login?email=${encodeURIComponent(recoveryEmail)}`
+        : '/login';
+
+      // Clear recovery tokens from the URL before sending the user back.
+      window.history.replaceState({}, '', loginPath);
+      window.dispatchEvent(new PopStateEvent('popstate'));
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
-          : 'Erreur inconnue lors de la mise à jour du mot de passe.',
+          : 'Erreur inconnue lors de la mise a jour du mot de passe.',
       );
     } finally {
       setIsSaving(false);
@@ -64,16 +74,16 @@ export function ResetPasswordPage({
         <div className="login-showcase-copy">
           <span className="login-showcase-eyebrow">Jarvis Connect</span>
           <h1>Vision</h1>
-          <p>Choisis un nouveau mot de passe pour retrouver ton accès.</p>
+          <p>Choisis un nouveau mot de passe pour retrouver ton acces.</p>
         </div>
         <div className="login-showcase-glow" />
       </aside>
 
       <section className="login-panel">
         <div className="login-panel-header">
-          <span className="panel-tag">Sécurité</span>
+          <span className="panel-tag">Securite</span>
           <h2>Nouveau mot de passe</h2>
-          <p>Saisis un mot de passe fort, puis reconnecte-toi à Vision.</p>
+          <p>Saisis un mot de passe fort, puis reconnecte-toi a Vision.</p>
         </div>
 
         <form
@@ -109,7 +119,7 @@ export function ResetPasswordPage({
             disabled={isSaving || !recoveryToken}
             type="submit"
           >
-            {isSaving ? 'Mise à jour...' : 'Changer le mot de passe'}
+            {isSaving ? 'Mise a jour...' : 'Changer le mot de passe'}
           </button>
 
           {message ? <p className="ticket-form-helper">{message}</p> : null}
@@ -120,7 +130,7 @@ export function ResetPasswordPage({
           onClick={() => navigateTo('/login')}
           type="button"
         >
-          Retour à la connexion
+          Retour a la connexion
         </button>
       </section>
     </section>
@@ -141,4 +151,33 @@ function readRecoveryAccessToken(): string | null {
   }
 
   return accessToken;
+}
+
+function readEmailFromRecoveryToken(token: string): string | null {
+  const parts = token.split('.');
+
+  if (parts.length < 2) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(decodeBase64Url(parts[1])) as {
+      email?: unknown;
+    };
+
+    return typeof payload.email === 'string' ? payload.email : null;
+  } catch {
+    return null;
+  }
+}
+
+function decodeBase64Url(value: string): string {
+  const normalizedValue = value.replace(/-/g, '+').replace(/_/g, '/');
+  const paddingLength = (4 - (normalizedValue.length % 4)) % 4;
+  const paddedValue = normalizedValue.padEnd(
+    normalizedValue.length + paddingLength,
+    '=',
+  );
+
+  return window.atob(paddedValue);
 }
