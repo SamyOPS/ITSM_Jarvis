@@ -154,7 +154,7 @@
 .personal-equipment-viewport {
   position: relative;
   height: 230px;
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: scroll;
   scrollbar-gutter: stable;
 }
@@ -205,19 +205,29 @@
 }
 
 .personal-equipment-table th:nth-child(1) {
-  width: 18%;
+  width: 15%;
 }
 
 .personal-equipment-table th:nth-child(2) {
-  width: 32%;
+  width: 27%;
 }
 
 .personal-equipment-table th:nth-child(3) {
-  width: 22%;
+  width: 20%;
 }
 
 .personal-equipment-table th:nth-child(4) {
-  width: 28%;
+  width: 20%;
+}
+
+.personal-equipment-table th:nth-child(5) {
+  width: 18%;
+}
+
+.personal-equipment-table th,
+.personal-equipment-table td {
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .personal-ticket-table tbody tr {

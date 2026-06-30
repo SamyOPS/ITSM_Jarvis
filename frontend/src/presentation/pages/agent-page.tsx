@@ -1296,11 +1296,36 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       ),
     [incidentLookupGroups, incidentLookupSearch, incidentLookupSearchField],
   );
+  const incidentEquipmentOptions = useMemo(() => {
+    const requesterId =
+      incidentDraft.requestedForUserId || session.user.id || null;
+
+    return catalog.cis.filter(
+      (ci) => ci.assignedUserId === null || ci.assignedUserId === requesterId,
+    );
+  }, [catalog.cis, incidentDraft.requestedForUserId, session.user.id]);
+  const filteredIncidentLookupEquipment = useMemo(
+    () =>
+      filterIncidentLookupEquipment(
+        incidentEquipmentOptions,
+        incidentLookupSearch,
+        incidentLookupSearchField,
+        ciTypesById,
+      ),
+    [
+      ciTypesById,
+      incidentEquipmentOptions,
+      incidentLookupSearch,
+      incidentLookupSearchField,
+    ],
+  );
 
   const incidentLookupResultCount =
     incidentLookupKind === 'ASSIGNMENT_GROUP'
       ? filteredIncidentLookupGroups.length
-      : filteredIncidentLookupUsers.length;
+      : incidentLookupKind === 'INCIDENT_EQUIPMENT'
+        ? filteredIncidentLookupEquipment.length
+        : filteredIncidentLookupUsers.length;
   const incidentLookupTotalPages = Math.max(
     1,
     Math.ceil(incidentLookupResultCount / INCIDENT_LOOKUP_PAGE_SIZE),
@@ -1313,6 +1338,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     (incidentLookupPage - 1) * INCIDENT_LOOKUP_PAGE_SIZE,
     incidentLookupPage * INCIDENT_LOOKUP_PAGE_SIZE,
   );
+  const paginatedIncidentLookupEquipment =
+    filteredIncidentLookupEquipment.slice(
+      (incidentLookupPage - 1) * INCIDENT_LOOKUP_PAGE_SIZE,
+      incidentLookupPage * INCIDENT_LOOKUP_PAGE_SIZE,
+    );
   const selectedIncidentTechnician = usersById.get(
     incidentDraft.assignedToUserId,
   );
@@ -1320,6 +1350,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const selectedIncidentRequester = usersById.get(
     incidentDraft.requestedForUserId,
   );
+  const selectedIncidentEquipment = cisById.get(incidentDraft.ciId);
   const selectedRequestTechnician = usersById.get(
     requestDraft.assignedToUserId,
   );
@@ -1443,6 +1474,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         ? incidentDraft.assignmentGroupId
         : requestDraft.assignmentGroupId
       : '';
+  const selectedIncidentLookupEquipmentId =
+    incidentLookupKind === 'INCIDENT_EQUIPMENT' ? incidentDraft.ciId : '';
   const selectedTicketDetailLookupUserId =
     ticketDetailLookupKind === 'ASSIGNEE'
       ? assignmentDraft.assignedToUserId
@@ -1593,6 +1626,26 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   }
 
   function openIncidentLookup(kind: IncidentLookupKind): void {
+    if (kind === 'INCIDENT_EQUIPMENT') {
+      const selectedEquipmentIndex = filterIncidentLookupEquipment(
+        incidentEquipmentOptions,
+        '',
+        'IDENTIFIER',
+        ciTypesById,
+      ).findIndex((ci) => ci.id === incidentDraft.ciId);
+
+      setIncidentLookupKind(kind);
+      setIncidentLookupSearch('');
+      setIncidentLookupSearchField('IDENTIFIER');
+      setIncidentLookupPage(
+        selectedEquipmentIndex >= 0
+          ? Math.floor(selectedEquipmentIndex / INCIDENT_LOOKUP_PAGE_SIZE) + 1
+          : 1,
+      );
+
+      return;
+    }
+
     if (kind === 'ASSIGNMENT_GROUP') {
       const selectedGroupId =
         mode === 'INCIDENT'
@@ -1739,6 +1792,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     closeIncidentLookup();
   }
 
+  function handleIncidentEquipmentLookupSelect(ci: ReferentialCi): void {
+    handleIncidentFieldChange('ciId', ci.id);
+    closeIncidentLookup();
+  }
+
   function handleIncidentGroupLookupSelect(group: ReferentialGroup): void {
     if (mode === 'INCIDENT') {
       handleIncidentFieldChange('assignmentGroupId', group.id);
@@ -1858,7 +1916,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
           channelId: incidentChannelId,
 
-          ciId: null,
+          ciId: normalizeOptionalId(incidentDraft.ciId),
 
           description: incidentDraft.description.trim(),
 
@@ -3017,6 +3075,51 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     </label>
                   ) : null}
 
+                  {mode === 'INCIDENT' && session.user.role !== 'DEMANDEUR' ? (
+                    <label className="field ticket-create-order-incident-equipment">
+                      <span>Equipement concerne</span>
+
+                      <div
+                        className={
+                          incidentDraft.ciId
+                            ? 'incident-lookup-field has-clear'
+                            : 'incident-lookup-field'
+                        }
+                      >
+                        <input
+                          className={
+                            incidentDraft.ciId ? '' : 'lookup-placeholder'
+                          }
+                          placeholder="Choisir l'equipement"
+                          readOnly
+                          value={selectedIncidentEquipment?.name ?? ''}
+                        />
+
+                        {incidentDraft.ciId ? (
+                          <button
+                            aria-label="Retirer l'equipement concerne"
+                            onClick={() =>
+                              handleIncidentFieldChange('ciId', '')
+                            }
+                            type="button"
+                          >
+                            <X size={16} />
+                          </button>
+                        ) : null}
+
+                        <button
+                          aria-label="Rechercher un equipement"
+                          onClick={() =>
+                            openIncidentLookup('INCIDENT_EQUIPMENT')
+                          }
+                          type="button"
+                        >
+                          <Search size={18} />
+                        </button>
+                      </div>
+                    </label>
+                  ) : null}
+
                   {mode === 'INCIDENT' ? (
                     <>
                       <label className="field ticket-create-order-incident-impact">
@@ -3527,9 +3630,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           <h3>
                             {incidentLookupKind === 'ASSIGNMENT_GROUP'
                               ? 'Selectionner un groupe'
-                              : incidentLookupKind === 'ASSIGNEE'
-                                ? 'Selectionner un technicien'
-                                : 'Selectionner un demandeur'}
+                              : incidentLookupKind === 'INCIDENT_EQUIPMENT'
+                                ? 'Selectionner un equipement'
+                                : incidentLookupKind === 'ASSIGNEE'
+                                  ? 'Selectionner un technicien'
+                                  : 'Selectionner un demandeur'}
                           </h3>
                         </div>
 
@@ -3558,6 +3663,15 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             <>
                               <option value="NAME">Nom</option>
                             </>
+                          ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ? (
+                            <>
+                              <option value="NAME">Nom</option>
+                              <option value="TYPE">Type</option>
+                              <option value="STATUS">Statut</option>
+                              <option value="SERIAL_NUMBER">
+                                Numero de serie
+                              </option>
+                            </>
                           ) : (
                             <>
                               <option value="FIRST_NAME">Prenom</option>
@@ -3580,7 +3694,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       <div className="incident-lookup-table-scroll">
                         <table
                           className={
-                            incidentLookupKind === 'ASSIGNMENT_GROUP'
+                            incidentLookupKind === 'ASSIGNMENT_GROUP' ||
+                            incidentLookupKind === 'INCIDENT_EQUIPMENT'
                               ? 'incident-lookup-table'
                               : incidentLookupKind === 'ASSIGNEE'
                                 ? 'incident-lookup-table incident-lookup-table--assignee'
@@ -3593,6 +3708,15 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 <th>Identifiant</th>
                                 <th>Nom</th>
                                 <th>Description</th>
+                              </tr>
+                            ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ? (
+                              <tr>
+                                <th>Identifiant</th>
+                                <th>Nom</th>
+                                <th>Type</th>
+                                <th>Modele</th>
+                                <th>Statut</th>
+                                <th>Numero de serie</th>
                               </tr>
                             ) : (
                               <tr>
@@ -3645,6 +3769,59 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     <td>{group.description ?? '-'}</td>
                                   </tr>
                                 ))
+                              )
+                            ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ? (
+                              paginatedIncidentLookupEquipment.length === 0 ? (
+                                <tr>
+                                  <td colSpan={6}>
+                                    Aucun equipement disponible dans le parc
+                                    informatique pour le moment.
+                                  </td>
+                                </tr>
+                              ) : (
+                                paginatedIncidentLookupEquipment.map((ci) => {
+                                  const ciType = ciTypesById.get(ci.ciTypeId);
+
+                                  return (
+                                    <tr
+                                      aria-selected={
+                                        ci.id ===
+                                        selectedIncidentLookupEquipmentId
+                                      }
+                                      className={
+                                        ci.id ===
+                                        selectedIncidentLookupEquipmentId
+                                          ? 'incident-lookup-row is-selected'
+                                          : 'incident-lookup-row'
+                                      }
+                                      key={ci.id}
+                                      onClick={() =>
+                                        handleIncidentEquipmentLookupSelect(ci)
+                                      }
+                                      tabIndex={0}
+                                      onKeyDown={(event) => {
+                                        if (
+                                          event.key === 'Enter' ||
+                                          event.key === ' '
+                                        ) {
+                                          event.preventDefault();
+                                          handleIncidentEquipmentLookupSelect(
+                                            ci,
+                                          );
+                                        }
+                                      }}
+                                    >
+                                      <td className="incident-lookup-identity">
+                                        {ci.name}
+                                      </td>
+                                      <td>{ci.name}</td>
+                                      <td>{ciType?.name ?? 'Type inconnu'}</td>
+                                      <td>{ci.model ?? '-'}</td>
+                                      <td>{ci.status}</td>
+                                      <td>{ci.serialNumber ?? '-'}</td>
+                                    </tr>
+                                  );
+                                })
                               )
                             ) : paginatedIncidentLookupUsers.length === 0 ? (
                               <tr>
@@ -5153,6 +5330,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     <th>Identifiant</th>
                                     <th>Nom</th>
                                     <th>Type</th>
+                                    <th>Modele</th>
                                     <th>Statut</th>
                                     <th>Numero de serie</th>
                                   </tr>
@@ -5223,7 +5401,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   paginatedTicketDetailLookupEquipment.length ===
                                   0 ? (
                                     <tr>
-                                      <td colSpan={5}>
+                                      <td colSpan={6}>
                                         Aucun equipement ne correspond a la
                                         recherche.
                                       </td>
@@ -5273,6 +5451,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                             <td>
                                               {ciType?.name ?? 'Type inconnu'}
                                             </td>
+                                            <td>{ci.model ?? '-'}</td>
                                             <td>{ci.status}</td>
                                             <td>{ci.serialNumber ?? '-'}</td>
                                           </tr>

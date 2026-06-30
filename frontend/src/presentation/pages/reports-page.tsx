@@ -451,6 +451,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
       .map((ci) => ({
         displayId: formatEquipmentIdentifier(ci),
         id: ci.id,
+        model: ci.model ?? 'Non renseigne',
         name: ci.name,
         serialNumber: ci.serialNumber ?? 'Non renseigne',
         type: ciTypesById.get(ci.ciTypeId) ?? 'Non renseigne',
@@ -1622,6 +1623,8 @@ function PersonalEquipmentPanel({
 
                 <th>Type</th>
 
+                <th>Modèle</th>
+
                 <th>Numéro de série</th>
               </tr>
             </thead>
@@ -1629,7 +1632,7 @@ function PersonalEquipmentPanel({
             <tbody>
               {visibleEquipment.length === 0 ? (
                 <tr className="personal-equipment-empty-row">
-                  <td colSpan={4}>Aucun équipement à afficher.</td>
+                  <td colSpan={5}>Aucun équipement à afficher.</td>
                 </tr>
               ) : (
                 visibleEquipment.map((item) => (
@@ -1639,6 +1642,8 @@ function PersonalEquipmentPanel({
                     <td>{item.name}</td>
 
                     <td>{item.type}</td>
+
+                    <td>{item.model}</td>
 
                     <td>{item.serialNumber}</td>
                   </tr>

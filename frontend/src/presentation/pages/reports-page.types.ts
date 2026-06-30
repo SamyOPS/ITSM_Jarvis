@@ -33,6 +33,7 @@ export type PersonalTicketSort =
 export type PersonalEquipmentItem = {
   displayId: string;
   id: string;
+  model: string;
   name: string;
   serialNumber: string;
   type: string;
