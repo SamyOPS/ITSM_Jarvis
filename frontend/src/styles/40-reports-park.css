@@ -1235,6 +1235,13 @@
   min-width: 1120px;
 }
 
+.park-equipment-table th,
+.park-equipment-table td {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  word-break: normal;
+}
+
 .park-equipment-table th:first-child,
 .park-equipment-table td:first-child {
   width: 120px;
