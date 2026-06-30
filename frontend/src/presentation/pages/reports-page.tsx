@@ -1194,7 +1194,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
               navigateTo(`/agent/tickets/${ticketId}?from=reports-personal`)
             }
             prioritiesById={personalPrioritiesById}
-            title="Mes tickets"
+            title="Mes tickets demandés"
             tickets={requesterTickets}
             users={users}
           />

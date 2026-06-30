@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import { AppPagination } from '../components/app-pagination';
 
 import type { PlanningTask } from '../../domain/planning/planning-task';
 import {
@@ -82,6 +83,8 @@ const DURATION_OPTIONS = Array.from(
 
   (_, index) => (index + 1) * SLOT_MINUTES,
 );
+
+const USER_PICKER_PAGE_SIZE = 10;
 
 export function PlanningPage({
   onBack,
@@ -1115,6 +1118,8 @@ function PlanningEditor({
 
   const [isUserPickerOpen, setIsUserPickerOpen] = useState(false);
 
+  const [userPage, setUserPage] = useState(1);
+
   const [userSearch, setUserSearch] = useState('');
 
   const [startDate, startTime] = draft.start.split('T');
@@ -1124,6 +1129,15 @@ function PlanningEditor({
   );
 
   const filteredUsers = filterPlanningUsers(groupUsers, userSearch);
+  const totalUserPages = Math.max(
+    1,
+    Math.ceil(filteredUsers.length / USER_PICKER_PAGE_SIZE),
+  );
+  const visibleUserPage = Math.min(userPage, totalUserPages);
+  const paginatedUsers = filteredUsers.slice(
+    (visibleUserPage - 1) * USER_PICKER_PAGE_SIZE,
+    visibleUserPage * USER_PICKER_PAGE_SIZE,
+  );
 
   return (
     <div className="planning-editor-overlay">
@@ -1312,7 +1326,10 @@ function PlanningEditor({
             <Search size={17} />
 
             <input
-              onChange={(event) => setUserSearch(event.target.value)}
+              onChange={(event) => {
+                setUserSearch(event.target.value);
+                setUserPage(1);
+              }}
               placeholder="Rechercher"
               value={userSearch}
             />
@@ -1335,7 +1352,7 @@ function PlanningEditor({
               </thead>
 
               <tbody>
-                {filteredUsers.map((user) => (
+                {paginatedUsers.map((user) => (
                   <tr
                     className={
                       user.id === draft.technicianId ? 'is-selected' : ''
@@ -1361,6 +1378,15 @@ function PlanningEditor({
               </tbody>
             </table>
           </div>
+
+          <AppPagination
+            className="planning-user-picker-pagination"
+            onPageChange={setUserPage}
+            page={visibleUserPage}
+            scrollToTop={false}
+            summary={`Page ${visibleUserPage} sur ${totalUserPages} - ${filteredUsers.length} utilisateurs`}
+            totalPages={totalUserPages}
+          />
         </section>
       ) : null}
     </div>

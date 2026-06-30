@@ -45,6 +45,10 @@ import {
   uploadKnowledgeArticleAttachmentBinary,
 } from '../../infrastructure/api/knowledge-api';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
+import {
+  getPageQueryParam,
+  withPageQuery,
+} from '../helpers/pagination-route.helpers';
 import { KnowledgeArticleCard } from './knowledge-article-card';
 import {
   EMPTY_FORM,
@@ -82,7 +86,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   const [statusFilter, setStatusFilter] = useState('');
   const [sortBy, setSortBy] = useState<KnowledgeSortOption>('NEWEST');
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => getPageQueryParam());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [attachmentErrorMessage, setAttachmentErrorMessage] = useState<
     string | null
@@ -105,6 +109,10 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   const [attachmentInputKey, setAttachmentInputKey] = useState(0);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const isAdmin = session.user.role === 'ADMIN';
+  const articleListBackPath = withPageQuery(
+    '/knowledge/articles',
+    getPageQueryParam('fromPage'),
+  );
 
   const loadArticles = useCallback(async (): Promise<void> => {
     setIsLoading(true);
@@ -582,7 +590,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
       closeModal();
 
       if (wasViewing) {
-        navigateTo('/knowledge/articles');
+        navigateTo(articleListBackPath);
       }
     } catch (error) {
       setErrorMessage(
@@ -1066,7 +1074,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
           <div className="kb-detail-nav">
             <button
               className="tdp-back-btn kb-inline-button"
-              onClick={() => navigateTo('/knowledge/articles')}
+              onClick={() => navigateTo(articleListBackPath)}
               type="button"
             >
               <ArrowLeft size={16} />
@@ -1357,6 +1365,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                   onToggleLike={(currentArticleId, event) => {
                     void handleToggleLike(currentArticleId, event);
                   }}
+                  page={visiblePage}
                 />
               ))}
             </div>

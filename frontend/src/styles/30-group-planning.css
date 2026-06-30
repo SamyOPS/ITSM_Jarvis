@@ -1307,7 +1307,7 @@
   width: min(940px, calc(100vw - 40px));
   max-height: min(620px, calc(100vh - 48px));
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   transform: translate(-50%, -50%);
   border: 1px solid rgba(207, 216, 234, 0.95);
   border-radius: 18px;
@@ -1370,7 +1370,7 @@
 
 .planning-user-picker-table-scroll {
   overflow: auto;
-  padding: 0 20px 20px;
+  padding: 0 20px 12px;
 }
 
 .planning-user-picker-table {
@@ -1406,6 +1406,10 @@
 .planning-user-picker-table tbody tr:hover,
 .planning-user-picker-table tbody tr.is-selected {
   background: #f7f8f9;
+}
+
+.planning-user-picker-pagination {
+  padding: 0 20px 18px;
 }
 
 .planning-duration-trigger {

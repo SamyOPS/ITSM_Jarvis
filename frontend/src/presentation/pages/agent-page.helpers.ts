@@ -255,11 +255,11 @@ export function getTicketListTitle(
   }
 
   if (section === 'MY_TICKETS') {
-    return 'Mes tickets';
+    return 'Mes tickets demandés';
   }
 
   if (section === 'LIST' && userRole === 'DEMANDEUR') {
-    return 'Mes tickets';
+    return 'Mes tickets demandés';
   }
 
   return 'Liste des tickets';

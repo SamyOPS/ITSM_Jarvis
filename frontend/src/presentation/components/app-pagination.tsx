@@ -6,6 +6,7 @@ type AppPaginationProps = {
   className?: string;
   onPageChange: (page: number) => void;
   page: number;
+  scrollToTop?: boolean;
   summary?: string;
   totalPages: number;
 };
@@ -64,6 +65,7 @@ export function AppPagination({
   className,
   onPageChange,
   page,
+  scrollToTop = true,
   summary,
   totalPages,
 }: AppPaginationProps) {
@@ -79,7 +81,9 @@ export function AppPagination({
     }
 
     onPageChange(targetPage);
-    window.scrollTo({ behavior: 'smooth', top: 0 });
+    if (scrollToTop) {
+      window.scrollTo({ behavior: 'smooth', top: 0 });
+    }
   }
 
   function handleEllipsisClick(direction: 'backward' | 'forward'): void {

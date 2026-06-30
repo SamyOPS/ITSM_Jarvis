@@ -8,6 +8,7 @@ import {
 import { ThumbsUp } from 'lucide-react';
 import type { KnowledgeArticle } from '../../domain/knowledge/knowledge-article';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
+import { withReturnPageQuery } from '../helpers/pagination-route.helpers';
 import { formatDate } from './knowledge-page.helpers';
 
 type KnowledgeArticleCardProps = {
@@ -17,12 +18,14 @@ type KnowledgeArticleCardProps = {
     articleId: string,
     event: MouseEvent<HTMLButtonElement>,
   ) => void;
+  page: number;
 };
 
 export function KnowledgeArticleCard({
   article,
   isLiking,
   onToggleLike,
+  page,
 }: KnowledgeArticleCardProps) {
   const titleRef = useRef<HTMLElement | null>(null);
   const [excerptLineClamp, setExcerptLineClamp] = useState(3);
@@ -67,11 +70,17 @@ export function KnowledgeArticleCard({
   return (
     <article
       className="kb-card"
-      onClick={() => navigateTo(`/knowledge/articles/${article.id}`)}
+      onClick={() =>
+        navigateTo(
+          withReturnPageQuery(`/knowledge/articles/${article.id}`, page),
+        )
+      }
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          navigateTo(`/knowledge/articles/${article.id}`);
+          navigateTo(
+            withReturnPageQuery(`/knowledge/articles/${article.id}`, page),
+          );
         }
       }}
       role="button"
