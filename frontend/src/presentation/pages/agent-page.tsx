@@ -612,13 +612,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     let cancelled = false;
 
     async function loadUserDirectory(): Promise<void> {
-      if (session.user.role === 'DEMANDEUR') {
-        if (!cancelled) {
-          setUserDirectory([]);
-        }
-        return;
-      }
-
       try {
         const users = await fetchUserDirectory(session.accessToken);
 
@@ -637,7 +630,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [session.accessToken, session.user.role]);
+  }, [session.accessToken]);
 
   useEffect(() => {
     setTicketPage(1);
@@ -3106,7 +3099,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     </label>
                   ) : null}
 
-                  {mode === 'INCIDENT' && session.user.role !== 'DEMANDEUR' ? (
+                  {mode === 'INCIDENT' ? (
                     <label className="field ticket-create-order-incident-equipment">
                       <span>Equipement concerne</span>
 

@@ -570,10 +570,6 @@
 .kb-upload-zone {
   display: grid;
   gap: 10px;
-  padding: 18px;
-  border: 1px dashed rgba(158, 188, 236, 0.95);
-  border-radius: 16px;
-  background: rgba(241, 246, 255, 0.56);
   transition:
     border-color 160ms ease,
     background-color 160ms ease;
@@ -584,48 +580,9 @@
   background: rgba(226, 238, 255, 0.86);
 }
 
-.kb-upload-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.kb-upload-hint {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.88rem;
-  line-height: 1.5;
-}
-
-.kb-pending-file-list,
 .kb-attachment-list {
   display: grid;
   gap: 10px;
-}
-
-.kb-pending-file-chip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid rgba(207, 216, 234, 0.9);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.92);
-  color: #17335f;
-}
-
-.kb-pending-file-chip button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid rgba(220, 38, 38, 0.16);
-  border-radius: 999px;
-  background: rgba(254, 242, 242, 0.92);
-  color: #dc2626;
 }
 
 .kb-attachments-card {
@@ -674,14 +631,20 @@
 }
 
 .kb-attachment-item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 14px 16px;
-  border: 1px solid rgba(207, 216, 234, 0.9);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.94);
+  padding: 12px 40px 12px 16px;
+  border: 1px solid rgba(207, 216, 234, 0.65);
+  border-radius: 14px;
+  background: #f8fafc;
+  transition: border-color 0.15s;
+}
+
+.kb-attachment-item:hover {
+  border-color: rgba(25, 86, 179, 0.22);
 }
 
 .kb-attachment-item-copy {
@@ -696,20 +659,31 @@
 }
 
 .kb-attachment-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  width: fit-content;
+  display: block;
+  width: 100%;
   min-width: 0;
   padding: 0;
   border: 0;
   background: transparent;
-  color: #1c4fb0;
-  font-size: 0.95rem;
-  font-weight: 700;
+  color: #0f5bd7;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
   text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.kb-attachment-link:hover:not(:disabled) {
+  color: #174ea6;
   text-decoration: underline;
-  overflow-wrap: anywhere;
+}
+
+.kb-attachment-link:disabled {
+  cursor: progress;
+  opacity: 0.7;
 }
 
 .kb-attachment-item-actions {
@@ -717,6 +691,12 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.kb-attachment-item-actions .tdp-attachment-remove-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
 }
 
 @media (max-width: 1280px) {

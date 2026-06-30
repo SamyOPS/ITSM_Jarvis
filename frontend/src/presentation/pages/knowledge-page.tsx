@@ -11,7 +11,6 @@ import {
 } from 'react';
 import {
   ArrowLeft,
-  Download,
   Eye,
   FileText,
   Paperclip,
@@ -913,6 +912,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                       <div className="kb-attachment-item-copy">
                         <button
                           className="kb-attachment-link"
+                          disabled={downloadingAttachmentId === attachment.id}
                           onClick={() =>
                             void handleDownloadAttachment(attachment)
                           }
@@ -928,29 +928,15 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
 
                       <div className="kb-attachment-item-actions">
                         <button
-                          className="secondary-button"
-                          disabled={downloadingAttachmentId === attachment.id}
-                          onClick={() =>
-                            void handleDownloadAttachment(attachment)
-                          }
-                          type="button"
-                        >
-                          {downloadingAttachmentId === attachment.id
-                            ? 'Téléchargement...'
-                            : 'Télécharger'}
-                        </button>
-
-                        <button
-                          className="tdp-delete-btn"
+                          aria-label={`Supprimer ${attachment.fileName}`}
+                          className="tdp-attachment-remove-btn"
                           disabled={deletingAttachmentId === attachment.id}
                           onClick={() =>
                             void handleDeleteAttachment(attachment)
                           }
                           type="button"
                         >
-                          {deletingAttachmentId === attachment.id
-                            ? 'Suppression...'
-                            : 'Supprimer'}
+                          <X size={12} />
                         </button>
                       </div>
                     </div>
@@ -961,8 +947,8 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               <div
                 className={
                   isAttachmentDragOver
-                    ? 'kb-upload-zone is-dragover'
-                    : 'kb-upload-zone'
+                    ? 'ticket-upload-zone kb-upload-zone is-dragover'
+                    : 'ticket-upload-zone kb-upload-zone'
                 }
                 onDragEnter={(event) => {
                   event.preventDefault();
@@ -979,7 +965,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                 }}
                 onDrop={handleAttachmentDrop}
               >
-                <div className="kb-upload-actions">
+                <div className="ticket-upload-actions">
                   <label className="ticket-upload-button">
                     Choisir des fichiers
                     <input
@@ -997,33 +983,37 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                   </span>
                 </div>
 
-                <p className="kb-upload-hint">
-                  Glissez et déposez vos fichiers ici, ou sélectionnez des
-                  fichiers. 2 Mo max par fichier.
-                </p>
-              </div>
+                {form.attachments.length > 0 ? (
+                  <div className="ticket-file-list">
+                    {form.attachments.map((file) => {
+                      const fileKey = getLocalFileKey(file);
 
-              {form.attachments.length > 0 ? (
-                <div className="kb-pending-file-list">
-                  {form.attachments.map((file) => {
-                    const fileKey = getLocalFileKey(file);
-
-                    return (
-                      <div className="kb-pending-file-chip" key={fileKey}>
-                        <span>
-                          {file.name} ({formatFileSize(file.size)})
+                      return (
+                        <span className="ticket-file-chip" key={fileKey}>
+                          <span>
+                            {file.name} ({formatFileSize(file.size)})
+                          </span>
+                          <button
+                            aria-label={`Retirer ${file.name}`}
+                            onClick={() => removeDraftAttachment(file)}
+                            type="button"
+                          >
+                            ×
+                          </button>
                         </span>
-                        <button
-                          onClick={() => removeDraftAttachment(file)}
-                          type="button"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                <div className="ticket-upload-note ticket-upload-note--stacked">
+                  <span>
+                    Glissez et déposez vos fichiers ici, ou sélectionnez des
+                    fichiers.
+                  </span>
+                  <span>2 Mo max par fichier.</span>
                 </div>
-              ) : null}
+              </div>
 
               {attachmentErrorMessage ? (
                 <p className="tdp-form-error">{attachmentErrorMessage}</p>
@@ -1156,6 +1146,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                     <div className="kb-attachment-item-copy">
                       <button
                         className="kb-attachment-link"
+                        disabled={downloadingAttachmentId === attachment.id}
                         onClick={() =>
                           void handleDownloadAttachment(attachment)
                         }
@@ -1170,32 +1161,17 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                     </div>
 
                     <div className="kb-attachment-item-actions">
-                      <button
-                        className="secondary-button kb-inline-button"
-                        disabled={downloadingAttachmentId === attachment.id}
-                        onClick={() =>
-                          void handleDownloadAttachment(attachment)
-                        }
-                        type="button"
-                      >
-                        <Download size={15} />
-                        {downloadingAttachmentId === attachment.id
-                          ? 'Téléchargement...'
-                          : 'Télécharger'}
-                      </button>
-
                       {isAdmin ? (
                         <button
-                          className="tdp-delete-btn"
+                          aria-label={`Supprimer ${attachment.fileName}`}
+                          className="tdp-attachment-remove-btn"
                           disabled={deletingAttachmentId === attachment.id}
                           onClick={() =>
                             void handleDeleteAttachment(attachment)
                           }
                           type="button"
                         >
-                          {deletingAttachmentId === attachment.id
-                            ? 'Suppression...'
-                            : 'Supprimer'}
+                          <X size={12} />
                         </button>
                       ) : null}
                     </div>
