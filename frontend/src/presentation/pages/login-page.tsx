@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useMemo, useState } from 'react';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 
 type LoginPageProps = {
@@ -14,8 +14,9 @@ export function LoginPage({
   onPasswordResetRequest,
   onSubmit,
 }: LoginPageProps) {
-  const [email, setEmail] = useState('');
-  const [forgotEmail, setForgotEmail] = useState('');
+  const prefilledEmail = useMemo(() => readPrefilledEmail(), []);
+  const [email, setEmail] = useState(prefilledEmail);
+  const [forgotEmail, setForgotEmail] = useState(prefilledEmail);
   const [forgotMessage, setForgotMessage] = useState<string | null>(null);
   const [forgotMode, setForgotMode] = useState(false);
   const [isForgotBusy, setIsForgotBusy] = useState(false);
@@ -179,6 +180,13 @@ export function LoginPage({
       </section>
     </section>
   );
+}
+
+function readPrefilledEmail(): string {
+  const queryParams = new URLSearchParams(window.location.search);
+  const email = queryParams.get('email');
+
+  return email?.trim() ?? '';
 }
 
 function LoginAuthIcon() {
