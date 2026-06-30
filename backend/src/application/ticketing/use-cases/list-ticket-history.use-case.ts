@@ -43,9 +43,9 @@ export class ListTicketHistoryUseCase {
     const [ticket, userProfile] = await Promise.all([
       this.ticketReadRepository.getTicketById(normalizedTicketId),
       requesterUserRole === UserRole.AGENT
-        ? this.userAssignmentProfileRepository?.getById(
+        ? (this.userAssignmentProfileRepository?.getById(
             normalizedRequesterUserId,
-          ) ?? Promise.resolve(null)
+          ) ?? Promise.resolve(null))
         : Promise.resolve(null),
     ]);
 

@@ -30,7 +30,9 @@ export function assertTicketAccess(params: {
   }
 
   if (params.userRole === UserRole.AGENT) {
-    if (canAgentAccessTicket(params.ticket, params.userId, params.userProfile)) {
+    if (
+      canAgentAccessTicket(params.ticket, params.userId, params.userProfile)
+    ) {
       return;
     }
 
