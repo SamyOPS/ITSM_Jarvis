@@ -73,7 +73,7 @@ export function getRouteDisplayTitle(
   session: AuthSessionSnapshot | null,
 ): string {
   if (routePath === '/agent/tickets' && session?.user.role === 'DEMANDEUR') {
-    return 'Mes tickets';
+    return 'Mes tickets demandés';
   }
 
   if (routePath === '/agent/tickets') {

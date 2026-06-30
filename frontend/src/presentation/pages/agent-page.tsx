@@ -75,6 +75,11 @@ import {
   uploadTicketAttachmentBinary,
 } from '../../infrastructure/api/ticketing-api';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
+import {
+  getPageQueryParam,
+  withPageQuery,
+  withReturnPageQuery,
+} from '../helpers/pagination-route.helpers';
 import { TicketDetailSectionPanel } from './agent-page.components';
 import {
   asTicketStatus,
@@ -463,7 +468,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   });
 
   const [tickets, setTickets] = useState<TicketSummarySnapshot[]>([]);
-  const [ticketPage, setTicketPage] = useState(1);
+  const [ticketPage, setTicketPage] = useState(() => getPageQueryParam());
   const [userDirectory, setUserDirectory] = useState<AdminUserSummary[]>([]);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [incidentLookupKind, setIncidentLookupKind] =
@@ -525,12 +530,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       ? incidentCreationAttachmentFiles
       : requestCreationAttachmentFiles;
   const detailBackPath = isArchiveDetailPage
-    ? '/agent/archives'
+    ? withPageQuery('/agent/archives', getPageQueryParam('fromPage'))
     : detailOrigin === 'reports-personal'
       ? '/reports?view=PERSONAL'
       : detailOrigin === 'reports-group'
         ? '/reports?view=GROUP'
-        : '/agent/tickets';
+        : withPageQuery('/agent/tickets', getPageQueryParam('fromPage'));
   const searchedTickets = useMemo(
     () =>
       filterTicketsByListSearch(
@@ -2503,7 +2508,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       setSelectedTicketDetail(null);
       setSelectedTicketComments([]);
       setSelectedTicketAttachments([]);
-      navigateTo('/agent/tickets');
+      navigateTo(detailBackPath);
     } catch (error) {
       setDetailActionErrorMessage(
         error instanceof Error
@@ -4210,8 +4215,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 onClick={() =>
                                   navigateTo(
                                     isArchiveListPage
-                                      ? `/agent/archives/${ticket.id}`
-                                      : `/agent/tickets/${ticket.id}`,
+                                      ? withReturnPageQuery(
+                                          `/agent/archives/${ticket.id}`,
+                                          ticketPage,
+                                        )
+                                      : withReturnPageQuery(
+                                          `/agent/tickets/${ticket.id}`,
+                                          ticketPage,
+                                        ),
                                   )
                                 }
                               >

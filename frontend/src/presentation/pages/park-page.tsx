@@ -36,6 +36,11 @@ import {
 } from '../../infrastructure/api/referentials-api';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 import {
+  getPageQueryParam,
+  withPageQuery,
+  withReturnPageQuery,
+} from '../helpers/pagination-route.helpers';
+import {
   CI_STATUS_OPTIONS,
   EMPTY_CATALOG,
   EMPTY_EQUIPMENT_FORM,
@@ -153,7 +158,7 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [filters, setFilters] = useState<EquipmentFilters>(INITIAL_FILTERS);
-  const [equipmentPage, setEquipmentPage] = useState(1);
+  const [equipmentPage, setEquipmentPage] = useState(() => getPageQueryParam());
   const [equipmentSortBy, setEquipmentSortBy] =
     useState<EquipmentSortOption>('CREATED_AT_DESC');
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
@@ -474,7 +479,7 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
       await loadParkData();
       setFormMessage('Equipement supprime.');
       if (mode === 'DETAIL') {
-        navigateTo('/parc/cis');
+        navigateTo(detailBackPath);
       }
     } catch (error) {
       setFormMessage(
@@ -489,6 +494,10 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
 
   const isCreateMode = mode === 'CREATE';
   const isDetailMode = mode === 'DETAIL';
+  const detailBackPath = withPageQuery(
+    '/parc/cis',
+    getPageQueryParam('fromPage'),
+  );
 
   return (
     <section className="reports-page">
@@ -508,7 +517,7 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                 <div className="tdp-topbar-left">
                   <button
                     className="tdp-back-btn"
-                    onClick={() => navigateTo('/parc/cis')}
+                    onClick={() => navigateTo(detailBackPath)}
                     type="button"
                   >
                     <ArrowLeft size={15} />
@@ -1276,6 +1285,7 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                             ci={ci}
                             ciType={ciTypesById.get(ci.ciTypeId) ?? null}
                             key={ci.id}
+                            page={equipmentPage}
                             user={
                               ci.assignedUserId
                                 ? (usersById.get(ci.assignedUserId) ?? null)
@@ -1306,20 +1316,24 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
 function EquipmentRow({
   ci,
   ciType,
+  page,
   user,
 }: {
   ci: ReferentialCi;
   ciType: ReferentialCiType | null;
+  page: number;
   user: AdminUserSummary | null;
 }) {
   return (
     <tr
       className="ticket-table-row park-equipment-row park-equipment-row--clickable"
-      onClick={() => navigateTo(`/parc/cis/${ci.id}`)}
+      onClick={() =>
+        navigateTo(withReturnPageQuery(`/parc/cis/${ci.id}`, page))
+      }
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          navigateTo(`/parc/cis/${ci.id}`);
+          navigateTo(withReturnPageQuery(`/parc/cis/${ci.id}`, page));
         }
       }}
       tabIndex={0}
