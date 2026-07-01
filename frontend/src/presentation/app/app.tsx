@@ -91,7 +91,7 @@ function renderPage({
 
   switch (route.path) {
     case '/':
-      if (session && getHomeRoute(session) === '/reports') {
+      if (session) {
         return <ReportsPage session={session} />;
       }
 

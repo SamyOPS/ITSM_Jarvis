@@ -30,6 +30,15 @@ export type PersonalTicketSort =
   | 'CREATED_AT_DESC'
   | 'OPERATIONAL_PRIORITY';
 
+export type PersonalTicketColumn =
+  | 'ASSIGNED_TO'
+  | 'CATEGORY'
+  | 'ID'
+  | 'PRIORITY'
+  | 'REQUESTER'
+  | 'STATUS'
+  | 'TITLE';
+
 export type PersonalEquipmentItem = {
   displayId: string;
   id: string;
