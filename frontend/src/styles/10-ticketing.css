@@ -1630,7 +1630,6 @@
     padding: 18px 16px;
   }
 
-  .workspace-topbar,
   .workspace-topbar-actions,
   .auth-hero-card {
     flex-direction: column;
@@ -3189,16 +3188,17 @@
 
 @media (max-width: 1080px) {
   .workspace-topbar {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .workspace-topbar-copy,
-  .workspace-topbar-actions {
+  .workspace-topbar-copy {
     justify-content: flex-start;
   }
 
   .workspace-topbar-actions {
-    flex-wrap: wrap;
+    justify-content: flex-end;
+    flex-direction: row;
+    flex-wrap: nowrap;
   }
 }
 
@@ -3976,4 +3976,92 @@
 
 .workspace-profile-trigger.is-compact .workspace-profile-copy {
   display: none;
+}
+
+@media (max-width: 1440px) {
+  .app-main--workspace {
+    padding: 18px 18px 26px;
+  }
+
+  .ticket-workspace-shell {
+    grid-template-columns: 232px minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .ticket-app-sidebar {
+    padding: 18px 14px;
+    border-radius: 22px;
+  }
+
+  .ticket-workspace-topbar {
+    padding: 18px 20px;
+    border-radius: 22px;
+  }
+
+  .ticket-form-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ticket-form-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
+  }
+}
+
+@media (max-width: 1180px) {
+  .ticket-workspace-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ticket-app-sidebar {
+    position: static;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ticket-app-sidebar-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ticket-workspace-topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ticket-workspace-searchbar {
+    min-width: 0;
+  }
+
+  .ticket-detail-layout,
+  .ticket-form-layout,
+  .tdp-modern-content,
+  .tdp-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tdp-modern-content {
+    height: auto;
+    min-height: 0;
+  }
+
+  .tdp-chat-panel,
+  .tdp-editor-panel {
+    min-height: 460px;
+  }
+
+  .tdp-sidebar {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+@media (max-width: 980px) {
+  .ticket-app-sidebar-nav,
+  .ticket-form-summary,
+  .ticket-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ticket-form-span-2 {
+    grid-column: auto;
+  }
 }

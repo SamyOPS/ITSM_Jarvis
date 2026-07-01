@@ -1688,6 +1688,58 @@ a {
   letter-spacing: 0.08em;
 }
 
+@media (max-width: 1440px) {
+  .app-main--workspace {
+    padding: 22px;
+  }
+
+  .auth-metrics-grid,
+  .referentials-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .referentials-layout {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+
+  .referentials-content {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.76fr);
+  }
+
+  .admin-users-toolbar {
+    grid-template-columns: minmax(220px, 1fr) minmax(160px, 220px) auto;
+  }
+}
+
+@media (max-width: 1180px) {
+  .app-main--workspace {
+    padding: 18px;
+  }
+
+  .app-header,
+  .referentials-card-header,
+  .admin-group-members-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .auth-grid,
+  .referentials-layout,
+  .referentials-content,
+  .admin-users-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .referentials-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-users-trash-toggle {
+    justify-content: flex-start;
+    min-width: 0;
+  }
+}
+
 @media (max-width: 720px) {
   .app-pagination {
     justify-content: center;
