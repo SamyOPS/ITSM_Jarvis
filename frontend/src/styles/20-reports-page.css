@@ -420,6 +420,48 @@
   border-radius: 14px 14px 0 0;
 }
 
+@media (max-width: 1440px) {
+  .personal-view-grid {
+    gap: 12px;
+  }
+
+  .personal-ticket-panel,
+  .personal-planning-panel,
+  .personal-equipment-panel {
+    height: 330px;
+    min-height: 330px;
+  }
+
+  .personal-ticket-table th,
+  .personal-ticket-table td {
+    padding-inline: 10px;
+    font-size: 0.8rem;
+  }
+
+  .personal-planning-panel .planning-agenda-row {
+    grid-template-columns: 108px minmax(0, 1fr) 126px 64px;
+    padding-inline: 10px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .personal-view-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .personal-ticket-panel,
+  .personal-planning-panel,
+  .personal-equipment-panel {
+    height: auto;
+    min-height: 320px;
+  }
+
+  .personal-ticket-viewport,
+  .personal-equipment-viewport {
+    height: 240px;
+  }
+}
+
 .personal-planning-panel .personal-panel-header {
   min-height: 54px;
 }
