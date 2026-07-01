@@ -687,30 +687,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   }, [showListPanel, ticketPage, totalTicketPages]);
 
   useEffect(() => {
-    if (!showListPanel) {
-      return;
-    }
-
-    if (!selectedTicketId) {
-      return;
-    }
-
-    const selectedIndex = searchedTickets.findIndex(
-      (ticket) => ticket.id === selectedTicketId,
-    );
-
-    if (selectedIndex === -1) {
-      return;
-    }
-
-    const nextPage = Math.floor(selectedIndex / TICKETS_PER_PAGE) + 1;
-
-    if (nextPage !== ticketPage) {
-      setTicketPage(nextPage);
-    }
-  }, [searchedTickets, showListPanel, selectedTicketId, ticketPage]);
-
-  useEffect(() => {
     if (isIncidentCreatePage) {
       setMode('INCIDENT');
       return;
@@ -1124,6 +1100,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           normalizeSearchText(REQUEST_DEFAULT_CATEGORY_NAME),
       ),
     [catalog.categories],
+  );
+
+  const ticketDetailCategoryOptions = useMemo(
+    () =>
+      selectedTicketDetail?.ticket.type === 'REQUEST'
+        ? incidentCategoryOptions
+        : catalog.categories,
+    [catalog.categories, incidentCategoryOptions, selectedTicketDetail],
   );
 
   const prioritiesById = useMemo(
@@ -2330,11 +2314,22 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       }
 
       if (canEditTicket) {
+        const nextCategoryId = ticketEditDraft.categoryId.trim();
+
+        if (
+          !nextCategoryId ||
+          (nextSelectedTicketDetail.ticket.type === 'REQUEST' &&
+            nextCategoryId === requestDefaultCategory?.id)
+        ) {
+          setDetailActionErrorMessage('Veuillez choisir une categorie.');
+          return;
+        }
+
         const updatedTicket = await updateTicket(
           session.accessToken,
           nextSelectedTicketDetail.ticket.id,
           {
-            categoryId: ticketEditDraft.categoryId.trim(),
+            categoryId: nextCategoryId,
             channelId: normalizeOptionalId(ticketEditDraft.channelId),
             ciId: selectedTicketDetail.incident
               ? normalizeOptionalId(ticketEditDraft.ciId)
@@ -3563,7 +3558,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             Choisir une categorie
                           </option>
 
-                          {catalog.categories.map((category) => (
+                          {incidentCategoryOptions.map((category) => (
                             <option key={category.id} value={category.id}>
                               {category.name}
                             </option>
@@ -4456,7 +4451,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                                       {canDeleteComment ? (
                                         <button
-                                          className="tdp-delete-btn"
+                                          aria-label="Supprimer le commentaire"
+                                          className="tdp-comment-delete-btn"
                                           disabled={
                                             deletingCommentId === comment.id
                                           }
@@ -4465,9 +4461,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                           }
                                           type="button"
                                         >
-                                          {deletingCommentId === comment.id
-                                            ? 'Suppression...'
-                                            : 'Supprimer'}
+                                          <X size={14} />
                                         </button>
                                       ) : null}
                                     </div>
@@ -4555,14 +4549,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   }
                                   value={ticketEditDraft.categoryId}
                                 >
-                                  {catalog.categories.map((category) => (
-                                    <option
-                                      key={category.id}
-                                      value={category.id}
-                                    >
-                                      {category.name}
-                                    </option>
-                                  ))}
+                                  {ticketDetailCategoryOptions.map(
+                                    (category) => (
+                                      <option
+                                        key={category.id}
+                                        value={category.id}
+                                      >
+                                        {category.name}
+                                      </option>
+                                    ),
+                                  )}
                                 </select>
                               ) : (
                                 <strong>
@@ -5582,7 +5578,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               >
                                 <option value="">Choisir une catégorie</option>
 
-                                {catalog.categories.map((category) => (
+                                {ticketDetailCategoryOptions.map((category) => (
                                   <option key={category.id} value={category.id}>
                                     {category.name}
                                   </option>
@@ -6051,7 +6047,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                                       {canDeleteComment ? (
                                         <button
-                                          className="tdp-delete-btn"
+                                          aria-label="Supprimer le commentaire"
+                                          className="tdp-comment-delete-btn"
                                           disabled={
                                             deletingCommentId === comment.id
                                           }
@@ -6060,9 +6057,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                           }
                                           type="button"
                                         >
-                                          {deletingCommentId === comment.id
-                                            ? 'Suppression...'
-                                            : 'Supprimer'}
+                                          <X size={14} />
                                         </button>
                                       ) : null}
                                     </div>
