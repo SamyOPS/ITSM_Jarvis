@@ -2056,11 +2056,12 @@
 }
 
 .tdp-chat-bubble {
+  position: relative;
   width: 100%;
   flex: 1;
   display: grid;
   gap: 8px;
-  padding: 12px 14px;
+  padding: 12px 38px 12px 14px;
   border: 1px solid rgba(190, 210, 242, 0.86);
   border-radius: 14px;
   background: #ffffff;
@@ -2667,11 +2668,12 @@
 }
 
 .tdp-comment-body {
+  position: relative;
   flex: 1;
   min-width: 0;
   display: grid;
   gap: 8px;
-  padding: 11px 14px;
+  padding: 11px 38px 11px 14px;
   border-radius: 0 14px 14px 14px;
   background: #f8fafc;
   border: 1px solid rgba(207, 216, 234, 0.7);
@@ -2738,6 +2740,37 @@
 
 .tdp-delete-btn:hover:not(:disabled) {
   background: rgba(220, 50, 50, 0.07);
+}
+
+.tdp-comment-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.tdp-comment-delete-btn:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.07);
+  border-color: rgba(220, 38, 38, 0.16);
+}
+
+.tdp-comment-delete-btn:disabled {
+  cursor: wait;
+  opacity: 0.45;
 }
 
 .tdp-toggle {
