@@ -926,7 +926,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           description: nextTicket.ticket.description,
           impact: nextTicket.incident?.impact ?? 'MEDIUM',
           priorityId: nextTicket.ticket.priorityId,
-          requestedForUserId: nextTicket.ticket.requestedForUserId ?? '',
+          requestedForUserId:
+            nextTicket.ticket.requestedForUserId ??
+            nextTicket.ticket.createdByUserId,
           rootCause: nextTicket.incident?.rootCause ?? '',
           title: nextTicket.ticket.title,
           urgency: nextTicket.incident?.urgency ?? 'MEDIUM',
@@ -1361,8 +1363,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const selectedTicketDetailGroup = groupsById.get(
     assignmentDraft.assignmentGroupId,
   );
+  const selectedTicketDetailRequesterId =
+    ticketEditDraft.requestedForUserId ||
+    selectedTicketDetail?.ticket.requestedForUserId ||
+    selectedTicketDetail?.ticket.createdByUserId ||
+    '';
   const selectedTicketDetailRequester = usersById.get(
-    ticketEditDraft.requestedForUserId,
+    selectedTicketDetailRequesterId,
   );
   const selectedTicketDetailEquipment = cisById.get(ticketEditDraft.ciId);
   const ticketDetailLookupTechnicians = useMemo(
@@ -2337,7 +2344,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
               ? ticketEditDraft.impact
               : undefined,
             requestedForUserId: normalizeOptionalId(
-              ticketEditDraft.requestedForUserId,
+              ticketEditDraft.requestedForUserId ||
+                selectedTicketDetail.ticket.requestedForUserId ||
+                selectedTicketDetail.ticket.createdByUserId,
             ),
             rootCause: selectedTicketDetail.incident
               ? normalizeOptionalText(ticketEditDraft.rootCause)
@@ -2456,7 +2465,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         impact: selectedTicketDetail.incident?.impact ?? 'MEDIUM',
         priorityId: selectedTicketDetail.ticket.priorityId,
         requestedForUserId:
-          selectedTicketDetail.ticket.requestedForUserId ?? '',
+          selectedTicketDetail.ticket.requestedForUserId ??
+          selectedTicketDetail.ticket.createdByUserId,
         rootCause: selectedTicketDetail.incident?.rootCause ?? '',
         title: selectedTicketDetail.ticket.title,
         urgency: selectedTicketDetail.incident?.urgency ?? 'MEDIUM',
@@ -4803,15 +4813,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 </div>
                               ) : (
                                 <strong>
-                                  {selectedTicketDetail.ticket
-                                    .requestedForUserId
+                                  {selectedTicketDetailRequesterId
                                     ? formatKnownUserName(
-                                        usersById.get(
-                                          selectedTicketDetail.ticket
-                                            .requestedForUserId,
-                                        ),
-                                        selectedTicketDetail.ticket
-                                          .requestedForUserId,
+                                        selectedTicketDetailRequester,
+                                        selectedTicketDetailRequesterId,
                                       )
                                     : 'Non renseigne'}
                                 </strong>
@@ -5737,8 +5742,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             )}
                           </div>
 
-                          {selectedTicketDetail.ticket.requestedForUserId ||
-                          canEditTicket ? (
+                          {selectedTicketDetailRequesterId || canEditTicket ? (
                             <div className="tdp-info-item">
                               <span>Demandeur</span>
 
@@ -5752,8 +5756,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   }
                                   value={ticketEditDraft.requestedForUserId}
                                 >
-                                  <option value="">Non renseigné</option>
-
                                   {userDirectory
                                     .filter((user) => user.isActive)
                                     .map((user) => (
@@ -5765,12 +5767,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               ) : (
                                 <strong>
                                   {formatKnownUserName(
-                                    usersById.get(
-                                      selectedTicketDetail.ticket
-                                        .requestedForUserId!,
-                                    ),
-                                    selectedTicketDetail.ticket
-                                      .requestedForUserId!,
+                                    selectedTicketDetailRequester,
+                                    selectedTicketDetailRequesterId,
                                   )}
                                 </strong>
                               )}

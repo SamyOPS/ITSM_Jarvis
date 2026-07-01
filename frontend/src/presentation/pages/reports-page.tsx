@@ -2,6 +2,7 @@ import {
   type CSSProperties,
   type Dispatch,
   type FormEvent,
+  type ReactNode,
   type SetStateAction,
   useCallback,
   useEffect,
@@ -33,7 +34,10 @@ import type { ReferentialCatalogSnapshot } from '../../domain/referentials/refer
 
 import type { TicketSummarySnapshot } from '../../domain/ticketing/ticket-summary';
 
-import { translateTicketStatus } from '../../domain/i18n/ticketing-labels';
+import {
+  translatePriority,
+  translateTicketStatus,
+} from '../../domain/i18n/ticketing-labels';
 
 import { fetchUserDirectory } from '../../infrastructure/api/auth-api';
 
@@ -104,6 +108,7 @@ import {
 import type {
   GroupChatMessage,
   PeriodPreset,
+  PersonalTicketColumn,
   PersonalEquipmentItem,
   PersonalTicketSort,
   ReportsFilterState,
@@ -151,6 +156,43 @@ const PERSONAL_TICKET_LIMIT = 8;
 const PERSONAL_EQUIPMENT_LIMIT = 8;
 
 const GROUP_TICKET_LIMIT = 8;
+
+const ASSIGNED_TO_ME_COLUMNS: PersonalTicketColumn[] = [
+  'ID',
+  'TITLE',
+  'STATUS',
+  'PRIORITY',
+  'REQUESTER',
+];
+
+const REQUESTER_TICKET_COLUMNS: PersonalTicketColumn[] = [
+  'ID',
+  'TITLE',
+  'STATUS',
+  'CATEGORY',
+  'PRIORITY',
+];
+
+const PERSONAL_TICKET_COLUMN_LABELS: Record<PersonalTicketColumn, string> = {
+  ASSIGNED_TO: 'Assigné à',
+  CATEGORY: 'Catégorie',
+  ID: 'ID',
+  PRIORITY: 'Priorité',
+  REQUESTER: 'Demandeur',
+  STATUS: 'Statut',
+  TITLE: 'Titre',
+};
+
+const PERSONAL_TICKET_COLUMN_CLASSNAMES: Record<PersonalTicketColumn, string> =
+  {
+    ASSIGNED_TO: 'personal-ticket-col--assigned-to',
+    CATEGORY: 'personal-ticket-col--category',
+    ID: 'personal-ticket-col--id',
+    PRIORITY: 'personal-ticket-col--priority',
+    REQUESTER: 'personal-ticket-col--requester',
+    STATUS: 'personal-ticket-col--status',
+    TITLE: 'personal-ticket-col--title',
+  };
 
 const PERSONAL_TICKET_SORT_OPTIONS = [
   {
@@ -274,6 +316,33 @@ export function ReportsPage({ session }: ReportsPageProps) {
       try {
         const reportingFilters = buildReportingFilters(nextFilters);
 
+        if (session.user.role === 'DEMANDEUR') {
+          const [nextPersonalTickets, nextCatalog, nextUsers] =
+            await Promise.all([
+              searchTickets(session.accessToken, {
+                includeArchived: false,
+              }),
+
+              fetchReferentialCatalog(session.accessToken),
+
+              fetchUserDirectory(session.accessToken),
+            ]);
+
+          setOverview(null);
+
+          setBreakdown(null);
+
+          setPersonalTickets(nextPersonalTickets);
+
+          setCatalog(nextCatalog);
+
+          setPlanningTasks([]);
+
+          setUsers(nextUsers);
+
+          return;
+        }
+
         const [
           nextOverview,
 
@@ -297,13 +366,9 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
           fetchReferentialCatalog(session.accessToken),
 
-          session.user.role === 'DEMANDEUR'
-            ? Promise.resolve([])
-            : fetchPlanningTasks(session.accessToken).catch(() => []),
+          fetchPlanningTasks(session.accessToken).catch(() => []),
 
-          session.user.role === 'DEMANDEUR'
-            ? Promise.resolve([])
-            : fetchUserDirectory(session.accessToken),
+          fetchUserDirectory(session.accessToken),
         ]);
 
         setOverview(nextOverview);
@@ -440,6 +505,13 @@ export function ReportsPage({ session }: ReportsPageProps) {
       ),
 
     [catalog.priorities],
+  );
+
+  const personalCategoriesById = useMemo(
+    () =>
+      new Map(catalog.categories.map((category) => [category.id, category])),
+
+    [catalog.categories],
   );
 
   const personalEquipment = useMemo<PersonalEquipmentItem[]>(() => {
@@ -890,6 +962,36 @@ export function ReportsPage({ session }: ReportsPageProps) {
     );
   }
 
+  if (session.user.role === 'DEMANDEUR') {
+    return (
+      <section className="reports-page">
+        {errorMessage ? (
+          <p className="referentials-error">{errorMessage}</p>
+        ) : null}
+
+        <section
+          aria-label="Accueil demandeur"
+          className="personal-view-grid requester-home-grid"
+        >
+          <PersonalTicketPanel
+            categoriesById={personalCategoriesById}
+            columns={REQUESTER_TICKET_COLUMNS}
+            isLoading={isLoading}
+            onOpenTicket={(ticketId) =>
+              navigateTo(`/agent/tickets/${ticketId}?from=reports-personal`)
+            }
+            prioritiesById={personalPrioritiesById}
+            title="Mes tickets demandés"
+            tickets={requesterTickets}
+            users={users}
+          />
+
+          <PersonalEquipmentPanel equipment={personalEquipment} />
+        </section>
+      </section>
+    );
+  }
+
   return (
     <section className="reports-page">
       <nav
@@ -1178,6 +1280,8 @@ export function ReportsPage({ session }: ReportsPageProps) {
       ) : activeView === 'PERSONAL' ? (
         <section aria-label="Vue personnelle" className="personal-view-grid">
           <PersonalTicketPanel
+            categoriesById={personalCategoriesById}
+            columns={ASSIGNED_TO_ME_COLUMNS}
             isLoading={isLoading}
             onOpenTicket={(ticketId) =>
               navigateTo(`/agent/tickets/${ticketId}?from=reports-personal`)
@@ -1189,6 +1293,8 @@ export function ReportsPage({ session }: ReportsPageProps) {
           />
 
           <PersonalTicketPanel
+            categoriesById={personalCategoriesById}
+            columns={REQUESTER_TICKET_COLUMNS}
             isLoading={isLoading}
             onOpenTicket={(ticketId) =>
               navigateTo(`/agent/tickets/${ticketId}?from=reports-personal`)
@@ -1281,6 +1387,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 }
                 prioritiesById={personalPrioritiesById}
                 showAssignedTo={false}
+                showPriority
                 title="Tickets du groupe non assignes"
                 tickets={unassignedGroupTickets}
                 users={users}
@@ -1322,6 +1429,10 @@ export function ReportsPage({ session }: ReportsPageProps) {
 }
 
 function PersonalTicketPanel({
+  categoriesById,
+
+  columns = ['ID', 'TITLE', 'STATUS', 'REQUESTER'],
+
   isLoading,
 
   onOpenTicket,
@@ -1334,6 +1445,10 @@ function PersonalTicketPanel({
 
   users,
 }: {
+  categoriesById?: Map<string, { name: string }>;
+
+  columns?: PersonalTicketColumn[];
+
   isLoading: boolean;
 
   onOpenTicket: (ticketId: string) => void;
@@ -1499,13 +1614,14 @@ function PersonalTicketPanel({
             <table className="personal-ticket-table">
               <thead>
                 <tr>
-                  <th>ID</th>
-
-                  <th>Titre</th>
-
-                  <th>Statut</th>
-
-                  <th>Demandeur</th>
+                  {columns.map((column) => (
+                    <th
+                      className={PERSONAL_TICKET_COLUMN_CLASSNAMES[column]}
+                      key={column}
+                    >
+                      {PERSONAL_TICKET_COLUMN_LABELS[column]}
+                    </th>
+                  ))}
                 </tr>
               </thead>
 
@@ -1523,29 +1639,26 @@ function PersonalTicketPanel({
                     }}
                     tabIndex={0}
                   >
-                    <td className="personal-ticket-id">
-                      {formatTicketDisplayNumber(ticket)}
-                    </td>
-
-                    <td className="personal-ticket-title">{ticket.title}</td>
-
-                    <td>
-                      <span
-                        className={`personal-status personal-status--${ticket.status.toLowerCase()}`}
+                    {columns.map((column) => (
+                      <td
+                        className={`personal-ticket-col ${PERSONAL_TICKET_COLUMN_CLASSNAMES[column]} ${
+                          column === 'ID'
+                            ? 'personal-ticket-id'
+                            : column === 'TITLE'
+                              ? 'personal-ticket-title'
+                              : ''
+                        }`}
+                        key={column}
                       >
-                        <i aria-hidden="true" />
-
-                        {translateTicketStatus(ticket.status)}
-                      </span>
-                    </td>
-
-                    <td>
-                      {formatAssignedUserName(
-                        ticket.requestedForUserId ?? ticket.createdByUserId,
-
-                        users,
-                      )}
-                    </td>
+                        {renderPersonalTicketCell({
+                          categoriesById,
+                          column,
+                          prioritiesById,
+                          ticket,
+                          users,
+                        })}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
@@ -1561,6 +1674,61 @@ function PersonalTicketPanel({
       )}
     </article>
   );
+}
+
+function renderPersonalTicketCell({
+  categoriesById,
+  column,
+  prioritiesById,
+  ticket,
+  users,
+}: {
+  categoriesById?: Map<string, { name: string }>;
+  column: PersonalTicketColumn;
+  prioritiesById: Map<string, { level: number; name: string }>;
+  ticket: TicketSummarySnapshot;
+  users: AdminUserSummary[];
+}): ReactNode {
+  switch (column) {
+    case 'ASSIGNED_TO':
+      return formatAssignedUserName(ticket.assignedToUserId, users);
+
+    case 'CATEGORY':
+      return categoriesById?.get(ticket.categoryId)?.name ?? 'Non renseigné';
+
+    case 'ID':
+      return formatTicketDisplayNumber(ticket);
+
+    case 'PRIORITY':
+      return translatePriority(
+        ticket.priorityName ??
+          prioritiesById.get(ticket.priorityId)?.name ??
+          'Non renseigné',
+      );
+
+    case 'REQUESTER':
+      return formatAssignedUserName(
+        ticket.requestedForUserId ?? ticket.createdByUserId,
+        users,
+      );
+
+    case 'STATUS':
+      return (
+        <span
+          className={`personal-status personal-status--${ticket.status.toLowerCase()}`}
+        >
+          <i aria-hidden="true" />
+
+          {translateTicketStatus(ticket.status)}
+        </span>
+      );
+
+    case 'TITLE':
+      return ticket.title;
+
+    default:
+      return null;
+  }
 }
 
 function PersonalEquipmentPanel({
@@ -1796,6 +1964,8 @@ function GroupTicketPanel({
 
   showAssignedTo = true,
 
+  showPriority = false,
+
   tickets,
 
   title,
@@ -1809,6 +1979,8 @@ function GroupTicketPanel({
   prioritiesById: Map<string, { level: number; name: string }>;
 
   showAssignedTo?: boolean;
+
+  showPriority?: boolean;
 
   tickets: TicketSummarySnapshot[];
 
@@ -1974,6 +2146,8 @@ function GroupTicketPanel({
 
                   <th>Statut</th>
 
+                  {showPriority ? <th>Priorité</th> : null}
+
                   <th>Demandeur</th>
 
                   {showAssignedTo ? <th>Assigne a</th> : null}
@@ -2009,6 +2183,16 @@ function GroupTicketPanel({
                         {translateTicketStatus(ticket.status)}
                       </span>
                     </td>
+
+                    {showPriority ? (
+                      <td>
+                        {translatePriority(
+                          ticket.priorityName ??
+                            prioritiesById.get(ticket.priorityId)?.name ??
+                            'Non renseigné',
+                        )}
+                      </td>
+                    ) : null}
 
                     <td>
                       {formatAssignedUserName(

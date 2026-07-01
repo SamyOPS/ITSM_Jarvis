@@ -389,6 +389,24 @@ export function AppShell({
             );
           })}
 
+          {session?.user.role === 'DEMANDEUR' ? (
+            <button
+              className={
+                pathname === '/'
+                  ? 'workspace-nav-link is-active'
+                  : 'workspace-nav-link'
+              }
+              onClick={() => navigateTo('/')}
+              title="Accueil"
+              type="button"
+            >
+              <span className="workspace-nav-link-icon" aria-hidden="true">
+                <House size={18} strokeWidth={2} />
+              </span>
+              <strong className="workspace-nav-link-label">Accueil</strong>
+            </button>
+          ) : null}
+
           <div
             className={
               isTicketCreateMenuOpen
@@ -485,23 +503,25 @@ export function AppShell({
           </div>
 
           {session?.user.role === 'DEMANDEUR' ? (
-            <button
-              className={
-                pathname === '/agent/my-tickets'
-                  ? 'workspace-nav-link is-active'
-                  : 'workspace-nav-link'
-              }
-              onClick={() => navigateTo('/agent/my-tickets')}
-              title="Mes tickets demandés"
-              type="button"
-            >
-              <span className="workspace-nav-link-icon" aria-hidden="true">
-                <Ticket size={18} strokeWidth={2} />
-              </span>
-              <strong className="workspace-nav-link-label">
-                Mes tickets demandés
-              </strong>
-            </button>
+            <>
+              <button
+                className={
+                  pathname === '/agent/my-tickets'
+                    ? 'workspace-nav-link is-active'
+                    : 'workspace-nav-link'
+                }
+                onClick={() => navigateTo('/agent/my-tickets')}
+                title="Mes tickets demandés"
+                type="button"
+              >
+                <span className="workspace-nav-link-icon" aria-hidden="true">
+                  <Ticket size={18} strokeWidth={2} />
+                </span>
+                <strong className="workspace-nav-link-label">
+                  Mes tickets demandés
+                </strong>
+              </button>
+            </>
           ) : null}
 
           {visibleRoutes.map((route) => {

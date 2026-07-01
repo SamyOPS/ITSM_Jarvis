@@ -140,13 +140,13 @@
 }
 
 .personal-table-scroll {
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .personal-ticket-viewport {
   position: relative;
   height: 230px;
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: scroll;
   scrollbar-gutter: stable;
 }
@@ -184,6 +184,9 @@
   color: #243958;
   font-size: 0.85rem;
   text-align: left;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  white-space: normal;
 }
 
 .personal-ticket-table th {
@@ -200,20 +203,29 @@
   text-transform: uppercase;
 }
 
-.personal-ticket-table th:nth-child(1) {
-  width: 19%;
+.personal-ticket-table .personal-ticket-col--id {
+  width: 15%;
 }
 
-.personal-ticket-table th:nth-child(2) {
-  width: 31%;
-}
-
-.personal-ticket-table th:nth-child(3) {
-  width: 22%;
-}
-
-.personal-ticket-table th:nth-child(4) {
+.personal-ticket-table .personal-ticket-col--title {
   width: 28%;
+}
+
+.personal-ticket-table .personal-ticket-col--status {
+  width: 17%;
+}
+
+.personal-ticket-table .personal-ticket-col--priority {
+  width: 14%;
+}
+
+.personal-ticket-table .personal-ticket-col--category {
+  width: 18%;
+}
+
+.personal-ticket-table .personal-ticket-col--requester,
+.personal-ticket-table .personal-ticket-col--assigned-to {
+  width: 20%;
 }
 
 .personal-equipment-table th:nth-child(1) {
@@ -622,4 +634,3 @@
 .group-ticket-table th:nth-child(5) {
   width: 15%;
 }
-
