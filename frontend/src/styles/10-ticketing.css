@@ -3249,6 +3249,27 @@
     grid-row: 3;
   }
 
+  .admin-user-detail-view .tdp-topbar > .tdp-back-btn {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .admin-user-detail-view .tdp-topbar-right .admin-user-save-button {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .admin-user-detail-view .tdp-topbar-right .admin-user-trash-button {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: center;
+    justify-self: stretch;
+    min-width: 0;
+    min-height: 40px;
+    padding: 0 12px;
+    white-space: nowrap;
+  }
+
   .tdp-card-header,
   .tdp-edit-header-actions,
   .tdp-reply-footer {
