@@ -1211,7 +1211,10 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               </button>
             ) : null}
 
-            <div className="ticket-list-sort-menu" ref={sortMenuRef}>
+            <div
+              className="ticket-list-sort-menu kb-sort-menu"
+              ref={sortMenuRef}
+            >
               <button
                 aria-expanded={isSortMenuOpen}
                 aria-haspopup="menu"

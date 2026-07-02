@@ -4308,7 +4308,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       type="button"
                     >
                       <ArrowLeft size={15} />
-                      Retour a la liste
+                      <span className="tdp-back-label-desktop">
+                        Retour a la liste
+                      </span>
+                      <span className="tdp-back-label-mobile">Retour</span>
                     </button>
                   </div>
 

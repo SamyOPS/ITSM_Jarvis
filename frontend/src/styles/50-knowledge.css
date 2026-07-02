@@ -740,6 +740,14 @@
 }
 
 @media (max-width: 768px) {
+  .kb-sort-menu .ticket-sort-popover {
+    left: 0;
+    right: auto;
+    width: min(calc(100vw - 72px), 280px);
+    min-width: 0;
+    transform: none;
+  }
+
   .kb-grid {
     grid-template-columns: 1fr;
   }

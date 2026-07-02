@@ -1712,9 +1712,11 @@
   }
 
   .ticket-sort-popover {
-    left: 0;
+    left: 50%;
     right: auto;
-    min-width: min(100vw - 64px, 280px);
+    width: min(calc(100vw - 48px), 280px);
+    min-width: 0;
+    transform: translateX(-50%);
   }
 
   .ticket-form-span-2 {
@@ -1916,6 +1918,10 @@
   background: #f7f8f9;
   color: #17335f;
   border-color: rgba(120, 164, 231, 0.7);
+}
+
+.tdp-back-label-mobile {
+  display: none;
 }
 
 .tdp-topbar-ticket-title {
@@ -3190,11 +3196,81 @@
 
 @media (max-width: 760px) {
   .tdp-topbar {
-    flex-wrap: wrap;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px 8px;
+    padding: 12px;
+  }
+
+  .tdp-topbar-left {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .tdp-topbar-ticket-title {
+    display: none;
   }
 
   .tdp-topbar-right {
-    flex-wrap: wrap;
+    display: contents;
+  }
+
+  .tdp-topbar-right .tdp-ticket-number {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: center;
+  }
+
+  .tdp-topbar-right .tdp-status-form {
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
+  }
+
+  .tdp-topbar-right .tdp-status-form select {
+    min-width: 0;
+    height: 40px;
+  }
+
+  .tdp-topbar-right .admin-user-save-button,
+  .tdp-topbar-right .admin-user-delete-button {
+    justify-content: center;
+    justify-self: stretch;
+    min-width: 0;
+    min-height: 40px;
+    padding: 0 12px;
+    white-space: nowrap;
+  }
+
+  .tdp-topbar-right .admin-user-save-button {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .tdp-topbar-right .admin-user-delete-button {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .admin-user-detail-view .tdp-topbar > .tdp-back-btn {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .admin-user-detail-view .tdp-topbar-right .admin-user-save-button {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .admin-user-detail-view .tdp-topbar-right .admin-user-trash-button {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: center;
+    justify-self: stretch;
+    min-width: 0;
+    min-height: 40px;
+    padding: 0 12px;
+    white-space: nowrap;
   }
 
   .tdp-card-header,
@@ -4266,6 +4342,19 @@
 
   .ticket-workspace-searchbar {
     min-width: 0;
+  }
+
+  .tdp-back-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .tdp-back-label-desktop {
+    display: none;
+  }
+
+  .tdp-back-label-mobile {
+    display: inline;
   }
 
   .workspace-profile-trigger.is-compact {

@@ -1445,6 +1445,8 @@ a {
 .admin-group-members-table th:nth-child(6),
 .admin-group-members-table td:nth-child(6) {
   width: 20%;
+  padding-inline: 18px;
+  text-align: center;
 }
 
 .admin-user-groups-table {
@@ -1484,6 +1486,9 @@ a {
 }
 
 .admin-group-remove-member-button {
+  justify-content: center;
+  width: 100%;
+  max-width: 230px;
   cursor: pointer;
 }
 
@@ -1528,6 +1533,10 @@ a {
 .admin-user-save-button:hover:not(:disabled) {
   background: #f2f7ff;
   border-color: rgba(158, 203, 255, 0.45);
+}
+
+.admin-action-label-mobile {
+  display: none;
 }
 
 .admin-group-add-button {
@@ -1766,6 +1775,14 @@ a {
 }
 
 @media (max-width: 720px) {
+  .admin-action-label-desktop {
+    display: none;
+  }
+
+  .admin-action-label-mobile {
+    display: inline;
+  }
+
   .app-pagination {
     justify-content: center;
   }
