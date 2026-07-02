@@ -59,6 +59,7 @@ export function AppShell({
   const [isTicketMenuOpen, setIsTicketMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
+  const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationSnapshot[]>(
     [],
   );
@@ -162,6 +163,10 @@ export function AppShell({
       window.clearInterval(intervalId);
     };
   }, [session]);
+
+  useEffect(() => {
+    setIsMobileNavigationOpen(false);
+  }, [pathname]);
 
   async function handleNotificationMenuToggle(): Promise<void> {
     const willOpen = !isNotificationMenuOpen;
@@ -295,6 +300,15 @@ export function AppShell({
     setIsSidebarCollapsed((current) => !current);
   }
 
+  function handleSidebarHeaderToggle(): void {
+    if (isMobileNavigationOpen) {
+      setIsMobileNavigationOpen(false);
+      return;
+    }
+
+    handleSidebarToggle();
+  }
+
   function handleLogoutClick(): void {
     setIsProfileMenuOpen(false);
     onLogout();
@@ -313,8 +327,12 @@ export function AppShell({
       <aside
         className={
           isSidebarCollapsed
-            ? 'workspace-sidebar is-collapsed'
-            : 'workspace-sidebar'
+            ? isMobileNavigationOpen
+              ? 'workspace-sidebar is-collapsed is-mobile-open'
+              : 'workspace-sidebar is-collapsed'
+            : isMobileNavigationOpen
+              ? 'workspace-sidebar is-mobile-open'
+              : 'workspace-sidebar'
         }
       >
         <div className="workspace-sidebar-header">
@@ -327,12 +345,14 @@ export function AppShell({
 
           <button
             aria-label={
-              isSidebarCollapsed
-                ? 'Ouvrir la navigation'
-                : 'Replier la navigation'
+              isMobileNavigationOpen
+                ? 'Fermer la navigation'
+                : isSidebarCollapsed
+                  ? 'Ouvrir la navigation'
+                  : 'Replier la navigation'
             }
             className="workspace-sidebar-toggle"
-            onClick={handleSidebarToggle}
+            onClick={handleSidebarHeaderToggle}
             type="button"
           >
             <Menu size={18} />
@@ -769,9 +789,28 @@ export function AppShell({
         </div>
       </aside>
 
+      {isMobileNavigationOpen ? (
+        <button
+          aria-label="Fermer la navigation"
+          className="workspace-mobile-nav-backdrop"
+          onClick={() => setIsMobileNavigationOpen(false)}
+          type="button"
+        />
+      ) : null}
+
       <div className="workspace-main">
         <header className="workspace-topbar">
           <div className="workspace-topbar-copy">
+            <button
+              aria-expanded={isMobileNavigationOpen}
+              aria-label="Ouvrir la navigation"
+              className="workspace-mobile-menu-button"
+              onClick={() => setIsMobileNavigationOpen(true)}
+              type="button"
+            >
+              <Menu size={19} strokeWidth={2.2} />
+            </button>
+
             <nav className="workspace-breadcrumb" aria-label="Fil d'ariane">
               <button
                 className={
@@ -795,7 +834,7 @@ export function AppShell({
                 <>
                   <span className="workspace-breadcrumb-separator">/</span>
 
-                  <span className="workspace-breadcrumb-item workspace-breadcrumb-current">
+                  <span className="workspace-breadcrumb-item workspace-breadcrumb-current workspace-breadcrumb-current-page">
                     <CurrentBreadcrumbIcon
                       className="workspace-breadcrumb-icon"
                       size={15}
@@ -966,7 +1005,11 @@ export function AppShell({
                 onClick={() => setIsProfileMenuOpen((current) => !current)}
                 type="button"
               >
-                <span className="workspace-profile-avatar">{userInitials}</span>
+                <span className="workspace-profile-avatar">
+                  <span className="workspace-profile-avatar-label">
+                    {userInitials}
+                  </span>
+                </span>
                 <ChevronDown
                   className={isProfileMenuOpen ? 'is-open' : ''}
                   size={16}

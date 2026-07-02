@@ -3210,6 +3210,10 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.ticket-form-layout.ticket-form-layout--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .ticket-created-stack {
   display: grid;
   gap: 14px;
@@ -3807,6 +3811,11 @@
   flex: none;
 }
 
+.workspace-profile-avatar-label {
+  display: block;
+  line-height: 1;
+}
+
 .workspace-profile-avatar.is-large {
   width: 42px;
   height: 42px;
@@ -4038,6 +4047,10 @@
   .ticket-form-layout {
     grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
   }
+
+  .ticket-form-layout.ticket-form-layout--single {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 1180px) {
@@ -4113,6 +4126,18 @@
     min-height: 100vh;
     padding: 14px 10px;
     overflow: hidden;
+  }
+
+  .app-shell--workspace:has(> .workspace-sidebar.is-collapsed) {
+    grid-template-columns: 74px minmax(0, 1fr);
+  }
+
+  .app-shell--workspace .workspace-sidebar.is-collapsed {
+    width: 74px;
+    min-width: 74px;
+    max-width: 74px;
+    padding: 14px 8px 18px;
+    overflow: visible;
   }
 
   .app-shell--workspace .workspace-sidebar *,
@@ -4194,5 +4219,79 @@
   .app-main--workspace {
     padding: 12px;
     min-width: 760px;
+  }
+}
+
+@media (max-width: 759px) {
+  .app-shell--workspace {
+    display: block;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .app-shell--workspace:has(> .workspace-sidebar.is-collapsed) {
+    display: block;
+  }
+
+  .app-shell--workspace .workspace-sidebar,
+  .app-shell--workspace .workspace-sidebar.is-collapsed {
+    position: fixed;
+    width: min(86vw, 320px);
+    min-width: 0;
+    max-width: min(86vw, 320px);
+    overflow-y: auto;
+  }
+
+  .workspace-main {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .workspace-topbar,
+  .app-main--workspace {
+    min-width: 0;
+  }
+
+  .app-main--workspace {
+    padding: 12px;
+  }
+
+  .ticket-workspace-topbar,
+  .ticket-workspace-topbar-actions {
+    flex-direction: column;
+  }
+
+  .ticket-workspace-searchbar {
+    min-width: 0;
+  }
+
+  .workspace-profile-trigger.is-compact {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    height: 42px;
+    min-width: 62px;
+    min-height: 42px;
+    gap: 6px;
+    padding: 3px 7px 3px 3px;
+    border-radius: 999px;
+  }
+
+  .workspace-profile-trigger.is-compact .workspace-profile-avatar {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+    text-align: center;
+    letter-spacing: 0;
+  }
+
+  .workspace-profile-trigger.is-compact > svg {
+    display: block;
+    flex: none;
   }
 }
