@@ -363,6 +363,55 @@
     display: none;
   }
 
+  .workspace-ticket-menu-popover {
+    position: fixed;
+    top: 74px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    min-width: 0;
+  }
+
+  .workspace-notification-popover {
+    position: fixed;
+    top: 74px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: calc(100dvh - 92px);
+  }
+
+  .workspace-notification-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .workspace-notification-header-actions {
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .workspace-notification-header button {
+    flex: 1 1 0;
+    padding: 6px 0;
+    text-align: center;
+  }
+
+  .workspace-notification-list {
+    max-height: calc(100dvh - 210px);
+  }
+
+  .workspace-notification-open-button {
+    padding: 14px 8px 14px 14px;
+  }
+
+  .workspace-notification-delete-button {
+    margin-right: 8px;
+  }
+
   .workspace-notification-button,
   .workspace-profile-trigger {
     display: inline-grid;

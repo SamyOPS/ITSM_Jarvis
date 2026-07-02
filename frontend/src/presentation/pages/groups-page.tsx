@@ -404,7 +404,10 @@ export function GroupsPage({ session }: GroupsPageProps) {
                   type="button"
                 >
                   <Trash2 size={16} strokeWidth={2.2} />
-                  Supprimer definitivement
+                  <span className="admin-action-label-desktop">
+                    Supprimer definitivement
+                  </span>
+                  <span className="admin-action-label-mobile">Supprimer</span>
                 </button>
               ) : null}
 
