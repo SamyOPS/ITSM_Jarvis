@@ -1534,3 +1534,202 @@
 .workspace-nav-flyout .workspace-nav-dropdown-item.is-active svg {
   color: currentColor !important;
 }
+
+/* Reports dashboard v2 */
+.reports-filter-band--dashboard {
+  padding: 14px 16px;
+}
+
+.reports-filter-band--dashboard .reports-filters {
+  display: grid;
+  grid-template-columns:
+    minmax(220px, 1.3fr)
+    repeat(4, minmax(170px, 1fr))
+    auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.reports-period-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reports-period-control select {
+  min-width: 0;
+  flex: 1;
+}
+
+.reports-period-control button {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  border: 1px solid rgba(174, 199, 237, 0.9);
+  border-radius: 14px;
+  background: #ffffff;
+  color: #174b86;
+}
+
+.reports-period-control button:not(:disabled):hover {
+  background: #f2f7ff;
+}
+
+.reports-period-control button:disabled {
+  color: #9aaac1;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.reports-filter-band--dashboard .incident-lookup-field {
+  background: #ffffff;
+}
+
+.reports-filter-band--dashboard .reports-filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+}
+
+.reports-filter-band--dashboard .reports-filter-actions button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.reports-dashboard-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.reports-dashboard-kpi {
+  display: grid;
+  min-height: 118px;
+  align-content: space-between;
+  padding: 18px;
+  border: 1px solid rgba(199, 215, 239, 0.95);
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(23, 51, 95, 0.06);
+}
+
+.reports-dashboard-kpi strong {
+  color: #0c2b4f;
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.reports-dashboard-kpi span {
+  color: #4e6280;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.reports-dashboard-kpi--blue {
+  background: #dcecf8;
+}
+
+.reports-dashboard-kpi--sky {
+  background: #e7f0ff;
+}
+
+.reports-dashboard-kpi--green {
+  background: #dff3d6;
+}
+
+.reports-dashboard-kpi--amber {
+  background: #ffe3ad;
+}
+
+.reports-dashboard-kpi--red {
+  background: #ffd9d3;
+}
+
+.reports-dashboard-kpi--silver {
+  background: #eef2f6;
+}
+
+.reports-dashboard-kpi--mint {
+  background: #d9fbf3;
+}
+
+.reports-dashboard-kpi--slate {
+  background: #d9dde5;
+}
+
+.reports-dashboard-graph-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.reports-dashboard-graph-grid .reports-dashboard-panel {
+  min-height: 340px;
+}
+
+.reports-dashboard-graph-grid .reports-timeline-card {
+  min-height: 290px;
+}
+
+.reports-dashboard-graph-grid .reports-donut-widget {
+  min-height: 280px;
+}
+
+.reports-dashboard-graph-grid .reports-widget-bars {
+  height: 100%;
+  align-content: center;
+}
+
+.reports-dashboard-graph-grid .reports-widget-bar-row {
+  grid-template-columns: minmax(130px, 190px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.reports-dashboard-graph-grid .reports-widget-bar-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.reports-dashboard-graph-grid .reports-widget-bar-row > div {
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+}
+
+.reports-dashboard-graph-grid .reports-widget-bar-row i {
+  height: 14px;
+}
+
+@media (max-width: 1300px) {
+  .reports-filter-band--dashboard .reports-filters,
+  .reports-dashboard-graph-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reports-filter-band--dashboard .reports-filter-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 900px) {
+  .reports-dashboard-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .reports-dashboard-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .reports-filter-band--dashboard .reports-filter-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -5,11 +5,11 @@ export type ReportsPageProps = {
 };
 
 export type PeriodPreset =
-  | ''
-  | 'LAST_7_DAYS'
-  | 'LAST_30_DAYS'
-  | 'LAST_3_MONTHS'
-  | 'LAST_6_MONTHS';
+  | 'CUSTOM'
+  | 'THIS_MONTH'
+  | 'THIS_WEEK'
+  | 'THIS_YEAR'
+  | 'TODAY';
 
 export type ReportsFilterState = {
   assignedToUserId: string;

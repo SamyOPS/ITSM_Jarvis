@@ -20,9 +20,12 @@ import {
   ChevronRight,
   Maximize2,
   Minimize2,
+  RefreshCw,
+  Search,
   SlidersHorizontal,
   User,
   Users,
+  X,
 } from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
@@ -77,7 +80,6 @@ import {
   applyPeriodPreset,
   buildPersonalTicketPreview,
   buildReportingFilters,
-  buildStatusDistributionItems,
   clampNumber,
   formatAssignedUserName,
   formatChartValue,
@@ -93,7 +95,6 @@ import {
   formatTicketDisplayNumber,
   formatTooltipPeriod,
   formatUserName,
-  getChannelDisplayName,
   getGroupChatAuthorUserId,
   getGroupMemberColorClass,
   getInitialReportsView,
@@ -140,7 +141,7 @@ const INITIAL_FILTERS: ReportsFilterState = {
 
   from: '',
 
-  periodPreset: 'LAST_30_DAYS',
+  periodPreset: 'THIS_YEAR',
 
   priorityId: '',
 
@@ -266,6 +267,10 @@ export function ReportsPage({ session }: ReportsPageProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<ReportsFilterState>(INITIAL_FILTERS);
+
+  const [dashboardLookup, setDashboardLookup] = useState<
+    'AGENT' | 'GROUP' | null
+  >(null);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -437,7 +442,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
           [field]: value,
 
-          periodPreset: '',
+          periodPreset: 'CUSTOM',
         };
       }
 
@@ -459,21 +464,53 @@ export function ReportsPage({ session }: ReportsPageProps) {
     setFilters(applyPeriodPreset(INITIAL_FILTERS));
   }
 
+  function handleShiftPeriod(direction: -1 | 1): void {
+    setFilters((currentFilters) => {
+      if (!currentFilters.from || !currentFilters.to) {
+        return currentFilters;
+      }
+
+      const from = new Date(`${currentFilters.from}T00:00:00`);
+      const to = new Date(`${currentFilters.to}T00:00:00`);
+
+      if (currentFilters.periodPreset === 'THIS_WEEK') {
+        from.setDate(from.getDate() + direction * 7);
+        to.setDate(to.getDate() + direction * 7);
+
+        return {
+          ...currentFilters,
+          from: formatDateInputValue(from),
+          to: formatDateInputValue(to),
+        };
+      }
+
+      if (currentFilters.periodPreset === 'THIS_MONTH') {
+        const nextMonthStart = new Date(
+          from.getFullYear(),
+          from.getMonth() + direction,
+          1,
+        );
+        const nextMonthEnd = new Date(
+          nextMonthStart.getFullYear(),
+          nextMonthStart.getMonth() + 1,
+          0,
+        );
+
+        return {
+          ...currentFilters,
+          from: formatDateInputValue(nextMonthStart),
+          to: formatDateInputValue(nextMonthEnd),
+        };
+      }
+
+      return currentFilters;
+    });
+  }
+
   const categoryWidgetItems = useMemo(
     () => breakdown?.ticketsByCategory ?? [],
 
     [breakdown],
-  );
-
-  const channelWidgetItems = useMemo(
-    () =>
-      (breakdown?.ticketsByChannel ?? []).map((item) => ({
-        ...item,
-
-        name: getChannelDisplayName(item, catalog),
-      })),
-
-    [breakdown, catalog],
   );
 
   const agentWidgetItems = useMemo(
@@ -482,17 +519,50 @@ export function ReportsPage({ session }: ReportsPageProps) {
     [breakdown],
   );
 
+  const dashboardFilteredTickets = useMemo(
+    () => filterTicketsForDashboard(personalTickets, filters),
+
+    [filters, personalTickets],
+  );
+
+  const groupWidgetItems = useMemo(
+    () => buildTicketsByGroupItems(dashboardFilteredTickets, catalog),
+
+    [catalog, dashboardFilteredTickets],
+  );
+
+  const priorityWidgetItems = useMemo(
+    () =>
+      (breakdown?.ticketsByPriority ?? []).map((item) => ({
+        ...item,
+        name: translatePriority(item.name),
+      })),
+
+    [breakdown],
+  );
+
   const overviewTotals = overview?.totals ?? EMPTY_OVERVIEW_TOTALS;
 
   const overdueTotal = getOverviewOverdueTotal(overviewTotals);
 
-  const timelineItems = breakdown?.ticketActivityTimeline ?? [];
+  const slaWidgetItems = useMemo(
+    () => [
+      {
+        count: Math.max(overviewTotals.total - overdueTotal, 0),
+        id: 'on-time',
+        name: 'Dans les delais',
+      },
+      {
+        count: overdueTotal,
+        id: 'overdue',
+        name: 'En retard',
+      },
+    ],
 
-  const statusDistributionItems = useMemo(
-    () => buildStatusDistributionItems(breakdown?.ticketsByStatus ?? []),
-
-    [breakdown],
+    [overviewTotals.total, overdueTotal],
   );
+
+  const timelineItems = breakdown?.ticketActivityTimeline ?? [];
 
   const personalPrioritiesById = useMemo(
     () =>
@@ -512,6 +582,20 @@ export function ReportsPage({ session }: ReportsPageProps) {
       new Map(catalog.categories.map((category) => [category.id, category])),
 
     [catalog.categories],
+  );
+
+  const selectedDashboardAgent = useMemo(
+    () => users.find((user) => user.id === filters.assignedToUserId) ?? null,
+
+    [filters.assignedToUserId, users],
+  );
+
+  const selectedDashboardGroup = useMemo(
+    () =>
+      catalog.groups.find((group) => group.id === filters.assignmentGroupId) ??
+      null,
+
+    [catalog.groups, filters.assignmentGroupId],
   );
 
   const personalEquipment = useMemo<PersonalEquipmentItem[]>(() => {
@@ -1023,52 +1107,85 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
       {activeView === 'DASHBOARD' ? (
         <>
-          <form className="reports-filter-band" onSubmit={handleSubmit}>
+          <form
+            className="reports-filter-band reports-filter-band--dashboard"
+            onSubmit={handleSubmit}
+          >
             <div className="reports-filters">
               <label className="field">
                 <span>Periode</span>
 
-                <select
-                  onChange={(event) =>
-                    handleFilterChange('periodPreset', event.target.value)
-                  }
-                  value={filters.periodPreset}
-                >
-                  <option value="">Personnalisée</option>
+                <div className="reports-period-control">
+                  <button
+                    aria-label="Periode precedente"
+                    disabled={
+                      filters.periodPreset !== 'THIS_WEEK' &&
+                      filters.periodPreset !== 'THIS_MONTH'
+                    }
+                    onClick={() => handleShiftPeriod(-1)}
+                    type="button"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
 
-                  <option value="LAST_7_DAYS">7 jours</option>
+                  <select
+                    onChange={(event) =>
+                      handleFilterChange('periodPreset', event.target.value)
+                    }
+                    value={filters.periodPreset}
+                  >
+                    <option value="TODAY">Aujourd'hui</option>
 
-                  <option value="LAST_30_DAYS">30 jours</option>
+                    <option value="THIS_WEEK">Cette semaine</option>
 
-                  <option value="LAST_3_MONTHS">3 mois</option>
+                    <option value="THIS_MONTH">Ce mois</option>
 
-                  <option value="LAST_6_MONTHS">6 mois</option>
-                </select>
+                    <option value="THIS_YEAR">Cette annee</option>
+
+                    <option value="CUSTOM">Personnalise</option>
+                  </select>
+
+                  <button
+                    aria-label="Periode suivante"
+                    disabled={
+                      filters.periodPreset !== 'THIS_WEEK' &&
+                      filters.periodPreset !== 'THIS_MONTH'
+                    }
+                    onClick={() => handleShiftPeriod(1)}
+                    type="button"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
               </label>
 
-              <label className="field">
-                <span>Du</span>
+              {filters.periodPreset === 'CUSTOM' ? (
+                <>
+                  <label className="field">
+                    <span>Du</span>
 
-                <input
-                  onChange={(event) =>
-                    handleFilterChange('from', event.target.value)
-                  }
-                  type="date"
-                  value={filters.from}
-                />
-              </label>
+                    <input
+                      onChange={(event) =>
+                        handleFilterChange('from', event.target.value)
+                      }
+                      type="date"
+                      value={filters.from}
+                    />
+                  </label>
 
-              <label className="field">
-                <span>Au</span>
+                  <label className="field">
+                    <span>Au</span>
 
-                <input
-                  onChange={(event) =>
-                    handleFilterChange('to', event.target.value)
-                  }
-                  type="date"
-                  value={filters.to}
-                />
-              </label>
+                    <input
+                      onChange={(event) =>
+                        handleFilterChange('to', event.target.value)
+                      }
+                      type="date"
+                      value={filters.to}
+                    />
+                  </label>
+                </>
+              ) : null}
 
               <label className="field">
                 <span>Type de ticket</span>
@@ -1084,25 +1201,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
                   <option value="INCIDENT">Incident</option>
 
                   <option value="REQUEST">Demande</option>
-                </select>
-              </label>
-
-              <label className="field">
-                <span>Priorite</span>
-
-                <select
-                  onChange={(event) =>
-                    handleFilterChange('priorityId', event.target.value)
-                  }
-                  value={filters.priorityId}
-                >
-                  <option value="">Toutes</option>
-
-                  {catalog.priorities.map((priority) => (
-                    <option key={priority.id} value={priority.id}>
-                      {priority.name}
-                    </option>
-                  ))}
                 </select>
               </label>
 
@@ -1128,47 +1226,76 @@ export function ReportsPage({ session }: ReportsPageProps) {
               <label className="field">
                 <span>Agent</span>
 
-                <select
-                  disabled={isPersonalAgentReporting}
-                  onChange={(event) =>
-                    handleFilterChange('assignedToUserId', event.target.value)
-                  }
-                  value={filters.assignedToUserId}
-                >
-                  <option value="">
-                    {isPersonalAgentReporting ? 'Moi uniquement' : 'Tous'}
-                  </option>
+                <div className="incident-lookup-field">
+                  <input
+                    disabled={isPersonalAgentReporting}
+                    readOnly
+                    value={
+                      isPersonalAgentReporting
+                        ? 'Moi uniquement'
+                        : selectedDashboardAgent
+                          ? formatUserName(selectedDashboardAgent)
+                          : 'Tous'
+                    }
+                  />
 
-                  {technicians.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {formatUserName(user)}
-                    </option>
-                  ))}
-                </select>
+                  {filters.assignedToUserId && !isPersonalAgentReporting ? (
+                    <button
+                      aria-label="Retirer l'agent"
+                      onClick={() => handleFilterChange('assignedToUserId', '')}
+                      type="button"
+                    >
+                      <X size={16} />
+                    </button>
+                  ) : null}
+
+                  <button
+                    aria-label="Choisir un agent"
+                    disabled={isPersonalAgentReporting}
+                    onClick={() => setDashboardLookup('AGENT')}
+                    type="button"
+                  >
+                    <Search size={17} />
+                  </button>
+                </div>
               </label>
 
               <label className="field">
                 <span>Groupe</span>
 
-                <select
-                  disabled={isPersonalAgentReporting}
-                  onChange={(event) =>
-                    handleFilterChange('assignmentGroupId', event.target.value)
-                  }
-                  value={filters.assignmentGroupId}
-                >
-                  <option value="">Tous</option>
+                <div className="incident-lookup-field">
+                  <input
+                    disabled={isPersonalAgentReporting}
+                    readOnly
+                    value={selectedDashboardGroup?.name ?? 'Tous'}
+                  />
 
-                  {catalog.groups.map((group) => (
-                    <option key={group.id} value={group.id}>
-                      {group.name}
-                    </option>
-                  ))}
-                </select>
+                  {filters.assignmentGroupId && !isPersonalAgentReporting ? (
+                    <button
+                      aria-label="Retirer le groupe"
+                      onClick={() =>
+                        handleFilterChange('assignmentGroupId', '')
+                      }
+                      type="button"
+                    >
+                      <X size={16} />
+                    </button>
+                  ) : null}
+
+                  <button
+                    aria-label="Choisir un groupe"
+                    disabled={isPersonalAgentReporting}
+                    onClick={() => setDashboardLookup('GROUP')}
+                    type="button"
+                  >
+                    <Search size={17} />
+                  </button>
+                </div>
               </label>
 
               <div className="reports-filter-actions">
                 <button className="primary-button" disabled={isLoading}>
+                  <RefreshCw size={16} />
                   Actualiser
                 </button>
 
@@ -1183,96 +1310,113 @@ export function ReportsPage({ session }: ReportsPageProps) {
             </div>
           </form>
 
+          {dashboardLookup ? (
+            <DashboardLookupDialog
+              groups={catalog.groups}
+              kind={dashboardLookup}
+              onClose={() => setDashboardLookup(null)}
+              onSelect={(id) => {
+                handleFilterChange(
+                  dashboardLookup === 'AGENT'
+                    ? 'assignedToUserId'
+                    : 'assignmentGroupId',
+                  id,
+                );
+                setDashboardLookup(null);
+              }}
+              selectedId={
+                dashboardLookup === 'AGENT'
+                  ? filters.assignedToUserId
+                  : filters.assignmentGroupId
+              }
+              users={technicians}
+            />
+          ) : null}
+
           {errorMessage ? (
             <p className="referentials-error">{errorMessage}</p>
           ) : null}
 
           <section className="reports-dashboard">
             <div className="reports-dashboard-kpis">
-              <DashboardPrimaryKpiCard
+              <DashboardKpiCard
                 label="Tickets"
-                tone="yellow"
+                tone="blue"
                 value={formatNumber(overviewTotals.total)}
               />
 
-              <DashboardPrimaryKpiCard
-                label="Tickets en retard"
-                tone="orange"
-                value={formatNumber(overdueTotal)}
+              <DashboardKpiCard
+                label="Nouveaux tickets"
+                tone="sky"
+                value={formatNumber(overviewTotals.open)}
               />
 
-              <DashboardPrimaryKpiCard
-                label="Incidents"
-                tone="salmon"
-                value={formatNumber(overviewTotals.incidents)}
-              />
-
-              <DashboardPrimaryKpiCard
-                label="Demandes"
-                tone="green"
-                value={formatNumber(overviewTotals.requests)}
-              />
-
-              <DashboardMiniKpiCard
+              <DashboardKpiCard
                 label="Tickets en cours"
-                tone="mint"
+                tone="green"
                 value={formatNumber(overviewTotals.inProgress)}
               />
 
-              <DashboardMiniKpiCard
-                label="Tickets assignes"
-                tone="sky"
-                value={formatNumber(overviewTotals.assigned)}
-              />
-
-              <DashboardMiniKpiCard
-                label="Tickets resolus"
-                tone="silver"
-                value={formatNumber(overviewTotals.resolved)}
-              />
-
-              <DashboardMiniKpiCard
-                label="Tickets non assignes"
-                tone="white"
-                value={formatNumber(overviewTotals.unassigned)}
-              />
-
-              <DashboardMiniKpiCard
-                label="Tickets en attente"
+              <DashboardKpiCard
+                label="En attente"
                 tone="amber"
                 value={formatNumber(overviewTotals.pending)}
               />
 
-              <DashboardMiniKpiCard
-                label="Tickets fermes"
-                tone="charcoal"
+              <DashboardKpiCard
+                label="Tickets en retard"
+                tone="red"
+                value={formatNumber(overdueTotal)}
+              />
+
+              <DashboardKpiCard
+                label="Tickets non assignes"
+                tone="silver"
+                value={formatNumber(overviewTotals.unassigned)}
+              />
+
+              <DashboardKpiCard
+                label="Resolus"
+                tone="mint"
+                value={formatNumber(overviewTotals.resolved)}
+              />
+
+              <DashboardKpiCard
+                label="Clos"
+                tone="slate"
                 value={formatNumber(overviewTotals.closed)}
               />
             </div>
 
-            <div className="reports-dashboard-charts">
+            <div className="reports-dashboard-graph-grid">
               <DashboardPanel title="Evolution des tickets">
                 <DashboardTimelineChart items={timelineItems} />
               </DashboardPanel>
 
-              <DashboardPanel title="Repartition des statuts">
-                <DashboardStatusDistributionChart
-                  items={statusDistributionItems}
+              <DashboardPanel title="Respect SLA/TTR">
+                <DashboardDonutWidget
+                  colors={['#64b78f', '#f08a72']}
+                  items={slaWidgetItems}
                 />
               </DashboardPanel>
-            </div>
 
-            <div className="reports-dashboard-tops">
-              <DashboardPanel title="Top categories de tickets">
-                <DashboardDonutWidget items={categoryWidgetItems} />
+              <DashboardPanel title="Tickets par categorie">
+                <DashboardBarWidget items={categoryWidgetItems} />
               </DashboardPanel>
 
-              <DashboardPanel title="Top sources de tickets">
-                <DashboardBarWidget items={channelWidgetItems} />
+              <DashboardPanel title="Tickets par priorite">
+                <DashboardDonutWidget
+                  colors={['#60a5fa', '#f59e0b', '#f97316', '#ef4444']}
+                  items={priorityWidgetItems}
+                />
               </DashboardPanel>
 
-              <DashboardPanel title="Top agents assignes">
-                <DashboardDonutWidget items={agentWidgetItems} />
+              <DashboardPanel title="Charge par groupe">
+                <DashboardBarWidget items={groupWidgetItems} />
+              </DashboardPanel>
+
+              <DashboardPanel title="Charge par agent">
+                <DashboardBarWidget items={agentWidgetItems} />
               </DashboardPanel>
             </div>
           </section>
@@ -2684,7 +2828,7 @@ function DashboardPanel({
   );
 }
 
-function DashboardPrimaryKpiCard({
+function DashboardKpiCard({
   label,
 
   tone,
@@ -2698,7 +2842,7 @@ function DashboardPrimaryKpiCard({
   value: string;
 }) {
   return (
-    <article className={`reports-primary-kpi reports-primary-kpi--${tone}`}>
+    <article className={`reports-dashboard-kpi reports-dashboard-kpi--${tone}`}>
       <strong>{value}</strong>
 
       <span>{label}</span>
@@ -2706,25 +2850,217 @@ function DashboardPrimaryKpiCard({
   );
 }
 
-function DashboardMiniKpiCard({
-  label,
+function DashboardLookupDialog({
+  groups,
 
-  tone,
+  kind,
 
-  value,
+  onClose,
+
+  onSelect,
+
+  selectedId,
+
+  users,
 }: {
-  label: string;
+  groups: ReferentialCatalogSnapshot['groups'];
 
-  tone: string;
+  kind: 'AGENT' | 'GROUP';
 
-  value: string;
+  onClose: () => void;
+
+  onSelect: (id: string) => void;
+
+  selectedId: string;
+
+  users: AdminUserSummary[];
 }) {
-  return (
-    <article className={`reports-mini-kpi reports-mini-kpi--${tone}`}>
-      <strong>{value}</strong>
+  const [searchTerm, setSearchTerm] = useState('');
 
-      <span>{label}</span>
-    </article>
+  const [page, setPage] = useState(1);
+
+  const pageSize = 8;
+
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+
+  const filteredUsers = useMemo(
+    () =>
+      users.filter((user) => {
+        const searchableText = [
+          formatUserName(user),
+          user.firstName,
+          user.lastName,
+          user.email,
+          user.role,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        return searchableText.includes(normalizedSearch);
+      }),
+
+    [normalizedSearch, users],
+  );
+
+  const filteredGroups = useMemo(
+    () =>
+      groups.filter((group) => {
+        const searchableText = [group.name, group.description, group.level]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        return searchableText.includes(normalizedSearch);
+      }),
+
+    [groups, normalizedSearch],
+  );
+
+  const rows = kind === 'AGENT' ? filteredUsers : filteredGroups;
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+
+  const currentPage = Math.min(page, totalPages);
+
+  const pageItems = rows.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+
+  return (
+    <div
+      className="incident-lookup-overlay"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+      role="presentation"
+    >
+      <section
+        aria-labelledby="reports-dashboard-lookup-title"
+        aria-modal="true"
+        className="incident-lookup-dialog"
+        role="dialog"
+      >
+        <header className="incident-lookup-header">
+          <h3 id="reports-dashboard-lookup-title">
+            {kind === 'AGENT'
+              ? 'Selectionner un agent'
+              : 'Selectionner un groupe'}
+          </h3>
+
+          <button
+            aria-label="Fermer"
+            className="incident-lookup-close"
+            onClick={onClose}
+            type="button"
+          >
+            <X size={18} />
+          </button>
+        </header>
+
+        <label className="incident-lookup-search">
+          <div className="incident-lookup-search-input">
+            <Search size={16} />
+
+            <input
+              onChange={(event) => {
+                setSearchTerm(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Rechercher"
+              type="search"
+              value={searchTerm}
+            />
+          </div>
+        </label>
+
+        <div className="incident-lookup-table-scroll">
+          {kind === 'AGENT' ? (
+            <table className="incident-lookup-table">
+              <thead>
+                <tr>
+                  <th>Identifiant</th>
+
+                  <th>Prenom</th>
+
+                  <th>Nom</th>
+
+                  <th>Email</th>
+
+                  <th>Role</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {(pageItems as AdminUserSummary[]).map((user) => (
+                  <tr
+                    aria-selected={selectedId === user.id}
+                    key={user.id}
+                    onClick={() => onSelect(user.id)}
+                  >
+                    <td>{formatUserName(user)}</td>
+
+                    <td>{user.firstName ?? 'Non renseigne'}</td>
+
+                    <td>{user.lastName ?? 'Non renseigne'}</td>
+
+                    <td>{user.email}</td>
+
+                    <td>{user.role}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <table className="incident-lookup-table">
+              <thead>
+                <tr>
+                  <th>Identifiant</th>
+
+                  <th>Nom</th>
+
+                  <th>Niveau</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {(pageItems as ReferentialCatalogSnapshot['groups']).map(
+                  (group) => (
+                    <tr
+                      aria-selected={selectedId === group.id}
+                      key={group.id}
+                      onClick={() => onSelect(group.id)}
+                    >
+                      <td>{group.name}</td>
+
+                      <td>{group.name}</td>
+
+                      <td>{group.level ?? 'Non renseigne'}</td>
+                    </tr>
+                  ),
+                )}
+              </tbody>
+            </table>
+          )}
+
+          {rows.length === 0 ? (
+            <p className="incident-lookup-empty">Aucun resultat.</p>
+          ) : null}
+        </div>
+
+        <AppPagination
+          className="incident-lookup-pagination"
+          onPageChange={setPage}
+          page={currentPage}
+          scrollToTop={false}
+          summary={`${rows.length} element(s)`}
+          totalPages={totalPages}
+        />
+      </section>
+    </div>
   );
 }
 
@@ -3147,69 +3483,6 @@ function buildAreaSvgPath(
   return `${linePath} L ${lastPoint.x} ${baselineY} L ${firstPoint.x} ${baselineY} Z`;
 }
 
-function DashboardStatusDistributionChart({
-  items,
-}: {
-  items: Array<{
-    color: string;
-
-    count: number;
-
-    key: 'closed' | 'open' | 'pending' | 'progress' | 'resolved';
-
-    label: string;
-  }>;
-}) {
-  if (items.length === 0) {
-    return <p className="reports-chart-empty">Aucune donnee.</p>;
-  }
-
-  const maxCount = Math.max(...items.map((item) => item.count), 1);
-
-  return (
-    <div className="reports-status-distribution-chart">
-      <div className="reports-chart-legend">
-        {items.map((item) => (
-          <span key={item.key}>
-            <i
-              className={`reports-status-key reports-status-key--${item.key}`}
-            />
-
-            {item.label}
-          </span>
-        ))}
-      </div>
-
-      <div className="reports-status-distribution-bars">
-        {items.map((item) => (
-          <div className="reports-status-distribution-row" key={item.key}>
-            <div className="reports-status-distribution-label">
-              <i
-                className={`reports-status-key reports-status-key--${item.key}`}
-              />
-
-              <span>{item.label}</span>
-            </div>
-
-            <div className="reports-status-distribution-track">
-              <i
-                className={`reports-status-distribution-fill reports-status-distribution-fill--${item.key}`}
-                style={
-                  {
-                    width: `${(item.count / maxCount) * 100}%`,
-                  } as CSSProperties
-                }
-              />
-            </div>
-
-            <strong>{item.count}</strong>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function ChartTooltip({
   align = 'center',
 
@@ -3263,7 +3536,15 @@ function ChartTooltip({
   );
 }
 
-function DashboardDonutWidget({ items }: { items: ReportingBreakdownItem[] }) {
+function DashboardDonutWidget({
+  colors = ['#3a8f18', '#68c62e', '#95de6f', '#b6e7a1', '#d5f1cd'],
+
+  items,
+}: {
+  colors?: string[];
+
+  items: ReportingBreakdownItem[];
+}) {
   if (items.length === 0) {
     return <p className="reports-chart-empty">Aucune donnee.</p>;
   }
@@ -3271,8 +3552,6 @@ function DashboardDonutWidget({ items }: { items: ReportingBreakdownItem[] }) {
   const topItems = items.slice(0, 5);
 
   const total = topItems.reduce((sum, item) => sum + item.count, 0);
-
-  const colors = ['#3a8f18', '#68c62e', '#95de6f', '#b6e7a1', '#d5f1cd'];
 
   const segments = topItems
 
@@ -3355,5 +3634,92 @@ function DashboardBarWidget({ items }: { items: ReportingBreakdownItem[] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+function filterTicketsForDashboard(
+  tickets: TicketSummarySnapshot[],
+
+  filters: ReportsFilterState,
+): TicketSummarySnapshot[] {
+  return tickets.filter((ticket) => {
+    if (ticket.archivedAt) {
+      return false;
+    }
+
+    if (filters.type && ticket.type !== filters.type) {
+      return false;
+    }
+
+    if (filters.categoryId && ticket.categoryId !== filters.categoryId) {
+      return false;
+    }
+
+    if (
+      filters.assignmentGroupId &&
+      ticket.assignmentGroupId !== filters.assignmentGroupId
+    ) {
+      return false;
+    }
+
+    if (
+      filters.assignedToUserId &&
+      ticket.assignedToUserId !== filters.assignedToUserId
+    ) {
+      return false;
+    }
+
+    if (filters.priorityId && ticket.priorityId !== filters.priorityId) {
+      return false;
+    }
+
+    const createdDate = ticket.createdAt.slice(0, 10);
+
+    if (filters.from && createdDate < filters.from) {
+      return false;
+    }
+
+    if (filters.to && createdDate > filters.to) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function buildTicketsByGroupItems(
+  tickets: TicketSummarySnapshot[],
+
+  catalog: ReferentialCatalogSnapshot,
+): ReportingBreakdownItem[] {
+  const groupsById = new Map(catalog.groups.map((group) => [group.id, group]));
+
+  const countsByGroup = new Map<string, ReportingBreakdownItem>();
+
+  tickets.forEach((ticket) => {
+    const groupId = ticket.assignmentGroupId ?? 'unassigned';
+
+    const existingItem = countsByGroup.get(groupId);
+
+    if (existingItem) {
+      countsByGroup.set(groupId, {
+        ...existingItem,
+        count: existingItem.count + 1,
+      });
+      return;
+    }
+
+    countsByGroup.set(groupId, {
+      count: 1,
+      id: groupId,
+      name:
+        groupId === 'unassigned'
+          ? 'Aucun groupe'
+          : (groupsById.get(groupId)?.name ?? 'Groupe inconnu'),
+    });
+  });
+
+  return Array.from(countsByGroup.values()).sort(
+    (firstItem, secondItem) => secondItem.count - firstItem.count,
   );
 }
