@@ -2088,7 +2088,7 @@
 }
 
 .tdp-chat-message.is-own .tdp-chat-message-header {
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .tdp-chat-message.is-own.is-seed .tdp-chat-message-header {

@@ -294,15 +294,11 @@ export function getTicketListEmptyMessage(
 }
 
 export function canDeleteTicketComment(
-  role: UserRole,
+  _role: UserRole,
   currentUserId: string,
   authorUserId: string,
 ): boolean {
-  if (role === 'AGENT' || role === 'ADMIN') {
-    return true;
-  }
-
-  return role === 'DEMANDEUR' && currentUserId === authorUserId;
+  return currentUserId === authorUserId;
 }
 
 export function formatKnownUserName(
