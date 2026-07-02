@@ -20,7 +20,6 @@ import {
   ChevronRight,
   Maximize2,
   Minimize2,
-  RefreshCw,
   Search,
   SlidersHorizontal,
   User,
@@ -451,59 +450,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
         [field]: value,
       };
-    });
-  }
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-
-    void loadReports(filters);
-  }
-
-  function handleResetFilters(): void {
-    setFilters(applyPeriodPreset(INITIAL_FILTERS));
-  }
-
-  function handleShiftPeriod(direction: -1 | 1): void {
-    setFilters((currentFilters) => {
-      if (!currentFilters.from || !currentFilters.to) {
-        return currentFilters;
-      }
-
-      const from = new Date(`${currentFilters.from}T00:00:00`);
-      const to = new Date(`${currentFilters.to}T00:00:00`);
-
-      if (currentFilters.periodPreset === 'THIS_WEEK') {
-        from.setDate(from.getDate() + direction * 7);
-        to.setDate(to.getDate() + direction * 7);
-
-        return {
-          ...currentFilters,
-          from: formatDateInputValue(from),
-          to: formatDateInputValue(to),
-        };
-      }
-
-      if (currentFilters.periodPreset === 'THIS_MONTH') {
-        const nextMonthStart = new Date(
-          from.getFullYear(),
-          from.getMonth() + direction,
-          1,
-        );
-        const nextMonthEnd = new Date(
-          nextMonthStart.getFullYear(),
-          nextMonthStart.getMonth() + 1,
-          0,
-        );
-
-        return {
-          ...currentFilters,
-          from: formatDateInputValue(nextMonthStart),
-          to: formatDateInputValue(nextMonthEnd),
-        };
-      }
-
-      return currentFilters;
     });
   }
 
@@ -1109,54 +1055,28 @@ export function ReportsPage({ session }: ReportsPageProps) {
         <>
           <form
             className="reports-filter-band reports-filter-band--dashboard"
-            onSubmit={handleSubmit}
+            onSubmit={(event) => event.preventDefault()}
           >
             <div className="reports-filters">
               <label className="field">
                 <span>Periode</span>
 
-                <div className="reports-period-control">
-                  <button
-                    aria-label="Periode precedente"
-                    disabled={
-                      filters.periodPreset !== 'THIS_WEEK' &&
-                      filters.periodPreset !== 'THIS_MONTH'
-                    }
-                    onClick={() => handleShiftPeriod(-1)}
-                    type="button"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
+                <select
+                  onChange={(event) =>
+                    handleFilterChange('periodPreset', event.target.value)
+                  }
+                  value={filters.periodPreset}
+                >
+                  <option value="TODAY">Aujourd'hui</option>
 
-                  <select
-                    onChange={(event) =>
-                      handleFilterChange('periodPreset', event.target.value)
-                    }
-                    value={filters.periodPreset}
-                  >
-                    <option value="TODAY">Aujourd'hui</option>
+                  <option value="THIS_WEEK">Cette semaine</option>
 
-                    <option value="THIS_WEEK">Cette semaine</option>
+                  <option value="THIS_MONTH">Ce mois</option>
 
-                    <option value="THIS_MONTH">Ce mois</option>
+                  <option value="THIS_YEAR">Cette annee</option>
 
-                    <option value="THIS_YEAR">Cette annee</option>
-
-                    <option value="CUSTOM">Personnalise</option>
-                  </select>
-
-                  <button
-                    aria-label="Periode suivante"
-                    disabled={
-                      filters.periodPreset !== 'THIS_WEEK' &&
-                      filters.periodPreset !== 'THIS_MONTH'
-                    }
-                    onClick={() => handleShiftPeriod(1)}
-                    type="button"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
+                  <option value="CUSTOM">Personnalise</option>
+                </select>
               </label>
 
               {filters.periodPreset === 'CUSTOM' ? (
@@ -1292,21 +1212,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
                   </button>
                 </div>
               </label>
-
-              <div className="reports-filter-actions">
-                <button className="primary-button" disabled={isLoading}>
-                  <RefreshCw size={16} />
-                  Actualiser
-                </button>
-
-                <button
-                  className="secondary-button"
-                  onClick={handleResetFilters}
-                  type="button"
-                >
-                  Reinitialiser
-                </button>
-              </div>
             </div>
           </form>
 
@@ -2998,6 +2903,7 @@ function DashboardLookupDialog({
                 {(pageItems as AdminUserSummary[]).map((user) => (
                   <tr
                     aria-selected={selectedId === user.id}
+                    className="incident-lookup-row"
                     key={user.id}
                     onClick={() => onSelect(user.id)}
                   >
@@ -3022,7 +2928,7 @@ function DashboardLookupDialog({
 
                   <th>Nom</th>
 
-                  <th>Niveau</th>
+                  <th>Description</th>
                 </tr>
               </thead>
 
@@ -3031,6 +2937,7 @@ function DashboardLookupDialog({
                   (group) => (
                     <tr
                       aria-selected={selectedId === group.id}
+                      className="incident-lookup-row"
                       key={group.id}
                       onClick={() => onSelect(group.id)}
                     >
@@ -3038,7 +2945,7 @@ function DashboardLookupDialog({
 
                       <td>{group.name}</td>
 
-                      <td>{group.level ?? 'Non renseigne'}</td>
+                      <td>{group.description ?? '-'}</td>
                     </tr>
                   ),
                 )}

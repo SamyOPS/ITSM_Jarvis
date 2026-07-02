@@ -1542,62 +1542,20 @@
 
 .reports-filter-band--dashboard .reports-filters {
   display: grid;
-  grid-template-columns:
-    minmax(220px, 1.3fr)
-    repeat(4, minmax(170px, 1fr))
-    auto;
+  grid-template-columns: repeat(5, minmax(170px, 1fr));
   gap: 12px;
   align-items: end;
 }
 
-.reports-period-control {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.reports-period-control select {
-  min-width: 0;
-  flex: 1;
-}
-
-.reports-period-control button {
-  width: 42px;
-  min-width: 42px;
-  height: 42px;
-  border: 1px solid rgba(174, 199, 237, 0.9);
-  border-radius: 14px;
-  background: #ffffff;
-  color: #174b86;
-}
-
-.reports-period-control button:not(:disabled):hover {
-  background: #f2f7ff;
-}
-
-.reports-period-control button:disabled {
-  color: #9aaac1;
-  cursor: not-allowed;
-  opacity: 0.65;
-}
-
 .reports-filter-band--dashboard .incident-lookup-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: stretch;
   background: #ffffff;
 }
 
-.reports-filter-band--dashboard .reports-filter-actions {
-  display: flex;
-  gap: 8px;
-  align-items: end;
-}
-
-.reports-filter-band--dashboard .reports-filter-actions button {
-  display: inline-flex;
-  min-height: 42px;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  white-space: nowrap;
+.reports-filter-band--dashboard .incident-lookup-field input {
+  min-width: 0;
 }
 
 .reports-dashboard-kpis {
@@ -1711,10 +1669,6 @@
   .reports-dashboard-graph-grid {
     grid-template-columns: 1fr;
   }
-
-  .reports-filter-band--dashboard .reports-filter-actions {
-    justify-content: flex-start;
-  }
 }
 
 @media (max-width: 900px) {
@@ -1726,10 +1680,5 @@
 @media (max-width: 640px) {
   .reports-dashboard-kpis {
     grid-template-columns: 1fr;
-  }
-
-  .reports-filter-band--dashboard .reports-filter-actions {
-    flex-direction: column;
-    align-items: stretch;
   }
 }

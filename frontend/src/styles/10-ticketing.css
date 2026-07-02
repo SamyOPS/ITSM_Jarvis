@@ -1099,7 +1099,9 @@
   text-align: left;
   vertical-align: top;
   color: #24406c;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  word-break: normal;
 }
 
 .ticket-table th:first-child,
@@ -1118,6 +1120,7 @@
   text-transform: uppercase;
   color: var(--primary);
   white-space: nowrap;
+  word-break: keep-all;
 }
 
 .ticket-table th:nth-child(2),
