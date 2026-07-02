@@ -3210,6 +3210,10 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.ticket-form-layout.ticket-form-layout--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .ticket-created-stack {
   display: grid;
   gap: 14px;
@@ -4038,6 +4042,10 @@
   .ticket-form-layout {
     grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
   }
+
+  .ticket-form-layout.ticket-form-layout--single {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 1180px) {
@@ -4113,6 +4121,18 @@
     min-height: 100vh;
     padding: 14px 10px;
     overflow: hidden;
+  }
+
+  .app-shell--workspace:has(> .workspace-sidebar.is-collapsed) {
+    grid-template-columns: 74px minmax(0, 1fr);
+  }
+
+  .app-shell--workspace .workspace-sidebar.is-collapsed {
+    width: 74px;
+    min-width: 74px;
+    max-width: 74px;
+    padding: 14px 8px 18px;
+    overflow: visible;
   }
 
   .app-shell--workspace .workspace-sidebar *,
