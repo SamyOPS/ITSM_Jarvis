@@ -1294,12 +1294,16 @@ a {
 }
 
 .admin-users-table {
+  min-width: 0;
   table-layout: fixed;
   width: 100%;
 }
 
 .admin-users-table th,
 .admin-users-table td {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  word-break: normal;
   width: auto;
 }
 
@@ -1340,8 +1344,21 @@ a {
 }
 
 .admin-groups-table {
+  min-width: 0;
   table-layout: fixed;
   width: 100%;
+}
+
+.admin-groups-table th,
+.admin-groups-table td {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  word-break: normal;
+}
+
+.admin-groups-table th {
+  white-space: nowrap;
+  word-break: keep-all;
 }
 
 .admin-groups-table th:nth-child(1),
@@ -1391,11 +1408,15 @@ a {
 }
 
 .admin-group-members-table {
+  min-width: 0;
   table-layout: fixed;
 }
 
 .admin-group-members-table th,
 .admin-group-members-table td {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  word-break: normal;
   vertical-align: middle;
 }
 
@@ -1427,12 +1448,16 @@ a {
 }
 
 .admin-user-groups-table {
+  min-width: 0;
   table-layout: fixed;
   width: 100%;
 }
 
 .admin-user-groups-table th,
 .admin-user-groups-table td {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  word-break: normal;
   vertical-align: middle;
 }
 

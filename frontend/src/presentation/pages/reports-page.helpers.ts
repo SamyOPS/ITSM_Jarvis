@@ -22,7 +22,7 @@ const GROUP_MEMBER_COLOR_COUNT = 12;
 export function applyPeriodPreset(
   filters: ReportsFilterState,
 ): ReportsFilterState {
-  if (!filters.periodPreset) {
+  if (filters.periodPreset === 'CUSTOM') {
     return filters;
   }
 
@@ -58,32 +58,46 @@ export function getPeriodPresetRange(preset: Exclude<PeriodPreset, ''>): {
     today.getDate(),
   );
 
-  if (preset === 'LAST_3_MONTHS') {
+  if (preset === 'TODAY') {
     return {
-      from: formatDateInputValue(
-        new Date(endOfToday.getFullYear(), endOfToday.getMonth() - 2, 1),
-      ),
+      from: formatDateInputValue(endOfToday),
       to: formatDateInputValue(endOfToday),
     };
   }
 
-  if (preset === 'LAST_6_MONTHS') {
+  if (preset === 'THIS_WEEK') {
+    const start = new Date(endOfToday);
+    const weekday = start.getDay() === 0 ? 7 : start.getDay();
+
+    start.setDate(start.getDate() - weekday + 1);
+
+    const end = new Date(start);
+
+    end.setDate(start.getDate() + 6);
+
     return {
-      from: formatDateInputValue(
-        new Date(endOfToday.getFullYear(), endOfToday.getMonth() - 5, 1),
-      ),
-      to: formatDateInputValue(endOfToday),
+      from: formatDateInputValue(start),
+      to: formatDateInputValue(end),
     };
   }
 
-  const days = preset === 'LAST_7_DAYS' ? 6 : 29;
-  const start = new Date(endOfToday);
+  if (preset === 'THIS_MONTH') {
+    const start = new Date(endOfToday.getFullYear(), endOfToday.getMonth(), 1);
+    const end = new Date(
+      endOfToday.getFullYear(),
+      endOfToday.getMonth() + 1,
+      0,
+    );
 
-  start.setDate(start.getDate() - days);
+    return {
+      from: formatDateInputValue(start),
+      to: formatDateInputValue(end),
+    };
+  }
 
   return {
-    from: formatDateInputValue(start),
-    to: formatDateInputValue(endOfToday),
+    from: formatDateInputValue(new Date(endOfToday.getFullYear(), 0, 1)),
+    to: formatDateInputValue(new Date(endOfToday.getFullYear(), 11, 31)),
   };
 }
 
@@ -433,12 +447,12 @@ export function formatGroupChatTimestamp(value: string): string {
 
 export function getOverviewOverdueTotal(
   totals: ReportingOverview['totals'],
-): number | null {
+): number {
   if (typeof totals.overdue === 'number') {
     return totals.overdue;
   }
 
-  return Math.max(totals.responseOverdue, totals.resolutionOverdue);
+  return Math.max(totals.responseOverdue ?? 0, totals.resolutionOverdue ?? 0);
 }
 
 export function formatNumber(value: number | null | undefined): string {
