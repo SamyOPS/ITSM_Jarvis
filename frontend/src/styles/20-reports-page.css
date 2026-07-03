@@ -456,6 +456,19 @@
   }
 }
 
+@media (min-width: 1181px) and (max-width: 1440px) {
+  .personal-ticket-panel .app-pagination,
+  .personal-equipment-panel .app-pagination {
+    min-height: 44px;
+    padding: 4px 14px 0;
+  }
+
+  .personal-ticket-panel .app-pagination-summary,
+  .personal-equipment-panel .app-pagination-summary {
+    line-height: 30px;
+  }
+}
+
 @media (max-width: 1180px) {
   .personal-view-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -471,6 +484,98 @@
   .personal-ticket-viewport,
   .personal-equipment-viewport {
     height: 240px;
+  }
+
+  .personal-ticket-panel .personal-table-scroll,
+  .personal-equipment-panel .personal-table-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .personal-ticket-panel .personal-ticket-viewport,
+  .personal-equipment-panel .personal-equipment-viewport {
+    width: 760px;
+    max-width: none;
+    overflow-x: visible;
+  }
+
+  .personal-ticket-table {
+    width: 760px;
+    min-width: 760px;
+    table-layout: auto;
+  }
+
+  .personal-ticket-table .personal-ticket-col--id {
+    width: 120px;
+  }
+
+  .personal-ticket-table .personal-ticket-col--title {
+    width: 150px;
+  }
+
+  .personal-ticket-table .personal-ticket-col--status {
+    width: 130px;
+  }
+
+  .personal-ticket-table .personal-ticket-col--priority,
+  .personal-ticket-table .personal-ticket-col--category {
+    width: 130px;
+  }
+
+  .personal-ticket-table .personal-ticket-col--requester,
+  .personal-ticket-table .personal-ticket-col--assigned-to {
+    width: 150px;
+  }
+
+  .personal-ticket-table th,
+  .personal-ticket-table td {
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+}
+
+@media (max-width: 720px) {
+  .personal-table-scroll,
+  .personal-ticket-viewport,
+  .personal-equipment-viewport {
+    overflow-x: auto;
+  }
+
+  .personal-ticket-table {
+    min-width: 620px;
+  }
+
+  .personal-ticket-panel .app-pagination,
+  .personal-equipment-panel .app-pagination {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 4px 12px 0;
+  }
+
+  .personal-ticket-panel .app-pagination-summary,
+  .personal-equipment-panel .app-pagination-summary {
+    width: auto;
+    line-height: 30px;
+    text-align: left;
+  }
+
+  .personal-ticket-panel .app-pagination-controls,
+  .personal-equipment-panel .app-pagination-controls {
+    flex-wrap: nowrap;
+  }
+
+  .personal-planning-agenda-scroll {
+    overflow-x: hidden;
+  }
+
+  .personal-planning-panel .planning-agenda-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    min-height: auto;
+    padding: 12px 14px;
   }
 }
 
