@@ -9,7 +9,6 @@ import {
 import {
   ArrowLeft,
   ArrowUpDown,
-  History,
   type LucideIcon,
   Plus,
   RotateCcw,
@@ -72,18 +71,6 @@ const USER_SORT_OPTIONS: Array<{
 }> = [
   {
     description: 'Appliquer ce tri',
-    icon: History,
-    label: "Plus recents d'abord",
-    value: 'CREATED_AT_DESC',
-  },
-  {
-    description: 'Appliquer ce tri',
-    icon: History,
-    label: "Plus anciens d'abord",
-    value: 'CREATED_AT_ASC',
-  },
-  {
-    description: 'Appliquer ce tri',
     icon: ArrowUpDown,
     label: 'Par ordre croissant',
     value: 'IDENTIFIER_ASC',
@@ -118,7 +105,7 @@ export function UsersPage({ session }: UsersPageProps) {
   const [searchText, setSearchText] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [showTrash, setShowTrash] = useState(false);
-  const [sortBy, setSortBy] = useState<UserSortOption>('CREATED_AT_DESC');
+  const [sortBy, setSortBy] = useState<UserSortOption>('IDENTIFIER_ASC');
   const [userPage, setUserPage] = useState(1);
   const [roleFilter, setRoleFilter] = useState<UserRoleFilter>('ALL');
   const [users, setUsers] = useState<AdminUserSummary[]>([]);

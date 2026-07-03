@@ -77,19 +77,6 @@ export function sortUsers(
   sortBy: UserSortOption,
 ): AdminUserSummary[] {
   return [...users].sort((leftUser, rightUser) => {
-    if (sortBy === 'CREATED_AT_ASC' || sortBy === 'CREATED_AT_DESC') {
-      const leftTimestamp = getUserSortTimestamp(leftUser);
-      const rightTimestamp = getUserSortTimestamp(rightUser);
-      const timestampComparison =
-        sortBy === 'CREATED_AT_ASC'
-          ? leftTimestamp - rightTimestamp
-          : rightTimestamp - leftTimestamp;
-
-      if (timestampComparison !== 0) {
-        return timestampComparison;
-      }
-    }
-
     const identifierComparison = compareText(
       formatUserIdentifier(leftUser),
       formatUserIdentifier(rightUser),
@@ -192,20 +179,6 @@ function compareText(leftValue: string, rightValue: string): number {
     numeric: true,
     sensitivity: 'base',
   });
-}
-
-function getUserSortTimestamp(user: AdminUserSummary): number {
-  return toTimestamp(user.createdAt ?? user.updatedAt);
-}
-
-function toTimestamp(value: string | null | undefined): number {
-  if (!value) {
-    return 0;
-  }
-
-  const timestamp = Date.parse(value);
-
-  return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
 export function mapCreateUserErrorMessage(error: unknown): string {

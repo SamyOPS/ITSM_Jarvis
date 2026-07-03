@@ -31,19 +31,6 @@ export function sortGroups(
   sortBy: GroupSortOption,
 ): ReferentialGroup[] {
   return [...groups].sort((leftGroup, rightGroup) => {
-    if (sortBy === 'CREATED_AT_ASC' || sortBy === 'CREATED_AT_DESC') {
-      const leftTimestamp = getGroupSortTimestamp(leftGroup);
-      const rightTimestamp = getGroupSortTimestamp(rightGroup);
-      const timestampComparison =
-        sortBy === 'CREATED_AT_ASC'
-          ? leftTimestamp - rightTimestamp
-          : rightTimestamp - leftTimestamp;
-
-      if (timestampComparison !== 0) {
-        return timestampComparison;
-      }
-    }
-
     const identifierComparison = compareText(leftGroup.name, rightGroup.name);
 
     return sortBy === 'IDENTIFIER_DESC'
@@ -127,18 +114,4 @@ function compareText(leftValue: string, rightValue: string): number {
     numeric: true,
     sensitivity: 'base',
   });
-}
-
-function getGroupSortTimestamp(group: ReferentialGroup): number {
-  return toTimestamp(group.createdAt ?? group.updatedAt);
-}
-
-function toTimestamp(value: string | null | undefined): number {
-  if (!value) {
-    return 0;
-  }
-
-  const timestamp = Date.parse(value);
-
-  return Number.isFinite(timestamp) ? timestamp : 0;
 }
