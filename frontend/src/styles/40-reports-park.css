@@ -566,6 +566,12 @@
   white-space: nowrap;
 }
 
+.workspace-nav-link-label--wrap {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 .workspace-sidebar-footer strong {
   font-size: 0.88rem;
 }

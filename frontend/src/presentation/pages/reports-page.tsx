@@ -1298,15 +1298,15 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 <DashboardTimelineChart items={timelineItems} />
               </DashboardPanel>
 
+              <DashboardPanel title="Tickets par categorie">
+                <DashboardBarWidget items={categoryWidgetItems} />
+              </DashboardPanel>
+
               <DashboardPanel title="Respect SLA/TTR">
                 <DashboardDonutWidget
                   colors={['#64b78f', '#f08a72']}
                   items={slaWidgetItems}
                 />
-              </DashboardPanel>
-
-              <DashboardPanel title="Tickets par categorie">
-                <DashboardBarWidget items={categoryWidgetItems} />
               </DashboardPanel>
 
               <DashboardPanel title="Tickets par priorite">

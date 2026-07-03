@@ -402,7 +402,13 @@ export function AppShell({
                 <span className="workspace-nav-link-icon" aria-hidden="true">
                   <Icon size={18} strokeWidth={2} />
                 </span>
-                <strong className="workspace-nav-link-label">
+                <strong
+                  className={
+                    route.path === '/knowledge/articles'
+                      ? 'workspace-nav-link-label workspace-nav-link-label--wrap'
+                      : 'workspace-nav-link-label'
+                  }
+                >
                   {routeTitle}
                 </strong>
               </button>
