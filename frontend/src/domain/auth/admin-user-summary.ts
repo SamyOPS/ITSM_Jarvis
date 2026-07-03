@@ -1,6 +1,7 @@
 import type { UserRole } from './user-role';
 
 export type AdminUserSummary = {
+  createdAt?: string | null;
   displayName: string | null;
   email: string | null;
   firstName: string | null;
@@ -10,4 +11,5 @@ export type AdminUserSummary = {
   isActive: boolean;
   lastName: string | null;
   role: UserRole;
+  updatedAt?: string | null;
 };

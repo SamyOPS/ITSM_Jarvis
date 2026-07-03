@@ -3,9 +3,19 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
-import { ArrowLeft, Plus, Trash2, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowUpDown,
+  History,
+  type LucideIcon,
+  Plus,
+  SlidersHorizontal,
+  Trash2,
+  X,
+} from 'lucide-react';
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import { AppPagination } from '../components/app-pagination';
 import type {
@@ -36,14 +46,48 @@ import {
   getUserGroupIds,
   isUserInGroup,
   matchesMemberSearch,
+  sortGroups,
 } from './groups-page.helpers';
 import type {
   GroupFormMode,
   GroupFormState,
   GroupSearchField,
+  GroupSortOption,
   GroupsPageProps,
   MemberSearchField,
 } from './groups-page.types';
+
+const GROUP_SORT_OPTIONS: Array<{
+  description: string;
+  icon: LucideIcon;
+  label: string;
+  value: GroupSortOption;
+}> = [
+  {
+    description: 'Appliquer ce tri',
+    icon: History,
+    label: "Plus recents d'abord",
+    value: 'CREATED_AT_DESC',
+  },
+  {
+    description: 'Appliquer ce tri',
+    icon: History,
+    label: "Plus anciens d'abord",
+    value: 'CREATED_AT_ASC',
+  },
+  {
+    description: 'Appliquer ce tri',
+    icon: ArrowUpDown,
+    label: 'Par ordre croissant',
+    value: 'IDENTIFIER_ASC',
+  },
+  {
+    description: 'Appliquer ce tri',
+    icon: ArrowUpDown,
+    label: 'Par ordre decroissant',
+    value: 'IDENTIFIER_DESC',
+  },
+];
 
 export function GroupsPage({ session }: GroupsPageProps) {
   const [catalog, setCatalog] =
@@ -58,6 +102,7 @@ export function GroupsPage({ session }: GroupsPageProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isMemberPickerOpen, setIsMemberPickerOpen] = useState(false);
   const [isMembershipSaving, setIsMembershipSaving] = useState(false);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [memberPage, setMemberPage] = useState(1);
   const [memberSearchField, setMemberSearchField] =
     useState<MemberSearchField>('IDENTIFIER');
@@ -67,7 +112,9 @@ export function GroupsPage({ session }: GroupsPageProps) {
     useState<GroupSearchField>('IDENTIFIER');
   const [searchText, setSearchText] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<GroupSortOption>('CREATED_AT_DESC');
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
+  const sortMenuRef = useRef<HTMLDivElement | null>(null);
 
   const selectedGroup = selectedGroupId
     ? (catalog.groups.find((group) => group.id === selectedGroupId) ?? null)
@@ -76,11 +123,15 @@ export function GroupsPage({ session }: GroupsPageProps) {
     () => filterGroups(catalog.groups, searchText, searchField),
     [catalog.groups, searchField, searchText],
   );
+  const sortedGroups = useMemo(
+    () => sortGroups(filteredGroups, sortBy),
+    [filteredGroups, sortBy],
+  );
   const totalGroupPages = Math.max(
     1,
-    Math.ceil(filteredGroups.length / GROUPS_PER_PAGE),
+    Math.ceil(sortedGroups.length / GROUPS_PER_PAGE),
   );
-  const paginatedGroups = filteredGroups.slice(
+  const paginatedGroups = sortedGroups.slice(
     (groupPage - 1) * GROUPS_PER_PAGE,
     groupPage * GROUPS_PER_PAGE,
   );
@@ -142,7 +193,34 @@ export function GroupsPage({ session }: GroupsPageProps) {
 
   useEffect(() => {
     setGroupPage(1);
-  }, [searchField, searchText]);
+  }, [searchField, searchText, sortBy]);
+
+  useEffect(() => {
+    if (!isSortMenuOpen) {
+      return undefined;
+    }
+
+    function handlePointerDown(event: globalThis.MouseEvent): void {
+      if (
+        sortMenuRef.current &&
+        event.target instanceof Node &&
+        !sortMenuRef.current.contains(event.target)
+      ) {
+        setIsSortMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [isSortMenuOpen]);
+
+  function handleSelectSortOption(nextSortBy: GroupSortOption): void {
+    setSortBy(nextSortBy);
+    setIsSortMenuOpen(false);
+  }
 
   useEffect(() => {
     if (groupPage > totalGroupPages) {
@@ -686,6 +764,62 @@ export function GroupsPage({ session }: GroupsPageProps) {
                 <Plus size={16} strokeWidth={2.3} style={{ marginRight: 8 }} />
                 Ajouter
               </button>
+
+              <div className="ticket-list-sort-menu" ref={sortMenuRef}>
+                <button
+                  aria-expanded={isSortMenuOpen}
+                  aria-haspopup="menu"
+                  className={
+                    isSortMenuOpen
+                      ? 'ticket-filter-trigger is-open'
+                      : 'ticket-filter-trigger'
+                  }
+                  onClick={() =>
+                    setIsSortMenuOpen((currentValue) => !currentValue)
+                  }
+                  type="button"
+                >
+                  <span>Trier par</span>
+                  <SlidersHorizontal size={18} strokeWidth={2} />
+                </button>
+
+                {isSortMenuOpen ? (
+                  <div className="ticket-sort-popover" role="menu">
+                    <div className="ticket-sort-popover-label">Trier par</div>
+
+                    {GROUP_SORT_OPTIONS.map((option) => {
+                      const Icon = option.icon;
+                      const isActive = sortBy === option.value;
+
+                      return (
+                        <button
+                          className={
+                            isActive
+                              ? 'ticket-sort-option is-active'
+                              : 'ticket-sort-option'
+                          }
+                          key={option.value}
+                          onClick={() => handleSelectSortOption(option.value)}
+                          role="menuitemradio"
+                          type="button"
+                        >
+                          <span className="ticket-sort-option-icon">
+                            <Icon size={16} strokeWidth={2} />
+                          </span>
+                          <span className="ticket-sort-option-copy">
+                            <strong>{option.label}</strong>
+                            <span>
+                              {isActive
+                                ? 'Selection actuelle'
+                                : option.description}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </header>
 

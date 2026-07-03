@@ -532,7 +532,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const detailBackPath = isArchiveDetailPage
     ? withPageQuery('/agent/archives', getPageQueryParam('fromPage'))
     : detailOrigin === 'reports-personal'
-      ? '/reports?view=PERSONAL'
+      ? session.user.role === 'DEMANDEUR'
+        ? '/'
+        : '/reports?view=PERSONAL'
       : detailOrigin === 'reports-group'
         ? '/reports?view=GROUP'
         : withPageQuery('/agent/tickets', getPageQueryParam('fromPage'));
@@ -2278,6 +2280,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     try {
       let nextSelectedTicketDetail = selectedTicketDetail;
+      let hasSavedChanges = false;
 
       if (
         canChangeSelectedTicketStatus &&
@@ -2293,11 +2296,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         );
 
         nextSelectedTicketDetail = statusUpdatedTicket;
+        hasSavedChanges = true;
         setSelectedTicketDetail(statusUpdatedTicket);
         setStatusDraft(
           asTicketStatus(statusUpdatedTicket.ticket.status) ?? 'OPEN',
         );
-        await refreshSelectedTicketHistory(statusUpdatedTicket.ticket.id);
         setTickets((currentTickets) =>
           currentTickets.map((ticket) =>
             ticket.id === statusUpdatedTicket.ticket.id
@@ -2315,6 +2318,27 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
       if (canEditTicket) {
         const nextCategoryId = ticketEditDraft.categoryId.trim();
+        const nextChannelId = normalizeOptionalId(ticketEditDraft.channelId);
+        const nextCiId = selectedTicketDetail.incident
+          ? normalizeOptionalId(ticketEditDraft.ciId)
+          : undefined;
+        const nextImpact = selectedTicketDetail.incident
+          ? ticketEditDraft.impact
+          : undefined;
+        const nextRequestedForUserId = normalizeOptionalId(
+          ticketEditDraft.requestedForUserId ||
+            selectedTicketDetail.ticket.requestedForUserId ||
+            selectedTicketDetail.ticket.createdByUserId,
+        );
+        const nextRootCause = selectedTicketDetail.incident
+          ? normalizeOptionalText(ticketEditDraft.rootCause)
+          : undefined;
+        const nextUrgency = selectedTicketDetail.incident
+          ? ticketEditDraft.urgency
+          : undefined;
+        const nextWorkaround = selectedTicketDetail.incident
+          ? normalizeOptionalText(ticketEditDraft.workaround)
+          : undefined;
 
         if (
           !nextCategoryId ||
@@ -2325,40 +2349,52 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           return;
         }
 
-        const updatedTicket = await updateTicket(
-          session.accessToken,
-          nextSelectedTicketDetail.ticket.id,
-          {
-            categoryId: nextCategoryId,
-            channelId: normalizeOptionalId(ticketEditDraft.channelId),
-            ciId: selectedTicketDetail.incident
-              ? normalizeOptionalId(ticketEditDraft.ciId)
-              : undefined,
-            description: selectedTicketDetail.ticket.description,
-            impact: selectedTicketDetail.incident
-              ? ticketEditDraft.impact
-              : undefined,
-            requestedForUserId: normalizeOptionalId(
-              ticketEditDraft.requestedForUserId ||
-                selectedTicketDetail.ticket.requestedForUserId ||
-                selectedTicketDetail.ticket.createdByUserId,
-            ),
-            rootCause: selectedTicketDetail.incident
-              ? normalizeOptionalText(ticketEditDraft.rootCause)
-              : undefined,
-            title: selectedTicketDetail.ticket.title,
-            urgency: selectedTicketDetail.incident
-              ? ticketEditDraft.urgency
-              : undefined,
-            workaround: selectedTicketDetail.incident
-              ? normalizeOptionalText(ticketEditDraft.workaround)
-              : undefined,
-          },
-        );
+        const hasTicketInfoChanges =
+          nextCategoryId !== nextSelectedTicketDetail.ticket.categoryId ||
+          nextChannelId !==
+            (nextSelectedTicketDetail.ticket.channelId ?? null) ||
+          (selectedTicketDetail.incident &&
+            nextCiId !== (nextSelectedTicketDetail.ticket.ciId ?? null)) ||
+          (selectedTicketDetail.incident &&
+            nextImpact !== nextSelectedTicketDetail.incident?.impact) ||
+          nextRequestedForUserId !==
+            (nextSelectedTicketDetail.ticket.requestedForUserId ?? null) ||
+          (selectedTicketDetail.incident &&
+            nextRootCause !==
+              (nextSelectedTicketDetail.incident?.rootCause ?? null)) ||
+          (selectedTicketDetail.incident &&
+            nextUrgency !== nextSelectedTicketDetail.incident?.urgency) ||
+          (selectedTicketDetail.incident &&
+            nextWorkaround !==
+              (nextSelectedTicketDetail.incident?.workaround ?? null));
+
+        if (hasTicketInfoChanges) {
+          const updatedTicket = await updateTicket(
+            session.accessToken,
+            nextSelectedTicketDetail.ticket.id,
+            {
+              categoryId: nextCategoryId,
+              channelId: nextChannelId,
+              ciId: nextCiId,
+              description: selectedTicketDetail.ticket.description,
+              impact: nextImpact,
+              requestedForUserId: nextRequestedForUserId,
+              rootCause: nextRootCause,
+              title: selectedTicketDetail.ticket.title,
+              urgency: nextUrgency,
+              workaround: nextWorkaround,
+            },
+          );
+
+          nextSelectedTicketDetail = updatedTicket;
+          hasSavedChanges = true;
+        }
+
         const reprioritizedTicket =
           !selectedTicketDetail.incident &&
           ticketEditDraft.priorityId.trim() &&
-          ticketEditDraft.priorityId !== updatedTicket.ticket.priorityId
+          ticketEditDraft.priorityId !==
+            nextSelectedTicketDetail.ticket.priorityId
             ? await changeTicketPriority(
                 session.accessToken,
                 nextSelectedTicketDetail.ticket.id,
@@ -2366,7 +2402,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                   priorityId: ticketEditDraft.priorityId.trim(),
                 },
               )
-            : updatedTicket;
+            : nextSelectedTicketDetail;
+
+        if (reprioritizedTicket !== nextSelectedTicketDetail) {
+          hasSavedChanges = true;
+        }
+
         nextSelectedTicketDetail = reprioritizedTicket;
         setSelectedTicketDetail(reprioritizedTicket);
         setTicketEditDraft({
@@ -2405,38 +2446,62 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       }
 
       if (canManageTicket) {
-        const updatedTicket = await assignTicket(
-          session.accessToken,
-          nextSelectedTicketDetail.ticket.id,
-          {
-            assignedToUserId: normalizeOptionalId(
-              assignmentDraft.assignedToUserId,
-            ),
-            assignmentGroupId: normalizeOptionalId(
-              assignmentDraft.assignmentGroupId,
-            ),
-          },
+        const nextAssignedToUserId = normalizeOptionalId(
+          assignmentDraft.assignedToUserId,
         );
-        nextSelectedTicketDetail = updatedTicket;
-        setSelectedTicketDetail(updatedTicket);
+        const nextAssignmentGroupId = normalizeOptionalId(
+          assignmentDraft.assignmentGroupId,
+        );
+        const hasAssignmentChanges =
+          nextAssignedToUserId !==
+            (nextSelectedTicketDetail.ticket.assignedToUserId ?? null) ||
+          nextAssignmentGroupId !==
+            (nextSelectedTicketDetail.ticket.assignmentGroupId ?? null);
+
+        if (hasAssignmentChanges) {
+          const updatedTicket = await assignTicket(
+            session.accessToken,
+            nextSelectedTicketDetail.ticket.id,
+            {
+              assignedToUserId: nextAssignedToUserId,
+              assignmentGroupId: nextAssignmentGroupId,
+            },
+          );
+
+          nextSelectedTicketDetail = updatedTicket;
+          hasSavedChanges = true;
+        }
+
+        setSelectedTicketDetail(nextSelectedTicketDetail);
         setAssignmentDraft({
-          assignedToUserId: updatedTicket.ticket.assignedToUserId ?? '',
-          assignmentGroupId: updatedTicket.ticket.assignmentGroupId ?? '',
+          assignedToUserId:
+            nextSelectedTicketDetail.ticket.assignedToUserId ?? '',
+          assignmentGroupId:
+            nextSelectedTicketDetail.ticket.assignmentGroupId ?? '',
         });
         setTickets((currentTickets) =>
           currentTickets.map((ticket) =>
-            ticket.id === updatedTicket.ticket.id
+            ticket.id === nextSelectedTicketDetail.ticket.id
               ? {
                   ...ticket,
-                  assignedToUserId: updatedTicket.ticket.assignedToUserId,
-                  assignmentGroupId: updatedTicket.ticket.assignmentGroupId,
-                  status: updatedTicket.ticket.status,
+                  assignedToUserId:
+                    nextSelectedTicketDetail.ticket.assignedToUserId,
+                  assignmentGroupId:
+                    nextSelectedTicketDetail.ticket.assignmentGroupId,
+                  status: nextSelectedTicketDetail.ticket.status,
                 }
               : ticket,
           ),
         );
       }
 
+      if (!hasSavedChanges) {
+        setDetailActionSuccessMessage('Aucune modification a enregistrer.');
+
+        return;
+      }
+
+      await refreshSelectedTicketHistory(nextSelectedTicketDetail.ticket.id);
       setIsEditingInfo(false);
       setDetailActionSuccessMessage('Informations mises à jour.');
     } catch (error) {

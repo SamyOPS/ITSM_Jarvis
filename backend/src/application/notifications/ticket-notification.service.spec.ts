@@ -72,7 +72,7 @@ describe('TicketNotificationService', () => {
     expect(createdRecords).toHaveLength(2);
   });
 
-  it('keeps internal comment notifications inside the support group', async () => {
+  it('ignores internal comment notifications', async () => {
     let createdRecords: CreateNotificationRecord[] = [];
     const createMany = jest.fn(
       (records: CreateNotificationRecord[]): Promise<void> => {
@@ -90,8 +90,73 @@ describe('TicketNotificationService', () => {
       ticketId: 'ticket-1',
     });
 
+    expect(createdRecords).toEqual([]);
+  });
+
+  it('notifies only the assigned agent about an assignment', async () => {
+    let createdRecords: CreateNotificationRecord[] = [];
+    const createMany = jest.fn(
+      (records: CreateNotificationRecord[]): Promise<void> => {
+        createdRecords = records;
+
+        return Promise.resolve();
+      },
+    );
+    const service = buildService(createMany);
+
+    await service.notify({
+      actorUserId: 'admin-1',
+      eventType: TicketHistoryEventType.ASSIGNED,
+      ticketId: 'ticket-1',
+    });
+
     expect(createdRecords.map((record) => record.recipientUserId)).toEqual([
       'agent-2',
+    ]);
+    expect(createdRecords[0]?.type).toBe(NotificationType.TICKET_ASSIGNED);
+  });
+
+  it('notifies group admins about an assignment when no agent is assigned', async () => {
+    const unassignedGroupTicket = new TicketDetail(
+      new Ticket(
+        'ticket-3',
+        'TICK-000003',
+        TicketType.INCIDENT,
+        TicketStatus.OPEN,
+        'Incident réseau',
+        'Connexion indisponible.',
+        'priority-1',
+        'category-1',
+        'requester-1',
+        null,
+        null,
+        'group-1',
+        null,
+        null,
+        '2026-06-23T12:00:00.000Z',
+      ),
+      null,
+      null,
+      null,
+    );
+    let createdRecords: CreateNotificationRecord[] = [];
+    const createMany = jest.fn(
+      (records: CreateNotificationRecord[]): Promise<void> => {
+        createdRecords = records;
+
+        return Promise.resolve();
+      },
+    );
+    const service = buildService(createMany, unassignedGroupTicket);
+
+    await service.notify({
+      actorUserId: 'agent-1',
+      eventType: TicketHistoryEventType.ASSIGNED,
+      ticketId: 'ticket-3',
+    });
+
+    expect(createdRecords.map((record) => record.recipientUserId)).toEqual([
+      'admin-1',
     ]);
   });
 
@@ -138,6 +203,66 @@ describe('TicketNotificationService', () => {
       createdRecords.map((record) => record.recipientUserId).sort(),
     ).toEqual(['admin-1']);
     expect(createdRecords[0]?.type).toBe(NotificationType.TICKET_CREATED);
+  });
+
+  it('notifies the requested user when a ticket is created for someone else', async () => {
+    const ticketCreatedForRequester = new TicketDetail(
+      new Ticket(
+        'ticket-4',
+        'TICK-000004',
+        TicketType.INCIDENT,
+        TicketStatus.OPEN,
+        'Poste bloque',
+        'Le poste ne demarre plus.',
+        'priority-1',
+        'category-1',
+        'admin-1',
+        'requester-1',
+        null,
+        'group-1',
+        null,
+        null,
+        '2026-06-23T13:00:00.000Z',
+      ),
+      null,
+      null,
+      null,
+    );
+    let createdRecords: CreateNotificationRecord[] = [];
+    const createMany = jest.fn(
+      (records: CreateNotificationRecord[]): Promise<void> => {
+        createdRecords = records;
+
+        return Promise.resolve();
+      },
+    );
+    const service = buildService(createMany, ticketCreatedForRequester);
+
+    await service.notify({
+      actorUserId: 'admin-1',
+      eventType: TicketHistoryEventType.CREATED,
+      ticketId: 'ticket-4',
+    });
+
+    expect(createdRecords).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          recipientUserId: 'requester-1',
+          title: 'Ticket créé pour vous',
+        }),
+        expect.objectContaining({
+          recipientUserId: 'agent-1',
+          title: 'Nouveau ticket',
+        }),
+        expect.objectContaining({
+          recipientUserId: 'agent-2',
+          title: 'Nouveau ticket',
+        }),
+      ]),
+    );
+    expect(
+      createdRecords.some((record) => record.recipientUserId === 'admin-1'),
+    ).toBe(false);
   });
 
   function buildService(

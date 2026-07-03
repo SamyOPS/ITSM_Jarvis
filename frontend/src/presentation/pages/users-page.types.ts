@@ -20,3 +20,9 @@ export type UserSearchField = 'IDENTIFIER' | 'FIRST_NAME' | 'LAST_NAME';
 export type UserRoleFilter = UserRole | 'ALL';
 
 export type UserGroupSearchField = 'DESCRIPTION' | 'IDENTIFIER' | 'NAME';
+
+export type UserSortOption =
+  | 'CREATED_AT_ASC'
+  | 'CREATED_AT_DESC'
+  | 'IDENTIFIER_ASC'
+  | 'IDENTIFIER_DESC';

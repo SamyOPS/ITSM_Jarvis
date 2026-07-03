@@ -1,7 +1,11 @@
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { UserRole } from '../../domain/auth/user-role';
 import type { ReferentialGroup } from '../../domain/referentials/referential-catalog';
-import type { GroupSearchField, MemberSearchField } from './groups-page.types';
+import type {
+  GroupSearchField,
+  GroupSortOption,
+  MemberSearchField,
+} from './groups-page.types';
 
 export function filterGroups(
   groups: ReferentialGroup[],
@@ -19,6 +23,32 @@ export function filterGroups(
       searchField === 'IDENTIFIER' || searchField === 'NAME' ? group.name : '';
 
     return normalizeSearchText(value).includes(normalizedSearch);
+  });
+}
+
+export function sortGroups(
+  groups: ReferentialGroup[],
+  sortBy: GroupSortOption,
+): ReferentialGroup[] {
+  return [...groups].sort((leftGroup, rightGroup) => {
+    if (sortBy === 'CREATED_AT_ASC' || sortBy === 'CREATED_AT_DESC') {
+      const leftTimestamp = getGroupSortTimestamp(leftGroup);
+      const rightTimestamp = getGroupSortTimestamp(rightGroup);
+      const timestampComparison =
+        sortBy === 'CREATED_AT_ASC'
+          ? leftTimestamp - rightTimestamp
+          : rightTimestamp - leftTimestamp;
+
+      if (timestampComparison !== 0) {
+        return timestampComparison;
+      }
+    }
+
+    const identifierComparison = compareText(leftGroup.name, rightGroup.name);
+
+    return sortBy === 'IDENTIFIER_DESC'
+      ? -identifierComparison
+      : identifierComparison;
   });
 }
 
@@ -90,4 +120,25 @@ export function formatUserIdentifier(user: AdminUserSummary): string {
 
 export function formatRoleLabel(role: UserRole): string {
   return role;
+}
+
+function compareText(leftValue: string, rightValue: string): number {
+  return leftValue.localeCompare(rightValue, 'fr', {
+    numeric: true,
+    sensitivity: 'base',
+  });
+}
+
+function getGroupSortTimestamp(group: ReferentialGroup): number {
+  return toTimestamp(group.createdAt ?? group.updatedAt);
+}
+
+function toTimestamp(value: string | null | undefined): number {
+  if (!value) {
+    return 0;
+  }
+
+  const timestamp = Date.parse(value);
+
+  return Number.isFinite(timestamp) ? timestamp : 0;
 }

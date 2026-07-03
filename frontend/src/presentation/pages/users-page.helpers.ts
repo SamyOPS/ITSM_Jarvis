@@ -9,6 +9,7 @@ import type {
   UserGroupSearchField,
   UserRoleFilter,
   UserSearchField,
+  UserSortOption,
 } from './users-page.types';
 
 export const USER_ROLES: UserRole[] = ['DEMANDEUR', 'AGENT', 'ADMIN'];
@@ -68,6 +69,35 @@ export function filterUsers(
           : (user.lastName ?? '');
 
     return normalizeSearchText(value).includes(normalizedSearch);
+  });
+}
+
+export function sortUsers(
+  users: AdminUserSummary[],
+  sortBy: UserSortOption,
+): AdminUserSummary[] {
+  return [...users].sort((leftUser, rightUser) => {
+    if (sortBy === 'CREATED_AT_ASC' || sortBy === 'CREATED_AT_DESC') {
+      const leftTimestamp = getUserSortTimestamp(leftUser);
+      const rightTimestamp = getUserSortTimestamp(rightUser);
+      const timestampComparison =
+        sortBy === 'CREATED_AT_ASC'
+          ? leftTimestamp - rightTimestamp
+          : rightTimestamp - leftTimestamp;
+
+      if (timestampComparison !== 0) {
+        return timestampComparison;
+      }
+    }
+
+    const identifierComparison = compareText(
+      formatUserIdentifier(leftUser),
+      formatUserIdentifier(rightUser),
+    );
+
+    return sortBy === 'IDENTIFIER_DESC'
+      ? -identifierComparison
+      : identifierComparison;
   });
 }
 
@@ -155,6 +185,27 @@ export function formatUserIdentifier(user: AdminUserSummary): string {
     user.email ||
     user.id
   );
+}
+
+function compareText(leftValue: string, rightValue: string): number {
+  return leftValue.localeCompare(rightValue, 'fr', {
+    numeric: true,
+    sensitivity: 'base',
+  });
+}
+
+function getUserSortTimestamp(user: AdminUserSummary): number {
+  return toTimestamp(user.createdAt ?? user.updatedAt);
+}
+
+function toTimestamp(value: string | null | undefined): number {
+  if (!value) {
+    return 0;
+  }
+
+  const timestamp = Date.parse(value);
+
+  return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
 export function mapCreateUserErrorMessage(error: unknown): string {
