@@ -1489,6 +1489,54 @@
 }
 
 @media (max-width: 720px) {
+  .personal-ticket-panel .personal-table-scroll,
+  .personal-equipment-panel .personal-table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .personal-ticket-panel .personal-ticket-viewport,
+  .personal-equipment-panel .personal-equipment-viewport {
+    width: 760px;
+    max-width: none;
+    overflow-x: visible;
+  }
+
+  .personal-ticket-table {
+    width: 760px;
+    min-width: 760px;
+    table-layout: auto;
+  }
+
+  .personal-ticket-table .personal-ticket-col--id {
+    width: 120px;
+  }
+
+  .personal-ticket-table .personal-ticket-col--title {
+    width: 150px;
+  }
+
+  .personal-ticket-table .personal-ticket-col--status {
+    width: 130px;
+  }
+
+  .personal-ticket-table .personal-ticket-col--priority,
+  .personal-ticket-table .personal-ticket-col--category {
+    width: 130px;
+  }
+
+  .personal-ticket-table .personal-ticket-col--requester,
+  .personal-ticket-table .personal-ticket-col--assigned-to {
+    width: 150px;
+  }
+
+  .personal-ticket-table th,
+  .personal-ticket-table td {
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
   .personal-panel-header {
     align-items: flex-start;
     flex-direction: column;

@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 type PaginationItem =
   | { key: string; page: number; type: 'page' }
   | { direction: 'backward' | 'forward'; key: string; type: 'ellipsis' };
@@ -18,9 +20,34 @@ function clampPage(page: number, totalPages: number): number {
 function getPaginationItems(
   page: number,
   totalPages: number,
+  isCompact = false,
 ): PaginationItem[] {
   const safeTotal = Math.max(totalPages, 1);
   const safePage = clampPage(page, safeTotal);
+
+  if (isCompact && safeTotal > 3) {
+    if (safePage === 1) {
+      return [
+        { key: 'page-1', page: 1, type: 'page' },
+        { direction: 'forward', key: 'ellipsis-forward', type: 'ellipsis' },
+        { key: `page-${safeTotal}`, page: safeTotal, type: 'page' },
+      ];
+    }
+
+    if (safePage === safeTotal) {
+      return [
+        { key: 'page-1', page: 1, type: 'page' },
+        { direction: 'backward', key: 'ellipsis-backward', type: 'ellipsis' },
+        { key: `page-${safeTotal}`, page: safeTotal, type: 'page' },
+      ];
+    }
+
+    return [
+      { key: 'page-1', page: 1, type: 'page' },
+      { key: `page-${safePage}`, page: safePage, type: 'page' },
+      { key: `page-${safeTotal}`, page: safeTotal, type: 'page' },
+    ];
+  }
 
   if (safeTotal <= 4) {
     return Array.from({ length: safeTotal }, (_, index) => ({
@@ -61,6 +88,27 @@ function getPaginationItems(
   ];
 }
 
+function useCompactPagination(): boolean {
+  const [isCompact, setIsCompact] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 420px)');
+
+    function handleChange(): void {
+      setIsCompact(mediaQuery.matches);
+    }
+
+    handleChange();
+    mediaQuery.addEventListener('change', handleChange);
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange);
+    };
+  }, []);
+
+  return isCompact;
+}
+
 export function AppPagination({
   className,
   onPageChange,
@@ -71,7 +119,8 @@ export function AppPagination({
 }: AppPaginationProps) {
   const safeTotal = Math.max(totalPages, 1);
   const safePage = clampPage(page, safeTotal);
-  const paginationItems = getPaginationItems(safePage, safeTotal);
+  const isCompact = useCompactPagination();
+  const paginationItems = getPaginationItems(safePage, safeTotal, isCompact);
 
   function handlePageChange(nextPage: number): void {
     const targetPage = clampPage(nextPage, safeTotal);
