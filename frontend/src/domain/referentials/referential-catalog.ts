@@ -41,10 +41,12 @@ export type ReferentialCiType = {
 };
 
 export type ReferentialGroup = {
+  createdAt?: string | null;
   id: string;
   name: string;
   description: string | null;
   level: string | null;
+  updatedAt?: string | null;
 };
 
 export type ReferentialPriority = {

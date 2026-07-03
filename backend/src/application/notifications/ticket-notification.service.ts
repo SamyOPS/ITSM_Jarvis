@@ -5,7 +5,10 @@ import { TicketHistoryEventType } from '../../domain/ticketing/ticket-history-ev
 import { TicketStatus } from '../../domain/ticketing/ticket-status';
 import { TicketReadRepository } from '../ticketing/repositories/ticket-read.repository';
 import { type CreateTicketHistoryRecord } from '../ticketing/repositories/ticket-history-write.repository';
-import { NotificationRepository } from './repositories/notification.repository';
+import {
+  type CreateNotificationRecord,
+  NotificationRepository,
+} from './repositories/notification.repository';
 
 @Injectable()
 export class TicketNotificationService {
@@ -42,6 +45,20 @@ export class TicketNotificationService {
         .filter((user) => user.role === UserRole.ADMIN)
         .map((user) => user.id),
     );
+    const assignedSupportIds =
+      ticket.assignedToUserId && activeUserIds.has(ticket.assignedToUserId)
+        ? new Set([ticket.assignedToUserId])
+        : new Set<string>();
+    const groupAdminIds = new Set(
+      users
+        .filter(
+          (user) =>
+            user.role === UserRole.ADMIN &&
+            Boolean(ticket.assignmentGroupId) &&
+            user.groupIds.includes(ticket.assignmentGroupId as string),
+        )
+        .map((user) => user.id),
+    );
     const groupSupportIds = new Set<string>();
 
     if (ticket.assignmentGroupId) {
@@ -55,16 +72,36 @@ export class TicketNotificationService {
       }
     }
 
-    const effectiveSupportIds = resolveSupportRecipientIds(
+    const createdSupportIds = resolveSupportRecipientIds(
       ticket.assignedToUserId,
       activeUserIds,
       groupSupportIds,
       adminIds,
     );
+    const assignmentRecipientIds =
+      assignedSupportIds.size > 0 ? assignedSupportIds : groupAdminIds;
+
+    if (record.eventType === TicketHistoryEventType.CREATED) {
+      await this.notificationRepository.createMany(
+        buildTicketCreatedNotifications({
+          actorUserId: record.actorUserId,
+          activeUserIds,
+          createdSupportIds,
+          requestedForUserId: ticket.requestedForUserId,
+          ticketId: ticket.id,
+          ticketNumber: ticket.number,
+        }),
+      );
+
+      return;
+    }
+
     const recipientIds = resolveRecipientIds(
       record,
       requesterIds,
-      effectiveSupportIds,
+      assignedSupportIds,
+      assignmentRecipientIds,
+      createdSupportIds,
     );
     recipientIds.delete(record.actorUserId);
 
@@ -82,6 +119,58 @@ export class TicketNotificationService {
       })),
     );
   }
+}
+
+function buildTicketCreatedNotifications({
+  actorUserId,
+  activeUserIds,
+  createdSupportIds,
+  requestedForUserId,
+  ticketId,
+  ticketNumber,
+}: {
+  actorUserId: string | null;
+  activeUserIds: Set<string>;
+  createdSupportIds: Set<string>;
+  requestedForUserId: string | null;
+  ticketId: string;
+  ticketNumber: string;
+}): CreateNotificationRecord[] {
+  const requesterRecipientIds =
+    requestedForUserId && activeUserIds.has(requestedForUserId)
+      ? new Set([requestedForUserId])
+      : new Set<string>();
+  const supportRecipientIds = new Set(createdSupportIds);
+
+  if (actorUserId) {
+    requesterRecipientIds.delete(actorUserId);
+    supportRecipientIds.delete(actorUserId);
+  }
+
+  for (const requesterRecipientId of requesterRecipientIds) {
+    supportRecipientIds.delete(requesterRecipientId);
+  }
+
+  return [
+    ...[...supportRecipientIds].map((recipientUserId) => ({
+      actorUserId,
+      link: `/agent/tickets/${ticketId}`,
+      message: `Le ticket ${ticketNumber} vient d'être créé.`,
+      recipientUserId,
+      ticketId,
+      title: 'Nouveau ticket',
+      type: NotificationType.TICKET_CREATED,
+    })),
+    ...[...requesterRecipientIds].map((recipientUserId) => ({
+      actorUserId,
+      link: `/agent/tickets/${ticketId}`,
+      message: `Le ticket ${ticketNumber} a été créé pour vous.`,
+      recipientUserId,
+      ticketId,
+      title: 'Ticket créé pour vous',
+      type: NotificationType.TICKET_CREATED,
+    })),
+  ];
 }
 
 function resolveSupportRecipientIds(
@@ -113,24 +202,27 @@ function isNotifiableEvent(eventType: TicketHistoryEventType): boolean {
 function resolveRecipientIds(
   record: CreateTicketHistoryRecord,
   requesterIds: Set<string>,
-  supportIds: Set<string>,
+  assignedSupportIds: Set<string>,
+  assignmentRecipientIds: Set<string>,
+  createdSupportIds: Set<string>,
 ): Set<string> {
   if (record.eventType === TicketHistoryEventType.CREATED) {
-    return new Set(supportIds);
+    return new Set(createdSupportIds);
   }
 
   if (record.eventType === TicketHistoryEventType.ASSIGNED) {
-    return new Set(supportIds);
+    return new Set(assignmentRecipientIds);
   }
 
-  if (
-    record.eventType === TicketHistoryEventType.COMMENT_ADDED &&
-    record.payload?.isInternal === true
-  ) {
-    return new Set(supportIds);
+  if (record.eventType === TicketHistoryEventType.COMMENT_ADDED) {
+    if (record.payload?.isInternal === true) {
+      return new Set();
+    }
+
+    return new Set([...requesterIds, ...assignedSupportIds]);
   }
 
-  return new Set([...requesterIds, ...supportIds]);
+  return new Set([...requesterIds, ...assignmentRecipientIds]);
 }
 
 function buildNotificationContent(
@@ -147,20 +239,16 @@ function buildNotificationContent(
 
   if (record.eventType === TicketHistoryEventType.ASSIGNED) {
     return {
-      message: `Le ticket ${ticketNumber} a été affecté à vous ou à votre groupe.`,
+      message: `Le ticket ${ticketNumber} a été affecté à vous.`,
       title: 'Nouvelle affectation',
       type: NotificationType.TICKET_ASSIGNED,
     };
   }
 
   if (record.eventType === TicketHistoryEventType.COMMENT_ADDED) {
-    const isInternal = record.payload?.isInternal === true;
-
     return {
-      message: isInternal
-        ? `Une note interne a été ajoutée au ticket ${ticketNumber}.`
-        : `Un nouveau commentaire a été ajouté au ticket ${ticketNumber}.`,
-      title: isInternal ? 'Nouvelle note interne' : 'Nouveau commentaire',
+      message: `Un nouveau commentaire a été ajouté au ticket ${ticketNumber}.`,
+      title: 'Nouveau commentaire',
       type: NotificationType.TICKET_COMMENTED,
     };
   }

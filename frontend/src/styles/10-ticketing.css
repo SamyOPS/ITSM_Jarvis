@@ -1055,12 +1055,14 @@
 }
 
 .ticket-sort-option-copy strong {
-  font-size: 0.93rem;
-  font-weight: 600;
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.25;
 }
 
 .ticket-sort-option-copy span {
   font-size: 0.79rem;
+  line-height: 1.25;
   color: var(--text-muted);
 }
 

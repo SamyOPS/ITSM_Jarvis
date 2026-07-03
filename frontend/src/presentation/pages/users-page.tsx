@@ -3,9 +3,20 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
-import { ArrowLeft, Plus, RotateCcw, Trash2, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowUpDown,
+  History,
+  type LucideIcon,
+  Plus,
+  RotateCcw,
+  SlidersHorizontal,
+  Trash2,
+  X,
+} from 'lucide-react';
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import {
   PASSWORD_MIN_LENGTH,
@@ -38,6 +49,7 @@ import {
   mapCreateUserErrorMessage,
   normalizeOptionalText,
   normalizeUserGroupIds,
+  sortUsers,
   USER_GROUPS_PER_PAGE,
   USER_ROLES,
   USERS_PER_PAGE,
@@ -47,9 +59,42 @@ import type {
   UserFormState,
   UserGroupSearchField,
   UserRoleFilter,
+  UserSortOption,
   UsersPageProps,
   UserSearchField,
 } from './users-page.types';
+
+const USER_SORT_OPTIONS: Array<{
+  description: string;
+  icon: LucideIcon;
+  label: string;
+  value: UserSortOption;
+}> = [
+  {
+    description: 'Appliquer ce tri',
+    icon: History,
+    label: "Plus recents d'abord",
+    value: 'CREATED_AT_DESC',
+  },
+  {
+    description: 'Appliquer ce tri',
+    icon: History,
+    label: "Plus anciens d'abord",
+    value: 'CREATED_AT_ASC',
+  },
+  {
+    description: 'Appliquer ce tri',
+    icon: ArrowUpDown,
+    label: 'Par ordre croissant',
+    value: 'IDENTIFIER_ASC',
+  },
+  {
+    description: 'Appliquer ce tri',
+    icon: ArrowUpDown,
+    label: 'Par ordre decroissant',
+    value: 'IDENTIFIER_DESC',
+  },
+];
 
 export function UsersPage({ session }: UsersPageProps) {
   const [catalog, setCatalog] =
@@ -61,6 +106,7 @@ export function UsersPage({ session }: UsersPageProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isGroupPickerOpen, setIsGroupPickerOpen] = useState(false);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [isMembershipSaving, setIsMembershipSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,9 +118,11 @@ export function UsersPage({ session }: UsersPageProps) {
   const [searchText, setSearchText] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [showTrash, setShowTrash] = useState(false);
+  const [sortBy, setSortBy] = useState<UserSortOption>('CREATED_AT_DESC');
   const [userPage, setUserPage] = useState(1);
   const [roleFilter, setRoleFilter] = useState<UserRoleFilter>('ALL');
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
+  const sortMenuRef = useRef<HTMLDivElement | null>(null);
 
   const activeUsers = users.filter((user) => user.isActive).length;
   const agentUsers = users.filter((user) => user.role === 'AGENT').length;
@@ -87,11 +135,15 @@ export function UsersPage({ session }: UsersPageProps) {
     () => filterUsers(users, searchText, searchField, roleFilter, showTrash),
     [roleFilter, searchField, searchText, showTrash, users],
   );
+  const sortedUsers = useMemo(
+    () => sortUsers(filteredUsers, sortBy),
+    [filteredUsers, sortBy],
+  );
   const totalUserPages = Math.max(
     1,
-    Math.ceil(filteredUsers.length / USERS_PER_PAGE),
+    Math.ceil(sortedUsers.length / USERS_PER_PAGE),
   );
-  const paginatedUsers = filteredUsers.slice(
+  const paginatedUsers = sortedUsers.slice(
     (userPage - 1) * USERS_PER_PAGE,
     userPage * USERS_PER_PAGE,
   );
@@ -160,7 +212,34 @@ export function UsersPage({ session }: UsersPageProps) {
 
   useEffect(() => {
     setUserPage(1);
-  }, [roleFilter, searchField, searchText, showTrash]);
+  }, [roleFilter, searchField, searchText, showTrash, sortBy]);
+
+  useEffect(() => {
+    if (!isSortMenuOpen) {
+      return undefined;
+    }
+
+    function handlePointerDown(event: globalThis.MouseEvent): void {
+      if (
+        sortMenuRef.current &&
+        event.target instanceof Node &&
+        !sortMenuRef.current.contains(event.target)
+      ) {
+        setIsSortMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [isSortMenuOpen]);
+
+  function handleSelectSortOption(nextSortBy: UserSortOption): void {
+    setSortBy(nextSortBy);
+    setIsSortMenuOpen(false);
+  }
 
   useEffect(() => {
     if (groupLookupPage > totalGroupLookupPages) {
@@ -886,6 +965,62 @@ export function UsersPage({ session }: UsersPageProps) {
                   />
                   Ajouter
                 </button>
+
+                <div className="ticket-list-sort-menu" ref={sortMenuRef}>
+                  <button
+                    aria-expanded={isSortMenuOpen}
+                    aria-haspopup="menu"
+                    className={
+                      isSortMenuOpen
+                        ? 'ticket-filter-trigger is-open'
+                        : 'ticket-filter-trigger'
+                    }
+                    onClick={() =>
+                      setIsSortMenuOpen((currentValue) => !currentValue)
+                    }
+                    type="button"
+                  >
+                    <span>Trier par</span>
+                    <SlidersHorizontal size={18} strokeWidth={2} />
+                  </button>
+
+                  {isSortMenuOpen ? (
+                    <div className="ticket-sort-popover" role="menu">
+                      <div className="ticket-sort-popover-label">Trier par</div>
+
+                      {USER_SORT_OPTIONS.map((option) => {
+                        const Icon = option.icon;
+                        const isActive = sortBy === option.value;
+
+                        return (
+                          <button
+                            className={
+                              isActive
+                                ? 'ticket-sort-option is-active'
+                                : 'ticket-sort-option'
+                            }
+                            key={option.value}
+                            onClick={() => handleSelectSortOption(option.value)}
+                            role="menuitemradio"
+                            type="button"
+                          >
+                            <span className="ticket-sort-option-icon">
+                              <Icon size={16} strokeWidth={2} />
+                            </span>
+                            <span className="ticket-sort-option-copy">
+                              <strong>{option.label}</strong>
+                              <span>
+                                {isActive
+                                  ? 'Selection actuelle'
+                                  : option.description}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </header>
 

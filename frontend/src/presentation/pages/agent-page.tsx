@@ -532,7 +532,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const detailBackPath = isArchiveDetailPage
     ? withPageQuery('/agent/archives', getPageQueryParam('fromPage'))
     : detailOrigin === 'reports-personal'
-      ? '/reports?view=PERSONAL'
+      ? session.user.role === 'DEMANDEUR'
+        ? '/'
+        : '/reports?view=PERSONAL'
       : detailOrigin === 'reports-group'
         ? '/reports?view=GROUP'
         : withPageQuery('/agent/tickets', getPageQueryParam('fromPage'));

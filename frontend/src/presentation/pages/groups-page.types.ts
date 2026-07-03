@@ -7,6 +7,11 @@ export type GroupsPageProps = {
 
 export type GroupFormMode = 'create' | 'edit' | null;
 export type GroupSearchField = 'IDENTIFIER' | 'NAME';
+export type GroupSortOption =
+  | 'CREATED_AT_ASC'
+  | 'CREATED_AT_DESC'
+  | 'IDENTIFIER_ASC'
+  | 'IDENTIFIER_DESC';
 export type MemberSearchField =
   | 'EMAIL'
   | 'FIRST_NAME'
