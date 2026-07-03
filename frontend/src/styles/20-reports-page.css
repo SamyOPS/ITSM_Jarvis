@@ -456,6 +456,19 @@
   }
 }
 
+@media (min-width: 1181px) and (max-width: 1440px) {
+  .personal-ticket-panel .app-pagination,
+  .personal-equipment-panel .app-pagination {
+    min-height: 44px;
+    padding: 4px 14px 0;
+  }
+
+  .personal-ticket-panel .app-pagination-summary,
+  .personal-equipment-panel .app-pagination-summary {
+    line-height: 30px;
+  }
+}
+
 @media (max-width: 1180px) {
   .personal-view-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -471,6 +484,28 @@
   .personal-ticket-viewport,
   .personal-equipment-viewport {
     height: 240px;
+  }
+}
+
+@media (max-width: 720px) {
+  .personal-ticket-panel .app-pagination,
+  .personal-equipment-panel .app-pagination {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 4px 12px 0;
+  }
+
+  .personal-ticket-panel .app-pagination-summary,
+  .personal-equipment-panel .app-pagination-summary {
+    width: auto;
+    line-height: 30px;
+    text-align: left;
+  }
+
+  .personal-ticket-panel .app-pagination-controls,
+  .personal-equipment-panel .app-pagination-controls {
+    flex-wrap: nowrap;
   }
 }
 
