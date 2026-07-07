@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { UserRole } from '../../../domain/auth/user-role';
+import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
 import { PlanningTask } from '../../../domain/planning/planning-task';
 import { PlanningTaskRepository } from '../repositories/planning-task.repository';
 
@@ -8,7 +8,7 @@ export class ListPlanningTasksUseCase {
   constructor(private readonly repository: PlanningTaskRepository) {}
 
   execute(userId: string, userRole: UserRole): Promise<PlanningTask[]> {
-    if (userRole === UserRole.ADMIN) {
+    if (isAdminRole(userRole)) {
       return this.repository.listTasks();
     }
 

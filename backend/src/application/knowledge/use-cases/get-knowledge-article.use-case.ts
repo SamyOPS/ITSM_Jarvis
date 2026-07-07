@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { UserRole } from '../../../domain/auth/user-role';
+import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
 import { KnowledgeArticle } from '../../../domain/knowledge/knowledge-article';
 import { KnowledgeArticleRepository } from '../repositories/knowledge-article.repository';
 
@@ -22,7 +22,7 @@ export class GetKnowledgeArticleUseCase {
       throw new NotFoundException('Knowledge article not found.');
     }
 
-    if (article.status === 'DRAFT' && userRole !== UserRole.ADMIN) {
+    if (article.status === 'DRAFT' && !isAdminRole(userRole)) {
       throw new ForbiddenException('Knowledge article access denied.');
     }
 

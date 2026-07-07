@@ -12,7 +12,7 @@ import {
   type TicketReportingOverview,
 } from '../../../application/reporting/use-cases/get-ticket-reporting-overview.use-case';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
-import { UserRole } from '../../../domain/auth/user-role';
+import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
 import { BearerAuthGuard } from '../auth/bearer-auth.guard';
@@ -80,7 +80,7 @@ function scopeReportingQuery(
   query: TicketReportingOverviewQueryDto,
   user: AuthenticatedUser,
 ): TicketReportingOverviewQueryDto {
-  if (user.role === UserRole.ADMIN) {
+  if (isAdminRole(user.role)) {
     return query;
   }
 

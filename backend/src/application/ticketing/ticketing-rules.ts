@@ -1,4 +1,8 @@
-import { UserRole } from '../../domain/auth/user-role';
+import {
+  isAdminRole,
+  isSupportRole,
+  UserRole,
+} from '../../domain/auth/user-role';
 import { TicketRuleError } from '../../domain/ticketing/ticket-rule.error';
 import { TicketStatus } from '../../domain/ticketing/ticket-status';
 
@@ -105,7 +109,7 @@ export function assertAllowedTicketStatusTransition(
 function getAllowedStatusTransitionsForRole(
   userRole: UserRole | null | undefined,
 ): Record<TicketStatus, readonly TicketStatus[]> {
-  if (userRole === UserRole.ADMIN) {
+  if (userRole && isAdminRole(userRole)) {
     return ADMIN_STATUS_TRANSITIONS;
   }
 
@@ -121,7 +125,7 @@ export function assertTicketCanBeModifiedByRole(
   archivedAt: string | null,
   userRole: UserRole | null | undefined,
 ): void {
-  if (userRole === UserRole.ADMIN) {
+  if (userRole && isAdminRole(userRole)) {
     return;
   }
 
@@ -153,7 +157,7 @@ export function assertValidAssignmentPolicy({
     throw new TicketRuleError('Assigned user must be active.');
   }
 
-  if (user.role !== UserRole.AGENT && user.role !== UserRole.ADMIN) {
+  if (!isSupportRole(user.role)) {
     throw new TicketRuleError('Assigned user must be AGENT or ADMIN.');
   }
 

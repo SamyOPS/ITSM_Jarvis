@@ -1,6 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import { type UserAssignmentProfile } from '../../domain/auth/user-assignment-profile';
-import { UserRole } from '../../domain/auth/user-role';
+import { isAdminRole, UserRole } from '../../domain/auth/user-role';
 import { TicketDetail } from '../../domain/ticketing/ticket-detail';
 
 export function assertTicketDetailAccess(params: {
@@ -25,7 +25,7 @@ export function assertTicketAccess(params: {
   userProfile?: UserAssignmentProfile | null;
   userRole: UserRole;
 }): void {
-  if (params.userRole === UserRole.ADMIN) {
+  if (isAdminRole(params.userRole)) {
     return;
   }
 

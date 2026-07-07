@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { UserRole } from '../../../domain/auth/user-role';
+import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
 import { KnowledgeArticle } from '../../../domain/knowledge/knowledge-article';
 import { KnowledgeArticleRepository } from '../repositories/knowledge-article.repository';
 
@@ -11,7 +11,7 @@ export class ListKnowledgeArticlesUseCase {
     userRole: UserRole,
     currentUserId: string,
   ): Promise<KnowledgeArticle[]> {
-    if (userRole === UserRole.ADMIN) {
+    if (isAdminRole(userRole)) {
       return this.repository.listArticles(currentUserId);
     }
 

@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { UserAssignmentProfile } from '../../../domain/auth/user-assignment-profile';
-import { UserRole } from '../../../domain/auth/user-role';
+import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
 import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketSummary } from '../../../domain/ticketing/ticket-summary';
@@ -39,7 +39,7 @@ export class SearchTicketsUseCase {
     };
     const requesterUserId = normalizeRequiredId(query.requesterUserId);
 
-    if (query.requesterUserRole === UserRole.ADMIN) {
+    if (isAdminRole(query.requesterUserRole)) {
       const tickets =
         await this.ticketReadRepository.searchTickets(normalizedFilters);
 

@@ -9,6 +9,8 @@ import { type Request } from 'express';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
 import { AuthPolicy } from '../../../domain/auth/auth-policy';
 import {
+  isAdminRole,
+  isSupportRole,
   UserRole,
   type UserRole as UserRoleType,
 } from '../../../domain/auth/user-role';
@@ -48,7 +50,10 @@ export class RolesGuard implements CanActivate {
     }
 
     const hasRequiredRole =
-      requiredRoles.length === 0 || requiredRoles.includes(user.role);
+      requiredRoles.length === 0 ||
+      requiredRoles.includes(user.role) ||
+      (user.role === UserRole.SUPER_ADMIN &&
+        requiredRoles.includes(UserRole.ADMIN));
 
     if (!hasRequiredRole) {
       throw new ForbiddenException('Insufficient role for this resource.');
@@ -69,9 +74,9 @@ export class RolesGuard implements CanActivate {
     switch (policy) {
       case AuthPolicy.ACCESS_ADMIN_AREA:
       case AuthPolicy.MANAGE_REFERENTIALS:
-        return user.role === UserRole.ADMIN;
+        return isAdminRole(user.role);
       case AuthPolicy.ACCESS_AGENT_AREA:
-        return user.role === UserRole.AGENT || user.role === UserRole.ADMIN;
+        return isSupportRole(user.role);
       default:
         return false;
     }

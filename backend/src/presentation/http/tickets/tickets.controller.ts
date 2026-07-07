@@ -30,7 +30,7 @@ import { ListTicketHistoryUseCase } from '../../../application/ticketing/use-cas
 import { SearchTicketsUseCase } from '../../../application/ticketing/use-cases/search-tickets.use-case';
 import { UpdateTicketUseCase } from '../../../application/ticketing/use-cases/update-ticket.use-case';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
-import { UserRole } from '../../../domain/auth/user-role';
+import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
 import { CreatedIncident } from '../../../domain/ticketing/created-incident';
 import { CreatedRequest } from '../../../domain/ticketing/created-request';
 import { TicketAttachment } from '../../../domain/ticketing/ticket-attachment';
@@ -98,7 +98,7 @@ export class TicketsController {
     return this.searchTicketsUseCase.execute({
       ...query,
       includeArchived:
-        user.role === UserRole.ADMIN && query.includeArchived === 'true',
+        isAdminRole(user.role) && query.includeArchived === 'true',
       requesterUserId: user.id,
       requesterUserRole: user.role,
     });
