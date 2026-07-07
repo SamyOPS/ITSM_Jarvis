@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { UserRole } from '../../domain/auth/user-role';
+import { isAdminRole, isSupportRole } from '../../domain/auth/user-role';
 import { NotificationType } from '../../domain/notifications/notification-type';
 import { TicketHistoryEventType } from '../../domain/ticketing/ticket-history-event-type';
 import { TicketStatus } from '../../domain/ticketing/ticket-status';
@@ -41,9 +41,7 @@ export class TicketNotificationService {
         .filter((userId) => activeUserIds.has(userId)),
     );
     const adminIds = new Set(
-      users
-        .filter((user) => user.role === UserRole.ADMIN)
-        .map((user) => user.id),
+      users.filter((user) => isAdminRole(user.role)).map((user) => user.id),
     );
     const assignedSupportIds =
       ticket.assignedToUserId && activeUserIds.has(ticket.assignedToUserId)
@@ -53,7 +51,7 @@ export class TicketNotificationService {
       users
         .filter(
           (user) =>
-            user.role === UserRole.ADMIN &&
+            isAdminRole(user.role) &&
             Boolean(ticket.assignmentGroupId) &&
             user.groupIds.includes(ticket.assignmentGroupId as string),
         )
@@ -64,7 +62,7 @@ export class TicketNotificationService {
     if (ticket.assignmentGroupId) {
       for (const user of users) {
         if (
-          (user.role === UserRole.AGENT || user.role === UserRole.ADMIN) &&
+          isSupportRole(user.role) &&
           user.groupIds.includes(ticket.assignmentGroupId)
         ) {
           groupSupportIds.add(user.id);

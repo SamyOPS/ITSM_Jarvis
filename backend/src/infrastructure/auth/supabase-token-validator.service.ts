@@ -151,6 +151,10 @@ export class SupabaseTokenValidatorService {
   }
 
   private resolveRoleFallback(role: string | undefined): UserRole {
+    if (role === UserRole.SUPER_ADMIN) {
+      return UserRole.SUPER_ADMIN;
+    }
+
     if (role === UserRole.ADMIN) {
       return UserRole.ADMIN;
     }

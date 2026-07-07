@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { AdminUserSummary } from '../../../domain/auth/admin-user-summary';
-import { UserRole } from '../../../domain/auth/user-role';
+import { isSupportRole, UserRole } from '../../../domain/auth/user-role';
 import { SlaIndicator } from '../../../domain/ticketing/sla-indicator';
 import { TicketHistoryEntry } from '../../../domain/ticketing/ticket-history-entry';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
@@ -100,9 +100,7 @@ function buildAgentPerformance(
   const entriesByTicketId = groupEntriesByTicketId(entries);
   const agentsById = new Map(
     users
-      .filter(
-        (user) => user.role === UserRole.AGENT || user.role === UserRole.ADMIN,
-      )
+      .filter((user) => isSupportRole(user.role))
       .map((user) => [user.id, user]),
   );
 

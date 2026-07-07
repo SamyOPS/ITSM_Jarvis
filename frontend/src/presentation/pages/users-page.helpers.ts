@@ -12,7 +12,12 @@ import type {
   UserSortOption,
 } from './users-page.types';
 
-export const USER_ROLES: UserRole[] = ['DEMANDEUR', 'AGENT', 'ADMIN'];
+export const USER_ROLES: UserRole[] = [
+  'DEMANDEUR',
+  'AGENT',
+  'ADMIN',
+  'SUPER_ADMIN',
+];
 export const USERS_PER_PAGE = 15;
 export const USER_GROUPS_PER_PAGE = 5;
 

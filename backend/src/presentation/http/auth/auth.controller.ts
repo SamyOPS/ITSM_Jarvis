@@ -201,7 +201,19 @@ export class AuthController {
   @UseGuards(BearerAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
-  createAdminUser(@Body() body: CreateAdminUserDto): Promise<AdminUserSummary> {
+  createAdminUser(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: CreateAdminUserDto,
+  ): Promise<AdminUserSummary> {
+    if (
+      body.role === UserRole.SUPER_ADMIN &&
+      user.role !== UserRole.SUPER_ADMIN
+    ) {
+      throw new BadRequestException(
+        'Only super admins can create super admins.',
+      );
+    }
+
     return this.createAdminUserUseCase.execute({
       email: body.email,
       firstName: body.firstName ?? null,
@@ -224,6 +236,15 @@ export class AuthController {
   ): Promise<AdminUserSummary> {
     if (user.id === userId && body.role !== user.role) {
       throw new BadRequestException('You cannot change your own role.');
+    }
+
+    if (
+      body.role === UserRole.SUPER_ADMIN &&
+      user.role !== UserRole.SUPER_ADMIN
+    ) {
+      throw new BadRequestException(
+        'Only super admins can grant the super admin role.',
+      );
     }
 
     return this.updateAdminUserUseCase.execute({

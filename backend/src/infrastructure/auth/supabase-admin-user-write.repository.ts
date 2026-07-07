@@ -1096,6 +1096,10 @@ function resolveEmailRedirectTo(corsOrigin: string | boolean): string | null {
 }
 
 function resolveUserRole(role: string): UserRole {
+  if (role === 'SUPER_ADMIN') {
+    return UserRole.SUPER_ADMIN;
+  }
+
   if (role === 'ADMIN') {
     return UserRole.ADMIN;
   }

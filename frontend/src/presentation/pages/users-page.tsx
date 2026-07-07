@@ -131,6 +131,17 @@ export function UsersPage({ session }: UsersPageProps) {
     ? (users.find((user) => user.id === selectedUserId) ?? null)
     : null;
   const isSelectedCurrentUser = selectedUserId === session.user.id;
+  const userRoleOptions = useMemo(() => {
+    if (session.user.role === 'SUPER_ADMIN') {
+      return USER_ROLES;
+    }
+
+    if (formState.role === 'SUPER_ADMIN') {
+      return ['SUPER_ADMIN'] satisfies UserRole[];
+    }
+
+    return USER_ROLES.filter((role) => role !== 'SUPER_ADMIN');
+  }, [formState.role, session.user.role]);
   const filteredUsers = useMemo(
     () => filterUsers(users, searchText, searchField, roleFilter, showTrash),
     [roleFilter, searchField, searchText, showTrash, users],
@@ -711,7 +722,7 @@ export function UsersPage({ session }: UsersPageProps) {
                     }
                     value={formState.role}
                   >
-                    {USER_ROLES.map((role) => (
+                    {userRoleOptions.map((role) => (
                       <option key={role} value={role}>
                         {translateUserRole(role)}
                       </option>

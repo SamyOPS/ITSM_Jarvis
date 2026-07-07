@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
-import { UserRole } from '../../../domain/auth/user-role';
+import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
 import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
 import { TicketDetail } from '../../../domain/ticketing/ticket-detail';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
@@ -61,7 +61,7 @@ export class UpdateTicketUseCase {
       throw new BadRequestException('actorUserId is required.');
     }
 
-    if (command.actorRole !== UserRole.ADMIN) {
+    if (!isAdminRole(command.actorRole)) {
       throw new BadRequestException('Only admins can update tickets.');
     }
 

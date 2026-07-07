@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { UserRole } from '../../../domain/auth/user-role';
+import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import { TicketWriteRepository } from '../repositories/ticket-write.repository';
 
@@ -35,7 +35,7 @@ export class DeleteTicketUseCase {
       throw new BadRequestException('actorUserId is required.');
     }
 
-    if (command.actorRole !== UserRole.ADMIN) {
+    if (!isAdminRole(command.actorRole)) {
       throw new BadRequestException('Only admins can delete tickets.');
     }
 
