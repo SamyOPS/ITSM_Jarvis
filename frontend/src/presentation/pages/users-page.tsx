@@ -131,6 +131,10 @@ export function UsersPage({ session }: UsersPageProps) {
     ? (users.find((user) => user.id === selectedUserId) ?? null)
     : null;
   const isSelectedCurrentUser = selectedUserId === session.user.id;
+  const canManageSelectedUser =
+    !selectedUser ||
+    session.user.role === 'SUPER_ADMIN' ||
+    (selectedUser.role !== 'ADMIN' && selectedUser.role !== 'SUPER_ADMIN');
   const userRoleOptions = useMemo(() => {
     if (session.user.role === 'SUPER_ADMIN') {
       return USER_ROLES;
@@ -348,6 +352,12 @@ export function UsersPage({ session }: UsersPageProps) {
       return;
     }
 
+    if (!canManageSelectedUser) {
+      setFormMessage('Seul un super administrateur peut modifier ce compte.');
+
+      return;
+    }
+
     setIsUpdating(true);
     setFormMessage(null);
 
@@ -377,6 +387,14 @@ export function UsersPage({ session }: UsersPageProps) {
 
   async function handleMoveUserToTrash(): Promise<void> {
     if (!selectedUserId) {
+      return;
+    }
+
+    if (!canManageSelectedUser) {
+      setFormMessage(
+        'Seul un super administrateur peut mettre ce compte a la corbeille.',
+      );
+
       return;
     }
 
@@ -413,6 +431,12 @@ export function UsersPage({ session }: UsersPageProps) {
       return;
     }
 
+    if (!canManageSelectedUser) {
+      setFormMessage('Seul un super administrateur peut restaurer ce compte.');
+
+      return;
+    }
+
     setIsDeleting(true);
     setFormMessage(null);
 
@@ -434,6 +458,12 @@ export function UsersPage({ session }: UsersPageProps) {
 
   async function handleDeleteUserPermanently(): Promise<void> {
     if (!selectedUserId) {
+      return;
+    }
+
+    if (!canManageSelectedUser) {
+      setFormMessage('Seul un super administrateur peut supprimer ce compte.');
+
       return;
     }
 
@@ -475,6 +505,14 @@ export function UsersPage({ session }: UsersPageProps) {
       return;
     }
 
+    if (!canManageSelectedUser) {
+      setFormMessage(
+        'Seul un super administrateur peut modifier les groupes de ce compte.',
+      );
+
+      return;
+    }
+
     const nextGroupIds = normalizeUserGroupIds([
       ...getUserGroupIds(selectedUser),
       group.id,
@@ -490,6 +528,14 @@ export function UsersPage({ session }: UsersPageProps) {
 
   async function handleRemoveUserGroup(groupId: string): Promise<void> {
     if (!selectedUser) {
+      return;
+    }
+
+    if (!canManageSelectedUser) {
+      setFormMessage(
+        'Seul un super administrateur peut modifier les groupes de ce compte.',
+      );
+
       return;
     }
 
@@ -577,7 +623,8 @@ export function UsersPage({ session }: UsersPageProps) {
             <div className="tdp-topbar-right">
               {selectedUserId &&
               selectedUser?.isActive &&
-              !isSelectedCurrentUser ? (
+              !isSelectedCurrentUser &&
+              canManageSelectedUser ? (
                 <button
                   className="admin-user-trash-button"
                   disabled={isSubmitting}
@@ -591,7 +638,8 @@ export function UsersPage({ session }: UsersPageProps) {
 
               {selectedUserId &&
               selectedUser?.isActive === false &&
-              !isSelectedCurrentUser ? (
+              !isSelectedCurrentUser &&
+              canManageSelectedUser ? (
                 <>
                   <button
                     className="admin-user-delete-button"
@@ -619,7 +667,7 @@ export function UsersPage({ session }: UsersPageProps) {
 
               <button
                 className="primary-button admin-user-save-button"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !canManageSelectedUser}
                 form={userFormId}
               >
                 {selectedUserId
@@ -716,7 +764,7 @@ export function UsersPage({ session }: UsersPageProps) {
                 <label className="field">
                   <span>Role</span>
                   <select
-                    disabled={isSelectedCurrentUser}
+                    disabled={isSelectedCurrentUser || !canManageSelectedUser}
                     onChange={(event) =>
                       handleFieldChange('role', event.target.value as UserRole)
                     }
@@ -733,6 +781,11 @@ export function UsersPage({ session }: UsersPageProps) {
                   <p className="ticket-form-helper">
                     Votre propre role ne peut pas etre modifie depuis ce
                     formulaire.
+                  </p>
+                ) : null}
+                {!isSelectedCurrentUser && !canManageSelectedUser ? (
+                  <p className="ticket-form-helper">
+                    Seul un super administrateur peut modifier ce compte.
                   </p>
                 ) : null}
               </form>
@@ -756,7 +809,7 @@ export function UsersPage({ session }: UsersPageProps) {
 
                       <button
                         className="primary-button admin-user-save-button admin-group-add-button"
-                        disabled={isMembershipSaving}
+                        disabled={isMembershipSaving || !canManageSelectedUser}
                         onClick={() => {
                           setIsGroupPickerOpen(true);
                           setGroupLookupPage(1);
@@ -910,7 +963,9 @@ export function UsersPage({ session }: UsersPageProps) {
                               <td>
                                 <button
                                   className="admin-user-delete-button admin-group-remove-member-button"
-                                  disabled={isMembershipSaving}
+                                  disabled={
+                                    isMembershipSaving || !canManageSelectedUser
+                                  }
                                   onClick={() =>
                                     void handleRemoveUserGroup(group.id)
                                   }

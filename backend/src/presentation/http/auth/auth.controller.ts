@@ -37,7 +37,7 @@ import { UpdateAdminUserStatusUseCase } from '../../../application/auth/use-case
 import { type AdminUserSummary } from '../../../domain/auth/admin-user-summary';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
 import { AuthPolicy } from '../../../domain/auth/auth-policy';
-import { UserRole } from '../../../domain/auth/user-role';
+import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
 import { CurrentUser } from './current-user.decorator';
 import { BearerAuthGuard } from './bearer-auth.guard';
 import { Policies } from './policies.decorator';
@@ -193,8 +193,18 @@ export class AuthController {
   @UseGuards(BearerAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
-  listAdminUsers(): Promise<AdminUserSummary[]> {
-    return this.listAdminUsersUseCase.execute();
+  async listAdminUsers(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<AdminUserSummary[]> {
+    const users = await this.listAdminUsersUseCase.execute();
+
+    if (user.role === UserRole.SUPER_ADMIN) {
+      return users;
+    }
+
+    return users.filter(
+      (listedUser) => listedUser.role !== UserRole.SUPER_ADMIN,
+    );
   }
 
   @Post('admin/users')
@@ -229,7 +239,7 @@ export class AuthController {
   @UseGuards(BearerAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
-  updateAdminUser(
+  async updateAdminUser(
     @Param('userId') userId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: UpdateAdminUserDto,
@@ -237,6 +247,12 @@ export class AuthController {
     if (user.id === userId && body.role !== user.role) {
       throw new BadRequestException('You cannot change your own role.');
     }
+
+    await this.assertCanManageTargetUser(user, userId, {
+      allowAdminCreation: true,
+      action: 'update this account',
+      nextRole: body.role,
+    });
 
     if (
       body.role === UserRole.SUPER_ADMIN &&
@@ -262,7 +278,7 @@ export class AuthController {
   @UseGuards(BearerAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
-  updateAdminUserStatus(
+  async updateAdminUserStatus(
     @Param('userId') userId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: UpdateAdminUserStatusDto,
@@ -273,6 +289,12 @@ export class AuthController {
       );
     }
 
+    await this.assertCanManageTargetUser(user, userId, {
+      action: body.isActive
+        ? 'restore this account'
+        : 'move this account to trash',
+    });
+
     return this.updateAdminUserStatusUseCase.execute(userId, body.isActive);
   }
 
@@ -280,10 +302,15 @@ export class AuthController {
   @UseGuards(BearerAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
-  updateAdminUserGroups(
+  async updateAdminUserGroups(
     @Param('userId') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() body: UpdateAdminUserGroupsDto,
   ): Promise<AdminUserSummary> {
+    await this.assertCanManageTargetUser(user, userId, {
+      action: 'update groups for this account',
+    });
+
     return this.updateAdminUserGroupsUseCase.execute({
       groupIds: body.groupIds,
       userId,
@@ -302,7 +329,59 @@ export class AuthController {
       throw new BadRequestException('You cannot delete your own account.');
     }
 
+    await this.assertCanManageTargetUser(user, userId, {
+      action: 'delete this account',
+    });
+
     await this.deleteAdminUserUseCase.execute(userId);
+  }
+
+  private async assertCanManageTargetUser(
+    actor: AuthenticatedUser,
+    targetUserId: string,
+    options: {
+      action: string;
+      allowAdminCreation?: boolean;
+      nextRole?: UserRole;
+    },
+  ): Promise<void> {
+    if (actor.role === UserRole.SUPER_ADMIN) {
+      return;
+    }
+
+    const targetUser = await this.findAdminUserOrThrow(targetUserId);
+
+    if (targetUser.role === UserRole.SUPER_ADMIN) {
+      throw new BadRequestException(
+        'Only super admins can manage super admins.',
+      );
+    }
+
+    if (targetUser.role === UserRole.ADMIN) {
+      throw new BadRequestException(`Only super admins can ${options.action}.`);
+    }
+
+    if (
+      options.nextRole === UserRole.SUPER_ADMIN ||
+      (options.nextRole &&
+        !options.allowAdminCreation &&
+        isAdminRole(options.nextRole))
+    ) {
+      throw new BadRequestException('Only super admins can grant this role.');
+    }
+  }
+
+  private async findAdminUserOrThrow(
+    userId: string,
+  ): Promise<AdminUserSummary> {
+    const users = await this.listAdminUsersUseCase.execute();
+    const targetUser = users.find((listedUser) => listedUser.id === userId);
+
+    if (!targetUser) {
+      throw new BadRequestException('User account was not found.');
+    }
+
+    return targetUser;
   }
 
   @Get('users')

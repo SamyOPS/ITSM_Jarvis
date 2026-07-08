@@ -171,7 +171,77 @@ describe('AuthController', () => {
       } as unknown as UpdateAdminUserStatusUseCase,
     );
 
-    await expect(controller.listAdminUsers()).resolves.toEqual(users);
+    await expect(
+      controller.listAdminUsers({
+        accessToken: 'token',
+        email: 'admin@example.com',
+        id: 'admin-1',
+        role: UserRole.ADMIN,
+      }),
+    ).resolves.toEqual(users);
+  });
+
+  it('hides super admin accounts from regular admins', async () => {
+    const users = [
+      {
+        displayName: 'Admin Client',
+        email: 'admin@example.com',
+        firstName: 'Admin',
+        groupId: null,
+        id: 'admin-1',
+        isActive: true,
+        lastName: 'Client',
+        role: UserRole.ADMIN,
+      },
+      {
+        displayName: 'Super Admin',
+        email: 'super@example.com',
+        firstName: 'Super',
+        groupId: null,
+        id: 'super-1',
+        isActive: true,
+        lastName: 'Admin',
+        role: UserRole.SUPER_ADMIN,
+      },
+    ];
+    const useCase = {
+      execute: jest.fn().mockResolvedValue(users),
+    } as unknown as ListAdminUsersUseCase;
+
+    controller = new AuthController(
+      {
+        execute: jest.fn(),
+      } as unknown as CreateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as DeleteAdminUserUseCase,
+      new GetAuthSetupUseCase(),
+      {
+        execute: jest.fn(),
+      } as unknown as GetAuthenticatedUserUseCase,
+      useCase,
+      {
+        execute: jest.fn(),
+      } as unknown as RegisterRequesterUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserGroupsUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserStatusUseCase,
+    );
+
+    await expect(
+      controller.listAdminUsers({
+        accessToken: 'token',
+        email: 'admin@example.com',
+        id: 'admin-1',
+        role: UserRole.ADMIN,
+      }),
+    ).resolves.toEqual([users[0]]);
   });
 
   it('returns the authenticated users directory', async () => {
@@ -220,7 +290,7 @@ describe('AuthController', () => {
     await expect(controller.listUsers()).resolves.toEqual(users);
   });
 
-  it('rejects moving the current admin account to trash', () => {
+  it('rejects moving the current admin account to trash', async () => {
     const updateStatus = jest.fn();
 
     controller = new AuthController(
@@ -251,7 +321,7 @@ describe('AuthController', () => {
       } as unknown as UpdateAdminUserStatusUseCase,
     );
 
-    expect(() =>
+    await expect(
       controller.updateAdminUserStatus(
         'admin-1',
         {
@@ -262,11 +332,11 @@ describe('AuthController', () => {
         },
         { isActive: false },
       ),
-    ).toThrow('You cannot move your own account to trash.');
+    ).rejects.toThrow('You cannot move your own account to trash.');
     expect(updateStatus).not.toHaveBeenCalled();
   });
 
-  it('rejects changing the current admin account role', () => {
+  it('rejects changing the current admin account role', async () => {
     const updateUser = jest.fn();
 
     controller = new AuthController(
@@ -297,7 +367,7 @@ describe('AuthController', () => {
       } as unknown as UpdateAdminUserStatusUseCase,
     );
 
-    expect(() =>
+    await expect(
       controller.updateAdminUser(
         'admin-1',
         {
@@ -313,7 +383,69 @@ describe('AuthController', () => {
           role: UserRole.DEMANDEUR,
         },
       ),
-    ).toThrow('You cannot change your own role.');
+    ).rejects.toThrow('You cannot change your own role.');
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+
+  it('rejects regular admins updating another admin account', async () => {
+    const updateUser = jest.fn();
+
+    controller = new AuthController(
+      {
+        execute: jest.fn(),
+      } as unknown as CreateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as DeleteAdminUserUseCase,
+      new GetAuthSetupUseCase(),
+      {
+        execute: jest.fn(),
+      } as unknown as GetAuthenticatedUserUseCase,
+      {
+        execute: jest.fn().mockResolvedValue([
+          {
+            displayName: 'Second Admin',
+            email: 'second-admin@example.com',
+            firstName: 'Second',
+            groupId: null,
+            id: 'admin-2',
+            isActive: true,
+            lastName: 'Admin',
+            role: UserRole.ADMIN,
+          },
+        ]),
+      } as unknown as ListAdminUsersUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as RegisterRequesterUseCase,
+      {
+        execute: updateUser,
+      } as unknown as UpdateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserGroupsUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserStatusUseCase,
+    );
+
+    await expect(
+      controller.updateAdminUser(
+        'admin-2',
+        {
+          accessToken: 'token',
+          email: 'admin@example.com',
+          id: 'admin-1',
+          role: UserRole.ADMIN,
+        },
+        {
+          email: 'second-admin@example.com',
+          firstName: 'Second',
+          lastName: 'Admin',
+          role: UserRole.AGENT,
+        },
+      ),
+    ).rejects.toThrow('Only super admins can update this account.');
     expect(updateUser).not.toHaveBeenCalled();
   });
 
