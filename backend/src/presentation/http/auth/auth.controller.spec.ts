@@ -551,6 +551,70 @@ describe('AuthController', () => {
     expect(updateUser).not.toHaveBeenCalled();
   });
 
+  it('rejects downgrading another super admin account', async () => {
+    const updateUser = jest.fn();
+
+    controller = new AuthController(
+      {
+        execute: jest.fn(),
+      } as unknown as CreateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as DeleteAdminUserUseCase,
+      new GetAuthSetupUseCase(),
+      {
+        execute: jest.fn(),
+      } as unknown as GetAuthenticatedUserUseCase,
+      mockUserLicenseReadUseCase(),
+      {
+        execute: jest.fn().mockResolvedValue([
+          {
+            displayName: 'Second Super Admin',
+            email: 'second-super@example.com',
+            firstName: 'Second',
+            groupId: null,
+            id: 'super-2',
+            isActive: true,
+            lastName: 'Super',
+            role: UserRole.SUPER_ADMIN,
+          },
+        ]),
+      } as unknown as ListAdminUsersUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as RegisterRequesterUseCase,
+      {
+        execute: updateUser,
+      } as unknown as UpdateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserGroupsUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserStatusUseCase,
+      mockUserLicenseWriteUseCase(),
+    );
+
+    await expect(
+      controller.updateAdminUser(
+        'super-2',
+        {
+          accessToken: 'token',
+          email: 'super@example.com',
+          id: 'super-1',
+          role: UserRole.SUPER_ADMIN,
+        },
+        {
+          email: 'second-super@example.com',
+          firstName: 'Second',
+          lastName: 'Super',
+          role: UserRole.ADMIN,
+        },
+      ),
+    ).rejects.toThrow('Super admin accounts cannot be downgraded.');
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+
   it('rejects deleting the current admin account', async () => {
     const deleteUser = jest.fn();
 

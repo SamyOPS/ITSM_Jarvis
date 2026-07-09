@@ -297,6 +297,15 @@ export class AuthController {
     }
 
     if (
+      targetUser.role === UserRole.SUPER_ADMIN &&
+      body.role !== UserRole.SUPER_ADMIN
+    ) {
+      throw new BadRequestException(
+        'Super admin accounts cannot be downgraded.',
+      );
+    }
+
+    if (
       targetUser.isActive &&
       targetUser.role === UserRole.SUPER_ADMIN &&
       isBillableRole(body.role)
