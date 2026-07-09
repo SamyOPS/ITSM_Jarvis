@@ -112,6 +112,24 @@ export function LicensePage({ session }: LicensePageProps) {
             className="license-stats-card"
             aria-label="Statistiques de licence"
           >
+            <header className="license-card-header">
+              <span>Effectifs</span>
+              <strong>{formatLicenseUsageLabel(license)}</strong>
+            </header>
+
+            <div
+              className="license-usage-bar"
+              aria-label={`Utilisation de la licence ${formatLicenseUsagePercent(
+                license,
+              )}%`}
+            >
+              <span
+                style={{
+                  width: `${formatLicenseUsagePercent(license)}%`,
+                }}
+              />
+            </div>
+
             <dl className="license-stats-list">
               <div>
                 <dt>Limite utilisateurs</dt>
@@ -132,6 +150,11 @@ export function LicensePage({ session }: LicensePageProps) {
             className="referentials-form-card license-form-card"
             onSubmit={handleSubmit}
           >
+            <header className="license-card-header">
+              <span>Modification</span>
+              <strong>SUPER_ADMIN</strong>
+            </header>
+
             <label className="field">
               <span>Limite d utilisateurs facturables</span>
               <input
@@ -198,6 +221,25 @@ function parseLimitInput(value: string): number | null | 'INVALID' {
 
 function formatLicenseValue(value: number | null): string | number {
   return value === null ? 'Illimité' : value;
+}
+
+function formatLicenseUsagePercent(license: UserLicenseSnapshot): number {
+  if (!license.maxBillableUsers) {
+    return 0;
+  }
+
+  return Math.min(
+    100,
+    Math.round((license.billableActiveUsers / license.maxBillableUsers) * 100),
+  );
+}
+
+function formatLicenseUsageLabel(license: UserLicenseSnapshot): string {
+  if (license.maxBillableUsers === null) {
+    return 'Illimite';
+  }
+
+  return `${formatLicenseUsagePercent(license)}% utilise`;
 }
 
 function mapLicenseError(error: unknown): string {

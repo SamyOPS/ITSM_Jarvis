@@ -131,11 +131,16 @@ export function UsersPage({ session }: UsersPageProps) {
     ? (users.find((user) => user.id === selectedUserId) ?? null)
     : null;
   const isSelectedCurrentUser = selectedUserId === session.user.id;
+  const isSelectedSuperAdmin = selectedUser?.role === 'SUPER_ADMIN';
   const canManageSelectedUser =
     !selectedUser ||
     session.user.role === 'SUPER_ADMIN' ||
     (selectedUser.role !== 'ADMIN' && selectedUser.role !== 'SUPER_ADMIN');
   const userRoleOptions = useMemo(() => {
+    if (selectedUser?.role === 'SUPER_ADMIN') {
+      return ['SUPER_ADMIN'] satisfies UserRole[];
+    }
+
     if (session.user.role === 'SUPER_ADMIN') {
       return USER_ROLES;
     }
@@ -145,7 +150,7 @@ export function UsersPage({ session }: UsersPageProps) {
     }
 
     return USER_ROLES.filter((role) => role !== 'SUPER_ADMIN');
-  }, [formState.role, session.user.role]);
+  }, [formState.role, selectedUser?.role, session.user.role]);
   const filteredUsers = useMemo(
     () => filterUsers(users, searchText, searchField, roleFilter, showTrash),
     [roleFilter, searchField, searchText, showTrash, users],
@@ -764,7 +769,11 @@ export function UsersPage({ session }: UsersPageProps) {
                 <label className="field">
                   <span>Role</span>
                   <select
-                    disabled={isSelectedCurrentUser || !canManageSelectedUser}
+                    disabled={
+                      isSelectedCurrentUser ||
+                      isSelectedSuperAdmin ||
+                      !canManageSelectedUser
+                    }
                     onChange={(event) =>
                       handleFieldChange('role', event.target.value as UserRole)
                     }
@@ -780,6 +789,12 @@ export function UsersPage({ session }: UsersPageProps) {
                 {isSelectedCurrentUser ? (
                   <p className="ticket-form-helper">
                     Votre propre role ne peut pas etre modifie depuis ce
+                    formulaire.
+                  </p>
+                ) : null}
+                {!isSelectedCurrentUser && isSelectedSuperAdmin ? (
+                  <p className="ticket-form-helper">
+                    Le role super admin ne peut pas etre retire depuis ce
                     formulaire.
                   </p>
                 ) : null}
