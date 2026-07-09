@@ -2,7 +2,7 @@
 import type { ProtectedApiResult } from '../../domain/auth/protected-api-result';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { AuthSetupSnapshot } from '../../domain/auth/auth-setup';
-import { DEFAULT_USER_ROLES } from '../../domain/auth/user-role';
+import { DEFAULT_USER_ROLES, isAdminRole } from '../../domain/auth/user-role';
 import {
   fetchAuthSetup,
   fetchProtectedAdminArea,
@@ -87,10 +87,9 @@ export function AuthPage({ onLogout, session, sessionState }: AuthPageProps) {
       setProtectedApiError(null);
 
       try {
-        const result =
-          session.user.role === 'ADMIN'
-            ? await fetchProtectedAdminArea(session.accessToken)
-            : await fetchProtectedAgentArea(session.accessToken);
+        const result = isAdminRole(session.user.role)
+          ? await fetchProtectedAdminArea(session.accessToken)
+          : await fetchProtectedAgentArea(session.accessToken);
 
         if (cancelled) {
           return;
@@ -191,7 +190,7 @@ export function AuthPage({ onLogout, session, sessionState }: AuthPageProps) {
             <div>
               <dt>UI protégée</dt>
               <dd>
-                {session?.user.role === 'ADMIN'
+                {session && isAdminRole(session.user.role)
                   ? 'Zones agent et administration visibles'
                   : session?.user.role === 'AGENT'
                     ? 'Zone agent visible'
@@ -203,7 +202,7 @@ export function AuthPage({ onLogout, session, sessionState }: AuthPageProps) {
             <div>
               <dt>Cible API protégée</dt>
               <dd>
-                {session?.user.role === 'ADMIN'
+                {session && isAdminRole(session.user.role)
                   ? '/auth/admin-area'
                   : session
                     ? '/auth/agent-area'

@@ -24,6 +24,7 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
   if (
     pathname === '/' ||
     pathname === '/admin/groups' ||
+    pathname === '/admin/license' ||
     pathname === '/admin/users' ||
     pathname === '/agent' ||
     pathname === '/agent/archives' ||

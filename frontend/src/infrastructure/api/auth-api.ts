@@ -191,6 +191,12 @@ export type UpdateAdminUserPayload = {
   role: UserRole;
 };
 
+export type UserLicenseSnapshot = {
+  billableActiveUsers: number;
+  maxBillableUsers: number | null;
+  remainingBillableUsers: number | null;
+};
+
 export async function createAdminUser(
   accessToken: string,
   payload: CreateAdminUserPayload,
@@ -343,6 +349,54 @@ export async function deleteAdminUser(
       message || `Admin user deletion failed with status ${response.status}`,
     );
   }
+}
+
+export async function fetchUserLicense(
+  accessToken: string,
+): Promise<UserLicenseSnapshot> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/auth/admin/license`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message || `User license lookup failed with status ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as UserLicenseSnapshot;
+}
+
+export async function updateUserLicense(
+  accessToken: string,
+  maxBillableUsers: number | null,
+): Promise<UserLicenseSnapshot> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/auth/admin/license`, {
+    method: 'PATCH',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ maxBillableUsers }),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message || `User license update failed with status ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as UserLicenseSnapshot;
 }
 
 export async function fetchUserDirectory(

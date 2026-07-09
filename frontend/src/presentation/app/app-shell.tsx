@@ -555,6 +555,7 @@ export function AppShell({
 
             if (
               route.path === '/admin/groups' ||
+              route.path === '/admin/license' ||
               route.path === '/admin/users' ||
               route.path === '/parc/cis/new' ||
               route.path === '/parc/cis' ||

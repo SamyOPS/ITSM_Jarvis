@@ -5,7 +5,10 @@ import {
   AdminUserWriteRepository,
   type CreateAdminUserRecord,
 } from '../repositories/admin-user-write.repository';
+import { AdminUserReadRepository } from '../repositories/admin-user-read.repository';
+import { UserLicenseRepository } from '../repositories/user-license.repository';
 import { assertPasswordMeetsPolicy } from '../password-policy';
+import { assertCanAddBillableUser } from '../user-license-policy';
 
 export type RegisterRequesterCommand = {
   email: string;
@@ -17,11 +20,15 @@ export type RegisterRequesterCommand = {
 @Injectable()
 export class RegisterRequesterUseCase {
   constructor(
+    @Inject(AdminUserReadRepository)
+    private readonly adminUserReadRepository: AdminUserReadRepository,
     @Inject(AdminUserWriteRepository)
     private readonly adminUserWriteRepository: AdminUserWriteRepository,
+    @Inject(UserLicenseRepository)
+    private readonly userLicenseRepository: UserLicenseRepository,
   ) {}
 
-  execute(command: RegisterRequesterCommand): Promise<AdminUserSummary> {
+  async execute(command: RegisterRequesterCommand): Promise<AdminUserSummary> {
     const email = command.email.trim().toLowerCase();
     const password = command.password.trim();
 
@@ -34,6 +41,12 @@ export class RegisterRequesterUseCase {
     }
 
     assertPasswordMeetsPolicy(password);
+    const [users, licenseSettings] = await Promise.all([
+      this.adminUserReadRepository.listUsers(),
+      this.userLicenseRepository.getSettings(),
+    ]);
+
+    assertCanAddBillableUser(users, licenseSettings.maxBillableUsers);
 
     const record: CreateAdminUserRecord = {
       email,

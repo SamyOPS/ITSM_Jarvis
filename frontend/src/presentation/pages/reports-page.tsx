@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import { isSupportRole } from '../../domain/auth/user-role';
 import { AppPagination } from '../components/app-pagination';
 
 import type { PlanningTask } from '../../domain/planning/planning-task';
@@ -300,11 +301,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
   >([]);
 
   const technicians = useMemo(
-    () =>
-      users.filter(
-        (user) =>
-          user.isActive && (user.role === 'AGENT' || user.role === 'ADMIN'),
-      ),
+    () => users.filter((user) => user.isActive && isSupportRole(user.role)),
 
     [users],
   );

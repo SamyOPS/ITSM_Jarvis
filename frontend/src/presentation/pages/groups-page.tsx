@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import { isSupportRole } from '../../domain/auth/user-role';
 import { AppPagination } from '../components/app-pagination';
 import type {
   ReferentialCatalogSnapshot,
@@ -148,7 +149,7 @@ export function GroupsPage({ session }: GroupsPageProps) {
         ? users.filter(
             (user) =>
               user.isActive &&
-              (user.role === 'AGENT' || user.role === 'ADMIN') &&
+              isSupportRole(user.role) &&
               !isUserInGroup(user, selectedGroupId) &&
               matchesMemberSearch(user, memberSearchText, memberSearchField),
           )

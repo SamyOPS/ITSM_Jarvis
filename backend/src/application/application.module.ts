@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { GetAuthSetupUseCase } from './auth/use-cases/get-auth-setup.use-case';
 import { GetAuthenticatedUserUseCase } from './auth/use-cases/get-authenticated-user.use-case';
+import { GetUserLicenseUseCase } from './auth/use-cases/get-user-license.use-case';
 import { CreateAdminUserUseCase } from './auth/use-cases/create-admin-user.use-case';
 import { DeleteAdminUserUseCase } from './auth/use-cases/delete-admin-user.use-case';
 import { GetHealthUseCase } from './health/use-cases/get-health.use-case';
@@ -10,6 +11,7 @@ import { RegisterRequesterUseCase } from './auth/use-cases/register-requester.us
 import { UpdateAdminUserUseCase } from './auth/use-cases/update-admin-user.use-case';
 import { UpdateAdminUserGroupsUseCase } from './auth/use-cases/update-admin-user-groups.use-case';
 import { UpdateAdminUserStatusUseCase } from './auth/use-cases/update-admin-user-status.use-case';
+import { UpdateUserLicenseUseCase } from './auth/use-cases/update-user-license.use-case';
 import { TicketNotificationService } from './notifications/ticket-notification.service';
 import { DeleteNotificationUseCase } from './notifications/use-cases/delete-notification.use-case';
 import { DeleteAllNotificationsUseCase } from './notifications/use-cases/delete-all-notifications.use-case';
@@ -145,6 +147,7 @@ const notificationUseCases = [
     GetHealthUseCase,
     GetAuthSetupUseCase,
     GetAuthenticatedUserUseCase,
+    GetUserLicenseUseCase,
     CreateAdminUserUseCase,
     DeleteAdminUserUseCase,
     ListAdminUsersUseCase,
@@ -152,6 +155,7 @@ const notificationUseCases = [
     UpdateAdminUserUseCase,
     UpdateAdminUserGroupsUseCase,
     UpdateAdminUserStatusUseCase,
+    UpdateUserLicenseUseCase,
     GetAgentPerformanceReportUseCase,
     GetTicketReportingBreakdownUseCase,
     GetTicketReportingOverviewUseCase,
@@ -166,6 +170,7 @@ const notificationUseCases = [
     GetHealthUseCase,
     GetAuthSetupUseCase,
     GetAuthenticatedUserUseCase,
+    GetUserLicenseUseCase,
     CreateAdminUserUseCase,
     DeleteAdminUserUseCase,
     ListAdminUsersUseCase,
@@ -173,6 +178,7 @@ const notificationUseCases = [
     UpdateAdminUserUseCase,
     UpdateAdminUserGroupsUseCase,
     UpdateAdminUserStatusUseCase,
+    UpdateUserLicenseUseCase,
     GetAgentPerformanceReportUseCase,
     GetTicketReportingBreakdownUseCase,
     GetTicketReportingOverviewUseCase,

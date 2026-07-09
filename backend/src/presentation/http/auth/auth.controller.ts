@@ -15,8 +15,10 @@ import {
   IsEmail,
   IsEnum,
   IsOptional,
+  IsInt,
   IsString,
   MinLength,
+  Min,
 } from 'class-validator';
 import {
   PASSWORD_MIN_LENGTH,
@@ -29,15 +31,19 @@ import {
   type AuthSetupSnapshot,
 } from '../../../application/auth/use-cases/get-auth-setup.use-case';
 import { GetAuthenticatedUserUseCase } from '../../../application/auth/use-cases/get-authenticated-user.use-case';
+import { GetUserLicenseUseCase } from '../../../application/auth/use-cases/get-user-license.use-case';
 import { ListAdminUsersUseCase } from '../../../application/auth/use-cases/list-admin-users.use-case';
 import { RegisterRequesterUseCase } from '../../../application/auth/use-cases/register-requester.use-case';
 import { UpdateAdminUserUseCase } from '../../../application/auth/use-cases/update-admin-user.use-case';
 import { UpdateAdminUserGroupsUseCase } from '../../../application/auth/use-cases/update-admin-user-groups.use-case';
 import { UpdateAdminUserStatusUseCase } from '../../../application/auth/use-cases/update-admin-user-status.use-case';
+import { UpdateUserLicenseUseCase } from '../../../application/auth/use-cases/update-user-license.use-case';
 import { type AdminUserSummary } from '../../../domain/auth/admin-user-summary';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
 import { AuthPolicy } from '../../../domain/auth/auth-policy';
+import { type UserLicenseSnapshot } from '../../../domain/auth/user-license';
 import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
+import { isBillableRole } from '../../../application/auth/user-license-policy';
 import { CurrentUser } from './current-user.decorator';
 import { BearerAuthGuard } from './bearer-auth.guard';
 import { Policies } from './policies.decorator';
@@ -105,6 +111,13 @@ class UpdateAdminUserStatusDto {
   isActive!: boolean;
 }
 
+class UpdateUserLicenseDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxBillableUsers!: number | null;
+}
+
 class UpdateAdminUserGroupsDto {
   @IsArray()
   @IsString({ each: true })
@@ -137,11 +150,13 @@ export class AuthController {
     private readonly deleteAdminUserUseCase: DeleteAdminUserUseCase,
     private readonly getAuthSetupUseCase: GetAuthSetupUseCase,
     private readonly getAuthenticatedUserUseCase: GetAuthenticatedUserUseCase,
+    private readonly getUserLicenseUseCase: GetUserLicenseUseCase,
     private readonly listAdminUsersUseCase: ListAdminUsersUseCase,
     private readonly registerRequesterUseCase: RegisterRequesterUseCase,
     private readonly updateAdminUserUseCase: UpdateAdminUserUseCase,
     private readonly updateAdminUserGroupsUseCase: UpdateAdminUserGroupsUseCase,
     private readonly updateAdminUserStatusUseCase: UpdateAdminUserStatusUseCase,
+    private readonly updateUserLicenseUseCase: UpdateUserLicenseUseCase,
   ) {}
 
   @Get('setup')
@@ -207,6 +222,24 @@ export class AuthController {
     );
   }
 
+  @Get('admin/license')
+  @UseGuards(BearerAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  getUserLicense(): Promise<UserLicenseSnapshot> {
+    return this.getUserLicenseUseCase.execute();
+  }
+
+  @Patch('admin/license')
+  @UseGuards(BearerAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  updateUserLicense(
+    @Body() body: UpdateUserLicenseDto,
+  ): Promise<UserLicenseSnapshot> {
+    return this.updateUserLicenseUseCase.execute({
+      maxBillableUsers: body.maxBillableUsers ?? null,
+    });
+  }
+
   @Post('admin/users')
   @UseGuards(BearerAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -248,7 +281,7 @@ export class AuthController {
       throw new BadRequestException('You cannot change your own role.');
     }
 
-    await this.assertCanManageTargetUser(user, userId, {
+    const targetUser = await this.assertCanManageTargetUser(user, userId, {
       allowAdminCreation: true,
       action: 'update this account',
       nextRole: body.role,
@@ -261,6 +294,14 @@ export class AuthController {
       throw new BadRequestException(
         'Only super admins can grant the super admin role.',
       );
+    }
+
+    if (
+      targetUser.isActive &&
+      targetUser.role === UserRole.SUPER_ADMIN &&
+      isBillableRole(body.role)
+    ) {
+      await this.assertBillableUserSlotAvailable();
     }
 
     return this.updateAdminUserUseCase.execute({
@@ -289,11 +330,19 @@ export class AuthController {
       );
     }
 
-    await this.assertCanManageTargetUser(user, userId, {
+    const targetUser = await this.assertCanManageTargetUser(user, userId, {
       action: body.isActive
         ? 'restore this account'
         : 'move this account to trash',
     });
+
+    if (
+      body.isActive &&
+      !targetUser.isActive &&
+      isBillableRole(targetUser.role)
+    ) {
+      await this.assertBillableUserSlotAvailable();
+    }
 
     return this.updateAdminUserStatusUseCase.execute(userId, body.isActive);
   }
@@ -344,12 +393,12 @@ export class AuthController {
       allowAdminCreation?: boolean;
       nextRole?: UserRole;
     },
-  ): Promise<void> {
-    if (actor.role === UserRole.SUPER_ADMIN) {
-      return;
-    }
-
+  ): Promise<AdminUserSummary> {
     const targetUser = await this.findAdminUserOrThrow(targetUserId);
+
+    if (actor.role === UserRole.SUPER_ADMIN) {
+      return targetUser;
+    }
 
     if (targetUser.role === UserRole.SUPER_ADMIN) {
       throw new BadRequestException(
@@ -369,6 +418,8 @@ export class AuthController {
     ) {
       throw new BadRequestException('Only super admins can grant this role.');
     }
+
+    return targetUser;
   }
 
   private async findAdminUserOrThrow(
@@ -384,9 +435,33 @@ export class AuthController {
     return targetUser;
   }
 
+  private async assertBillableUserSlotAvailable(): Promise<void> {
+    const license = await this.getUserLicenseUseCase.execute();
+
+    if (
+      license.maxBillableUsers !== null &&
+      license.remainingBillableUsers !== null &&
+      license.remainingBillableUsers <= 0
+    ) {
+      throw new BadRequestException(
+        `User limit reached. Maximum billable users: ${license.maxBillableUsers}.`,
+      );
+    }
+  }
+
   @Get('users')
   @UseGuards(BearerAuthGuard)
-  listUsers(): Promise<AdminUserSummary[]> {
-    return this.listAdminUsersUseCase.execute();
+  async listUsers(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<AdminUserSummary[]> {
+    const users = await this.listAdminUsersUseCase.execute();
+
+    if (user.role === UserRole.SUPER_ADMIN) {
+      return users;
+    }
+
+    return users.filter(
+      (listedUser) => listedUser.role !== UserRole.SUPER_ADMIN,
+    );
   }
 }

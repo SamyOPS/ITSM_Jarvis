@@ -3,11 +3,13 @@ import { CreateAdminUserUseCase } from '../../../application/auth/use-cases/crea
 import { DeleteAdminUserUseCase } from '../../../application/auth/use-cases/delete-admin-user.use-case';
 import { GetAuthenticatedUserUseCase } from '../../../application/auth/use-cases/get-authenticated-user.use-case';
 import { GetAuthSetupUseCase } from '../../../application/auth/use-cases/get-auth-setup.use-case';
+import { GetUserLicenseUseCase } from '../../../application/auth/use-cases/get-user-license.use-case';
 import { ListAdminUsersUseCase } from '../../../application/auth/use-cases/list-admin-users.use-case';
 import { RegisterRequesterUseCase } from '../../../application/auth/use-cases/register-requester.use-case';
 import { UpdateAdminUserUseCase } from '../../../application/auth/use-cases/update-admin-user.use-case';
 import { UpdateAdminUserGroupsUseCase } from '../../../application/auth/use-cases/update-admin-user-groups.use-case';
 import { UpdateAdminUserStatusUseCase } from '../../../application/auth/use-cases/update-admin-user-status.use-case';
+import { UpdateUserLicenseUseCase } from '../../../application/auth/use-cases/update-user-license.use-case';
 import { UserRole } from '../../../domain/auth/user-role';
 import { AuthController } from './auth.controller';
 
@@ -29,6 +31,16 @@ describe('AuthController', () => {
           provide: GetAuthenticatedUserUseCase,
           useValue: {
             execute: jest.fn(),
+          },
+        },
+        {
+          provide: GetUserLicenseUseCase,
+          useValue: {
+            execute: jest.fn().mockResolvedValue({
+              billableActiveUsers: 0,
+              maxBillableUsers: null,
+              remainingBillableUsers: null,
+            }),
           },
         },
         {
@@ -63,6 +75,12 @@ describe('AuthController', () => {
         },
         {
           provide: UpdateAdminUserStatusUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
+          provide: UpdateUserLicenseUseCase,
           useValue: {
             execute: jest.fn(),
           },
@@ -156,6 +174,7 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as GetAuthenticatedUserUseCase,
+      mockUserLicenseReadUseCase(),
       useCase,
       {
         execute: jest.fn(),
@@ -169,6 +188,7 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as UpdateAdminUserStatusUseCase,
+      mockUserLicenseWriteUseCase(),
     );
 
     await expect(
@@ -219,6 +239,7 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as GetAuthenticatedUserUseCase,
+      mockUserLicenseReadUseCase(),
       useCase,
       {
         execute: jest.fn(),
@@ -232,6 +253,7 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as UpdateAdminUserStatusUseCase,
+      mockUserLicenseWriteUseCase(),
     );
 
     await expect(
@@ -272,6 +294,7 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as GetAuthenticatedUserUseCase,
+      mockUserLicenseReadUseCase(),
       useCase,
       {
         execute: jest.fn(),
@@ -285,9 +308,82 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as UpdateAdminUserStatusUseCase,
+      mockUserLicenseWriteUseCase(),
     );
 
-    await expect(controller.listUsers()).resolves.toEqual(users);
+    await expect(
+      controller.listUsers({
+        accessToken: 'token',
+        email: 'admin@example.com',
+        id: 'admin-1',
+        role: UserRole.ADMIN,
+      }),
+    ).resolves.toEqual(users);
+  });
+
+  it('hides super admin accounts from the authenticated users directory for regular admins', async () => {
+    const users = [
+      {
+        displayName: 'Agent Client',
+        email: 'agent@example.com',
+        firstName: 'Agent',
+        groupId: 'group-1',
+        id: 'agent-1',
+        isActive: true,
+        lastName: 'Client',
+        role: UserRole.AGENT,
+      },
+      {
+        displayName: 'Super Admin',
+        email: 'super@example.com',
+        firstName: 'Super',
+        groupId: null,
+        id: 'super-1',
+        isActive: true,
+        lastName: 'Admin',
+        role: UserRole.SUPER_ADMIN,
+      },
+    ];
+    const useCase = {
+      execute: jest.fn().mockResolvedValue(users),
+    } as unknown as ListAdminUsersUseCase;
+
+    controller = new AuthController(
+      {
+        execute: jest.fn(),
+      } as unknown as CreateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as DeleteAdminUserUseCase,
+      new GetAuthSetupUseCase(),
+      {
+        execute: jest.fn(),
+      } as unknown as GetAuthenticatedUserUseCase,
+      mockUserLicenseReadUseCase(),
+      useCase,
+      {
+        execute: jest.fn(),
+      } as unknown as RegisterRequesterUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserGroupsUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserStatusUseCase,
+      mockUserLicenseWriteUseCase(),
+    );
+
+    await expect(
+      controller.listUsers({
+        accessToken: 'token',
+        email: 'admin@example.com',
+        id: 'admin-1',
+        role: UserRole.ADMIN,
+      }),
+    ).resolves.toEqual([users[0]]);
   });
 
   it('rejects moving the current admin account to trash', async () => {
@@ -304,6 +400,7 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as GetAuthenticatedUserUseCase,
+      mockUserLicenseReadUseCase(),
       {
         execute: jest.fn(),
       } as unknown as ListAdminUsersUseCase,
@@ -319,6 +416,7 @@ describe('AuthController', () => {
       {
         execute: updateStatus,
       } as unknown as UpdateAdminUserStatusUseCase,
+      mockUserLicenseWriteUseCase(),
     );
 
     await expect(
@@ -350,6 +448,7 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as GetAuthenticatedUserUseCase,
+      mockUserLicenseReadUseCase(),
       {
         execute: jest.fn(),
       } as unknown as ListAdminUsersUseCase,
@@ -365,6 +464,7 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as UpdateAdminUserStatusUseCase,
+      mockUserLicenseWriteUseCase(),
     );
 
     await expect(
@@ -401,6 +501,7 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as GetAuthenticatedUserUseCase,
+      mockUserLicenseReadUseCase(),
       {
         execute: jest.fn().mockResolvedValue([
           {
@@ -427,6 +528,7 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as UpdateAdminUserStatusUseCase,
+      mockUserLicenseWriteUseCase(),
     );
 
     await expect(
@@ -463,6 +565,7 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as GetAuthenticatedUserUseCase,
+      mockUserLicenseReadUseCase(),
       {
         execute: jest.fn(),
       } as unknown as ListAdminUsersUseCase,
@@ -478,6 +581,7 @@ describe('AuthController', () => {
       {
         execute: jest.fn(),
       } as unknown as UpdateAdminUserStatusUseCase,
+      mockUserLicenseWriteUseCase(),
     );
 
     await expect(
@@ -491,3 +595,19 @@ describe('AuthController', () => {
     expect(deleteUser).not.toHaveBeenCalled();
   });
 });
+
+function mockUserLicenseReadUseCase(): GetUserLicenseUseCase {
+  return {
+    execute: jest.fn().mockResolvedValue({
+      billableActiveUsers: 0,
+      maxBillableUsers: null,
+      remainingBillableUsers: null,
+    }),
+  } as unknown as GetUserLicenseUseCase;
+}
+
+function mockUserLicenseWriteUseCase(): UpdateUserLicenseUseCase {
+  return {
+    execute: jest.fn(),
+  } as unknown as UpdateUserLicenseUseCase;
+}

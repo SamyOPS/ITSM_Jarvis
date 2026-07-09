@@ -30,6 +30,7 @@ import { HomePage } from '../pages/home-page';
 import { LoginPage } from '../pages/login-page';
 import { NotFoundPage } from '../pages/not-found-page';
 import { KnowledgePage } from '../pages/knowledge-page';
+import { LicensePage } from '../pages/license-page';
 import { ParkPage } from '../pages/park-page';
 import { ReportsPage } from '../pages/reports-page';
 import { RegisterPage } from '../pages/register-page';
@@ -132,6 +133,8 @@ function renderPage({
       return session ? <KnowledgePage session={session} /> : <NotFoundPage />;
     case '/admin/groups':
       return session ? <GroupsPage session={session} /> : <NotFoundPage />;
+    case '/admin/license':
+      return session ? <LicensePage session={session} /> : <NotFoundPage />;
     case '/admin/users':
       return session ? <UsersPage session={session} /> : <NotFoundPage />;
     case '/agent':

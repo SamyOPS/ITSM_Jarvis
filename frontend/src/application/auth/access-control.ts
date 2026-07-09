@@ -4,6 +4,7 @@ import type { RoutePath } from '../../domain/navigation/route';
 
 const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
   '/admin/groups': ['ADMIN', 'SUPER_ADMIN'],
+  '/admin/license': ['SUPER_ADMIN'],
   '/admin/users': ['ADMIN', 'SUPER_ADMIN'],
   '/agent': ['DEMANDEUR', 'AGENT', 'ADMIN', 'SUPER_ADMIN'],
   '/agent/archives': ['ADMIN', 'SUPER_ADMIN'],
@@ -66,6 +67,7 @@ export function getVisibleRoutes(
       '/parc/cis',
       '/admin/users',
       '/admin/groups',
+      '/admin/license',
       '/login',
     ] as const
   )
