@@ -166,6 +166,11 @@
   color: #186e38;
 }
 
+.kb-card-status.is-rejected {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b42318;
+}
+
 .kb-card-title {
   max-width: min(100%, 25ch);
   min-width: 0;

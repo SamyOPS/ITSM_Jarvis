@@ -48,11 +48,13 @@ function normalizeRequiredText(value: unknown, field: string): string {
 }
 
 function normalizeStatus(value: unknown): KnowledgeArticleStatus {
-  if (value === 'DRAFT' || value === 'PUBLISHED') {
+  if (value === 'DRAFT' || value === 'PUBLISHED' || value === 'REJECTED') {
     return value;
   }
 
-  throw new BadRequestException('status must be one of DRAFT or PUBLISHED.');
+  throw new BadRequestException(
+    'status must be one of DRAFT, PUBLISHED or REJECTED.',
+  );
 }
 
 function createSlug(value: string): string {

@@ -89,9 +89,11 @@ export function KnowledgeArticleCard({
       <div className="kb-card-top">
         <span className="kb-card-category">{article.category}</span>
         <span
-          className={`kb-card-status ${article.status === 'PUBLISHED' ? 'is-published' : 'is-draft'}`}
+          className={`kb-card-status ${getKnowledgeStatusClassName(
+            article.status,
+          )}`}
         >
-          {article.status === 'PUBLISHED' ? 'Publie' : 'Brouillon'}
+          {formatKnowledgeStatus(article.status)}
         </span>
       </div>
       <strong className="kb-card-title" ref={titleRef}>
@@ -129,4 +131,28 @@ export function KnowledgeArticleCard({
       </div>
     </article>
   );
+}
+
+function formatKnowledgeStatus(status: KnowledgeArticle['status']): string {
+  switch (status) {
+    case 'PUBLISHED':
+      return 'Publie';
+    case 'REJECTED':
+      return 'Refuse';
+    default:
+      return 'En attente';
+  }
+}
+
+function getKnowledgeStatusClassName(
+  status: KnowledgeArticle['status'],
+): string {
+  switch (status) {
+    case 'PUBLISHED':
+      return 'is-published';
+    case 'REJECTED':
+      return 'is-rejected';
+    default:
+      return 'is-draft';
+  }
 }

@@ -109,6 +109,14 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   const [attachmentInputKey, setAttachmentInputKey] = useState(0);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const isAdmin = isAdminRole(session.user.role);
+  const isAgent = session.user.role === 'AGENT';
+  const canCreateArticle = isAdmin || isAgent;
+  const canEditSelectedArticle =
+    selectedArticle !== null &&
+    (isAdmin ||
+      (isAgent &&
+        selectedArticle.createdByUserId === session.user.id &&
+        selectedArticle.status !== 'PUBLISHED'));
   const articleListBackPath = withPageQuery(
     '/knowledge/articles',
     getPageQueryParam('fromPage'),
@@ -317,7 +325,10 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   }
 
   function openCreate(): void {
-    setForm(EMPTY_FORM);
+    setForm({
+      ...EMPTY_FORM,
+      status: isAdmin ? 'PUBLISHED' : 'DRAFT',
+    });
     setContentTab('edit');
     setErrorMessage(null);
     resetAttachmentDraft();
@@ -462,7 +473,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
       const payload: CreateKnowledgeArticlePayload = {
         category: form.category,
         content: form.content,
-        status: form.status,
+        status: isAdmin ? form.status : 'DRAFT',
         title: form.title,
       };
 
@@ -514,7 +525,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
       const payload: UpdateKnowledgeArticlePayload = {
         category: form.category,
         content: form.content,
-        status: form.status,
+        status: isAdmin ? form.status : 'DRAFT',
         title: form.title,
       };
 
@@ -842,6 +853,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
             <label className="field">
               <span>Statut</span>
               <select
+                disabled={!isAdmin}
                 onChange={(event) =>
                   setForm((currentForm) => ({
                     ...currentForm,
@@ -851,9 +863,16 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                 value={form.status}
               >
                 <option value="PUBLISHED">Publié</option>
-                <option value="DRAFT">Brouillon</option>
+                <option value="DRAFT">En attente</option>
+                <option value="REJECTED">Refuse</option>
               </select>
             </label>
+
+            {!isAdmin ? (
+              <p className="ticket-form-helper">
+                Votre article sera envoye en validation avant publication.
+              </p>
+            ) : null}
 
             <div className="field">
               <span>Contenu (Markdown)</span>
@@ -1072,7 +1091,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               Retour aux articles
             </button>
 
-            {isAdmin ? (
+            {canEditSelectedArticle ? (
               <div className="kb-detail-actions">
                 <button
                   className="primary-button admin-user-save-button kb-inline-button"
@@ -1082,14 +1101,16 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                   <Pencil size={15} />
                   Modifier
                 </button>
-                <button
-                  className="admin-user-delete-button kb-inline-button"
-                  onClick={() => openDelete(selectedArticle)}
-                  type="button"
-                >
-                  <Trash2 size={15} />
-                  Supprimer
-                </button>
+                {isAdmin ? (
+                  <button
+                    className="admin-user-delete-button kb-inline-button"
+                    onClick={() => openDelete(selectedArticle)}
+                    type="button"
+                  >
+                    <Trash2 size={15} />
+                    Supprimer
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -1100,11 +1121,15 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
                 {selectedArticle.category}
               </span>
               <span
-                className={`kb-card-status ${selectedArticle.status === 'PUBLISHED' ? 'is-published' : 'is-draft'}`}
+                className={`kb-card-status ${getKnowledgeStatusClassName(
+                  selectedArticle.status,
+                )}`}
               >
                 {selectedArticle.status === 'PUBLISHED'
                   ? 'Publié'
-                  : 'Brouillon'}
+                  : selectedArticle.status === 'REJECTED'
+                    ? 'Refuse'
+                    : 'En attente'}
               </span>
             </div>
             <h1>{selectedArticle.title}</h1>
@@ -1201,14 +1226,14 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               <span>articles</span>
             </div>
 
-            {isAdmin ? (
+            {canCreateArticle ? (
               <button
                 className="primary-button admin-user-save-button kb-inline-button kb-toolbar-create-button"
                 onClick={openCreate}
                 type="button"
               >
                 <Plus size={16} />
-                Nouvel article
+                {isAdmin ? 'Nouvel article' : 'Proposer un article'}
               </button>
             ) : null}
 
@@ -1320,7 +1345,8 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
               >
                 <option value="">Tous</option>
                 <option value="PUBLISHED">Publié</option>
-                <option value="DRAFT">Brouillon</option>
+                <option value="DRAFT">En attente</option>
+                <option value="REJECTED">Refuse</option>
               </select>
             </div>
           </div>
@@ -1388,6 +1414,17 @@ function buildKnowledgeAttachmentStoragePath(
 
 function sanitizeFileName(fileName: string): string {
   return fileName.replace(/[^a-zA-Z0-9._-]/g, '-');
+}
+
+function getKnowledgeStatusClassName(status: KnowledgeArticleStatus): string {
+  switch (status) {
+    case 'PUBLISHED':
+      return 'is-published';
+    case 'REJECTED':
+      return 'is-rejected';
+    default:
+      return 'is-draft';
+  }
 }
 
 function formatFileSize(sizeBytes: number): string {

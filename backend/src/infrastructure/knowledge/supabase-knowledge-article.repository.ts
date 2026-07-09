@@ -18,7 +18,10 @@ import {
   KnowledgeArticleRepository,
 } from '../../application/knowledge/repositories/knowledge-article.repository';
 import { KnowledgeArticleAttachment } from '../../domain/knowledge/knowledge-article-attachment';
-import { KnowledgeArticle } from '../../domain/knowledge/knowledge-article';
+import {
+  KnowledgeArticle,
+  type KnowledgeArticleStatus,
+} from '../../domain/knowledge/knowledge-article';
 import { getBackendRuntimeConfig } from '../config/app-config';
 
 type SupabaseKnowledgeArticleRow = {
@@ -28,7 +31,7 @@ type SupabaseKnowledgeArticleRow = {
   created_by_user_id: string;
   id: string;
   slug: string;
-  status: 'DRAFT' | 'PUBLISHED';
+  status: KnowledgeArticleStatus;
   title: string;
   updated_at: string;
 };
