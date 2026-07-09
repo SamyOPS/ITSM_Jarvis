@@ -324,16 +324,17 @@
 
 .ticket-preview-card {
   display: grid;
-  gap: 14px;
-  padding: 18px;
-  border: 1px solid rgba(207, 216, 234, 0.9);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.76);
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(22, 163, 74, 0.18);
+  border-left: 3px solid rgba(22, 163, 74, 0.78);
+  border-radius: 12px;
+  background: rgba(247, 254, 251, 0.86);
 }
 
 .ticket-preview-card h3 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1rem;
 }
 
 .ticket-preview-card p,
@@ -343,13 +344,29 @@
 }
 
 .ticket-form-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
   margin: 0;
-  color: #9b2e3d;
+  padding: 8px 10px;
+  border: 1px solid rgba(220, 38, 38, 0.14);
+  border-left: 2px solid rgba(220, 38, 38, 0.72);
+  border-radius: 10px;
+  background: rgba(255, 251, 251, 0.92);
+  color: #991b1b;
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .field-error {
-  color: #9b2e3d;
-  font-size: 0.85rem;
+  display: block;
+  margin-top: 6px;
+  color: #b42318;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.35;
 }
 
 .ticket-preview-grid {
@@ -383,7 +400,24 @@
 
 .ticket-form-helper {
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+p.ticket-form-helper {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  border-left: 2px solid rgba(37, 99, 235, 0.55);
+  border-radius: 10px;
+  background: rgba(248, 251, 255, 0.9);
+  color: #28476f;
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .incident-lookup-field {
@@ -814,56 +848,64 @@
 
 .ticket-created-card {
   display: grid;
-  gap: 8px;
-  padding: 16px;
-  border: 1px solid rgba(24, 127, 84, 0.2);
-  border-radius: 18px;
-  background: linear-gradient(180deg, #ecfff4 0%, #ffffff 100%);
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(24, 127, 84, 0.14);
+  border-left: 2px solid rgba(24, 127, 84, 0.68);
+  border-radius: 10px;
+  background: rgba(247, 254, 251, 0.9);
 }
 
 .ticket-created-card span {
   color: #187f54;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .ticket-created-card strong {
   color: #17335f;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
 }
 
 .ticket-created-card p {
+  margin: 0;
   color: #24406c;
+  font-size: 0.86rem;
 }
 
 .ticket-created-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
   margin: 0;
 }
 
 .ticket-created-grid div {
-  padding: 12px 14px;
-  border: 1px solid rgba(24, 127, 84, 0.16);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.82);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .ticket-created-grid dt {
-  margin: 0 0 4px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #187f54;
+  color: #4d668f;
 }
 
 .ticket-created-grid dd {
   margin: 0;
   color: #24406c;
+  font-size: 0.82rem;
 }
 
 .ticket-list-card {
@@ -2804,23 +2846,31 @@
 }
 
 .tdp-form-error {
+  width: fit-content;
+  max-width: 100%;
   margin: 0;
-  padding: 9px 13px;
+  padding: 8px 10px;
+  border: 1px solid rgba(220, 38, 38, 0.14);
+  border-left: 2px solid rgba(220, 38, 38, 0.72);
   border-radius: 10px;
-  background: rgba(220, 50, 50, 0.06);
-  color: #b91c1c;
-  font-size: 0.87rem;
-  border: 1px solid rgba(220, 50, 50, 0.16);
+  background: rgba(255, 251, 251, 0.92);
+  color: #991b1b;
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .tdp-form-success {
+  width: fit-content;
+  max-width: 100%;
   margin: 0;
-  padding: 9px 13px;
+  padding: 8px 10px;
+  border: 1px solid rgba(22, 163, 74, 0.14);
+  border-left: 2px solid rgba(22, 163, 74, 0.66);
   border-radius: 10px;
-  background: rgba(26, 122, 74, 0.06);
-  color: #065f46;
-  font-size: 0.87rem;
-  border: 1px solid rgba(26, 122, 74, 0.16);
+  background: rgba(247, 254, 251, 0.9);
+  color: #166534;
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 /* Attachments */
