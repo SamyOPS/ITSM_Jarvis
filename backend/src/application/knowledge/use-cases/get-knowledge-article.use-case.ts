@@ -22,7 +22,11 @@ export class GetKnowledgeArticleUseCase {
       throw new NotFoundException('Knowledge article not found.');
     }
 
-    if (article.status === 'DRAFT' && !isAdminRole(userRole)) {
+    if (
+      article.status !== 'PUBLISHED' &&
+      !isAdminRole(userRole) &&
+      (userRole !== UserRole.AGENT || article.createdByUserId !== currentUserId)
+    ) {
       throw new ForbiddenException('Knowledge article access denied.');
     }
 

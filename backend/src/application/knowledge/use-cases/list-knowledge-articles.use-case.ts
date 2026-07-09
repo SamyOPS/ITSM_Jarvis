@@ -7,7 +7,7 @@ import { KnowledgeArticleRepository } from '../repositories/knowledge-article.re
 export class ListKnowledgeArticlesUseCase {
   constructor(private readonly repository: KnowledgeArticleRepository) {}
 
-  execute(
+  async execute(
     userRole: UserRole,
     currentUserId: string,
   ): Promise<KnowledgeArticle[]> {
@@ -15,6 +15,13 @@ export class ListKnowledgeArticlesUseCase {
       return this.repository.listArticles(currentUserId);
     }
 
-    return this.repository.listPublishedArticles(currentUserId);
+    const articles = await this.repository.listArticles(currentUserId);
+
+    return articles.filter(
+      (article) =>
+        article.status === 'PUBLISHED' ||
+        (userRole === UserRole.AGENT &&
+          article.createdByUserId === currentUserId),
+    );
   }
 }

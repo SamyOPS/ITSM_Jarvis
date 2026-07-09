@@ -84,20 +84,24 @@ export class KnowledgeController {
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<KnowledgeArticle> {
-    return this.toggleKnowledgeArticleLikeUseCase.execute(id, user.id);
+    return this.toggleKnowledgeArticleLikeUseCase.execute(
+      id,
+      user.id,
+      user.role,
+    );
   }
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.ADMIN)
   createArticle(
     @Body() body: KnowledgeArticleBodyDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<KnowledgeArticle> {
-    return this.createKnowledgeArticleUseCase.execute(body, user.id);
+    return this.createKnowledgeArticleUseCase.execute(body, user.id, user.role);
   }
 
   @Post(':id/attachments')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.ADMIN)
   addAttachment(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -116,13 +120,18 @@ export class KnowledgeController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.ADMIN)
   updateArticle(
     @Param('id') id: string,
     @Body() body: KnowledgeArticleBodyDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<KnowledgeArticle> {
-    return this.updateKnowledgeArticleUseCase.execute(id, user.id, body);
+    return this.updateKnowledgeArticleUseCase.execute(
+      id,
+      user.id,
+      user.role,
+      body,
+    );
   }
 
   @Delete(':id')

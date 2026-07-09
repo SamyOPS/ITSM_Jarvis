@@ -1,4 +1,4 @@
-export type KnowledgeArticleStatus = 'DRAFT' | 'PUBLISHED';
+export type KnowledgeArticleStatus = 'DRAFT' | 'PUBLISHED' | 'REJECTED';
 
 export class KnowledgeArticle {
   constructor(

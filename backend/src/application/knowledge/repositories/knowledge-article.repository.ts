@@ -1,18 +1,19 @@
 import { KnowledgeArticle } from '../../../domain/knowledge/knowledge-article';
+import { type KnowledgeArticleStatus } from '../../../domain/knowledge/knowledge-article';
 
 export type CreateKnowledgeArticleRecord = {
   category: string;
   content: string;
   createdByUserId: string;
   slug: string;
-  status: 'DRAFT' | 'PUBLISHED';
+  status: KnowledgeArticleStatus;
   title: string;
 };
 
 export type UpdateKnowledgeArticleRecord = {
   category: string;
   content: string;
-  status: 'DRAFT' | 'PUBLISHED';
+  status: KnowledgeArticleStatus;
   title: string;
 };
 
