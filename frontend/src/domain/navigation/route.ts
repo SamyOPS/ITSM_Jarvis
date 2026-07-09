@@ -1,6 +1,7 @@
 export type RoutePath =
   | '/'
   | '/admin/groups'
+  | '/admin/license'
   | '/admin/users'
   | '/agent'
   | '/agent/incidents/new'
@@ -79,6 +80,11 @@ export const ROUTES: RouteDefinition[] = [
     description: 'Creation d un nouvel equipement du parc informatique.',
     path: '/parc/cis/new',
     title: 'Ajouter un equipement',
+  },
+  {
+    description: 'Gestion de la limite des utilisateurs facturables.',
+    path: '/admin/license',
+    title: 'Licence',
   },
   {
     description: 'Liste des utilisateurs et de leurs roles.',

@@ -3,6 +3,7 @@ import {
   Archive,
   BarChart3,
   BookOpen,
+  BadgeEuro,
   FileText,
   LayoutDashboard,
   ListChecks,
@@ -21,12 +22,14 @@ import { navigateTo } from '../../infrastructure/routing/browser-router';
 export const administrationRouteOrder: RoutePath[] = [
   '/admin/users',
   '/admin/groups',
+  '/admin/license',
   '/agent/archives',
 ];
 
 export const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/': LayoutDashboard,
   '/admin/groups': Users,
+  '/admin/license': BadgeEuro,
   '/admin/users': User,
   '/agent': LayoutDashboard,
   '/agent/archives': Archive,

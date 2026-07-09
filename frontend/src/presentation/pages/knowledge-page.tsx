@@ -27,6 +27,7 @@ import type {
   KnowledgeArticleStatus,
   UpdateKnowledgeArticlePayload,
 } from '../../domain/knowledge/knowledge-article';
+import { isAdminRole } from '../../domain/auth/user-role';
 import type { KnowledgeArticleAttachmentSnapshot } from '../../domain/knowledge/knowledge-article-attachment';
 import { AppPagination } from '../components/app-pagination';
 import {
@@ -107,7 +108,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
   const [likingArticleIds, setLikingArticleIds] = useState<string[]>([]);
   const [attachmentInputKey, setAttachmentInputKey] = useState(0);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
-  const isAdmin = session.user.role === 'ADMIN';
+  const isAdmin = isAdminRole(session.user.role);
   const articleListBackPath = withPageQuery(
     '/knowledge/articles',
     getPageQueryParam('fromPage'),

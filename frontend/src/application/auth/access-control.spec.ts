@@ -53,12 +53,20 @@ describe('access-control', () => {
     expect(canAccessRoute('/parc/cis', session)).toBe(true);
     expect(canAccessRoute('/parc/cis/new', session)).toBe(true);
     expect(canAccessRoute('/admin/users', session)).toBe(true);
+    expect(canAccessRoute('/admin/license', session)).toBe(false);
+  });
+
+  it('lets super admin access the license route', () => {
+    const session = buildSession('SUPER_ADMIN');
+
+    expect(canAccessRoute('/admin/license', session)).toBe(true);
   });
 
   it('returns the expected home route for each role', () => {
     expect(getHomeRoute(buildSession('DEMANDEUR'))).toBe('/');
     expect(getHomeRoute(buildSession('AGENT'))).toBe('/reports');
     expect(getHomeRoute(buildSession('ADMIN'))).toBe('/reports');
+    expect(getHomeRoute(buildSession('SUPER_ADMIN'))).toBe('/reports');
     expect(getHomeRoute(null)).toBe('/');
   });
 
@@ -75,6 +83,13 @@ describe('access-control', () => {
     expect(visibleRoutes).toContain('/parc/cis/new');
     expect(visibleRoutes).toContain('/parc/cis');
     expect(visibleRoutes).toContain('/admin/users');
+    expect(visibleRoutes).not.toContain('/admin/license');
     expect(visibleRoutes).not.toContain('/login');
+  });
+
+  it('shows the license route for super admin', () => {
+    const visibleRoutes = getVisibleRoutes(buildSession('SUPER_ADMIN'));
+
+    expect(visibleRoutes).toContain('/admin/license');
   });
 });

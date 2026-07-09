@@ -1,4 +1,5 @@
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import { isAdminRole } from '../../domain/auth/user-role';
 import type { PlanningTask } from '../../domain/planning/planning-task';
 import type { ReferentialCatalogSnapshot } from '../../domain/referentials/referential-catalog';
 import type { TicketSummarySnapshot } from '../../domain/ticketing/ticket-summary';
@@ -419,7 +420,7 @@ export function formatGroupChatInitials(value: string): string {
 }
 
 export function formatGroupMemberRole(role: AdminUserSummary['role']): string {
-  if (role === 'ADMIN') {
+  if (isAdminRole(role)) {
     return 'Admin';
   }
 

@@ -5,7 +5,13 @@ import {
   AdminUserWriteRepository,
   type CreateAdminUserRecord,
 } from '../repositories/admin-user-write.repository';
+import { AdminUserReadRepository } from '../repositories/admin-user-read.repository';
+import { UserLicenseRepository } from '../repositories/user-license.repository';
 import { assertPasswordMeetsPolicy } from '../password-policy';
+import {
+  assertCanAddBillableUser,
+  isBillableRole,
+} from '../user-license-policy';
 
 export type CreateAdminUserCommand = {
   email: string;
@@ -20,11 +26,15 @@ export type CreateAdminUserCommand = {
 @Injectable()
 export class CreateAdminUserUseCase {
   constructor(
+    @Inject(AdminUserReadRepository)
+    private readonly adminUserReadRepository: AdminUserReadRepository,
     @Inject(AdminUserWriteRepository)
     private readonly adminUserWriteRepository: AdminUserWriteRepository,
+    @Inject(UserLicenseRepository)
+    private readonly userLicenseRepository: UserLicenseRepository,
   ) {}
 
-  execute(command: CreateAdminUserCommand): Promise<AdminUserSummary> {
+  async execute(command: CreateAdminUserCommand): Promise<AdminUserSummary> {
     const email = command.email.trim().toLowerCase();
     const password = command.password.trim();
 
@@ -40,6 +50,15 @@ export class CreateAdminUserUseCase {
 
     if (!Object.values(UserRole).includes(command.role)) {
       throw new BadRequestException('role is invalid.');
+    }
+
+    if (isBillableRole(command.role)) {
+      const [users, licenseSettings] = await Promise.all([
+        this.adminUserReadRepository.listUsers(),
+        this.userLicenseRepository.getSettings(),
+      ]);
+
+      assertCanAddBillableUser(users, licenseSettings.maxBillableUsers);
     }
 
     const groupIds = normalizeGroupIds(command.groupIds, command.groupId) ?? [];

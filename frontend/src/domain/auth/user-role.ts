@@ -6,3 +6,11 @@ export const DEFAULT_USER_ROLES: UserRole[] = [
   'ADMIN',
   'SUPER_ADMIN',
 ];
+
+export function isAdminRole(role: UserRole): boolean {
+  return role === 'ADMIN' || role === 'SUPER_ADMIN';
+}
+
+export function isSupportRole(role: UserRole): boolean {
+  return role === 'AGENT' || isAdminRole(role);
+}

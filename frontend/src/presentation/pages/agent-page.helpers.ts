@@ -1,7 +1,11 @@
 import { createElement } from 'react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
-import type { UserRole } from '../../domain/auth/user-role';
+import {
+  isAdminRole,
+  isSupportRole,
+  type UserRole,
+} from '../../domain/auth/user-role';
 import {
   translatePriority,
   translateTicketStatus,
@@ -178,7 +182,7 @@ export function buildTicketAttachmentStoragePath(
 }
 
 export function canManageTicketActions(role: UserRole): boolean {
-  return role === 'AGENT' || role === 'ADMIN';
+  return isSupportRole(role);
 }
 
 export function canChangeTicketStatus(
@@ -186,7 +190,7 @@ export function canChangeTicketStatus(
   currentUserId: string,
   ticketDetail: TicketDetailSnapshot,
 ): boolean {
-  if (role === 'ADMIN') {
+  if (isAdminRole(role)) {
     return true;
   }
 
@@ -206,7 +210,7 @@ export function getStatusOptionsForRole(
   role: UserRole,
   ticketDetail: TicketDetailSnapshot,
 ): Array<{ label: string; value: TicketStatus }> {
-  if (role === 'ADMIN') {
+  if (isAdminRole(role)) {
     return [
       { label: 'Nouveau', value: 'OPEN' },
       { label: 'En cours', value: 'IN_PROGRESS' },

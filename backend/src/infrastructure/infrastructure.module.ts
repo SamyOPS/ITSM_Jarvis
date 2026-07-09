@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AdminUserReadRepository } from '../application/auth/repositories/admin-user-read.repository';
 import { AdminUserWriteRepository } from '../application/auth/repositories/admin-user-write.repository';
+import { UserLicenseRepository } from '../application/auth/repositories/user-license.repository';
 import { UserAssignmentProfileRepository } from '../application/auth/repositories/user-assignment-profile.repository';
 import { GroupChatMessageRepository } from '../application/group-chat/repositories/group-chat-message.repository';
 import { ReferentialCategoryReadRepository } from '../application/referentials/repositories/referential-category-read.repository';
@@ -32,6 +33,7 @@ import { SupabaseAdminUserReadRepository } from './auth/supabase-admin-user-read
 import { SupabaseAdminUserWriteRepository } from './auth/supabase-admin-user-write.repository';
 import { SupabaseTokenValidatorService } from './auth/supabase-token-validator.service';
 import { SupabaseUserAssignmentProfileRepository } from './auth/supabase-user-assignment-profile.repository';
+import { SupabaseUserLicenseRepository } from './auth/supabase-user-license.repository';
 import { SupabaseGroupChatMessageRepository } from './group-chat/supabase-group-chat-message.repository';
 import { SupabaseReferentialReadRepository } from './referentials/supabase-referential-read.repository';
 import { SupabasePlanningTaskRepository } from './planning/supabase-planning-task.repository';
@@ -63,6 +65,7 @@ const referentialRepositoryBindings = [
     SupabaseAdminUserReadRepository,
     SupabaseAdminUserWriteRepository,
     SupabaseUserAssignmentProfileRepository,
+    SupabaseUserLicenseRepository,
     SupabaseGroupChatMessageRepository,
     SupabaseReferentialReadRepository,
     SupabasePlanningTaskRepository,
@@ -138,6 +141,10 @@ const referentialRepositoryBindings = [
       provide: UserAssignmentProfileRepository,
       useExisting: SupabaseUserAssignmentProfileRepository,
     },
+    {
+      provide: UserLicenseRepository,
+      useExisting: SupabaseUserLicenseRepository,
+    },
   ],
   exports: [
     SupabaseTokenValidatorService,
@@ -145,6 +152,7 @@ const referentialRepositoryBindings = [
     AdminUserReadRepository,
     AdminUserWriteRepository,
     UserAssignmentProfileRepository,
+    UserLicenseRepository,
     NotificationRepository,
     GroupChatMessageRepository,
     KnowledgeArticleRepository,
