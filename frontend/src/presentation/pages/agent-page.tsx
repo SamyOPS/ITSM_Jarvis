@@ -1380,13 +1380,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const ticketDetailEquipmentOptions = useMemo(() => {
     const requesterId =
       ticketEditDraft.requestedForUserId ||
-      selectedTicketDetail?.ticket.createdByUserId ||
+      selectedTicketDetail?.ticket.requestedForUserId ||
       null;
 
     return catalog.cis.filter((ci) => ci.assignedUserId === requesterId);
   }, [
     catalog.cis,
-    selectedTicketDetail?.ticket.createdByUserId,
+    selectedTicketDetail?.ticket.requestedForUserId,
     ticketEditDraft.requestedForUserId,
   ]);
   const ticketDetailLookupUsers =
@@ -1520,6 +1520,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     }
 
     setIncidentDraft((currentDraft) => {
+      if (field === 'requestedForUserId') {
+        return {
+          ...currentDraft,
+
+          requestedForUserId: value,
+          ciId:
+            currentDraft.requestedForUserId === value ? currentDraft.ciId : '',
+        };
+      }
+
       if (field === 'assignedToUserId') {
         return {
           ...currentDraft,
@@ -2247,16 +2257,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     }
 
     setTicketEditDraft((currentDraft) => {
-      if (field === 'requestedForUserId' && currentDraft.ciId) {
-        const selectedEquipment = cisById.get(currentDraft.ciId);
-
+      if (field === 'requestedForUserId') {
         return {
           ...currentDraft,
           requestedForUserId: value,
           ciId:
-            selectedEquipment?.assignedUserId === value
-              ? currentDraft.ciId
-              : '',
+            currentDraft.requestedForUserId === value ? currentDraft.ciId : '',
         };
       }
 

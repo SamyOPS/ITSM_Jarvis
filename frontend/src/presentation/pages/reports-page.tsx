@@ -152,6 +152,8 @@ const INITIAL_FILTERS: ReportsFilterState = {
   type: '',
 };
 
+const REQUEST_DEFAULT_CATEGORY_NAME = 'Demande';
+
 const PERSONAL_TICKET_LIMIT = 8;
 
 const PERSONAL_EQUIPMENT_LIMIT = 8;
@@ -523,6 +525,15 @@ export function ReportsPage({ session }: ReportsPageProps) {
   const personalCategoriesById = useMemo(
     () =>
       new Map(catalog.categories.map((category) => [category.id, category])),
+
+    [catalog.categories],
+  );
+
+  const dashboardCategoryOptions = useMemo(
+    () =>
+      catalog.categories.filter(
+        (category) => category.name !== REQUEST_DEFAULT_CATEGORY_NAME,
+      ),
 
     [catalog.categories],
   );
@@ -1132,7 +1143,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 >
                   <option value="">Toutes</option>
 
-                  {catalog.categories.map((category) => (
+                  {dashboardCategoryOptions.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
                     </option>
