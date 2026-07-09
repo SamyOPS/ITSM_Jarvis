@@ -10,7 +10,6 @@ import {
   Menu,
   Moon,
   Plus,
-  Search,
   Settings,
   Shield,
   SlidersHorizontal,
@@ -360,13 +359,6 @@ export function AppShell({
         </div>
 
         <div className="workspace-sidebar-divider" />
-
-        <label className="workspace-sidebar-search">
-          <span className="workspace-sidebar-search-shell">
-            <Search size={16} />
-            <input placeholder="Chercher dans le menu..." type="search" />
-          </span>
-        </label>
 
         <div className="workspace-sidebar-section-label">Navigation</div>
 
