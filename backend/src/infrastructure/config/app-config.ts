@@ -3,6 +3,8 @@ export interface BackendRuntimeConfig {
   host: string;
   maxBillableUsers: number | null;
   nodeEnv: string;
+  openaiApiKey: string;
+  openaiModel: string;
   port: number;
   supabaseAnonKey: string;
   supabaseServiceRoleKey: string;
@@ -17,6 +19,8 @@ export function getBackendRuntimeConfig(): BackendRuntimeConfig {
       process.env.MAX_BILLABLE_USERS,
     ),
     nodeEnv: process.env.NODE_ENV ?? 'development',
+    openaiApiKey: process.env.OPENAI_API_KEY ?? '',
+    openaiModel: process.env.OPENAI_MODEL ?? 'gpt-4.1-mini',
     port: Number(process.env.PORT ?? 3000),
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? '',
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',

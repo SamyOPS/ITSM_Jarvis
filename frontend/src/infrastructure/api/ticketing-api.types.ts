@@ -23,6 +23,25 @@ export type CreateRequestPayload = {
   title: string;
 };
 
+export type SuggestTicketDraftPayload = {
+  categories?: string[];
+  currentMode?: 'INCIDENT' | 'REQUEST' | null;
+  priorities?: string[];
+  userInput: string;
+};
+
+export type TicketDraftSuggestion = {
+  categoryName: string | null;
+  confidence: number;
+  description: string;
+  impact: IncidentSeverity | null;
+  priorityName: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | null;
+  requestType: RequestType | null;
+  title: string;
+  type: 'INCIDENT' | 'REQUEST';
+  urgency: IncidentSeverity | null;
+};
+
 export type SearchTicketsFilters = {
   categoryId?: string | null;
   includeArchived?: boolean;

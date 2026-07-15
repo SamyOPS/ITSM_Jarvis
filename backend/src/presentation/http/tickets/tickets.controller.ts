@@ -28,6 +28,10 @@ import { ListTicketAttachmentsUseCase } from '../../../application/ticketing/use
 import { ListTicketCommentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-comments.use-case';
 import { ListTicketHistoryUseCase } from '../../../application/ticketing/use-cases/list-ticket-history.use-case';
 import { SearchTicketsUseCase } from '../../../application/ticketing/use-cases/search-tickets.use-case';
+import {
+  SuggestTicketDraftUseCase,
+  type TicketDraftSuggestion,
+} from '../../../application/ticketing/use-cases/suggest-ticket-draft.use-case';
 import { UpdateTicketUseCase } from '../../../application/ticketing/use-cases/update-ticket.use-case';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
 import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
@@ -51,6 +55,7 @@ import { ChangeTicketPriorityDto } from './change-ticket-priority.dto';
 import { ChangeTicketStatusDto } from './change-ticket-status.dto';
 import { CreateIncidentDto } from './create-incident.dto';
 import { CreateRequestDto } from './create-request.dto';
+import { SuggestTicketDraftDto } from './suggest-ticket-draft.dto';
 import { UpdateTicketDto } from './update-ticket.dto';
 
 type SearchTicketsQueryDto = {
@@ -77,6 +82,7 @@ export class TicketsController {
     private readonly createIncidentUseCase: CreateIncidentUseCase,
     private readonly createRequestUseCase: CreateRequestUseCase,
     private readonly searchTicketsUseCase: SearchTicketsUseCase,
+    private readonly suggestTicketDraftUseCase: SuggestTicketDraftUseCase,
     private readonly getTicketByIdUseCase: GetTicketByIdUseCase,
     private readonly listTicketCommentsUseCase: ListTicketCommentsUseCase,
     private readonly listTicketHistoryUseCase: ListTicketHistoryUseCase,
@@ -122,6 +128,19 @@ export class TicketsController {
   @Roles(UserRole.ADMIN)
   archiveExpiredTickets(): Promise<ArchiveExpiredTicketsResult> {
     return this.archiveExpiredTicketsUseCase.execute();
+  }
+
+  @Post('assist-draft')
+  @UseGuards(BearerAuthGuard)
+  suggestTicketDraft(
+    @Body() body: SuggestTicketDraftDto,
+  ): Promise<TicketDraftSuggestion> {
+    return this.suggestTicketDraftUseCase.execute({
+      categories: body.categories,
+      currentMode: body.currentMode ?? null,
+      priorities: body.priorities,
+      userInput: body.userInput,
+    });
   }
 
   @Delete(':id')

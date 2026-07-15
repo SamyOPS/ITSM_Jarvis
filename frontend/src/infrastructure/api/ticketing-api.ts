@@ -20,6 +20,8 @@ export type {
   CreateIncidentPayload,
   CreateRequestPayload,
   SearchTicketsFilters,
+  SuggestTicketDraftPayload,
+  TicketDraftSuggestion,
   UpdateTicketPayload,
 } from './ticketing-api.types';
 import type {
@@ -31,6 +33,8 @@ import type {
   CreateIncidentPayload,
   CreateRequestPayload,
   SearchTicketsFilters,
+  SuggestTicketDraftPayload,
+  TicketDraftSuggestion,
   UpdateTicketPayload,
 } from './ticketing-api.types';
 
@@ -57,6 +61,21 @@ export async function createRequest(
     accessToken,
     '/tickets/requests',
     'La creation de la demande a echoue',
+    {
+      method: 'POST',
+      body: payload,
+    },
+  );
+}
+
+export async function suggestTicketDraft(
+  accessToken: string,
+  payload: SuggestTicketDraftPayload,
+): Promise<TicketDraftSuggestion> {
+  return ticketingJsonRequest<TicketDraftSuggestion>(
+    accessToken,
+    '/tickets/assist-draft',
+    "La suggestion IA du ticket a echoue",
     {
       method: 'POST',
       body: payload,
