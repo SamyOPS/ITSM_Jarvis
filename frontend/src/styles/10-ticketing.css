@@ -465,6 +465,20 @@
   margin: 0;
 }
 
+.ticket-ai-suggestion-details {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ticket-ai-suggestion-details small {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(219, 234, 254, 0.8);
+  color: #174174;
+  font-weight: 700;
+}
+
 .ticket-ai-message--suggestion .primary-button {
   justify-self: start;
 }

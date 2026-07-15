@@ -30,7 +30,7 @@ import { ListTicketHistoryUseCase } from '../../../application/ticketing/use-cas
 import { SearchTicketsUseCase } from '../../../application/ticketing/use-cases/search-tickets.use-case';
 import {
   SuggestTicketDraftUseCase,
-  type TicketDraftSuggestion,
+  type TicketDraftAssistantResponse,
 } from '../../../application/ticketing/use-cases/suggest-ticket-draft.use-case';
 import { UpdateTicketUseCase } from '../../../application/ticketing/use-cases/update-ticket.use-case';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
@@ -134,7 +134,7 @@ export class TicketsController {
   @UseGuards(BearerAuthGuard)
   suggestTicketDraft(
     @Body() body: SuggestTicketDraftDto,
-  ): Promise<TicketDraftSuggestion> {
+  ): Promise<TicketDraftAssistantResponse> {
     return this.suggestTicketDraftUseCase.execute({
       categories: body.categories,
       currentMode: body.currentMode ?? null,

@@ -151,6 +151,20 @@ function RequiredMark() {
   return <span className="park-required-mark">*</span>;
 }
 
+type AiChatMessage = {
+  body: string;
+  id: string;
+  role: 'assistant' | 'user';
+};
+
+const INITIAL_AI_CHAT_MESSAGES: AiChatMessage[] = [
+  {
+    body: 'Bonjour, quel est votre probleme ?',
+    id: 'assistant-welcome',
+    role: 'assistant',
+  },
+];
+
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],
 
@@ -438,6 +452,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   );
   const [isSuggestingDraft, setIsSuggestingDraft] = useState(false);
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
+  const [aiChatMessages, setAiChatMessages] = useState<AiChatMessage[]>(
+    INITIAL_AI_CHAT_MESSAGES,
+  );
 
   const [detailActionErrorMessage, setDetailActionErrorMessage] = useState<
     string | null
@@ -1627,30 +1644,68 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setSubmitErrorMessage(null);
   }
 
-  async function handleSuggestTicketDraft(): Promise<void> {
+  async function handleSendAiChatMessage(): Promise<void> {
     const userInput = aiDraftInput.trim();
 
     setAiDraftErrorMessage(null);
-    setAiDraftSuggestion(null);
 
     if (userInput.length < 10) {
       setAiDraftErrorMessage(
-        'Decrivez le besoin en quelques mots avant de lancer l assistance IA.',
+        'Decrivez le besoin avec un peu plus de detail.',
       );
       return;
     }
 
+    const userMessage: AiChatMessage = {
+      body: userInput,
+      id: `user-${Date.now()}`,
+      role: 'user',
+    };
+    const nextMessages = [...aiChatMessages, userMessage];
+
+    setAiDraftInput('');
+    setAiChatMessages(nextMessages);
+    setAiDraftSuggestion(null);
+
     setIsSuggestingDraft(true);
 
     try {
-      const suggestion = await suggestTicketDraft(session.accessToken, {
+      const assistantResponse = await suggestTicketDraft(session.accessToken, {
         categories: incidentCategoryOptions.map((category) => category.name),
         currentMode: mode,
         priorities: catalog.priorities.map((priority) => priority.name),
-        userInput,
+        userInput: nextMessages
+          .map((message) =>
+            message.role === 'assistant'
+              ? `Assistant: ${message.body}`
+              : `Utilisateur: ${message.body}`,
+          )
+          .join('\n'),
       });
 
-      setAiDraftSuggestion(suggestion);
+      if (assistantResponse.action === 'ASK_QUESTION') {
+        setAiChatMessages([
+          ...nextMessages,
+          {
+            body:
+              assistantResponse.question ??
+              'Pouvez-vous apporter une precision supplementaire ?',
+            id: `assistant-question-${Date.now()}`,
+            role: 'assistant',
+          },
+        ]);
+        return;
+      }
+
+      setAiDraftSuggestion(assistantResponse.suggestion);
+      setAiChatMessages([
+        ...nextMessages,
+        {
+          body: 'J ai prepare une proposition de ticket. Vous pouvez la relire puis l appliquer au formulaire.',
+          id: `assistant-suggestion-${Date.now()}`,
+          role: 'assistant',
+        },
+      ]);
     } catch (error) {
       setAiDraftErrorMessage(
         error instanceof Error
@@ -1668,11 +1723,20 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     }
 
     const nextMode = aiDraftSuggestion.type;
-    const suggestedCategory = incidentCategoryOptions.find(
-      (category) =>
-        normalizeSearchText(category.name) ===
-        normalizeSearchText(aiDraftSuggestion.categoryName ?? ''),
+    const normalizedSuggestedCategory = normalizeSearchText(
+      aiDraftSuggestion.categoryName ?? '',
     );
+    const suggestedCategory = incidentCategoryOptions.find(
+      (category) => normalizeSearchText(category.name) === normalizedSuggestedCategory,
+    ) ?? incidentCategoryOptions.find((category) => {
+      const normalizedCategory = normalizeSearchText(category.name);
+
+      return (
+        normalizedSuggestedCategory &&
+        (normalizedCategory.includes(normalizedSuggestedCategory) ||
+          normalizedSuggestedCategory.includes(normalizedCategory))
+      );
+    });
     const suggestedPriority = catalog.priorities.find(
       (priority) => priority.name === aiDraftSuggestion.priorityName,
     );
@@ -3843,15 +3907,18 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       </header>
 
                       <div className="ticket-ai-chat-body">
-                        <div className="ticket-ai-message ticket-ai-message--assistant">
-                          Bonjour, quel est votre probleme ?
-                        </div>
-
-                        {aiDraftInput.trim() ? (
-                          <div className="ticket-ai-message ticket-ai-message--user">
-                            {aiDraftInput.trim()}
+                        {aiChatMessages.map((message) => (
+                          <div
+                            className={
+                              message.role === 'assistant'
+                                ? 'ticket-ai-message ticket-ai-message--assistant'
+                                : 'ticket-ai-message ticket-ai-message--user'
+                            }
+                            key={message.id}
+                          >
+                            {message.body}
                           </div>
-                        ) : null}
+                        ))}
 
                         {isSuggestingDraft ? (
                           <div className="ticket-ai-message ticket-ai-message--assistant is-loading">
@@ -3872,6 +3939,44 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               {translateTicketType(aiDraftSuggestion.type)}
                             </span>
                             <strong>{aiDraftSuggestion.title}</strong>
+                            <div className="ticket-ai-suggestion-details">
+                              <small>
+                                Type :{' '}
+                                {translateTicketType(aiDraftSuggestion.type)}
+                              </small>
+                              {aiDraftSuggestion.categoryName ? (
+                                <small>
+                                  Categorie : {aiDraftSuggestion.categoryName}
+                                </small>
+                              ) : null}
+                              {aiDraftSuggestion.type === 'INCIDENT' ? (
+                                <>
+                                  {aiDraftSuggestion.impact ? (
+                                    <small>
+                                      Impact :{' '}
+                                      {translateIncidentSeverity(
+                                        aiDraftSuggestion.impact,
+                                      )}
+                                    </small>
+                                  ) : null}
+                                  {aiDraftSuggestion.urgency ? (
+                                    <small>
+                                      Urgence :{' '}
+                                      {translateIncidentSeverity(
+                                        aiDraftSuggestion.urgency,
+                                      )}
+                                    </small>
+                                  ) : null}
+                                </>
+                              ) : aiDraftSuggestion.priorityName ? (
+                                <small>
+                                  Priorite :{' '}
+                                  {translatePriority(
+                                    aiDraftSuggestion.priorityName,
+                                  )}
+                                </small>
+                              ) : null}
+                            </div>
                             <p>{aiDraftSuggestion.description}</p>
                             <button
                               className="primary-button"
@@ -3904,7 +4009,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               !isSuggestingDraft
                             ) {
                               event.preventDefault();
-                              void handleSuggestTicketDraft();
+                              void handleSendAiChatMessage();
                             }
                           }}
                           placeholder="Decrivez votre besoin..."
@@ -3914,7 +4019,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         <button
                           className="primary-button"
                           disabled={isSuggestingDraft}
-                          onClick={handleSuggestTicketDraft}
+                          onClick={handleSendAiChatMessage}
                           type="button"
                         >
                           Envoyer

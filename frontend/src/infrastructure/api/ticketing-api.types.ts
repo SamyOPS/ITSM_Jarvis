@@ -30,6 +30,12 @@ export type SuggestTicketDraftPayload = {
   userInput: string;
 };
 
+export type TicketDraftAssistantResponse = {
+  action: 'ASK_QUESTION' | 'SUGGEST_TICKET';
+  question: string | null;
+  suggestion: TicketDraftSuggestion | null;
+};
+
 export type TicketDraftSuggestion = {
   categoryName: string | null;
   confidence: number;

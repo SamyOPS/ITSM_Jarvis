@@ -16,6 +16,12 @@ export type SuggestTicketDraftCommand = {
   userInput: string;
 };
 
+export type TicketDraftAssistantResponse = {
+  action: 'ASK_QUESTION' | 'SUGGEST_TICKET';
+  question: string | null;
+  suggestion: TicketDraftSuggestion | null;
+};
+
 export type TicketDraftSuggestion = {
   categoryName: string | null;
   confidence: number;
@@ -40,7 +46,9 @@ type OpenAiResponse = {
 
 @Injectable()
 export class SuggestTicketDraftUseCase {
-  async execute(command: SuggestTicketDraftCommand): Promise<TicketDraftSuggestion> {
+  async execute(
+    command: SuggestTicketDraftCommand,
+  ): Promise<TicketDraftAssistantResponse> {
     const userInput = command.userInput.trim();
 
     if (userInput.length < 10) {
@@ -92,6 +100,10 @@ export class SuggestTicketDraftUseCase {
               additionalProperties: false,
               properties: {
                 categoryName: { type: ['string', 'null'] },
+                action: {
+                  type: 'string',
+                  enum: ['ASK_QUESTION', 'SUGGEST_TICKET'],
+                },
                 confidence: { type: 'number', minimum: 0, maximum: 1 },
                 description: { type: 'string' },
                 impact: {
@@ -106,6 +118,7 @@ export class SuggestTicketDraftUseCase {
                   type: ['string', 'null'],
                   enum: ['ACCESS', 'HARDWARE', 'SOFTWARE', 'OTHER', null],
                 },
+                question: { type: ['string', 'null'] },
                 title: { type: 'string' },
                 type: { type: 'string', enum: ['INCIDENT', 'REQUEST'] },
                 urgency: {
@@ -114,11 +127,13 @@ export class SuggestTicketDraftUseCase {
                 },
               },
               required: [
+                'action',
                 'categoryName',
                 'confidence',
                 'description',
                 'impact',
                 'priorityName',
+                'question',
                 'requestType',
                 'title',
                 'type',
@@ -137,7 +152,7 @@ export class SuggestTicketDraftUseCase {
     }
 
     const body = (await response.json()) as OpenAiResponse;
-    return this.normalizeSuggestion(this.extractText(body));
+    return this.normalizeAssistantResponse(this.extractText(body));
   }
 
   private buildPrompt(command: SuggestTicketDraftCommand, userInput: string): string {
@@ -150,10 +165,14 @@ export class SuggestTicketDraftUseCase {
       `Priorites disponibles: ${priorities.length ? priorities.join(', ') : 'LOW, MEDIUM, HIGH, CRITICAL'}.`,
       '',
       'Objectif:',
+      "- si les informations sont suffisantes, action=SUGGEST_TICKET et tu prepares le ticket;",
+      "- s'il manque une information importante, action=ASK_QUESTION et tu poses une seule question courte, adaptee au contexte;",
+      "- ne repose jamais une question dont la reponse est deja evidente dans la conversation;",
+      "- par exemple si l'utilisateur parle deja de son ordinateur, ne demande pas quel equipement est concerne; demande plutot s'il s'allume, s'il y a un message d'erreur, ou si c'est portable/fixe si utile;",
       '- choisir INCIDENT si un service/equipement ne fonctionne plus ou est degrade;',
       '- choisir REQUEST si la personne demande un acces, une installation, un materiel ou un service;',
-      '- proposer un titre de 40 caracteres maximum;',
-      '- reformuler une description claire et exploitable pour le support;',
+      '- proposer un titre de 40 caracteres maximum quand action=SUGGEST_TICKET;',
+      '- reformuler une description claire et exploitable pour le support quand action=SUGGEST_TICKET;',
       '- si une categorie semble evidente, reprendre exactement son nom depuis la liste fournie.',
       '',
       `Description utilisateur: ${userInput}`,
@@ -179,28 +198,45 @@ export class SuggestTicketDraftUseCase {
     return text;
   }
 
-  private normalizeSuggestion(rawText: string): TicketDraftSuggestion {
-    let parsed: TicketDraftSuggestion;
+  private normalizeAssistantResponse(rawText: string): TicketDraftAssistantResponse {
+    let parsed: TicketDraftAssistantResponse & TicketDraftSuggestion;
 
     try {
-      parsed = JSON.parse(rawText) as TicketDraftSuggestion;
+      parsed = JSON.parse(rawText) as TicketDraftAssistantResponse &
+        TicketDraftSuggestion;
     } catch {
       throw new ServiceUnavailableException(
         "La reponse IA n'a pas pu etre interpretee.",
       );
     }
 
+    if (parsed.action === 'ASK_QUESTION') {
+      return {
+        action: 'ASK_QUESTION',
+        question:
+          this.normalizeNullableText(parsed.question) ??
+          'Pouvez-vous apporter une precision supplementaire ?',
+        suggestion: null,
+      };
+    }
+
     return {
-      categoryName: this.normalizeNullableText(parsed.categoryName),
-      confidence: Math.min(Math.max(Number(parsed.confidence) || 0, 0), 1),
-      description: parsed.description?.trim() || '',
-      impact: this.normalizeEnum(parsed.impact, IncidentSeverity),
-      priorityName: this.normalizeEnum(parsed.priorityName, PriorityName),
-      requestType: this.normalizeEnum(parsed.requestType, RequestType),
-      title: (parsed.title?.trim() || 'Ticket a qualifier').slice(0, 40),
-      type:
-        parsed.type === TicketType.REQUEST ? TicketType.REQUEST : TicketType.INCIDENT,
-      urgency: this.normalizeEnum(parsed.urgency, IncidentSeverity),
+      action: 'SUGGEST_TICKET',
+      question: null,
+      suggestion: {
+        categoryName: this.normalizeNullableText(parsed.categoryName),
+        confidence: Math.min(Math.max(Number(parsed.confidence) || 0, 0), 1),
+        description: parsed.description?.trim() || '',
+        impact: this.normalizeEnum(parsed.impact, IncidentSeverity),
+        priorityName: this.normalizeEnum(parsed.priorityName, PriorityName),
+        requestType: this.normalizeEnum(parsed.requestType, RequestType),
+        title: (parsed.title?.trim() || 'Ticket a qualifier').slice(0, 40),
+        type:
+          parsed.type === TicketType.REQUEST
+            ? TicketType.REQUEST
+            : TicketType.INCIDENT,
+        urgency: this.normalizeEnum(parsed.urgency, IncidentSeverity),
+      },
     };
   }
 
