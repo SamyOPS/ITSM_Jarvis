@@ -75,7 +75,7 @@ export async function suggestTicketDraft(
   return ticketingJsonRequest<TicketDraftAssistantResponse>(
     accessToken,
     '/tickets/assist-draft',
-    "La suggestion IA du ticket a echoue",
+    'La suggestion IA du ticket a echoue',
     {
       method: 'POST',
       body: payload,

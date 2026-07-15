@@ -1650,9 +1650,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setAiDraftErrorMessage(null);
 
     if (userInput.length < 10) {
-      setAiDraftErrorMessage(
-        'Decrivez le besoin avec un peu plus de detail.',
-      );
+      setAiDraftErrorMessage('Decrivez le besoin avec un peu plus de detail.');
       return;
     }
 
@@ -1726,17 +1724,20 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     const normalizedSuggestedCategory = normalizeSearchText(
       aiDraftSuggestion.categoryName ?? '',
     );
-    const suggestedCategory = incidentCategoryOptions.find(
-      (category) => normalizeSearchText(category.name) === normalizedSuggestedCategory,
-    ) ?? incidentCategoryOptions.find((category) => {
-      const normalizedCategory = normalizeSearchText(category.name);
+    const suggestedCategory =
+      incidentCategoryOptions.find(
+        (category) =>
+          normalizeSearchText(category.name) === normalizedSuggestedCategory,
+      ) ??
+      incidentCategoryOptions.find((category) => {
+        const normalizedCategory = normalizeSearchText(category.name);
 
-      return (
-        normalizedSuggestedCategory &&
-        (normalizedCategory.includes(normalizedSuggestedCategory) ||
-          normalizedSuggestedCategory.includes(normalizedCategory))
-      );
-    });
+        return (
+          normalizedSuggestedCategory &&
+          (normalizedCategory.includes(normalizedSuggestedCategory) ||
+            normalizedSuggestedCategory.includes(normalizedCategory))
+        );
+      });
     const suggestedPriority = catalog.priorities.find(
       (priority) => priority.name === aiDraftSuggestion.priorityName,
     );
