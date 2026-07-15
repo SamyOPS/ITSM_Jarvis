@@ -68,6 +68,7 @@ import { ListTicketAttachmentsUseCase } from './ticketing/use-cases/list-ticket-
 import { ListTicketCommentsUseCase } from './ticketing/use-cases/list-ticket-comments.use-case';
 import { ListTicketHistoryUseCase } from './ticketing/use-cases/list-ticket-history.use-case';
 import { SearchTicketsUseCase } from './ticketing/use-cases/search-tickets.use-case';
+import { SuggestTicketDraftUseCase } from './ticketing/use-cases/suggest-ticket-draft.use-case';
 import { UpdateTicketUseCase } from './ticketing/use-cases/update-ticket.use-case';
 
 const referentialUseCases = [
@@ -96,6 +97,7 @@ const ticketingUseCases = [
   ChangeTicketPriorityUseCase,
   ChangeTicketStatusUseCase,
   SearchTicketsUseCase,
+  SuggestTicketDraftUseCase,
   GetTicketByIdUseCase,
   ListTicketCommentsUseCase,
   AddTicketCommentUseCase,

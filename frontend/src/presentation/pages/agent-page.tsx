@@ -10,6 +10,7 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
+  Sparkles,
   Ticket as TicketIcon,
   Trash2,
   Users,
@@ -72,9 +73,11 @@ import {
   getTicketComments,
   getTicketHistory,
   searchTickets,
+  suggestTicketDraft,
   updateTicket,
   uploadTicketAttachmentBinary,
 } from '../../infrastructure/api/ticketing-api';
+import type { TicketDraftSuggestion } from '../../infrastructure/api/ticketing-api.types';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 import {
   getPageQueryParam,
@@ -147,6 +150,20 @@ import type {
 function RequiredMark() {
   return <span className="park-required-mark">*</span>;
 }
+
+type AiChatMessage = {
+  body: string;
+  id: string;
+  role: 'assistant' | 'user';
+};
+
+const INITIAL_AI_CHAT_MESSAGES: AiChatMessage[] = [
+  {
+    body: 'Bonjour, quel est votre probleme ?',
+    id: 'assistant-welcome',
+    role: 'assistant',
+  },
+];
 
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],
@@ -426,6 +443,17 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(
     null,
+  );
+  const [aiDraftInput, setAiDraftInput] = useState('');
+  const [aiDraftSuggestion, setAiDraftSuggestion] =
+    useState<TicketDraftSuggestion | null>(null);
+  const [aiDraftErrorMessage, setAiDraftErrorMessage] = useState<string | null>(
+    null,
+  );
+  const [isSuggestingDraft, setIsSuggestingDraft] = useState(false);
+  const [isAiChatOpen, setIsAiChatOpen] = useState(false);
+  const [aiChatMessages, setAiChatMessages] = useState<AiChatMessage[]>(
+    INITIAL_AI_CHAT_MESSAGES,
   );
 
   const [detailActionErrorMessage, setDetailActionErrorMessage] = useState<
@@ -1624,6 +1652,137 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     }));
 
     setSubmitErrorMessage(null);
+  }
+
+  async function handleSendAiChatMessage(): Promise<void> {
+    const userInput = aiDraftInput.trim();
+
+    setAiDraftErrorMessage(null);
+
+    if (userInput.length < 10) {
+      setAiDraftErrorMessage('Decrivez le besoin avec un peu plus de detail.');
+      return;
+    }
+
+    const userMessage: AiChatMessage = {
+      body: userInput,
+      id: `user-${Date.now()}`,
+      role: 'user',
+    };
+    const nextMessages = [...aiChatMessages, userMessage];
+
+    setAiDraftInput('');
+    setAiChatMessages(nextMessages);
+    setAiDraftSuggestion(null);
+
+    setIsSuggestingDraft(true);
+
+    try {
+      const assistantResponse = await suggestTicketDraft(session.accessToken, {
+        categories: incidentCategoryOptions.map((category) => category.name),
+        currentMode: mode,
+        priorities: catalog.priorities.map((priority) => priority.name),
+        userInput: nextMessages
+          .map((message) =>
+            message.role === 'assistant'
+              ? `Assistant: ${message.body}`
+              : `Utilisateur: ${message.body}`,
+          )
+          .join('\n'),
+      });
+
+      if (assistantResponse.action === 'ASK_QUESTION') {
+        setAiChatMessages([
+          ...nextMessages,
+          {
+            body:
+              assistantResponse.question ??
+              'Pouvez-vous apporter une precision supplementaire ?',
+            id: `assistant-question-${Date.now()}`,
+            role: 'assistant',
+          },
+        ]);
+        return;
+      }
+
+      setAiDraftSuggestion(assistantResponse.suggestion);
+      setAiChatMessages([
+        ...nextMessages,
+        {
+          body: 'J ai prepare une proposition de ticket. Vous pouvez la relire puis l appliquer au formulaire.',
+          id: `assistant-suggestion-${Date.now()}`,
+          role: 'assistant',
+        },
+      ]);
+    } catch (error) {
+      setAiDraftErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "L assistance IA n'a pas pu generer de proposition.",
+      );
+    } finally {
+      setIsSuggestingDraft(false);
+    }
+  }
+
+  function handleApplyTicketDraftSuggestion(): void {
+    if (!aiDraftSuggestion) {
+      return;
+    }
+
+    const nextMode = aiDraftSuggestion.type;
+    const normalizedSuggestedCategory = normalizeSearchText(
+      aiDraftSuggestion.categoryName ?? '',
+    );
+    const suggestedCategory =
+      incidentCategoryOptions.find(
+        (category) =>
+          normalizeSearchText(category.name) === normalizedSuggestedCategory,
+      ) ??
+      incidentCategoryOptions.find((category) => {
+        const normalizedCategory = normalizeSearchText(category.name);
+
+        return (
+          normalizedSuggestedCategory &&
+          (normalizedCategory.includes(normalizedSuggestedCategory) ||
+            normalizedSuggestedCategory.includes(normalizedCategory))
+        );
+      });
+    const suggestedPriority = catalog.priorities.find(
+      (priority) => priority.name === aiDraftSuggestion.priorityName,
+    );
+
+    setMode(nextMode);
+
+    if (nextMode === 'INCIDENT') {
+      setIncidentDraft((currentDraft) => ({
+        ...currentDraft,
+        categoryId: suggestedCategory?.id ?? currentDraft.categoryId,
+        description: aiDraftSuggestion.description || currentDraft.description,
+        impact: aiDraftSuggestion.impact ?? currentDraft.impact,
+        title: aiDraftSuggestion.title || currentDraft.title,
+        urgency: aiDraftSuggestion.urgency ?? currentDraft.urgency,
+      }));
+      setIncidentValidationErrors({});
+    } else {
+      setRequestDraft((currentDraft) => ({
+        ...currentDraft,
+        categoryId: suggestedCategory?.id ?? currentDraft.categoryId,
+        description: aiDraftSuggestion.description || currentDraft.description,
+        priorityId: suggestedPriority?.id ?? currentDraft.priorityId,
+        requestType: aiDraftSuggestion.requestType ?? currentDraft.requestType,
+        title: aiDraftSuggestion.title || currentDraft.title,
+      }));
+      setRequestValidationErrors({});
+    }
+
+    setSubmitErrorMessage(null);
+    setIsAiChatOpen(false);
+  }
+
+  function closeAiChat(): void {
+    setIsAiChatOpen(false);
+    setAiDraftErrorMessage(null);
   }
 
   function handleSearchFilterChange(
@@ -2997,6 +3156,20 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
             ) : (
               <div className="ticket-form-layout ticket-form-layout--single">
                 <form className="ticket-form-grid" onSubmit={handleSubmit}>
+                  <button
+                    className="ticket-ai-launcher ticket-form-span-2"
+                    onClick={() => setIsAiChatOpen(true)}
+                    type="button"
+                  >
+                    <span>
+                      <strong>Utiliser l'intelligence artificielle</strong>
+                      <small>
+                        Gagner du temps avec des suggestions de remplissage.
+                      </small>
+                    </span>
+                    <Sparkles size={20} />
+                  </button>
+
                   <label className="field ticket-form-span-2 ticket-create-order-title">
                     <span>
                       Titre <RequiredMark />
@@ -3718,6 +3891,150 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     </p>
                   ) : null}
                 </form>
+
+                {isAiChatOpen ? (
+                  <div
+                    aria-modal="true"
+                    className="ticket-ai-chat-overlay"
+                    role="dialog"
+                  >
+                    <section className="ticket-ai-chat">
+                      <header className="ticket-ai-chat-header">
+                        <div>
+                          <h3>Assistant IA TikAI</h3>
+                          <p>Pre-remplissage intelligent du ticket</p>
+                        </div>
+                        <button
+                          aria-label="Fermer l assistant IA"
+                          onClick={closeAiChat}
+                          type="button"
+                        >
+                          <X size={18} />
+                        </button>
+                      </header>
+
+                      <div className="ticket-ai-chat-body">
+                        {aiChatMessages.map((message) => (
+                          <div
+                            className={
+                              message.role === 'assistant'
+                                ? 'ticket-ai-message ticket-ai-message--assistant'
+                                : 'ticket-ai-message ticket-ai-message--user'
+                            }
+                            key={message.id}
+                          >
+                            {message.body}
+                          </div>
+                        ))}
+
+                        {isSuggestingDraft ? (
+                          <div className="ticket-ai-message ticket-ai-message--assistant is-loading">
+                            Chargement...
+                          </div>
+                        ) : null}
+
+                        {aiDraftErrorMessage ? (
+                          <div className="ticket-ai-message ticket-ai-message--assistant is-error">
+                            {aiDraftErrorMessage}
+                          </div>
+                        ) : null}
+
+                        {aiDraftSuggestion ? (
+                          <div className="ticket-ai-message ticket-ai-message--assistant ticket-ai-message--suggestion">
+                            <span>
+                              Proposition :{' '}
+                              {translateTicketType(aiDraftSuggestion.type)}
+                            </span>
+                            <strong>{aiDraftSuggestion.title}</strong>
+                            <div className="ticket-ai-suggestion-details">
+                              <small>
+                                Type :{' '}
+                                {translateTicketType(aiDraftSuggestion.type)}
+                              </small>
+                              {aiDraftSuggestion.categoryName ? (
+                                <small>
+                                  Categorie : {aiDraftSuggestion.categoryName}
+                                </small>
+                              ) : null}
+                              {aiDraftSuggestion.type === 'INCIDENT' ? (
+                                <>
+                                  {aiDraftSuggestion.impact ? (
+                                    <small>
+                                      Impact :{' '}
+                                      {translateIncidentSeverity(
+                                        aiDraftSuggestion.impact,
+                                      )}
+                                    </small>
+                                  ) : null}
+                                  {aiDraftSuggestion.urgency ? (
+                                    <small>
+                                      Urgence :{' '}
+                                      {translateIncidentSeverity(
+                                        aiDraftSuggestion.urgency,
+                                      )}
+                                    </small>
+                                  ) : null}
+                                </>
+                              ) : aiDraftSuggestion.priorityName ? (
+                                <small>
+                                  Priorite :{' '}
+                                  {translatePriority(
+                                    aiDraftSuggestion.priorityName,
+                                  )}
+                                </small>
+                              ) : null}
+                            </div>
+                            <p>{aiDraftSuggestion.description}</p>
+                            <button
+                              className="primary-button"
+                              onClick={handleApplyTicketDraftSuggestion}
+                              type="button"
+                            >
+                              Appliquer au formulaire
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <footer className="ticket-ai-chat-footer">
+                        <button
+                          aria-label="Ajouter une piece jointe"
+                          type="button"
+                        >
+                          <Paperclip size={17} />
+                        </button>
+                        <textarea
+                          aria-label="Message pour l assistant IA"
+                          onChange={(event) => {
+                            setAiDraftInput(event.target.value);
+                            setAiDraftErrorMessage(null);
+                          }}
+                          onKeyDown={(event) => {
+                            if (
+                              event.key === 'Enter' &&
+                              !event.shiftKey &&
+                              !isSuggestingDraft
+                            ) {
+                              event.preventDefault();
+                              void handleSendAiChatMessage();
+                            }
+                          }}
+                          placeholder="Decrivez votre besoin..."
+                          rows={1}
+                          value={aiDraftInput}
+                        />
+                        <button
+                          className="primary-button"
+                          disabled={isSuggestingDraft}
+                          onClick={handleSendAiChatMessage}
+                          type="button"
+                        >
+                          Envoyer
+                        </button>
+                      </footer>
+                    </section>
+                  </div>
+                ) : null}
 
                 {showCreationRequesterField && incidentLookupKind ? (
                   <div
