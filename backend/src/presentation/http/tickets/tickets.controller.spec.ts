@@ -14,6 +14,7 @@ import { ListTicketAttachmentsUseCase } from '../../../application/ticketing/use
 import { ListTicketCommentsUseCase } from '../../../application/ticketing/use-cases/list-ticket-comments.use-case';
 import { ListTicketHistoryUseCase } from '../../../application/ticketing/use-cases/list-ticket-history.use-case';
 import { SearchTicketsUseCase } from '../../../application/ticketing/use-cases/search-tickets.use-case';
+import { SuggestTicketDraftUseCase } from '../../../application/ticketing/use-cases/suggest-ticket-draft.use-case';
 import { UpdateTicketUseCase } from '../../../application/ticketing/use-cases/update-ticket.use-case';
 import { UserRole } from '../../../domain/auth/user-role';
 import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
@@ -52,6 +53,11 @@ describe('TicketsController', () => {
       type: TicketType.INCIDENT,
     },
   ]);
+  const suggestTicketDraft = jest.fn().mockResolvedValue({
+    action: 'ASK_QUESTION',
+    question: 'Pouvez-vous apporter une precision supplementaire ?',
+    suggestion: null,
+  });
   const getTicketById = jest.fn().mockResolvedValue({
     priorityName: 'HIGH',
     ticket: { id: 'ticket-1', number: 'TICK-000001' },
@@ -146,6 +152,7 @@ describe('TicketsController', () => {
     changeTicketStatus.mockClear();
     changeTicketPriority.mockClear();
     searchTickets.mockClear();
+    suggestTicketDraft.mockClear();
     getTicketById.mockClear();
     listComments.mockClear();
     listHistory.mockClear();
@@ -181,6 +188,9 @@ describe('TicketsController', () => {
       {
         execute: searchTickets,
       } as unknown as SearchTicketsUseCase,
+      {
+        execute: suggestTicketDraft,
+      } as unknown as SuggestTicketDraftUseCase,
       {
         execute: getTicketById,
       } as unknown as GetTicketByIdUseCase,
