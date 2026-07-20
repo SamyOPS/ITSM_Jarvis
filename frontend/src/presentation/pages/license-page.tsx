@@ -176,7 +176,7 @@ export function LicensePage({ session }: LicensePageProps) {
             ) : null}
 
             {successMessage ? (
-              <p className="referentials-empty-state">{successMessage}</p>
+              <p className="referentials-feedback">{successMessage}</p>
             ) : null}
 
             <div className="admin-user-actions">
