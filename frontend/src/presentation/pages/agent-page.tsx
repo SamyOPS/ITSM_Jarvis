@@ -455,6 +455,8 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const [aiChatMessages, setAiChatMessages] = useState<AiChatMessage[]>(
     INITIAL_AI_CHAT_MESSAGES,
   );
+  const [pendingAiDraftSuggestion, setPendingAiDraftSuggestion] =
+    useState<TicketDraftSuggestion | null>(null);
 
   const [detailActionErrorMessage, setDetailActionErrorMessage] = useState<
     string | null
@@ -1649,7 +1651,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     setAiDraftErrorMessage(null);
 
-    if (userInput.length < 10) {
+    const hasUserAlreadyAnswered = aiChatMessages.some(
+      (message) => message.role === 'user',
+    );
+    const minimumLength = hasUserAlreadyAnswered ? 2 : 10;
+
+    if (userInput.length < minimumLength) {
       setAiDraftErrorMessage('Decrivez le besoin avec un peu plus de detail.');
       return;
     }
@@ -1660,10 +1667,25 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       role: 'user',
     };
     const nextMessages = [...aiChatMessages, userMessage];
+    const pendingSuggestion = pendingAiDraftSuggestion;
 
     setAiDraftInput('');
     setAiChatMessages(nextMessages);
     setAiDraftSuggestion(null);
+
+    if (pendingSuggestion) {
+      setPendingAiDraftSuggestion(null);
+      setAiDraftSuggestion(pendingSuggestion);
+      setAiChatMessages([
+        ...nextMessages,
+        {
+          body: 'Je prepare maintenant le ticket avec les informations recueillies.',
+          id: `assistant-suggestion-${Date.now()}`,
+          role: 'assistant',
+        },
+      ]);
+      return;
+    }
 
     setIsSuggestingDraft(true);
 
@@ -1695,7 +1717,32 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         return;
       }
 
-      setAiDraftSuggestion(assistantResponse.suggestion);
+      const suggestion = assistantResponse.suggestion;
+
+      if (suggestion?.suggestedActions.length) {
+        setPendingAiDraftSuggestion(suggestion);
+        setAiChatMessages([
+          ...nextMessages,
+          {
+            body: 'Avant de creer le ticket, vous pouvez essayer :',
+            id: `assistant-actions-intro-${Date.now()}`,
+            role: 'assistant',
+          },
+          ...suggestion.suggestedActions.map((action, index) => ({
+            body: `${index + 1}. ${action}`,
+            id: `assistant-action-${Date.now()}-${index}`,
+            role: 'assistant' as const,
+          })),
+          {
+            body: 'Si le probleme persiste, repondez simplement "le probleme persiste" et je preparerai le ticket.',
+            id: `assistant-actions-followup-${Date.now()}`,
+            role: 'assistant',
+          },
+        ]);
+        return;
+      }
+
+      setAiDraftSuggestion(suggestion);
       setAiChatMessages([
         ...nextMessages,
         {
@@ -3984,7 +4031,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               onClick={handleApplyTicketDraftSuggestion}
                               type="button"
                             >
-                              Appliquer au formulaire
+                              {aiDraftSuggestion.type === mode
+                                ? 'Appliquer au formulaire'
+                                : `Appliquer et passer en ${aiDraftSuggestion.type === 'INCIDENT' ? 'incident' : 'demande'}`}
                             </button>
                           </div>
                         ) : null}

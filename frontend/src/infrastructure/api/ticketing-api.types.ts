@@ -43,6 +43,7 @@ export type TicketDraftSuggestion = {
   impact: IncidentSeverity | null;
   priorityName: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | null;
   requestType: RequestType | null;
+  suggestedActions: string[];
   title: string;
   type: 'INCIDENT' | 'REQUEST';
   urgency: IncidentSeverity | null;

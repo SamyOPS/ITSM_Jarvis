@@ -29,6 +29,7 @@ export type TicketDraftSuggestion = {
   impact: IncidentSeverity | null;
   priorityName: PriorityName | null;
   requestType: RequestType | null;
+  suggestedActions: string[];
   title: string;
   type: TicketType;
   urgency: IncidentSeverity | null;
@@ -119,6 +120,11 @@ export class SuggestTicketDraftUseCase {
                   enum: ['ACCESS', 'HARDWARE', 'SOFTWARE', 'OTHER', null],
                 },
                 question: { type: ['string', 'null'] },
+                suggestedActions: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  maxItems: 4,
+                },
                 title: { type: 'string' },
                 type: { type: 'string', enum: ['INCIDENT', 'REQUEST'] },
                 urgency: {
@@ -135,6 +141,7 @@ export class SuggestTicketDraftUseCase {
                 'priorityName',
                 'question',
                 'requestType',
+                'suggestedActions',
                 'title',
                 'type',
                 'urgency',
@@ -164,13 +171,30 @@ export class SuggestTicketDraftUseCase {
       `Categories disponibles: ${categories.length ? categories.join(', ') : 'non fournies'}.`,
       `Priorites disponibles: ${priorities.length ? priorities.join(', ') : 'LOW, MEDIUM, HIGH, CRITICAL'}.`,
       '',
-      'Objectif:',
+      'Regles de decision:',
+      '- INCIDENT = quelque chose ne fonctionne plus, est degrade, bloque ou provoque une erreur;',
+      '- REQUEST = l utilisateur demande un equipement, un acces, une installation, une creation, une modification ou un service;',
+      '- pour une REQUEST, ne propose pas de depannage inutile; collecte plutot les informations necessaires;',
+      '- pour un INCIDENT, tu peux proposer 2 a 4 actions simples a essayer avant creation du ticket;',
+      '',
+      'Informations minimales avant action=SUGGEST_TICKET:',
+      '- incident materiel: equipement concerne, symptome precis, niveau de blocage, depuis quand, et au moins un indice de diagnostic utile si pertinent (voyant, alimentation, ecran, bruit, message d erreur, modele/type fixe ou portable);',
+      '- incident logiciel: logiciel concerne, erreur/comportement, depuis quand, impact utilisateur, et action deja tentee si pertinente;',
+      '- demande materiel: objet demande, type/modele si utile, quantite, utilisateur concerne, justification ou urgence;',
+      '- demande logiciel: nom du logiciel, poste/utilisateur concerne, justification, urgence;',
+      "- demande acces: application/service, type ou niveau d'acces, utilisateur concerne, justification;",
+      '',
+      'Comportement attendu:',
+      "- si une information minimale manque, action=ASK_QUESTION et tu poses une seule question courte, adaptee au contexte;",
+      "- ne pose pas plusieurs questions a la fois sauf si elles sont naturellement liees, par exemple 'type ou modele';",
+      "- si l utilisateur ne sait pas, accepte une reponse approximative et prepare le ticket avec cette incertitude;",
       "- si les informations sont suffisantes, action=SUGGEST_TICKET et tu prepares le ticket;",
-      "- s'il manque une information importante, action=ASK_QUESTION et tu poses une seule question courte, adaptee au contexte;",
+      "- pour un INCIDENT, ne passe pas a SUGGEST_TICKET et ne propose pas suggestedActions tant qu'il manque le niveau de blocage ou un indice de diagnostic essentiel;",
+      "- pour un incident 'PC ne s'allume pas', demande d'abord si c'est un fixe ou portable et si un voyant/bruit/ecran apparait quand il est branche;",
+      '- quand action=SUGGEST_TICKET pour un INCIDENT, suggestedActions contient 2 a 4 actions prudentes, non destructrices et comprehensibles;',
+      '- quand action=SUGGEST_TICKET pour une REQUEST, suggestedActions doit etre vide sauf verification administrative utile;',
       "- ne repose jamais une question dont la reponse est deja evidente dans la conversation;",
       "- par exemple si l'utilisateur parle deja de son ordinateur, ne demande pas quel equipement est concerne; demande plutot s'il s'allume, s'il y a un message d'erreur, ou si c'est portable/fixe si utile;",
-      '- choisir INCIDENT si un service/equipement ne fonctionne plus ou est degrade;',
-      '- choisir REQUEST si la personne demande un acces, une installation, un materiel ou un service;',
       '- proposer un titre de 40 caracteres maximum quand action=SUGGEST_TICKET;',
       '- reformuler une description claire et exploitable pour le support quand action=SUGGEST_TICKET;',
       '- si une categorie semble evidente, reprendre exactement son nom depuis la liste fournie.',
@@ -220,6 +244,9 @@ export class SuggestTicketDraftUseCase {
       };
     }
 
+    const type =
+      parsed.type === TicketType.REQUEST ? TicketType.REQUEST : TicketType.INCIDENT;
+
     return {
       action: 'SUGGEST_TICKET',
       question: null,
@@ -230,11 +257,12 @@ export class SuggestTicketDraftUseCase {
         impact: this.normalizeEnum(parsed.impact, IncidentSeverity),
         priorityName: this.normalizeEnum(parsed.priorityName, PriorityName),
         requestType: this.normalizeEnum(parsed.requestType, RequestType),
+        suggestedActions:
+          type === TicketType.INCIDENT
+            ? this.normalizeSuggestedActions(parsed.suggestedActions)
+            : [],
         title: (parsed.title?.trim() || 'Ticket a qualifier').slice(0, 40),
-        type:
-          parsed.type === TicketType.REQUEST
-            ? TicketType.REQUEST
-            : TicketType.INCIDENT,
+        type,
         urgency: this.normalizeEnum(parsed.urgency, IncidentSeverity),
       },
     };
@@ -243,6 +271,17 @@ export class SuggestTicketDraftUseCase {
   private normalizeNullableText(value: string | null): string | null {
     const normalized = value?.trim();
     return normalized ? normalized : null;
+  }
+
+  private normalizeSuggestedActions(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .map((item) => (typeof item === 'string' ? item.trim() : ''))
+      .filter(Boolean)
+      .slice(0, 4);
   }
 
   private normalizeEnum<T extends Record<string, string>>(
