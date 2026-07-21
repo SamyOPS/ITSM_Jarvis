@@ -2173,7 +2173,7 @@
 .reports-dashboard-kpi {
   position: relative;
   display: grid;
-  min-height: 132px;
+  min-height: 112px;
   padding: 18px 20px;
   align-content: space-between;
   overflow: hidden;
@@ -2233,11 +2233,11 @@
 }
 
 .reports-dashboard-kpi--sky {
-  --kpi-accent: #7d73e8;
+  --kpi-accent: #2f80ed;
 }
 
 .reports-dashboard-kpi--green {
-  --kpi-accent: #4f9c86;
+  --kpi-accent: #1f9d63;
 }
 
 .reports-dashboard-kpi--amber {
@@ -2245,15 +2245,15 @@
 }
 
 .reports-dashboard-kpi--red {
-  --kpi-accent: #ce626a;
+  --kpi-accent: #d94f5c;
 }
 
 .reports-dashboard-kpi--silver {
-  --kpi-accent: #858b9c;
+  --kpi-accent: #7b61ff;
 }
 
 .reports-dashboard-kpi--mint {
-  --kpi-accent: #65a196;
+  --kpi-accent: #24a3a3;
 }
 
 .reports-dashboard-kpi--slate {
@@ -2341,12 +2341,29 @@
   gap: 8px 18px;
 }
 
-.reports-chart-legend span {
+.reports-chart-legend-item {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
   color: #626b7f;
+  cursor: pointer;
+  font: inherit;
   font-size: 0.72rem;
+  opacity: 0.48;
+  transition:
+    color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.reports-chart-legend-item:hover,
+.reports-chart-legend-item:focus-visible,
+.reports-chart-legend-item.is-active {
+  outline: none;
+  color: #252c43;
+  opacity: 1;
 }
 
 .reports-chart-legend i,
@@ -2379,6 +2396,22 @@
   overflow: visible;
 }
 
+.reports-timeline-hover-zone {
+  cursor: crosshair;
+  pointer-events: all;
+}
+
+.reports-timeline-hover-zone:hover {
+  fill: rgba(98, 84, 217, 0.035);
+}
+
+.reports-timeline-cursor-line {
+  stroke: rgba(98, 84, 217, 0.26);
+  stroke-dasharray: 4 5;
+  stroke-width: 1.2;
+  pointer-events: none;
+}
+
 .reports-grid-line {
   stroke: #e7e9f0;
   stroke-width: 1;
@@ -2401,6 +2434,18 @@
   stroke-width: 2.25;
 }
 
+.reports-line-path.is-entering {
+  animation: reports-line-draw 620ms ease both;
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+}
+
+@keyframes reports-line-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 .reports-line-point {
   stroke: #ffffff;
   stroke-width: 2;
@@ -2408,21 +2453,28 @@
 
 .reports-timeline-labels {
   display: grid;
-  padding-left: 43px;
   color: #858da0;
   font-size: 0.68rem;
   text-align: center;
 }
 
+.reports-timeline-labels span:first-child {
+  text-align: left;
+}
+
+.reports-timeline-labels span:last-child {
+  text-align: right;
+}
+
 .reports-chart-tooltip {
   z-index: 10;
-  min-width: 156px;
+  min-width: 170px;
   padding: 10px 12px;
-  border: 1px solid rgba(42, 38, 91, 0.12);
-  border-radius: 8px;
-  background: rgba(31, 29, 56, 0.96);
-  box-shadow: 0 10px 25px rgba(24, 22, 45, 0.18);
-  color: #ffffff;
+  border: 1px solid rgba(192, 202, 220, 0.95);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 34px rgba(32, 43, 70, 0.14);
+  color: #252c43;
 }
 
 .reports-chart-tooltip strong,
@@ -2431,12 +2483,50 @@
   color: inherit;
 }
 
+.reports-chart-tooltip > strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #1b2033;
+  font-size: 0.76rem;
+}
+
+.reports-chart-tooltip-list {
+  display: grid;
+  gap: 6px;
+}
+
+.reports-chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.reports-chart-tooltip-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #5d667a;
+  font-size: 0.7rem;
+}
+
+.reports-chart-tooltip-row i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.reports-chart-tooltip-row b {
+  color: #171a2f;
+  font-size: 0.74rem;
+}
+
 .reports-donut-widget {
   display: grid;
   min-height: 310px;
   padding: 14px 20px 20px;
   align-items: center;
-  grid-template-columns: minmax(230px, 0.92fr) minmax(190px, 1.08fr);
+  grid-template-columns: minmax(230px, 1fr) minmax(190px, 1fr);
   gap: 20px;
 }
 
@@ -2448,16 +2538,15 @@
 
 .reports-donut-visual {
   position: relative;
-  width: 220px;
-  height: 250px;
+  width: 232px;
+  height: 232px;
 }
 
 .reports-donut-visual svg {
   display: block;
-  width: 220px;
-  height: 220px;
+  width: 232px;
+  height: 232px;
   overflow: visible;
-  transform: rotate(-90deg);
 }
 
 .reports-donut-track,
@@ -2473,6 +2562,7 @@
 .reports-donut-segment {
   cursor: pointer;
   outline: none;
+  pointer-events: stroke;
   transition:
     opacity 0.16s ease,
     stroke-width 0.16s ease;
@@ -2489,8 +2579,8 @@
 
 .reports-donut-center {
   position: absolute;
-  top: 110px;
-  left: 110px;
+  top: 50%;
+  left: 50%;
   display: grid;
   transform: translate(-50%, -50%);
   place-items: center;
@@ -2502,30 +2592,6 @@
   font-weight: 650;
   letter-spacing: -0.04em;
   line-height: 1;
-}
-
-.reports-donut-center small {
-  margin-top: 4px;
-  color: #858da0;
-  font-size: 0.69rem;
-  text-transform: lowercase;
-}
-
-.reports-donut-tooltip {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  display: grid;
-  min-height: 34px;
-  place-items: center;
-  color: #51499a;
-  font-size: 0.69rem;
-  text-align: center;
-}
-
-.reports-donut-tooltip span {
-  color: #858da0;
 }
 
 .reports-widget-list--donut {
@@ -2591,7 +2657,7 @@
   display: grid;
   min-height: 310px;
   padding: 20px 20px 16px;
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: 40px minmax(0, 1fr);
 }
 
 .reports-vertical-bar-scale {
@@ -2607,11 +2673,13 @@
 .reports-vertical-bar-plot {
   position: relative;
   min-width: 0;
+  border-bottom: 1px solid #d8dee9;
+  border-left: 1px solid #d8dee9;
 }
 
 .reports-vertical-grid {
   position: absolute;
-  inset: 0 0 52px;
+  inset: 0 0 51px;
   display: grid;
   align-content: space-between;
   pointer-events: none;
@@ -2676,21 +2744,18 @@
   z-index: 2;
   top: 8px;
   left: 50%;
-  display: grid;
-  min-width: 112px;
-  padding: 8px 10px;
+  display: inline-flex;
+  min-width: 46px;
+  padding: 6px 9px;
+  justify-content: center;
   transform: translateX(-50%);
-  border-radius: 7px;
-  background: #25233f;
-  box-shadow: 0 8px 20px rgba(26, 24, 49, 0.18);
-  color: #ffffff;
-  font-size: 0.68rem;
+  border: 1px solid rgba(192, 202, 220, 0.95);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(32, 43, 70, 0.14);
+  color: #1b2033;
+  font-size: 0.72rem;
   text-align: center;
-}
-
-.reports-bar-tooltip small {
-  margin-top: 2px;
-  color: #d8d5f5;
 }
 
 .reports-vertical-bar-label {
