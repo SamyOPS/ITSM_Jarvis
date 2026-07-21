@@ -1312,14 +1312,14 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
               <DashboardPanel title="Respect SLA/TTR">
                 <DashboardDonutWidget
-                  colors={['#64b78f', '#f08a72']}
+                  colors={['#6254d9', '#9c90ff']}
                   items={slaWidgetItems}
                 />
               </DashboardPanel>
 
               <DashboardPanel title="Tickets par priorite">
                 <DashboardDonutWidget
-                  colors={['#60a5fa', '#f59e0b', '#f97316', '#ef4444']}
+                  colors={['#6254d9', '#8174ee', '#a69df9', '#d2ceff']}
                   items={priorityWidgetItems}
                 />
               </DashboardPanel>
@@ -2724,6 +2724,15 @@ function DashboardPanel({
 
   title: string;
 }) {
+  const descriptions: Record<string, string> = {
+    'Charge par agent': 'Repartition des tickets actifs par technicien',
+    'Charge par groupe': 'Repartition des tickets actifs par equipe',
+    'Evolution des tickets': 'Tendance sur la periode selectionnee',
+    'Respect SLA/TTR': 'Performance des delais de resolution',
+    'Tickets par categorie': 'Volume par domaine de support',
+    'Tickets par priorite': 'Repartition par niveau de priorite',
+  };
+
   return (
     <article
       className={
@@ -2733,7 +2742,11 @@ function DashboardPanel({
       }
     >
       <header className="reports-dashboard-panel-header">
-        <h3>{title}</h3>
+        <div>
+          <h3>{title}</h3>
+
+          <p>{descriptions[title]}</p>
+        </div>
       </header>
 
       {children}
@@ -2756,9 +2769,15 @@ function DashboardKpiCard({
 }) {
   return (
     <article className={`reports-dashboard-kpi reports-dashboard-kpi--${tone}`}>
+      <header>
+        <span>{label}</span>
+
+        <i aria-hidden="true" />
+      </header>
+
       <strong>{value}</strong>
 
-      <span>{label}</span>
+      <small>Sur la periode selectionnee</small>
     </article>
   );
 }
@@ -2998,13 +3017,13 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
 
   const width = 820;
 
-  const height = 304;
+  const height = 290;
 
   const paddingLeft = 52;
 
   const paddingRight = 18;
 
-  const paddingTop = 14;
+  const paddingTop = 18;
 
   const paddingBottom = 18;
 
@@ -3038,9 +3057,9 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
     {
       key: 'open' as const,
 
-      color: '#2563eb',
+      color: '#6758df',
 
-      fill: 'rgba(37, 99, 235, 0.12)',
+      fill: 'rgba(103, 88, 223, 0.16)',
 
       label: 'Ouverts',
     },
@@ -3048,9 +3067,9 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
     {
       key: 'resolved' as const,
 
-      color: '#0ea5a4',
+      color: '#8c7ff0',
 
-      fill: 'rgba(14, 165, 164, 0.12)',
+      fill: 'rgba(140, 127, 240, 0.1)',
 
       label: 'Resolus',
     },
@@ -3058,9 +3077,9 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
     {
       key: 'overdue' as const,
 
-      color: '#e55d59',
+      color: '#b26ed8',
 
-      fill: 'rgba(229, 93, 89, 0.1)',
+      fill: 'rgba(178, 110, 216, 0.08)',
 
       label: 'En retard',
     },
@@ -3068,9 +3087,9 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
     {
       key: 'closed' as const,
 
-      color: '#64748b',
+      color: '#b9b2ef',
 
-      fill: 'rgba(100, 116, 139, 0.1)',
+      fill: 'rgba(185, 178, 239, 0.08)',
 
       label: 'Clos',
     },
@@ -3150,7 +3169,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
           className="reports-chart-tooltip--timeline"
           items={[
             {
-              color: '#2563eb',
+              color: '#6758df',
 
               label: 'Ouverts',
 
@@ -3158,7 +3177,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
             },
 
             {
-              color: '#0ea5a4',
+              color: '#8c7ff0',
 
               label: 'Resolus',
 
@@ -3166,7 +3185,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
             },
 
             {
-              color: '#e55d59',
+              color: '#b26ed8',
 
               label: 'En retard',
 
@@ -3174,7 +3193,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
             },
 
             {
-              color: '#64748b',
+              color: '#b9b2ef',
 
               label: 'Clos',
 
@@ -3187,7 +3206,12 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
         />
       ) : null}
 
-      <div className="reports-timeline-labels">
+      <div
+        className="reports-timeline-labels"
+        style={{
+          gridTemplateColumns: `repeat(${Math.max(items.length, 1)}, minmax(0, 1fr))`,
+        }}
+      >
         {items.map((item) => (
           <span key={item.period}>{formatPeriodLabel(item.period)}</span>
         ))}
@@ -3452,12 +3476,14 @@ function ChartTooltip({
 }
 
 function DashboardDonutWidget({
-  colors = ['#3a8f18', '#68c62e', '#95de6f', '#b6e7a1', '#d5f1cd'],
+  colors = ['#6254d9', '#7c6ff0', '#9d93fa', '#c0b9ff', '#e2dfff'],
   items,
 }: {
   colors?: string[];
   items: ReportingBreakdownItem[];
 }) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
   if (items.length === 0) {
     return <p className="reports-chart-empty">Aucune donnee.</p>;
   }
@@ -3466,42 +3492,93 @@ function DashboardDonutWidget({
 
   const total = topItems.reduce((sum, item) => sum + item.count, 0);
 
-  const segments = topItems
-    .reduce<{ nextOffset: number; parts: string[] }>(
-      (accumulator, item, index) => {
-        const value = total > 0 ? (item.count / total) * 100 : 0;
+  const radius = 72;
 
-        const currentOffset = accumulator.nextOffset;
+  const circumference = 2 * Math.PI * radius;
 
-        accumulator.parts.push(
-          `${colors[index % colors.length]} ${currentOffset}% ${currentOffset + value}%`,
-        );
+  const segments = topItems.reduce<
+    Array<{
+      color: string;
+      length: number;
+      offset: number;
+      percentage: number;
+    }>
+  >((accumulator, item, index) => {
+    const percentage = total > 0 ? (item.count / total) * 100 : 0;
 
-        return {
-          nextOffset: currentOffset + value,
-          parts: accumulator.parts,
-        };
-      },
-      { nextOffset: 0, parts: [] },
-    )
-    .parts.join(', ');
+    const offset = accumulator.reduce(
+      (sum, segment) => sum + segment.length,
+      0,
+    );
+
+    accumulator.push({
+      color: colors[index % colors.length],
+      length: (percentage / 100) * circumference,
+      offset,
+      percentage,
+    });
+
+    return accumulator;
+  }, []);
+
+  const activeItem = activeIndex === null ? null : topItems[activeIndex];
+
+  const activeSegment = activeIndex === null ? null : segments[activeIndex];
 
   return (
     <div className="reports-donut-widget">
       <div className="reports-donut-visual-wrap">
-        <div
-          className="reports-donut-visual"
-          style={
-            {
-              background: `conic-gradient(${segments})`,
-            } as CSSProperties
-          }
-        >
-          <span>
-            <strong>{formatNumber(total)}</strong>
+        <div className="reports-donut-visual">
+          <svg aria-label="Repartition des tickets" viewBox="0 0 200 200">
+            <circle
+              className="reports-donut-track"
+              cx="100"
+              cy="100"
+              r={radius}
+            />
 
-            <small>Total</small>
+            {segments.map((segment, index) => (
+              <circle
+                className={
+                  activeIndex === null || activeIndex === index
+                    ? 'reports-donut-segment'
+                    : 'reports-donut-segment is-muted'
+                }
+                cx="100"
+                cy="100"
+                key={topItems[index].id ?? topItems[index].name}
+                onFocus={() => setActiveIndex(index)}
+                onMouseEnter={() => setActiveIndex(index)}
+                onMouseLeave={() => setActiveIndex(null)}
+                r={radius}
+                role="img"
+                stroke={segment.color}
+                strokeDasharray={`${segment.length} ${circumference - segment.length}`}
+                strokeDashoffset={-segment.offset}
+                tabIndex={0}
+              />
+            ))}
+          </svg>
+
+          <span className="reports-donut-center">
+            <strong>
+              {formatNumber(activeItem ? activeItem.count : total)}
+            </strong>
+
+            <small>
+              {activeSegment
+                ? `${Math.round(activeSegment.percentage)}%`
+                : 'total'}
+            </small>
           </span>
+
+          {activeItem ? (
+            <div className="reports-donut-tooltip" role="status">
+              <strong>{activeItem.name}</strong>
+
+              <span>{formatNumber(activeItem.count)} ticket(s)</span>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -3511,10 +3588,18 @@ function DashboardDonutWidget({
             total > 0 ? Math.round((item.count / total) * 100) : 0;
 
           return (
-            <div
-              className="reports-widget-row reports-widget-row--donut"
+            <button
+              className={
+                activeIndex === index
+                  ? 'reports-widget-row reports-widget-row--donut is-active'
+                  : 'reports-widget-row reports-widget-row--donut'
+              }
               key={item.id ?? item.name}
-              title={`${item.name} - ${formatNumber(item.count)} (${percentage}%)`}
+              onBlur={() => setActiveIndex(null)}
+              onFocus={() => setActiveIndex(index)}
+              onMouseEnter={() => setActiveIndex(index)}
+              onMouseLeave={() => setActiveIndex(null)}
+              type="button"
             >
               <span>
                 <i
@@ -3533,7 +3618,7 @@ function DashboardDonutWidget({
 
                 <small>{percentage}%</small>
               </strong>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -3542,6 +3627,8 @@ function DashboardDonutWidget({
 }
 
 function DashboardBarWidget({ items }: { items: ReportingBreakdownItem[] }) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
   if (items.length === 0) {
     return <p className="reports-chart-empty">Aucune donnee.</p>;
   }
@@ -3570,22 +3657,37 @@ function DashboardBarWidget({ items }: { items: ReportingBreakdownItem[] }) {
         </div>
 
         <div className="reports-vertical-bar-list">
-          {topItems.map((item) => {
+          {topItems.map((item, index) => {
             const percent = (item.count / maxValue) * 100;
 
             return (
               <div
-                className="reports-vertical-bar-item"
+                className={
+                  activeIndex === index
+                    ? 'reports-vertical-bar-item is-active'
+                    : 'reports-vertical-bar-item'
+                }
                 key={item.id ?? item.name}
-                title={`${item.name} - ${formatNumber(item.count)}`}
+                onMouseEnter={() => setActiveIndex(index)}
+                onMouseLeave={() => setActiveIndex(null)}
               >
                 <div className="reports-vertical-bar-track">
-                  <span
+                  <button
+                    aria-label={`${item.name}, ${formatNumber(item.count)} ticket(s)`}
                     className="reports-vertical-bar-fill"
+                    onBlur={() => setActiveIndex(null)}
+                    onFocus={() => setActiveIndex(index)}
                     style={{ height: `${percent}%` } as CSSProperties}
+                    type="button"
                   />
 
-                  <strong>{formatNumber(item.count)}</strong>
+                  {activeIndex === index ? (
+                    <span className="reports-bar-tooltip" role="status">
+                      <strong>{item.name}</strong>
+
+                      <small>{formatNumber(item.count)} ticket(s)</small>
+                    </span>
+                  ) : null}
                 </div>
 
                 <span className="reports-vertical-bar-label">{item.name}</span>
