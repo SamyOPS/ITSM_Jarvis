@@ -138,6 +138,7 @@ export class TicketsController {
     return this.suggestTicketDraftUseCase.execute({
       categories: body.categories,
       currentMode: body.currentMode ?? null,
+      equipments: body.equipments,
       priorities: body.priorities,
       userInput: body.userInput,
     });

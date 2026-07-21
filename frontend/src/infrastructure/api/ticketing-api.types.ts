@@ -26,6 +26,7 @@ export type CreateRequestPayload = {
 export type SuggestTicketDraftPayload = {
   categories?: string[];
   currentMode?: 'INCIDENT' | 'REQUEST' | null;
+  equipments?: string[];
   priorities?: string[];
   userInput: string;
 };
@@ -40,6 +41,7 @@ export type TicketDraftSuggestion = {
   categoryName: string | null;
   confidence: number;
   description: string;
+  equipmentName: string | null;
   impact: IncidentSeverity | null;
   priorityName: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | null;
   requestType: RequestType | null;

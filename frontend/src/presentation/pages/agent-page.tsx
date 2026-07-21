@@ -1320,6 +1320,53 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     return catalog.cis.filter((ci) => ci.assignedUserId === requesterId);
   }, [catalog.cis, incidentDraft.requestedForUserId, session.user.id]);
+  const aiRelevantEquipmentOptions = useMemo(() => {
+    const conversationText = normalizeSearchText(
+      [...aiChatMessages.map((message) => message.body), aiDraftInput].join(
+        ' ',
+      ),
+    );
+
+    const equipmentTypeKeywords = [
+      {
+        keywords: ['pc', 'ordinateur', 'portable', 'laptop', 'chargeur'],
+        typeHints: ['pc', 'ordinateur', 'portable', 'laptop'],
+      },
+      {
+        keywords: ['imprimante', 'impression', 'scanner'],
+        typeHints: ['imprimante', 'scanner'],
+      },
+      {
+        keywords: ['telephone', 'mobile', 'smartphone'],
+        typeHints: ['telephone', 'mobile', 'smartphone'],
+      },
+      {
+        keywords: ['ecran', 'moniteur'],
+        typeHints: ['ecran', 'moniteur'],
+      },
+    ];
+
+    const matchingTypeHints =
+      equipmentTypeKeywords.find(({ keywords }) =>
+        keywords.some((keyword) => conversationText.includes(keyword)),
+      )?.typeHints ?? [];
+
+    if (matchingTypeHints.length === 0) {
+      return incidentEquipmentOptions;
+    }
+
+    const filteredEquipment = incidentEquipmentOptions.filter((equipment) => {
+      const typeName = normalizeSearchText(
+        ciTypesById.get(equipment.ciTypeId)?.name ?? '',
+      );
+
+      return matchingTypeHints.some((hint) => typeName.includes(hint));
+    });
+
+    return filteredEquipment.length > 0
+      ? filteredEquipment
+      : incidentEquipmentOptions;
+  }, [aiChatMessages, aiDraftInput, ciTypesById, incidentEquipmentOptions]);
   const filteredIncidentLookupEquipment = useMemo(
     () =>
       filterIncidentLookupEquipment(
@@ -1693,6 +1740,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       const assistantResponse = await suggestTicketDraft(session.accessToken, {
         categories: incidentCategoryOptions.map((category) => category.name),
         currentMode: mode,
+        equipments: aiRelevantEquipmentOptions.map(
+          (equipment) =>
+            `${equipment.name} (${ciTypesById.get(equipment.ciTypeId)?.name ?? 'type inconnu'})`,
+        ),
         priorities: catalog.priorities.map((priority) => priority.name),
         userInput: nextMessages
           .map((message) =>
@@ -3995,6 +4046,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               {aiDraftSuggestion.categoryName ? (
                                 <small>
                                   Categorie : {aiDraftSuggestion.categoryName}
+                                </small>
+                              ) : null}
+                              {aiDraftSuggestion.equipmentName ? (
+                                <small>
+                                  Equipement : {aiDraftSuggestion.equipmentName}
                                 </small>
                               ) : null}
                               {aiDraftSuggestion.type === 'INCIDENT' ? (

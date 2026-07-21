@@ -21,6 +21,11 @@ export class SuggestTicketDraftDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  equipments?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   priorities?: string[];
 
   @IsString()
