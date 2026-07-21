@@ -1312,7 +1312,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
               <DashboardPanel title="Respect SLA/TTR">
                 <DashboardDonutWidget
-                    colors={['#6254d9', '#9c90ff']}
+                  colors={['#6254d9', '#9c90ff']}
                   items={slaWidgetItems}
                 />
               </DashboardPanel>
