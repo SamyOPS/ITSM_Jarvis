@@ -152,6 +152,8 @@ const INITIAL_FILTERS: ReportsFilterState = {
   type: '',
 };
 
+const REQUEST_DEFAULT_CATEGORY_NAME = 'Demande';
+
 const PERSONAL_TICKET_LIMIT = 8;
 
 const PERSONAL_EQUIPMENT_LIMIT = 8;
@@ -523,6 +525,15 @@ export function ReportsPage({ session }: ReportsPageProps) {
   const personalCategoriesById = useMemo(
     () =>
       new Map(catalog.categories.map((category) => [category.id, category])),
+
+    [catalog.categories],
+  );
+
+  const dashboardCategoryOptions = useMemo(
+    () =>
+      catalog.categories.filter(
+        (category) => category.name !== REQUEST_DEFAULT_CATEGORY_NAME,
+      ),
 
     [catalog.categories],
   );
@@ -1132,7 +1143,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 >
                   <option value="">Toutes</option>
 
-                  {catalog.categories.map((category) => (
+                  {dashboardCategoryOptions.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
                     </option>
@@ -1295,15 +1306,15 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 <DashboardTimelineChart items={timelineItems} />
               </DashboardPanel>
 
+              <DashboardPanel title="Tickets par categorie">
+                <DashboardBarWidget items={categoryWidgetItems} />
+              </DashboardPanel>
+
               <DashboardPanel title="Respect SLA/TTR">
                 <DashboardDonutWidget
                   colors={['#64b78f', '#f08a72']}
                   items={slaWidgetItems}
                 />
-              </DashboardPanel>
-
-              <DashboardPanel title="Tickets par categorie">
-                <DashboardBarWidget items={categoryWidgetItems} />
               </DashboardPanel>
 
               <DashboardPanel title="Tickets par priorite">
@@ -3027,9 +3038,9 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
     {
       key: 'open' as const,
 
-      color: '#4f7fb5',
+      color: '#2563eb',
 
-      fill: 'rgba(79, 127, 181, 0.14)',
+      fill: 'rgba(37, 99, 235, 0.12)',
 
       label: 'Ouverts',
     },
@@ -3037,9 +3048,9 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
     {
       key: 'resolved' as const,
 
-      color: '#f09a34',
+      color: '#0ea5a4',
 
-      fill: 'rgba(240, 154, 52, 0.12)',
+      fill: 'rgba(14, 165, 164, 0.12)',
 
       label: 'Resolus',
     },
@@ -3057,9 +3068,9 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
     {
       key: 'closed' as const,
 
-      color: '#7cc3c6',
+      color: '#64748b',
 
-      fill: 'rgba(124, 195, 198, 0.1)',
+      fill: 'rgba(100, 116, 139, 0.1)',
 
       label: 'Clos',
     },
@@ -3139,7 +3150,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
           className="reports-chart-tooltip--timeline"
           items={[
             {
-              color: '#4f7fb5',
+              color: '#2563eb',
 
               label: 'Ouverts',
 
@@ -3147,7 +3158,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
             },
 
             {
-              color: '#f09a34',
+              color: '#0ea5a4',
 
               label: 'Resolus',
 
@@ -3163,7 +3174,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
             },
 
             {
-              color: '#7cc3c6',
+              color: '#64748b',
 
               label: 'Clos',
 
@@ -3442,11 +3453,9 @@ function ChartTooltip({
 
 function DashboardDonutWidget({
   colors = ['#3a8f18', '#68c62e', '#95de6f', '#b6e7a1', '#d5f1cd'],
-
   items,
 }: {
   colors?: string[];
-
   items: ReportingBreakdownItem[];
 }) {
   if (items.length === 0) {
@@ -3458,7 +3467,6 @@ function DashboardDonutWidget({
   const total = topItems.reduce((sum, item) => sum + item.count, 0);
 
   const segments = topItems
-
     .reduce<{ nextOffset: number; parts: string[] }>(
       (accumulator, item, index) => {
         const value = total > 0 ? (item.count / total) * 100 : 0;
@@ -3471,41 +3479,63 @@ function DashboardDonutWidget({
 
         return {
           nextOffset: currentOffset + value,
-
           parts: accumulator.parts,
         };
       },
-
       { nextOffset: 0, parts: [] },
     )
-
     .parts.join(', ');
 
   return (
     <div className="reports-donut-widget">
-      <div
-        className="reports-donut-visual"
-        style={{ background: `conic-gradient(${segments})` } as CSSProperties}
-      >
-        <span>{formatNumber(total)}</span>
+      <div className="reports-donut-visual-wrap">
+        <div
+          className="reports-donut-visual"
+          style={
+            {
+              background: `conic-gradient(${segments})`,
+            } as CSSProperties
+          }
+        >
+          <span>
+            <strong>{formatNumber(total)}</strong>
+
+            <small>Total</small>
+          </span>
+        </div>
       </div>
 
-      <div className="reports-widget-list">
-        {topItems.map((item, index) => (
-          <div className="reports-widget-row" key={item.id ?? item.name}>
-            <span>
-              <i
-                style={
-                  { background: colors[index % colors.length] } as CSSProperties
-                }
-              />
+      <div className="reports-widget-list reports-widget-list--donut">
+        {topItems.map((item, index) => {
+          const percentage =
+            total > 0 ? Math.round((item.count / total) * 100) : 0;
 
-              {item.name}
-            </span>
+          return (
+            <div
+              className="reports-widget-row reports-widget-row--donut"
+              key={item.id ?? item.name}
+              title={`${item.name} - ${formatNumber(item.count)} (${percentage}%)`}
+            >
+              <span>
+                <i
+                  style={
+                    {
+                      background: colors[index % colors.length],
+                    } as CSSProperties
+                  }
+                />
 
-            <strong>{item.count}</strong>
-          </div>
-        ))}
+                {item.name}
+              </span>
+
+              <strong>
+                {formatNumber(item.count)}
+
+                <small>{percentage}%</small>
+              </strong>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -3520,23 +3550,50 @@ function DashboardBarWidget({ items }: { items: ReportingBreakdownItem[] }) {
 
   const maxValue = Math.max(...topItems.map((item) => item.count), 1);
 
+  const yTicks = Array.from({ length: 4 }, (_, index) =>
+    Math.round((maxValue / 3) * (3 - index)),
+  );
+
   return (
-    <div className="reports-widget-bars">
-      {topItems.map((item) => (
-        <div className="reports-widget-bar-row" key={item.id ?? item.name}>
-          <span>{item.name}</span>
+    <div className="reports-vertical-bar-widget">
+      <div className="reports-vertical-bar-scale" aria-hidden="true">
+        {yTicks.map((tick) => (
+          <span key={tick}>{formatChartValue(tick)}</span>
+        ))}
+      </div>
 
-          <div>
-            <strong>{item.count}</strong>
-
-            <i
-              style={
-                { width: `${(item.count / maxValue) * 100}%` } as CSSProperties
-              }
-            />
-          </div>
+      <div className="reports-vertical-bar-plot">
+        <div className="reports-vertical-grid" aria-hidden="true">
+          {yTicks.map((tick) => (
+            <i key={tick} />
+          ))}
         </div>
-      ))}
+
+        <div className="reports-vertical-bar-list">
+          {topItems.map((item) => {
+            const percent = (item.count / maxValue) * 100;
+
+            return (
+              <div
+                className="reports-vertical-bar-item"
+                key={item.id ?? item.name}
+                title={`${item.name} - ${formatNumber(item.count)}`}
+              >
+                <div className="reports-vertical-bar-track">
+                  <span
+                    className="reports-vertical-bar-fill"
+                    style={{ height: `${percent}%` } as CSSProperties}
+                  />
+
+                  <strong>{formatNumber(item.count)}</strong>
+                </div>
+
+                <span className="reports-vertical-bar-label">{item.name}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
