@@ -1313,7 +1313,10 @@ export function ReportsPage({ session }: ReportsPageProps) {
               </DashboardPanel>
 
               <DashboardPanel title="Tickets par categorie">
-                <DashboardBarWidget items={categoryWidgetItems} />
+                <DashboardBarWidget
+                  items={categoryWidgetItems}
+                  variant="category"
+                />
               </DashboardPanel>
 
               <DashboardPanel title="Respect SLA/TTR">
@@ -3908,6 +3911,8 @@ function DashboardDonutWidget({
   const topItems = items.slice(0, 5);
 
   const total = topItems.reduce((sum, item) => sum + item.count, 0);
+  const activeItem = activeIndex === null ? null : topItems[activeIndex];
+  const centerValue = activeItem ? activeItem.count : total;
 
   const radius = 72;
 
@@ -3943,7 +3948,11 @@ function DashboardDonutWidget({
     <div className="reports-donut-widget">
       <div className="reports-donut-visual-wrap">
         <div className="reports-donut-visual">
-          <svg aria-label="Repartition des tickets" viewBox="0 0 200 200">
+          <svg
+            aria-label="Repartition des tickets"
+            onMouseLeave={() => setActiveIndex(null)}
+            viewBox="0 0 200 200"
+          >
             <circle
               className="reports-donut-track"
               cx="100"
@@ -3985,7 +3994,7 @@ function DashboardDonutWidget({
           </svg>
 
           <span className="reports-donut-center">
-            <strong>{formatNumber(total)}</strong>
+            <strong>{formatNumber(centerValue)}</strong>
           </span>
         </div>
       </div>
@@ -4055,7 +4064,13 @@ function getDonutItemColor(
   );
 }
 
-function DashboardBarWidget({ items }: { items: ReportingBreakdownItem[] }) {
+function DashboardBarWidget({
+  items,
+  variant = 'default',
+}: {
+  items: ReportingBreakdownItem[];
+  variant?: 'category' | 'default';
+}) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   if (items.length === 0) {
@@ -4071,10 +4086,25 @@ function DashboardBarWidget({ items }: { items: ReportingBreakdownItem[] }) {
   const yTicks = axis.ticks;
 
   return (
-    <div className="reports-vertical-bar-widget">
+    <div
+      className={
+        variant === 'category'
+          ? 'reports-vertical-bar-widget reports-vertical-bar-widget--category'
+          : 'reports-vertical-bar-widget'
+      }
+    >
       <div className="reports-vertical-bar-scale" aria-hidden="true">
-        {yTicks.map((tick) => (
-          <span key={tick}>{formatChartValue(tick)}</span>
+        {yTicks.map((tick, index) => (
+          <span
+            key={tick}
+            style={
+              {
+                top: `${(index / Math.max(yTicks.length - 1, 1)) * 100}%`,
+              } as CSSProperties
+            }
+          >
+            {formatChartValue(tick)}
+          </span>
         ))}
       </div>
 

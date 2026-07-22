@@ -2700,35 +2700,50 @@
 }
 
 .reports-vertical-bar-widget {
+  --reports-bar-label-space: 52px;
+  --reports-bar-plot-height: 240px;
+  --reports-bar-total-height: calc(
+    var(--reports-bar-plot-height) + var(--reports-bar-label-space)
+  );
   display: grid;
   min-height: 310px;
   padding: 20px 20px 16px;
+  align-items: start;
   grid-template-columns: 40px minmax(0, 1fr);
 }
 
+.reports-vertical-bar-widget--category {
+  --reports-bar-label-space: 52px;
+  --reports-bar-plot-height: 264px;
+  min-height: 356px;
+  padding-top: 24px;
+  padding-bottom: 18px;
+}
+
 .reports-vertical-bar-scale {
-  display: flex;
-  flex-direction: column;
-  height: 240px;
+  position: relative;
+  height: var(--reports-bar-plot-height);
   padding: 0 8px 0 0;
-  justify-content: space-between;
   color: #9299aa;
   font-size: 0.66rem;
   text-align: right;
 }
 
 .reports-vertical-bar-scale span {
+  position: absolute;
+  right: 8px;
   line-height: 1;
   transform: translateY(-50%);
 }
 
 .reports-vertical-bar-scale span:last-child {
-  transform: translateY(50%);
+  transform: translateY(-50%);
 }
 
 .reports-vertical-bar-plot {
   position: relative;
   min-width: 0;
+  height: var(--reports-bar-total-height);
 }
 
 .reports-vertical-bar-plot::before,
@@ -2741,21 +2756,21 @@
 
 .reports-vertical-bar-plot::before {
   top: 0;
-  bottom: 52px;
+  bottom: var(--reports-bar-label-space);
   left: 0;
   border-left: 1px solid #d8dee9;
 }
 
 .reports-vertical-bar-plot::after {
   right: 0;
-  bottom: 52px;
+  bottom: var(--reports-bar-label-space);
   left: 0;
   border-top: 1px solid #d8dee9;
 }
 
 .reports-vertical-grid {
   position: absolute;
-  inset: 0 0 51px;
+  inset: 0 0 var(--reports-bar-label-space);
   display: grid;
   align-content: space-between;
   pointer-events: none;
@@ -2771,7 +2786,7 @@
   z-index: 1;
   display: grid;
   min-width: 0;
-  height: 292px;
+  height: var(--reports-bar-total-height);
   grid-template-columns: repeat(5, minmax(58px, 1fr));
   gap: clamp(10px, 2.5vw, 28px);
 }
@@ -2781,14 +2796,16 @@
   min-width: 0;
   height: 100%;
   align-items: end;
-  grid-template-rows: 240px 42px;
+  grid-template-rows: var(--reports-bar-plot-height) calc(
+      var(--reports-bar-label-space) - 10px
+    );
   gap: 10px;
 }
 
 .reports-vertical-bar-track {
   position: relative;
   display: flex;
-  height: 240px;
+  height: var(--reports-bar-plot-height);
   align-items: flex-end;
   justify-content: center;
 }
@@ -2821,9 +2838,9 @@
   top: 8px;
   left: 50%;
   display: inline-flex;
-  min-width: 54px;
-  min-height: 24px;
-  padding: 7px 12px;
+  min-width: 62px;
+  min-height: 30px;
+  padding: 8px 14px;
   align-items: center;
   justify-content: center;
   transform: translateX(-50%);
@@ -2832,7 +2849,7 @@
   background: #ffffff;
   box-shadow: 0 10px 24px rgba(32, 43, 70, 0.14);
   color: #1b2033;
-  font-size: 0.74rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-align: center;
   pointer-events: none;
