@@ -2713,7 +2713,7 @@
 }
 
 .reports-vertical-bar-widget--category {
-  --reports-bar-label-space: 72px;
+  --reports-bar-label-space: 52px;
   --reports-bar-plot-height: 264px;
   min-height: 356px;
   padding-top: 24px;
@@ -2867,10 +2867,6 @@
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-}
-
-.reports-vertical-bar-widget--category .reports-vertical-bar-label {
-  padding-top: 8px;
 }
 
 @media (max-width: 1300px) {
