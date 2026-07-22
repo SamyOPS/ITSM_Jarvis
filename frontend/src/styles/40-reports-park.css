@@ -2708,37 +2708,42 @@
   display: grid;
   min-height: 310px;
   padding: 20px 20px 16px;
+  align-items: start;
   grid-template-columns: 40px minmax(0, 1fr);
 }
 
 .reports-vertical-bar-widget--category {
-  --reports-bar-label-space: 60px;
-  --reports-bar-plot-height: 240px;
+  --reports-bar-label-space: 72px;
+  --reports-bar-plot-height: 264px;
+  min-height: 356px;
+  padding-top: 24px;
+  padding-bottom: 18px;
 }
 
 .reports-vertical-bar-scale {
-  display: flex;
-  flex-direction: column;
+  position: relative;
   height: var(--reports-bar-plot-height);
   padding: 0 8px 0 0;
-  justify-content: space-between;
   color: #9299aa;
   font-size: 0.66rem;
   text-align: right;
 }
 
 .reports-vertical-bar-scale span {
+  position: absolute;
+  right: 8px;
   line-height: 1;
   transform: translateY(-50%);
 }
 
 .reports-vertical-bar-scale span:last-child {
-  transform: translateY(50%);
+  transform: translateY(-50%);
 }
 
 .reports-vertical-bar-plot {
   position: relative;
   min-width: 0;
+  height: var(--reports-bar-total-height);
 }
 
 .reports-vertical-bar-plot::before,
@@ -2862,6 +2867,10 @@
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.reports-vertical-bar-widget--category .reports-vertical-bar-label {
+  padding-top: 8px;
 }
 
 @media (max-width: 1300px) {

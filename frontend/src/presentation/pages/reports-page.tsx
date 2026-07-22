@@ -4094,8 +4094,17 @@ function DashboardBarWidget({
       }
     >
       <div className="reports-vertical-bar-scale" aria-hidden="true">
-        {yTicks.map((tick) => (
-          <span key={tick}>{formatChartValue(tick)}</span>
+        {yTicks.map((tick, index) => (
+          <span
+            key={tick}
+            style={
+              {
+                top: `${(index / Math.max(yTicks.length - 1, 1)) * 100}%`,
+              } as CSSProperties
+            }
+          >
+            {formatChartValue(tick)}
+          </span>
         ))}
       </div>
 
