@@ -1,7 +1,9 @@
 import {
   type CSSProperties,
+  type Dispatch,
   type FormEvent,
   type ReactNode,
+  type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -157,6 +159,8 @@ const PERSONAL_TICKET_LIMIT = 8;
 const PERSONAL_EQUIPMENT_LIMIT = 8;
 
 const GROUP_TICKET_LIMIT = 8;
+
+const TIMELINE_TOOLTIP_WIDTH = 190;
 
 const ASSIGNED_TO_ME_COLUMNS: PersonalTicketColumn[] = [
   'ID',
@@ -1255,19 +1259,19 @@ export function ReportsPage({ session }: ReportsPageProps) {
           <section className="reports-dashboard">
             <div className="reports-dashboard-kpis">
               <DashboardKpiCard
-                label="Tickets"
+                label="Tickets total"
                 tone="blue"
                 value={formatNumber(overviewTotals.total)}
               />
 
               <DashboardKpiCard
-                label="Nouveaux tickets"
+                label="Nouveaux"
                 tone="sky"
                 value={formatNumber(overviewTotals.open)}
               />
 
               <DashboardKpiCard
-                label="Tickets en cours"
+                label="En cours"
                 tone="green"
                 value={formatNumber(overviewTotals.inProgress)}
               />
@@ -3081,9 +3085,9 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
     {
       key: 'open' as const,
 
-      color: '#6758df',
+      color: '#4f7fb5',
 
-      fill: 'rgba(103, 88, 223, 0.16)',
+      fill: 'rgba(79, 127, 181, 0.12)',
 
       label: 'Ouverts',
     },
@@ -3091,9 +3095,9 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
     {
       key: 'resolved' as const,
 
-      color: '#8c7ff0',
+      color: '#f28b22',
 
-      fill: 'rgba(140, 127, 240, 0.1)',
+      fill: 'rgba(242, 139, 34, 0.1)',
 
       label: 'Resolus',
     },
@@ -3101,9 +3105,9 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
     {
       key: 'overdue' as const,
 
-      color: '#b26ed8',
+      color: '#df5c64',
 
-      fill: 'rgba(178, 110, 216, 0.08)',
+      fill: 'rgba(223, 92, 100, 0.09)',
 
       label: 'En retard',
     },
@@ -3111,9 +3115,9 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
     {
       key: 'closed' as const,
 
-      color: '#b9b2ef',
+      color: '#78b7b3',
 
-      fill: 'rgba(185, 178, 239, 0.08)',
+      fill: 'rgba(120, 183, 179, 0.09)',
 
       label: 'Clos',
     },
@@ -3132,6 +3136,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
             }
             key={item.key}
             onClick={() => {
+              hideTooltip();
               setVisibleSeries((current) => {
                 const nextValue = !current[item.key];
 
@@ -3184,116 +3189,38 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
           );
         })}
 
-        {items.map((item, index) => {
-          const denominator = Math.max(1, items.length - 1);
-          const x =
-            items.length === 1
-              ? paddingLeft + chartWidth / 2
-              : paddingLeft + (chartWidth / denominator) * index;
-          const previousX =
-            index === 0
-              ? paddingLeft
-              : paddingLeft + (chartWidth / denominator) * (index - 0.5);
-          const nextX =
-            index === items.length - 1
-              ? width - paddingRight
-              : paddingLeft + (chartWidth / denominator) * (index + 0.5);
-
-          return (
-            <rect
-              className="reports-timeline-hover-zone"
-              fill="transparent"
-              height={chartHeight}
-              key={item.period}
-              onMouseMove={(event) => {
-                const container = event.currentTarget.closest(
-                  '.reports-timeline-card',
-                );
-
-                if (!(container instanceof HTMLDivElement)) {
-                  return;
-                }
-
-                const containerRect = container.getBoundingClientRect();
-                const align =
-                  index >= items.length - 1
-                    ? 'right'
-                    : index === 0
-                      ? 'left'
-                      : 'center';
-                const topPx = clampNumber(
-                  event.clientY - containerRect.top - 18,
-
-                  56,
-
-                  Math.max(56, containerRect.height - 170),
-                );
-
-                setTooltipState({
-                  align,
-
-                  index,
-
-                  left: `${x}px`,
-
-                  top: `${topPx}px`,
-                });
-              }}
-              width={Math.max(1, nextX - previousX)}
-              x={previousX}
-              y={paddingTop}
-            />
-          );
-        })}
-
-        {tooltipState ? (
-          <line
-            className="reports-timeline-cursor-line"
-            x1={
-              items.length === 1
-                ? paddingLeft + chartWidth / 2
-                : paddingLeft +
-                  (chartWidth / Math.max(1, items.length - 1)) *
-                    tooltipState.index
-            }
-            x2={
-              items.length === 1
-                ? paddingLeft + chartWidth / 2
-                : paddingLeft +
-                  (chartWidth / Math.max(1, items.length - 1)) *
-                    tooltipState.index
-            }
-            y1={paddingTop}
-            y2={baselineY}
-          />
-        ) : null}
-
         {series.map((item) =>
-          visibleSeries[item.key]
-            ? renderTimelineSeries(
-                items,
+          renderTimelineSeries(
+            items,
 
-                item.key,
+            item.key,
 
-                axis.max,
+            axis.max,
 
-                chartWidth,
+            chartWidth,
 
-                chartHeight,
+            chartHeight,
 
-                paddingLeft,
+            paddingLeft,
 
-                paddingTop,
+            paddingRight,
 
-                baselineY,
+            paddingTop,
 
-                item.color,
+            baselineY,
 
-                item.fill,
+            item.color,
 
-                seriesAnimationKey[item.key],
-              )
-            : null,
+            item.fill,
+
+            seriesAnimationKey[item.key],
+
+            visibleSeries[item.key],
+
+            setTooltipState,
+
+            hideTooltip,
+          ),
         )}
       </svg>
 
@@ -3304,7 +3231,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
           items={[
             visibleSeries.open
               ? {
-                  color: '#6758df',
+                  color: '#4f7fb5',
 
                   label: 'Ouverts',
 
@@ -3314,7 +3241,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
 
             visibleSeries.resolved
               ? {
-                  color: '#8c7ff0',
+                  color: '#f28b22',
 
                   label: 'Resolus',
 
@@ -3324,7 +3251,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
 
             visibleSeries.overdue
               ? {
-                  color: '#b26ed8',
+                  color: '#df5c64',
 
                   label: 'En retard',
 
@@ -3334,7 +3261,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
 
             visibleSeries.closed
               ? {
-                  color: '#b9b2ef',
+                  color: '#78b7b3',
 
                   label: 'Clos',
 
@@ -3348,21 +3275,23 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
         />
       ) : null}
 
-      <div
-        className="reports-timeline-labels"
-        style={
-          {
-            paddingLeft,
-            paddingRight,
-            gridTemplateColumns: `repeat(${Math.max(items.length, 1)}, minmax(0, 1fr))`,
-          } as CSSProperties
-        }
-      >
-        {items.map((item) => (
-          <span key={item.period}>
-            {formatTimelinePeriodLabel(item.period)}
-          </span>
-        ))}
+      <div className="reports-timeline-labels">
+        {items.map((item, index) => {
+          const denominator = Math.max(1, items.length - 1);
+          const labelX =
+            items.length === 1
+              ? paddingLeft + chartWidth / 2
+              : paddingLeft + (chartWidth / denominator) * index;
+
+          return (
+            <span
+              key={item.period}
+              style={{ left: `${(labelX / width) * 100}%` } as CSSProperties}
+            >
+              {formatTimelinePeriodLabel(item.period)}
+            </span>
+          );
+        })}
       </div>
     </div>
   );
@@ -3381,6 +3310,8 @@ function renderTimelineSeries(
 
   paddingLeft: number,
 
+  paddingRight: number,
+
   paddingTop: number,
 
   baselineY: number,
@@ -3390,6 +3321,22 @@ function renderTimelineSeries(
   fill: string,
 
   animationKey: number,
+
+  isVisible: boolean,
+
+  setTooltipState: Dispatch<
+    SetStateAction<{
+      align: 'center' | 'left' | 'right';
+
+      index: number;
+
+      left: string;
+
+      top: string;
+    } | null>
+  >,
+
+  hideTooltip: () => void,
 ) {
   const points = buildTimelinePoints(
     items,
@@ -3412,25 +3359,89 @@ function renderTimelineSeries(
   const areaPath = buildAreaSvgPath(points, baselineY);
 
   return (
-    <g key={key}>
+    <g
+      className={
+        isVisible ? 'reports-timeline-series' : 'reports-timeline-series is-off'
+      }
+      key={key}
+    >
       <path className="reports-area-path" d={areaPath} fill={fill} />
 
       <path
-        className="reports-line-path is-entering"
+        className={
+          isVisible
+            ? 'reports-line-path is-entering'
+            : 'reports-line-path is-off'
+        }
         d={linePath}
         fill="none"
-        key={`${key}-${animationKey}`}
+        key={isVisible ? `${key}-${animationKey}` : key}
         stroke={color}
       />
 
       {points.map((point, index) => (
         <g key={`${key}-${index}`}>
           <circle
+            className="reports-line-point-hitbox"
+            cx={point.x}
+            cy={point.y}
+            fill="transparent"
+            onMouseLeave={hideTooltip}
+            onMouseMove={(event) => {
+              if (!isVisible) {
+                return;
+              }
+
+              const container = event.currentTarget.closest(
+                '.reports-timeline-card',
+              );
+
+              if (!(container instanceof HTMLDivElement)) {
+                return;
+              }
+
+              const containerRect = container.getBoundingClientRect();
+              const svgWidth = paddingLeft + chartWidth + paddingRight;
+              const tooltipLeft = clampNumber(
+                point.x,
+
+                paddingLeft + 8,
+
+                svgWidth - paddingRight - 8,
+              );
+              const align =
+                tooltipLeft + TIMELINE_TOOLTIP_WIDTH > svgWidth - paddingRight
+                  ? 'right'
+                  : tooltipLeft - TIMELINE_TOOLTIP_WIDTH / 2 < paddingLeft
+                    ? 'left'
+                    : 'center';
+              const topPx = clampNumber(
+                event.clientY - containerRect.top - 20,
+
+                56,
+
+                Math.max(56, containerRect.height - 170),
+              );
+
+              setTooltipState({
+                align,
+
+                index,
+
+                left: `${tooltipLeft}px`,
+
+                top: `${topPx}px`,
+              });
+            }}
+            r="6"
+          />
+
+          <circle
             className="reports-line-point"
             cx={point.x}
             cy={point.y}
             fill={color}
-            r="4"
+            r="4.5"
           />
         </g>
       ))}
@@ -3547,7 +3558,7 @@ function buildDashboardTimelineItems(
   filters: ReportsFilterState,
 ): ReportingTimelineItem[] {
   const bucketMode = resolveTimelineBucketMode(filters);
-  const buckets = new Map<string, ReportingTimelineItem>();
+  const buckets = initializeTimelineBuckets(filters, bucketMode);
 
   for (const ticket of tickets) {
     const date = new Date(ticket.createdAt);
@@ -3557,13 +3568,7 @@ function buildDashboardTimelineItems(
     }
 
     const period = formatTimelineBucketKey(date, bucketMode);
-    const current = buckets.get(period) ?? {
-      closed: 0,
-      open: 0,
-      overdue: 0,
-      period,
-      resolved: 0,
-    };
+    const current = buckets.get(period) ?? createEmptyTimelineItem(period);
 
     if (
       ticket.status === 'OPEN' ||
@@ -3598,7 +3603,11 @@ function buildDashboardTimelineItems(
 
 function resolveTimelineBucketMode(
   filters: ReportsFilterState,
-): 'day' | 'month' | 'week' {
+): 'day' | 'hour' | 'month' | 'week' {
+  if (filters.periodPreset === 'TODAY') {
+    return 'hour';
+  }
+
   if (filters.periodPreset === 'THIS_YEAR') {
     return 'month';
   }
@@ -3607,10 +3616,7 @@ function resolveTimelineBucketMode(
     return 'week';
   }
 
-  if (
-    filters.periodPreset === 'THIS_WEEK' ||
-    filters.periodPreset === 'TODAY'
-  ) {
+  if (filters.periodPreset === 'THIS_WEEK') {
     return 'day';
   }
 
@@ -3632,10 +3638,117 @@ function resolveTimelineBucketMode(
   return 'day';
 }
 
+function initializeTimelineBuckets(
+  filters: ReportsFilterState,
+
+  mode: 'day' | 'hour' | 'month' | 'week',
+): Map<string, ReportingTimelineItem> {
+  const buckets = new Map<string, ReportingTimelineItem>();
+  const range = resolveTimelineRange(filters);
+
+  if (!range) {
+    return buckets;
+  }
+
+  if (mode === 'hour') {
+    const day = new Date(
+      range.from.getFullYear(),
+      range.from.getMonth(),
+      range.from.getDate(),
+    );
+
+    for (let hour = 0; hour < 24; hour += 2) {
+      const period = formatTimelineHourBucketKey(day, hour);
+
+      buckets.set(period, createEmptyTimelineItem(period));
+    }
+
+    return buckets;
+  }
+
+  if (mode === 'month') {
+    const cursor = new Date(range.from.getFullYear(), range.from.getMonth(), 1);
+    const end = new Date(range.to.getFullYear(), range.to.getMonth(), 1);
+
+    while (cursor <= end) {
+      const period = formatTimelineBucketKey(cursor, mode);
+
+      buckets.set(period, createEmptyTimelineItem(period));
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    return buckets;
+  }
+
+  if (mode === 'week' && filters.periodPreset === 'THIS_MONTH') {
+    const year = range.from.getFullYear();
+    const month = String(range.from.getMonth() + 1).padStart(2, '0');
+
+    for (let week = 1; week <= 4; week += 1) {
+      const period = `${year}-${month}-S${week}`;
+
+      buckets.set(period, createEmptyTimelineItem(period));
+    }
+
+    return buckets;
+  }
+
+  const cursor = new Date(
+    range.from.getFullYear(),
+    range.from.getMonth(),
+    range.from.getDate(),
+  );
+
+  while (cursor <= range.to) {
+    const period = formatTimelineBucketKey(cursor, mode);
+
+    if (!buckets.has(period)) {
+      buckets.set(period, createEmptyTimelineItem(period));
+    }
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return buckets;
+}
+
+function createEmptyTimelineItem(period: string): ReportingTimelineItem {
+  return {
+    closed: 0,
+    open: 0,
+    overdue: 0,
+    period,
+    resolved: 0,
+  };
+}
+
+function resolveTimelineRange(
+  filters: ReportsFilterState,
+): { from: Date; to: Date } | null {
+  const from = parseDateOnly(filters.from);
+  const to = parseDateOnly(filters.to);
+
+  if (!from || !to) {
+    return null;
+  }
+
+  return from <= to ? { from, to } : { from: to, to: from };
+}
+
+function parseDateOnly(value: string): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function formatTimelineBucketKey(
   date: Date,
 
-  mode: 'day' | 'month' | 'week',
+  mode: 'day' | 'hour' | 'month' | 'week',
 ): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -3644,11 +3757,15 @@ function formatTimelineBucketKey(
     return `${year}-${month}`;
   }
 
+  if (mode === 'hour') {
+    return formatTimelineHourBucketKey(
+      date,
+      Math.floor(date.getHours() / 2) * 2,
+    );
+  }
+
   if (mode === 'week') {
-    const firstDayOfMonth = new Date(year, date.getMonth(), 1);
-    const firstWeekday =
-      firstDayOfMonth.getDay() === 0 ? 7 : firstDayOfMonth.getDay();
-    const weekOfMonth = Math.ceil((date.getDate() + firstWeekday - 1) / 7);
+    const weekOfMonth = Math.min(4, Math.ceil(date.getDate() / 7));
 
     return `${year}-${month}-S${weekOfMonth}`;
   }
@@ -3656,7 +3773,25 @@ function formatTimelineBucketKey(
   return `${year}-${month}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+function formatTimelineHourBucketKey(date: Date, hour: number): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const startHour = String(hour).padStart(2, '0');
+
+  return `${year}-${month}-${day}-H${startHour}`;
+}
+
 function formatTimelinePeriodLabel(value: string): string {
+  const hourMatch = /^(\d{4})-(\d{2})-(\d{2})-H(\d{2})$/.exec(value);
+
+  if (hourMatch) {
+    const startHour = Number(hourMatch[4]);
+    const endHour = (startHour + 2) % 24;
+
+    return `${String(startHour).padStart(2, '0')}h-${String(endHour).padStart(2, '0')}h`;
+  }
+
   const weekMatch = /^(\d{4})-(\d{2})-S(\d+)$/.exec(value);
 
   if (weekMatch) {
@@ -3673,6 +3808,12 @@ function formatTimelinePeriodLabel(value: string): string {
 }
 
 function formatTimelineTooltipPeriod(value: string): string {
+  const hourMatch = /^(\d{4})-(\d{2})-(\d{2})-H(\d{2})$/.exec(value);
+
+  if (hourMatch) {
+    return `${hourMatch[3]}/${hourMatch[2]}/${hourMatch[1]} - ${formatTimelinePeriodLabel(value)}`;
+  }
+
   const weekMatch = /^(\d{4})-(\d{2})-S(\d+)$/.exec(value);
 
   if (weekMatch) {
@@ -3798,8 +3939,6 @@ function DashboardDonutWidget({
     return accumulator;
   }, []);
 
-  const activeItem = activeIndex === null ? null : topItems[activeIndex];
-
   return (
     <div className="reports-donut-widget">
       <div className="reports-donut-visual-wrap">
@@ -3811,6 +3950,20 @@ function DashboardDonutWidget({
               cy="100"
               r={radius}
             />
+
+            {segments.map((segment, index) => (
+              <path
+                className="reports-donut-segment-hitbox"
+                d={segment.path}
+                key={`${topItems[index].id ?? topItems[index].name}-hitbox`}
+                onFocus={() => setActiveIndex(index)}
+                onMouseEnter={() => setActiveIndex(index)}
+                onMouseLeave={() => setActiveIndex(null)}
+                role="img"
+                stroke="transparent"
+                tabIndex={0}
+              />
+            ))}
 
             {segments.map((segment, index) => (
               <path
@@ -3832,9 +3985,7 @@ function DashboardDonutWidget({
           </svg>
 
           <span className="reports-donut-center">
-            <strong>
-              {formatNumber(activeItem ? activeItem.count : total)}
-            </strong>
+            <strong>{formatNumber(total)}</strong>
           </span>
         </div>
       </div>
@@ -3946,8 +4097,6 @@ function DashboardBarWidget({ items }: { items: ReportingBreakdownItem[] }) {
                     : 'reports-vertical-bar-item'
                 }
                 key={item.id ?? item.name}
-                onMouseEnter={() => setActiveIndex(index)}
-                onMouseLeave={() => setActiveIndex(null)}
               >
                 <div className="reports-vertical-bar-track">
                   <button
@@ -3955,6 +4104,8 @@ function DashboardBarWidget({ items }: { items: ReportingBreakdownItem[] }) {
                     className="reports-vertical-bar-fill"
                     onBlur={() => setActiveIndex(null)}
                     onFocus={() => setActiveIndex(index)}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onMouseLeave={() => setActiveIndex(null)}
                     style={{ height: `${percent}%` } as CSSProperties}
                     type="button"
                   />

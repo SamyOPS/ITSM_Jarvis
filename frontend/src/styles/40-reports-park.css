@@ -2229,35 +2229,35 @@
 }
 
 .reports-dashboard-kpi--blue {
-  --kpi-accent: #6254d9;
+  --kpi-accent: #4f46e5;
 }
 
 .reports-dashboard-kpi--sky {
-  --kpi-accent: #2f80ed;
+  --kpi-accent: #2563eb;
 }
 
 .reports-dashboard-kpi--green {
-  --kpi-accent: #1f9d63;
+  --kpi-accent: #22c55e;
 }
 
 .reports-dashboard-kpi--amber {
-  --kpi-accent: #c18b38;
+  --kpi-accent: #f97316;
 }
 
 .reports-dashboard-kpi--red {
-  --kpi-accent: #d94f5c;
+  --kpi-accent: #dc2626;
 }
 
 .reports-dashboard-kpi--silver {
-  --kpi-accent: #7b61ff;
+  --kpi-accent: #9333ea;
 }
 
 .reports-dashboard-kpi--mint {
-  --kpi-accent: #24a3a3;
+  --kpi-accent: #14b8a6;
 }
 
 .reports-dashboard-kpi--slate {
-  --kpi-accent: #55627a;
+  --kpi-accent: #64748b;
 }
 
 .reports-dashboard-graph-grid {
@@ -2366,27 +2366,40 @@
   opacity: 1;
 }
 
-.reports-chart-legend i,
 .reports-line-key {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
+  position: relative;
+  width: 28px;
+  height: 2px;
+  border-radius: 999px;
+}
+
+.reports-line-key::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: inherit;
+  box-shadow: 0 0 0 2px #ffffff;
+  content: '';
 }
 
 .reports-line-key--open {
-  background: #6758df;
+  background: #4f7fb5;
 }
 
 .reports-line-key--resolved {
-  background: #8c7ff0;
+  background: #f28b22;
 }
 
 .reports-line-key--overdue {
-  background: #b26ed8;
+  background: #df5c64;
 }
 
 .reports-line-key--closed {
-  background: #b9b2ef;
+  background: #78b7b3;
 }
 
 .reports-timeline-svg {
@@ -2396,19 +2409,13 @@
   overflow: visible;
 }
 
-.reports-timeline-hover-zone {
-  cursor: crosshair;
-  pointer-events: all;
+.reports-timeline-series {
+  opacity: 1;
+  transition: opacity 260ms ease;
 }
 
-.reports-timeline-hover-zone:hover {
-  fill: rgba(98, 84, 217, 0.035);
-}
-
-.reports-timeline-cursor-line {
-  stroke: rgba(98, 84, 217, 0.26);
-  stroke-dasharray: 4 5;
-  stroke-width: 1.2;
+.reports-timeline-series.is-off {
+  opacity: 0;
   pointer-events: none;
 }
 
@@ -2435,7 +2442,7 @@
 }
 
 .reports-line-path.is-entering {
-  animation: reports-line-draw 620ms ease both;
+  animation: reports-line-draw 840ms ease both;
   stroke-dasharray: 1200;
   stroke-dashoffset: 1200;
 }
@@ -2447,26 +2454,32 @@
 }
 
 .reports-line-point {
+  pointer-events: none;
   stroke: #ffffff;
   stroke-width: 2;
 }
 
+.reports-line-point-hitbox {
+  cursor: pointer;
+  pointer-events: all;
+}
+
 .reports-timeline-labels {
-  display: grid;
+  position: relative;
+  min-height: 22px;
   color: #858da0;
   font-size: 0.68rem;
-  text-align: center;
 }
 
-.reports-timeline-labels span:first-child {
-  text-align: left;
-}
-
-.reports-timeline-labels span:last-child {
-  text-align: right;
+.reports-timeline-labels span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
 
 .reports-chart-tooltip {
+  position: absolute;
   z-index: 10;
   min-width: 170px;
   padding: 10px 12px;
@@ -2475,6 +2488,16 @@
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 14px 34px rgba(32, 43, 70, 0.14);
   color: #252c43;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.reports-chart-tooltip--left {
+  transform: translateX(12px);
+}
+
+.reports-chart-tooltip--right {
+  transform: translateX(calc(-100% - 12px));
 }
 
 .reports-chart-tooltip strong,
@@ -2550,19 +2573,30 @@
 }
 
 .reports-donut-track,
-.reports-donut-segment {
+.reports-donut-segment,
+.reports-donut-segment-hitbox {
   fill: none;
-  stroke-width: 30;
 }
 
 .reports-donut-track {
+  stroke-width: 30;
   stroke: #f0f1f6;
+}
+
+.reports-donut-segment-hitbox {
+  cursor: pointer;
+  outline: none;
+  pointer-events: stroke;
+  stroke-linecap: butt;
+  stroke-width: 46;
 }
 
 .reports-donut-segment {
   cursor: pointer;
   outline: none;
   pointer-events: stroke;
+  stroke-linecap: butt;
+  stroke-width: 30;
   transition:
     opacity 0.16s ease,
     stroke-width 0.16s ease;
@@ -2584,6 +2618,18 @@
   display: grid;
   transform: translate(-50%, -50%);
   place-items: center;
+}
+
+.reports-donut-visual > .reports-donut-center {
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: 74px;
+  height: 74px;
+  color: #25263a;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 .reports-donut-center strong {
@@ -2661,20 +2707,50 @@
 }
 
 .reports-vertical-bar-scale {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   height: 240px;
   padding: 0 8px 0 0;
-  align-content: space-between;
+  justify-content: space-between;
   color: #9299aa;
   font-size: 0.66rem;
   text-align: right;
 }
 
+.reports-vertical-bar-scale span {
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+.reports-vertical-bar-scale span:last-child {
+  transform: translateY(50%);
+}
+
 .reports-vertical-bar-plot {
   position: relative;
   min-width: 0;
-  border-bottom: 1px solid #d8dee9;
+}
+
+.reports-vertical-bar-plot::before,
+.reports-vertical-bar-plot::after {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  content: '';
+}
+
+.reports-vertical-bar-plot::before {
+  top: 0;
+  bottom: 52px;
+  left: 0;
   border-left: 1px solid #d8dee9;
+}
+
+.reports-vertical-bar-plot::after {
+  right: 0;
+  bottom: 52px;
+  left: 0;
+  border-top: 1px solid #d8dee9;
 }
 
 .reports-vertical-grid {
@@ -2720,7 +2796,7 @@
 .reports-vertical-bar-fill {
   display: block;
   width: min(42px, 68%);
-  min-height: 3px;
+  min-height: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -2745,8 +2821,10 @@
   top: 8px;
   left: 50%;
   display: inline-flex;
-  min-width: 46px;
-  padding: 6px 9px;
+  min-width: 54px;
+  min-height: 24px;
+  padding: 7px 12px;
+  align-items: center;
   justify-content: center;
   transform: translateX(-50%);
   border: 1px solid rgba(192, 202, 220, 0.95);
@@ -2754,8 +2832,10 @@
   background: #ffffff;
   box-shadow: 0 10px 24px rgba(32, 43, 70, 0.14);
   color: #1b2033;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
+  font-weight: 700;
   text-align: center;
+  pointer-events: none;
 }
 
 .reports-vertical-bar-label {
