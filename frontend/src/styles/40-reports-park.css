@@ -2420,17 +2420,20 @@
 }
 
 .reports-grid-line {
+  pointer-events: none;
   stroke: #e7e9f0;
   stroke-width: 1;
 }
 
 .reports-grid-label {
+  pointer-events: none;
   fill: #8e96a8;
   font-size: 10px;
   text-anchor: end;
 }
 
 .reports-axis-label {
+  pointer-events: none;
   fill: #17335f;
   font-size: 12px;
   font-weight: 700;
@@ -2439,10 +2442,12 @@
 
 .reports-area-path {
   opacity: 0.72;
+  pointer-events: none;
 }
 
 .reports-line-path {
   fill: none;
+  pointer-events: none;
   stroke-linecap: square;
   stroke-linejoin: round;
   stroke-width: 2.25;
