@@ -1109,7 +1109,9 @@ export function KnowledgePage({
                   ? 'Sauvegarde...'
                   : 'Création...'
                 : isArticleEditPage
-                  ? 'Sauvegarder'
+                  ? isAdmin
+                    ? 'Sauvegarder'
+                    : 'Envoyer en attente'
                   : "Créer l'article"}
             </button>
           </div>
