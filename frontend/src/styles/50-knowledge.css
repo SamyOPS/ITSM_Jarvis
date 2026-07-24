@@ -640,23 +640,6 @@
   font-weight: 700;
 }
 
-.kb-delete-confirm {
-  display: grid;
-  gap: 18px;
-}
-
-.kb-delete-confirm p {
-  margin: 0;
-  color: var(--text-muted);
-}
-
-.kb-delete-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
 .kb-upload-zone {
   display: grid;
   gap: 10px;

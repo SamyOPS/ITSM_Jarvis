@@ -2100,14 +2100,11 @@
   border-radius: 0;
   background: linear-gradient(180deg, #4f8fd0 0%, #17335f 100%);
   box-shadow: 0 16px 24px rgba(23, 51, 95, 0.12);
-  transition:
-    filter 0.18s ease,
-    transform 0.18s ease;
+  transition: filter 0.18s ease;
 }
 
 .reports-vertical-bar-item:hover .reports-vertical-bar-fill {
-  filter: brightness(1.08);
-  transform: translateY(-2px);
+  filter: brightness(0.94);
 }
 
 .reports-vertical-bar-track strong {

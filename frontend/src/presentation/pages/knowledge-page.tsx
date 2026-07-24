@@ -2,7 +2,6 @@ import {
   type DragEvent,
   type FormEvent,
   type MouseEvent,
-  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -66,11 +65,15 @@ import type {
   KnowledgeFormState,
   KnowledgePageProps,
   KnowledgeSortOption,
-  ModalState,
 } from './knowledge-page.types';
 
 const KNOWLEDGE_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
 const KNOWLEDGE_ATTACHMENT_MAX_SIZE_BYTES = 2 * 1024 * 1024;
+const KNOWLEDGE_STATUS_SORT_ORDER: Record<KnowledgeArticleStatus, number> = {
+  PUBLISHED: 0,
+  DRAFT: 1,
+  REJECTED: 2,
+};
 
 export function KnowledgePage({
   articleId,
@@ -83,7 +86,6 @@ export function KnowledgePage({
   const [selectedArticleAttachments, setSelectedArticleAttachments] = useState<
     KnowledgeArticleAttachmentSnapshot[]
   >([]);
-  const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [form, setForm] = useState<KnowledgeFormState>(EMPTY_FORM);
   const [contentTab, setContentTab] = useState<'edit' | 'preview'>('edit');
   const [search, setSearch] = useState('');
@@ -119,6 +121,12 @@ export function KnowledgePage({
   const isArticleFormPage = mode === 'CREATE' || mode === 'EDIT';
   const isArticleEditPage = mode === 'EDIT';
   const canEditSelectedArticle =
+    selectedArticle !== null &&
+    (isAdmin ||
+      (isAgent &&
+        selectedArticle.createdByUserId === session.user.id &&
+        selectedArticle.status !== 'PUBLISHED'));
+  const canDeleteSelectedArticle =
     selectedArticle !== null &&
     (isAdmin ||
       (isAgent &&
@@ -252,7 +260,6 @@ export function KnowledgePage({
     setIsAttachmentDragOver(false);
     setAttachmentErrorMessage(null);
     setAttachmentSuccessMessage(null);
-    setModal({ type: 'none' });
   }, [isAdmin, mode]);
 
   useEffect(() => {
@@ -273,7 +280,6 @@ export function KnowledgePage({
     setIsAttachmentDragOver(false);
     setAttachmentErrorMessage(null);
     setAttachmentSuccessMessage(null);
-    setModal({ type: 'none' });
   }, [mode, selectedArticle]);
 
   const filteredArticles = useMemo(() => {
@@ -331,6 +337,14 @@ export function KnowledgePage({
     const nextArticles = [...filteredArticles];
 
     nextArticles.sort((leftArticle, rightArticle) => {
+      const statusOrder =
+        KNOWLEDGE_STATUS_SORT_ORDER[leftArticle.status] -
+        KNOWLEDGE_STATUS_SORT_ORDER[rightArticle.status];
+
+      if (statusOrder !== 0) {
+        return statusOrder;
+      }
+
       if (sortBy === 'POPULAR') {
         if (rightArticle.likesCount !== leftArticle.likesCount) {
           return rightArticle.likesCount - leftArticle.likesCount;
@@ -390,12 +404,19 @@ export function KnowledgePage({
   }
 
   function openDelete(article: KnowledgeArticle): void {
+    if (isSaving) {
+      return;
+    }
+
+    if (!window.confirm('Supprimer definitivement cet article ?')) {
+      return;
+    }
+
     setErrorMessage(null);
-    setModal({ type: 'delete', article });
+    void handleDelete(article);
   }
 
   function closeModal(): void {
-    setModal({ type: 'none' });
     setErrorMessage(null);
     resetAttachmentDraft();
 
@@ -647,12 +668,9 @@ export function KnowledgePage({
     }
   }
 
-  async function handleDelete(): Promise<void> {
-    if (modal.type !== 'delete') {
-      return;
-    }
-
-    const articleToDelete = modal.article;
+  async function handleDelete(
+    articleToDelete: KnowledgeArticle,
+  ): Promise<void> {
     const wasViewing = selectedArticle?.id === articleToDelete.id;
 
     setIsSaving(true);
@@ -663,7 +681,6 @@ export function KnowledgePage({
       setArticles((currentArticles) =>
         currentArticles.filter((article) => article.id !== articleToDelete.id),
       );
-      closeModal();
 
       if (wasViewing) {
         navigateTo(articleListBackPath);
@@ -791,61 +808,6 @@ export function KnowledgePage({
     }
   }
 
-  let modalNode: ReactNode = null;
-
-  if (modal.type === 'delete') {
-    modalNode = (
-      <div
-        className="kb-modal-overlay"
-        onClick={(event) => {
-          if (event.target === event.currentTarget) {
-            closeModal();
-          }
-        }}
-      >
-        <div className="kb-modal">
-          <div className="kb-modal-header">
-            <h2>Supprimer l'article</h2>
-            <button
-              className="kb-modal-close"
-              onClick={closeModal}
-              type="button"
-            >
-              <X size={16} />
-            </button>
-          </div>
-          <div className="kb-delete-confirm">
-            <p>
-              Es-tu sûr de vouloir supprimer{' '}
-              <strong>"{modal.article.title}"</strong> ? Cette action est
-              irréversible.
-            </p>
-            {errorMessage ? (
-              <p className="referentials-error">{errorMessage}</p>
-            ) : null}
-            <div className="kb-delete-actions">
-              <button
-                className="secondary-button"
-                onClick={closeModal}
-                type="button"
-              >
-                Annuler
-              </button>
-              <button
-                className="danger-button"
-                disabled={isSaving}
-                onClick={() => void handleDelete()}
-                type="button"
-              >
-                {isSaving ? 'Suppression...' : 'Supprimer'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const articleFormNode =
     isArticleFormPage && (mode === 'CREATE' || selectedArticle) ? (
       <div className="kb-form-page-card">
@@ -864,7 +826,7 @@ export function KnowledgePage({
           <label className="field">
             <span>Titre</span>
             <input
-              maxLength={50}
+              maxLength={100}
               onChange={(event) =>
                 setForm((currentForm) => ({
                   ...currentForm,
@@ -1141,7 +1103,7 @@ export function KnowledgePage({
           <p className="kb-empty">Chargement de l'article...</p>
         ) : null}
 
-        {errorMessage && modal.type === 'none' ? (
+        {errorMessage ? (
           <p className="referentials-error">{errorMessage}</p>
         ) : null}
 
@@ -1153,9 +1115,7 @@ export function KnowledgePage({
   if (selectedArticle) {
     return (
       <section className="kb-page">
-        {modalNode}
-
-        {errorMessage && modal.type === 'none' ? (
+        {errorMessage ? (
           <p className="referentials-error">{errorMessage}</p>
         ) : null}
 
@@ -1180,7 +1140,7 @@ export function KnowledgePage({
                   <Pencil size={15} />
                   Modifier
                 </button>
-                {isAdmin ? (
+                {canDeleteSelectedArticle ? (
                   <button
                     className="admin-user-delete-button kb-inline-button"
                     onClick={() => openDelete(selectedArticle)}
@@ -1294,7 +1254,6 @@ export function KnowledgePage({
 
   return (
     <section className="kb-page">
-      {modalNode}
       <div className="ticket-list-card kb-list-card">
         <div className="ticket-list-header kb-list-header">
           <div>

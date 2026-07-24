@@ -136,9 +136,12 @@ export class KnowledgeController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(UserRole.ADMIN)
-  deleteArticle(@Param('id') id: string): Promise<void> {
-    return this.deleteKnowledgeArticleUseCase.execute(id);
+  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  deleteArticle(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    return this.deleteKnowledgeArticleUseCase.execute(id, user.id, user.role);
   }
 
   @Delete(':articleId/attachments/:attachmentId')
