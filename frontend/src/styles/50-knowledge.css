@@ -128,13 +128,16 @@
 
 .kb-card-top {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: flex-start;
+  flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
 }
 
 .kb-card-category {
   display: inline-flex;
+  max-width: 100%;
   padding: 4px 10px;
   border-radius: 999px;
   background: var(--primary-soft);
@@ -143,10 +146,13 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .kb-card-status {
   display: inline-flex;
+  max-width: 100%;
   padding: 4px 8px;
   border-radius: 999px;
   font-size: 11px;
@@ -154,6 +160,8 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .kb-card-status.is-draft {
