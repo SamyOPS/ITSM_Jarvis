@@ -3300,12 +3300,14 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
           title={formatTimelineTooltipPeriod(activeItem.period)}
         />
       ) : null}
-
     </div>
   );
 }
 
-function shouldShowTimelineAxisLabel(index: number, totalItems: number): boolean {
+function shouldShowTimelineAxisLabel(
+  index: number,
+  totalItems: number,
+): boolean {
   if (totalItems <= 12) {
     return true;
   }
