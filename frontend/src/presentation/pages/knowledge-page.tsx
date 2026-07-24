@@ -429,6 +429,7 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
     try {
       for (const file of form.attachments) {
         const storagePath = buildKnowledgeAttachmentStoragePath(
+          session.user.id,
           articleId,
           file.name,
         );
@@ -1138,74 +1139,76 @@ export function KnowledgePage({ articleId, session }: KnowledgePageProps) {
             </p>
           </div>
 
-          <div className="kb-markdown">
-            {renderMarkdown(selectedArticle.content)}
-          </div>
+          <div className="kb-detail-body">
+            <article className="kb-markdown kb-detail-content">
+              {renderMarkdown(selectedArticle.content)}
+            </article>
 
-          <section className="kb-attachments-card">
-            <div className="kb-attachments-header">
-              <h2>
-                <Paperclip size={18} />
-                Pièces jointes
-              </h2>
-              <span>{selectedArticleAttachments.length}</span>
-            </div>
+            <aside className="kb-attachments-card">
+              <div className="kb-attachments-header">
+                <h2>
+                  <Paperclip size={18} />
+                  Pièces jointes
+                </h2>
+                <span>{selectedArticleAttachments.length}</span>
+              </div>
 
-            {attachmentErrorMessage ? (
-              <p className="tdp-form-error">{attachmentErrorMessage}</p>
-            ) : null}
+              {attachmentErrorMessage ? (
+                <p className="tdp-form-error">{attachmentErrorMessage}</p>
+              ) : null}
 
-            {attachmentSuccessMessage ? (
-              <p className="tdp-form-success">{attachmentSuccessMessage}</p>
-            ) : null}
+              {attachmentSuccessMessage ? (
+                <p className="tdp-form-success">{attachmentSuccessMessage}</p>
+              ) : null}
 
-            {isLoadingAttachments ? (
-              <p className="kb-attachment-empty">
-                Chargement des pièces jointes...
-              </p>
-            ) : selectedArticleAttachments.length === 0 ? (
-              <p className="kb-attachment-empty">Aucune pièce jointe.</p>
-            ) : (
-              <div className="kb-attachment-list">
-                {selectedArticleAttachments.map((attachment) => (
-                  <div className="kb-attachment-item" key={attachment.id}>
-                    <div className="kb-attachment-item-copy">
-                      <button
-                        className="kb-attachment-link"
-                        disabled={downloadingAttachmentId === attachment.id}
-                        onClick={() =>
-                          void handleDownloadAttachment(attachment)
-                        }
-                        type="button"
-                      >
-                        {attachment.fileName}
-                      </button>
-                      <span>
-                        {formatFileSize(attachment.sizeBytes)} - ajouté le{' '}
-                        {formatDateTime(attachment.createdAt)}
-                      </span>
-                    </div>
-
-                    <div className="kb-attachment-item-actions">
-                      {isAdmin ? (
+              {isLoadingAttachments ? (
+                <p className="kb-attachment-empty">
+                  Chargement des pièces jointes...
+                </p>
+              ) : selectedArticleAttachments.length === 0 ? (
+                <p className="kb-attachment-empty">Aucune pièce jointe.</p>
+              ) : (
+                <div className="kb-attachment-list">
+                  {selectedArticleAttachments.map((attachment) => (
+                    <div className="kb-attachment-item" key={attachment.id}>
+                      <div className="kb-attachment-item-copy">
                         <button
-                          aria-label={`Supprimer ${attachment.fileName}`}
-                          className="tdp-attachment-remove-btn"
-                          disabled={deletingAttachmentId === attachment.id}
+                          className="kb-attachment-link"
+                          disabled={downloadingAttachmentId === attachment.id}
                           onClick={() =>
-                            void handleDeleteAttachment(attachment)
+                            void handleDownloadAttachment(attachment)
                           }
                           type="button"
                         >
-                          <X size={12} />
+                          {attachment.fileName}
                         </button>
-                      ) : null}
+                        <span>
+                          {formatFileSize(attachment.sizeBytes)} - ajouté le{' '}
+                          {formatDateTime(attachment.createdAt)}
+                        </span>
+                      </div>
+
+                      <div className="kb-attachment-item-actions">
+                        {isAdmin ? (
+                          <button
+                            aria-label={`Supprimer ${attachment.fileName}`}
+                            className="tdp-attachment-remove-btn"
+                            disabled={deletingAttachmentId === attachment.id}
+                            onClick={() =>
+                              void handleDeleteAttachment(attachment)
+                            }
+                            type="button"
+                          >
+                            <X size={12} />
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+                  ))}
+                </div>
+              )}
+            </aside>
+          </div>
         </div>
       </section>
     );
@@ -1406,10 +1409,11 @@ function formatSelectedFilesLabel(fileCount: number): string {
 }
 
 function buildKnowledgeAttachmentStoragePath(
+  userId: string,
   articleId: string,
   fileName: string,
 ): string {
-  return `articles/${articleId}/${Date.now()}-${sanitizeFileName(fileName)}`;
+  return `${userId}/knowledge/articles/${articleId}/${Date.now()}-${sanitizeFileName(fileName)}`;
 }
 
 function sanitizeFileName(fileName: string): string {

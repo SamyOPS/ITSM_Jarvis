@@ -1,10 +1,4 @@
-import {
-  type CSSProperties,
-  type MouseEvent,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type MouseEvent } from 'react';
 import { ThumbsUp } from 'lucide-react';
 import type { KnowledgeArticle } from '../../domain/knowledge/knowledge-article';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
@@ -27,46 +21,6 @@ export function KnowledgeArticleCard({
   onToggleLike,
   page,
 }: KnowledgeArticleCardProps) {
-  const titleRef = useRef<HTMLElement | null>(null);
-  const [excerptLineClamp, setExcerptLineClamp] = useState(3);
-
-  useEffect(() => {
-    const element = titleRef.current;
-
-    if (!element) {
-      return;
-    }
-
-    const updateExcerptLineClamp = (): void => {
-      const computedStyle = window.getComputedStyle(element);
-      const lineHeight = Number.parseFloat(computedStyle.lineHeight);
-
-      if (!Number.isFinite(lineHeight) || lineHeight <= 0) {
-        setExcerptLineClamp(3);
-        return;
-      }
-
-      const titleLineCount = Math.max(
-        1,
-        Math.round(element.getBoundingClientRect().height / lineHeight),
-      );
-
-      setExcerptLineClamp(titleLineCount <= 1 ? 4 : 3);
-    };
-
-    updateExcerptLineClamp();
-
-    const resizeObserver = new ResizeObserver(() => {
-      updateExcerptLineClamp();
-    });
-
-    resizeObserver.observe(element);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [article.title]);
-
   return (
     <article
       className="kb-card"
@@ -96,19 +50,8 @@ export function KnowledgeArticleCard({
           {formatKnowledgeStatus(article.status)}
         </span>
       </div>
-      <strong className="kb-card-title" ref={titleRef}>
-        {article.title}
-      </strong>
-      <p
-        className="kb-card-excerpt"
-        style={
-          {
-            '--kb-excerpt-lines': excerptLineClamp,
-          } as CSSProperties
-        }
-      >
-        {article.content}
-      </p>
+      <strong className="kb-card-title">{article.title}</strong>
+      <p className="kb-card-excerpt">{article.content}</p>
       <div className="kb-card-footer">
         <small className="kb-card-meta">
           Mis a jour le {formatDate(article.updatedAt)}
