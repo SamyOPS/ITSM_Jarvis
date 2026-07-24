@@ -1,7 +1,6 @@
 import type { KnowledgeArticleStatus } from '../../domain/knowledge/knowledge-article';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { KnowledgeArticleAttachmentSnapshot } from '../../domain/knowledge/knowledge-article-attachment';
-import type { KnowledgeArticle } from '../../domain/knowledge/knowledge-article';
 
 export type KnowledgePageProps = {
   articleId?: string;
@@ -19,9 +18,5 @@ export type KnowledgeFormState = {
 
 export type KnowledgeArticleAttachmentState =
   KnowledgeArticleAttachmentSnapshot[];
-
-export type ModalState =
-  | { type: 'none' }
-  | { type: 'delete'; article: KnowledgeArticle };
 
 export type KnowledgeSortOption = 'POPULAR' | 'NEWEST' | 'OLDEST';

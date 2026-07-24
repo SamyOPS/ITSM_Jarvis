@@ -18,3 +18,45 @@ Error: listen EADDRINUSE: address already in use 0.0.0.0:3000
 }
 
 Node.js v24.18.0
+Erreurÿ: AccŠs refus‚
+Erreurÿ: AccŠs refus‚
+node:child_process:1000
+    throw err;
+    ^
+
+Error: Command failed: taskkill /pid 3764 /T /F
+Erreurï¿½: Accï¿½s refusï¿½
+
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at treeKillSync (C:\Users\kitos\OneDrive\Bureau\CODES\Jarvis_Connect\ITSM_Jarvis\backend\node_modules\@nestjs\cli\lib\utils\tree-kill.js:7:38)
+    at C:\Users\kitos\OneDrive\Bureau\CODES\Jarvis_Connect\ITSM_Jarvis\backend\node_modules\@nestjs\cli\actions\start.action.js:68:46
+    at Object.onWatchStatusChange (C:\Users\kitos\OneDrive\Bureau\CODES\Jarvis_Connect\ITSM_Jarvis\backend\node_modules\@nestjs\cli\lib\compiler\watch-compiler.js:83:17)
+    at C:\Users\kitos\OneDrive\Bureau\CODES\Jarvis_Connect\ITSM_Jarvis\backend\node_modules\typescript\lib\typescript.js:133916:30
+    at emitFilesAndReportErrors (C:\Users\kitos\OneDrive\Bureau\CODES\Jarvis_Connect\ITSM_Jarvis\backend\node_modules\typescript\lib\typescript.js:133737:5)
+    at result.afterProgramCreate (C:\Users\kitos\OneDrive\Bureau\CODES\Jarvis_Connect\ITSM_Jarvis\backend\node_modules\typescript\lib\typescript.js:133912:5) {
+  status: 1,
+  signal: null,
+  output: [
+    null,
+    Buffer(0) [Uint8Array] [],
+    Buffer(24) [Uint8Array] [
+      69, 114, 114, 101, 117, 114, 255,
+      58,  32,  65,  99,  99, 138, 115,
+      32, 114, 101, 102, 117, 115, 130,
+      13,  13,  10
+    ]
+  ],
+  pid: 5448,
+  stdout: Buffer(0) [Uint8Array] [],
+  stderr: Buffer(24) [Uint8Array] [
+    69, 114, 114, 101, 117, 114, 255,
+    58,  32,  65,  99,  99, 138, 115,
+    32, 114, 101, 102, 117, 115, 130,
+    13,  13,  10
+  ]
+}
+
+Node.js v24.18.0
