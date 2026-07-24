@@ -2,6 +2,7 @@ import {
   type CSSProperties,
   type Dispatch,
   type FormEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type SetStateAction,
   useCallback,
@@ -3092,7 +3093,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
 
       fill: 'rgba(79, 127, 181, 0.12)',
 
-      label: 'Ouverts',
+      label: 'Actifs',
     },
 
     {
@@ -3259,7 +3260,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
               ? {
                   color: '#4f7fb5',
 
-                  label: 'Ouverts',
+                  label: 'Actifs',
 
                   value: activeItem.open,
                 }
@@ -3405,72 +3406,79 @@ function renderTimelineSeries(
         stroke={color}
       />
 
-      {points.map((point, index) => (
-        <g key={`${key}-${index}`}>
-          <circle
-            className="reports-line-point-hitbox"
-            cx={point.x}
-            cy={point.y}
-            fill="transparent"
-            onMouseLeave={hideTooltip}
-            onMouseMove={(event) => {
-              if (!isVisible) {
-                return;
-              }
+      {points.map((point, index) => {
+        if (!isVisible) {
+          return null;
+        }
 
-              const container = event.currentTarget.closest(
-                '.reports-timeline-card',
-              );
+        const showTooltip = (
+          event: ReactMouseEvent<SVGCircleElement>,
+        ): void => {
+          const container = event.currentTarget.closest(
+            '.reports-timeline-card',
+          );
 
-              if (!(container instanceof HTMLDivElement)) {
-                return;
-              }
+          if (!(container instanceof HTMLDivElement)) {
+            return;
+          }
 
-              const containerRect = container.getBoundingClientRect();
-              const svgWidth = paddingLeft + chartWidth + paddingRight;
-              const tooltipLeft = clampNumber(
-                point.x,
+          const containerRect = container.getBoundingClientRect();
+          const svgWidth = paddingLeft + chartWidth + paddingRight;
+          const tooltipLeft = clampNumber(
+            point.x,
 
-                paddingLeft + 8,
+            paddingLeft + 8,
 
-                svgWidth - paddingRight - 8,
-              );
-              const align =
-                tooltipLeft + TIMELINE_TOOLTIP_WIDTH > svgWidth - paddingRight
-                  ? 'right'
-                  : tooltipLeft - TIMELINE_TOOLTIP_WIDTH / 2 < paddingLeft
-                    ? 'left'
-                    : 'center';
-              const topPx = clampNumber(
-                event.clientY - containerRect.top - 20,
+            svgWidth - paddingRight - 8,
+          );
+          const align =
+            tooltipLeft + TIMELINE_TOOLTIP_WIDTH > svgWidth - paddingRight
+              ? 'right'
+              : tooltipLeft - TIMELINE_TOOLTIP_WIDTH / 2 < paddingLeft
+                ? 'left'
+                : 'center';
+          const topPx = clampNumber(
+            event.clientY - containerRect.top - 20,
 
-                56,
+            56,
 
-                Math.max(56, containerRect.height - 170),
-              );
+            Math.max(56, containerRect.height - 170),
+          );
 
-              setTooltipState({
-                align,
+          setTooltipState({
+            align,
 
-                index,
+            index,
 
-                left: `${tooltipLeft}px`,
+            left: `${tooltipLeft}px`,
 
-                top: `${topPx}px`,
-              });
-            }}
-            r="6"
-          />
+            top: `${topPx}px`,
+          });
+        };
 
-          <circle
-            className="reports-line-point"
-            cx={point.x}
-            cy={point.y}
-            fill={color}
-            r="4.5"
-          />
-        </g>
-      ))}
+        return (
+          <g key={`${key}-${index}`}>
+            <circle
+              className="reports-line-point-hitbox"
+              cx={point.x}
+              cy={point.y}
+              fill="transparent"
+              onMouseEnter={showTooltip}
+              onMouseLeave={hideTooltip}
+              onMouseMove={showTooltip}
+              r="9"
+            />
+
+            <circle
+              className="reports-line-point"
+              cx={point.x}
+              cy={point.y}
+              fill={color}
+              r="4.5"
+            />
+          </g>
+        );
+      })}
     </g>
   );
 }
