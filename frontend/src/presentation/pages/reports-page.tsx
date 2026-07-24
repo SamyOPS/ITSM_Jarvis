@@ -3049,7 +3049,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
 
   const width = 820;
 
-  const height = 290;
+  const height = 318;
 
   const paddingLeft = 52;
 
@@ -3057,7 +3057,7 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
 
   const paddingTop = 18;
 
-  const paddingBottom = 18;
+  const paddingBottom = 46;
 
   const rawMaxValue = Math.max(
     ...items.flatMap((item) => [
@@ -3225,6 +3225,29 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
             hideTooltip,
           ),
         )}
+
+        {items.map((item, index) => {
+          if (!shouldShowTimelineAxisLabel(index, items.length)) {
+            return null;
+          }
+
+          const denominator = Math.max(1, items.length - 1);
+          const labelX =
+            items.length === 1
+              ? paddingLeft + chartWidth / 2
+              : paddingLeft + (chartWidth / denominator) * index;
+
+          return (
+            <text
+              className="reports-axis-label"
+              key={item.period}
+              x={labelX}
+              y={height - 10}
+            >
+              {formatTimelinePeriodLabel(item.period)}
+            </text>
+          );
+        })}
       </svg>
 
       {activeItem ? (
@@ -3278,26 +3301,24 @@ function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {
         />
       ) : null}
 
-      <div className="reports-timeline-labels">
-        {items.map((item, index) => {
-          const denominator = Math.max(1, items.length - 1);
-          const labelX =
-            items.length === 1
-              ? paddingLeft + chartWidth / 2
-              : paddingLeft + (chartWidth / denominator) * index;
-
-          return (
-            <span
-              key={item.period}
-              style={{ left: `${(labelX / width) * 100}%` } as CSSProperties}
-            >
-              {formatTimelinePeriodLabel(item.period)}
-            </span>
-          );
-        })}
-      </div>
     </div>
   );
+}
+
+function shouldShowTimelineAxisLabel(index: number, totalItems: number): boolean {
+  if (totalItems <= 12) {
+    return true;
+  }
+
+  if (index === 0 || index === totalItems - 1) {
+    return true;
+  }
+
+  const targetLabelCount =
+    totalItems <= 18 ? 9 : totalItems <= 31 ? 8 : totalItems <= 62 ? 7 : 6;
+  const step = Math.ceil((totalItems - 1) / Math.max(1, targetLabelCount - 1));
+
+  return index % step === 0;
 }
 
 function renderTimelineSeries(
@@ -3798,7 +3819,13 @@ function formatTimelinePeriodLabel(value: string): string {
   const weekMatch = /^(\d{4})-(\d{2})-S(\d+)$/.exec(value);
 
   if (weekMatch) {
-    return `S${weekMatch[3]}`;
+    const { end, start } = resolveMonthWeekBounds(
+      Number(weekMatch[1]),
+      Number(weekMatch[2]),
+      Number(weekMatch[3]),
+    );
+
+    return `${formatShortDayMonth(start)}-${formatShortDayMonth(end)}`;
   }
 
   const dayMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -3820,7 +3847,13 @@ function formatTimelineTooltipPeriod(value: string): string {
   const weekMatch = /^(\d{4})-(\d{2})-S(\d+)$/.exec(value);
 
   if (weekMatch) {
-    return `Semaine ${weekMatch[3]} - ${weekMatch[2]}/${weekMatch[1]}`;
+    const { end, start } = resolveMonthWeekBounds(
+      Number(weekMatch[1]),
+      Number(weekMatch[2]),
+      Number(weekMatch[3]),
+    );
+
+    return `Semaine du ${formatLongDayMonthYear(start)} au ${formatLongDayMonthYear(end)}`;
   }
 
   const dayMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -3838,6 +3871,33 @@ function formatTimelineTooltipPeriod(value: string): string {
   }
 
   return formatTooltipPeriod(value);
+}
+
+function resolveMonthWeekBounds(
+  year: number,
+  month: number,
+  week: number,
+): { end: Date; start: Date } {
+  const monthIndex = month - 1;
+  const lastDay = new Date(year, month, 0).getDate();
+  const startDay = Math.min(lastDay, (Math.max(1, week) - 1) * 7 + 1);
+  const endDay =
+    week >= 4 ? lastDay : Math.min(lastDay, Math.max(startDay, week * 7));
+
+  return {
+    end: new Date(year, monthIndex, endDay),
+    start: new Date(year, monthIndex, startDay),
+  };
+}
+
+function formatShortDayMonth(date: Date): string {
+  return `${String(date.getDate()).padStart(2, '0')}/${String(
+    date.getMonth() + 1,
+  ).padStart(2, '0')}`;
+}
+
+function formatLongDayMonthYear(date: Date): string {
+  return `${formatShortDayMonth(date)}/${date.getFullYear()}`;
 }
 
 function ChartTooltip({

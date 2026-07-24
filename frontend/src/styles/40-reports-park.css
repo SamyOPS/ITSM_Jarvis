@@ -2430,6 +2430,13 @@
   text-anchor: end;
 }
 
+.reports-axis-label {
+  fill: #17335f;
+  font-size: 12px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
 .reports-area-path {
   opacity: 0.72;
 }
