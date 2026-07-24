@@ -121,16 +121,49 @@ function renderPage({
       );
     case '/knowledge/articles':
       if (pathname.startsWith('/knowledge/articles/')) {
+        if (pathname === '/knowledge/articles/new') {
+          return session ? (
+            <KnowledgePage mode="CREATE" session={session} />
+          ) : (
+            <NotFoundPage />
+          );
+        }
+
+        if (pathname.endsWith('/edit')) {
+          const articleId = pathname
+            .replace('/knowledge/articles/', '')
+            .replace('/edit', '')
+            .trim();
+
+          return session && articleId ? (
+            <KnowledgePage
+              articleId={articleId}
+              mode="EDIT"
+              session={session}
+            />
+          ) : (
+            <NotFoundPage />
+          );
+        }
+
         const articleId = pathname.replace('/knowledge/articles/', '').trim();
 
         return session && articleId ? (
-          <KnowledgePage articleId={articleId} session={session} />
+          <KnowledgePage
+            articleId={articleId}
+            mode="DETAIL"
+            session={session}
+          />
         ) : (
           <NotFoundPage />
         );
       }
 
-      return session ? <KnowledgePage session={session} /> : <NotFoundPage />;
+      return session ? (
+        <KnowledgePage mode="LIST" session={session} />
+      ) : (
+        <NotFoundPage />
+      );
     case '/admin/groups':
       return session ? <GroupsPage session={session} /> : <NotFoundPage />;
     case '/admin/license':

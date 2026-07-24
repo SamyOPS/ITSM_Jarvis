@@ -551,14 +551,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
     [filters.assignedToUserId, users],
   );
 
-  const selectedDashboardGroup = useMemo(
-    () =>
-      catalog.groups.find((group) => group.id === filters.assignmentGroupId) ??
-      null,
-
-    [catalog.groups, filters.assignmentGroupId],
-  );
-
   const personalEquipment = useMemo<PersonalEquipmentItem[]>(() => {
     const ciTypesById = new Map(
       catalog.ciTypes.map((ciType) => [ciType.id, ciType.name]),
@@ -615,6 +607,50 @@ export function ReportsPage({ session }: ReportsPageProps) {
       currentUserGroupIds.includes(group.id),
     );
   }, [catalog.groups, currentUserSummary]);
+
+  const dashboardGroupOptions = useMemo(
+    () => (isPersonalAgentReporting ? availableReportGroups : catalog.groups),
+
+    [availableReportGroups, catalog.groups, isPersonalAgentReporting],
+  );
+
+  const selectedDashboardGroup = useMemo(
+    () =>
+      dashboardGroupOptions.find(
+        (group) => group.id === filters.assignmentGroupId,
+      ) ?? null,
+
+    [dashboardGroupOptions, filters.assignmentGroupId],
+  );
+
+  useEffect(() => {
+    if (
+      !isPersonalAgentReporting ||
+      !currentUserSummary ||
+      !filters.assignmentGroupId
+    ) {
+      return;
+    }
+
+    if (
+      availableReportGroups.some(
+        (group) => group.id === filters.assignmentGroupId,
+      )
+    ) {
+      return;
+    }
+
+    setFilters((currentFilters) =>
+      currentFilters.assignmentGroupId === filters.assignmentGroupId
+        ? { ...currentFilters, assignmentGroupId: '' }
+        : currentFilters,
+    );
+  }, [
+    availableReportGroups,
+    currentUserSummary,
+    filters.assignmentGroupId,
+    isPersonalAgentReporting,
+  ]);
 
   const updateGroupSelectorScrollState = useCallback(() => {
     const track = groupSelectorTrackRef.current;
@@ -1200,12 +1236,16 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
                 <div className="incident-lookup-field">
                   <input
-                    disabled={isPersonalAgentReporting}
+                    disabled={dashboardGroupOptions.length === 0}
                     readOnly
-                    value={selectedDashboardGroup?.name ?? 'Tous'}
+                    value={
+                      dashboardGroupOptions.length === 0
+                        ? 'Aucun groupe'
+                        : (selectedDashboardGroup?.name ?? 'Tous')
+                    }
                   />
 
-                  {filters.assignmentGroupId && !isPersonalAgentReporting ? (
+                  {filters.assignmentGroupId ? (
                     <button
                       aria-label="Retirer le groupe"
                       onClick={() =>
@@ -1219,7 +1259,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
                   <button
                     aria-label="Choisir un groupe"
-                    disabled={isPersonalAgentReporting}
+                    disabled={dashboardGroupOptions.length === 0}
                     onClick={() => setDashboardLookup('GROUP')}
                     type="button"
                   >
@@ -1232,7 +1272,11 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
           {dashboardLookup ? (
             <DashboardLookupDialog
-              groups={catalog.groups}
+              groups={
+                dashboardLookup === 'GROUP'
+                  ? dashboardGroupOptions
+                  : catalog.groups
+              }
               kind={dashboardLookup}
               onClose={() => setDashboardLookup(null)}
               onSelect={(id) => {

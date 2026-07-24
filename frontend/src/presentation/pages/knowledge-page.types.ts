@@ -5,6 +5,7 @@ import type { KnowledgeArticle } from '../../domain/knowledge/knowledge-article'
 
 export type KnowledgePageProps = {
   articleId?: string;
+  mode?: 'CREATE' | 'DETAIL' | 'EDIT' | 'LIST';
   session: AuthSessionSnapshot;
 };
 
@@ -21,8 +22,6 @@ export type KnowledgeArticleAttachmentState =
 
 export type ModalState =
   | { type: 'none' }
-  | { type: 'create' }
-  | { type: 'edit'; article: KnowledgeArticle }
   | { type: 'delete'; article: KnowledgeArticle };
 
 export type KnowledgeSortOption = 'POPULAR' | 'NEWEST' | 'OLDEST';
