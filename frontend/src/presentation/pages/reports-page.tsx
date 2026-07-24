@@ -2843,6 +2843,12 @@ function DashboardKpiCard({
   );
 }
 
+type DashboardLookupSearchField =
+  | 'FIRST_NAME'
+  | 'IDENTIFIER'
+  | 'LAST_NAME'
+  | 'NAME';
+
 function DashboardLookupDialog({
   groups,
 
@@ -2870,44 +2876,41 @@ function DashboardLookupDialog({
 }) {
   const [searchTerm, setSearchTerm] = useState('');
 
+  const [searchField, setSearchField] =
+    useState<DashboardLookupSearchField>('IDENTIFIER');
+
   const [page, setPage] = useState(1);
 
   const pageSize = 8;
 
-  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const normalizedSearch = searchTerm.trim().toLocaleLowerCase('fr-FR');
 
   const filteredUsers = useMemo(
     () =>
       users.filter((user) => {
-        const searchableText = [
-          formatUserName(user),
-          user.firstName,
-          user.lastName,
-          user.email,
-          user.role,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
+        const searchableText = getDashboardUserLookupSearchValue(
+          user,
+          searchField,
+        ).toLocaleLowerCase('fr-FR');
 
         return searchableText.includes(normalizedSearch);
       }),
 
-    [normalizedSearch, users],
+    [normalizedSearch, searchField, users],
   );
 
   const filteredGroups = useMemo(
     () =>
       groups.filter((group) => {
-        const searchableText = [group.name, group.description, group.level]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
+        const searchableText = getDashboardGroupLookupSearchValue(
+          group,
+          searchField,
+        ).toLocaleLowerCase('fr-FR');
 
         return searchableText.includes(normalizedSearch);
       }),
 
-    [groups, normalizedSearch],
+    [groups, normalizedSearch, searchField],
   );
 
   const rows = kind === 'AGENT' ? filteredUsers : filteredGroups;
@@ -2955,9 +2958,26 @@ function DashboardLookupDialog({
         </header>
 
         <label className="incident-lookup-search">
-          <div className="incident-lookup-search-input">
-            <Search size={16} />
+          <select
+            aria-label="Categorie de recherche"
+            onChange={(event) => {
+              setSearchField(event.target.value as DashboardLookupSearchField);
+              setPage(1);
+            }}
+            value={searchField}
+          >
+            <option value="IDENTIFIER">Identifiant</option>
+            {kind === 'GROUP' ? (
+              <option value="NAME">Nom</option>
+            ) : (
+              <>
+                <option value="FIRST_NAME">Prenom</option>
+                <option value="LAST_NAME">Nom</option>
+              </>
+            )}
+          </select>
 
+          <div className="incident-lookup-search-input">
             <input
               onChange={(event) => {
                 setSearchTerm(event.target.value);
@@ -3057,6 +3077,36 @@ function DashboardLookupDialog({
       </section>
     </div>
   );
+}
+
+function getDashboardUserLookupSearchValue(
+  user: AdminUserSummary,
+  searchField: DashboardLookupSearchField,
+): string {
+  switch (searchField) {
+    case 'FIRST_NAME':
+      return user.firstName ?? '';
+    case 'LAST_NAME':
+      return user.lastName ?? '';
+    case 'IDENTIFIER':
+    case 'NAME':
+      return formatUserName(user);
+    default:
+      return '';
+  }
+}
+
+function getDashboardGroupLookupSearchValue(
+  group: ReferentialCatalogSnapshot['groups'][number],
+  searchField: DashboardLookupSearchField,
+): string {
+  switch (searchField) {
+    case 'IDENTIFIER':
+    case 'NAME':
+      return group.name;
+    default:
+      return '';
+  }
 }
 
 function DashboardTimelineChart({ items }: { items: ReportingTimelineItem[] }) {

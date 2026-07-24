@@ -864,7 +864,7 @@ export function KnowledgePage({
           <label className="field">
             <span>Titre</span>
             <input
-              maxLength={50}
+              maxLength={100}
               onChange={(event) =>
                 setForm((currentForm) => ({
                   ...currentForm,
