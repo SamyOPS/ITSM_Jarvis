@@ -223,7 +223,7 @@ const INITIAL_REQUEST_DRAFT: RequestDraftState = {
   title: '',
 };
 
-const REQUEST_DEFAULT_CATEGORY_NAME = 'Demande';
+const REQUEST_TECHNICAL_CATEGORY_NAME = 'Demande';
 
 const INITIAL_SEARCH_FILTERS: TicketSearchFiltersState = {
   categoryId: '',
@@ -1113,22 +1113,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     [catalog.categories],
   );
 
-  const requestDefaultCategory = useMemo(
-    () =>
-      catalog.categories.find(
-        (category) =>
-          normalizeSearchText(category.name) ===
-          normalizeSearchText(REQUEST_DEFAULT_CATEGORY_NAME),
-      ),
-    [catalog.categories],
-  );
-
   const incidentCategoryOptions = useMemo(
     () =>
       catalog.categories.filter(
         (category) =>
           normalizeSearchText(category.name) !==
-          normalizeSearchText(REQUEST_DEFAULT_CATEGORY_NAME),
+          normalizeSearchText(REQUEST_TECHNICAL_CATEGORY_NAME),
       ),
     [catalog.categories],
   );
@@ -1168,16 +1158,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const channelsById = useMemo(
     () => new Map(catalog.channels.map((channel) => [channel.id, channel])),
 
-    [catalog.channels],
-  );
-
-  const portalChannel = useMemo(
-    () =>
-      catalog.channels.find((channel) => {
-        const normalizedName = normalizeSearchText(channel.name);
-
-        return normalizedName === 'portail' || normalizedName === 'portal';
-      }),
     [catalog.channels],
   );
 
@@ -2077,11 +2057,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       try {
         const incidentChannelId = showCreationChannelField
           ? normalizeOptionalId(incidentDraft.channelId)
-          : (portalChannel?.id ?? null);
-
-        if (!showCreationChannelField && !incidentChannelId) {
-          throw new Error("Le canal 'Portail' est manquant dans Supabase.");
-        }
+          : null;
 
         const result = await createIncident(session.accessToken, {
           categoryId: incidentDraft.categoryId.trim(),
@@ -2222,22 +2198,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setIsSubmitting(true);
 
     try {
-      const requestCategoryId =
-        requestDraft.categoryId.trim() || requestDefaultCategory?.id || '';
-
-      if (!requestCategoryId) {
-        throw new Error(
-          "La categorie technique 'Demande' est manquante dans Supabase.",
-        );
-      }
+      const requestCategoryId = requestDraft.categoryId.trim();
 
       const requestChannelId = showCreationChannelField
         ? normalizeOptionalId(requestDraft.channelId)
-        : (portalChannel?.id ?? null);
-
-      if (!showCreationChannelField && !requestChannelId) {
-        throw new Error("Le canal 'Portail' est manquant dans Supabase.");
-      }
+        : null;
 
       const result = await createRequest(session.accessToken, {
         categoryId: requestCategoryId,
@@ -2506,11 +2471,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           ? normalizeOptionalText(ticketEditDraft.workaround)
           : undefined;
 
-        if (
-          !nextCategoryId ||
-          (nextSelectedTicketDetail.ticket.type === 'REQUEST' &&
-            nextCategoryId === requestDefaultCategory?.id)
-        ) {
+        if (!nextCategoryId) {
           setDetailActionErrorMessage('Veuillez choisir une categorie.');
           return;
         }
@@ -3809,6 +3770,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             </option>
                           ))}
                         </select>
+                        {requestValidationErrors.categoryId ? (
+                          <small className="field-error">
+                            {requestValidationErrors.categoryId}
+                          </small>
+                        ) : null}
                       </label>
                     </>
                   )}

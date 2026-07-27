@@ -76,6 +76,10 @@ export function AppShell({
     .filter((route) => route !== null);
   const isWorkspaceShell = isAuthenticated;
   const isLoginShell = pathname === '/login';
+  const isReportsRoute = pathname.startsWith('/reports');
+  const workspaceShellClassName = isReportsRoute
+    ? 'app-shell app-shell--workspace app-shell--reports'
+    : 'app-shell app-shell--workspace';
   const homeRoute = getHomeRoute(session);
   const isHomeRoute = pathname === homeRoute;
   const currentBreadcrumbRoute = useMemo(
@@ -98,6 +102,14 @@ export function AppShell({
     visibleRoutes.find((route) => route.path === '/parc/cis/new') ?? null,
     visibleRoutes.find((route) => route.path === '/parc/cis') ?? null,
   ].filter((route) => route !== null);
+
+  useEffect(() => {
+    document.body.classList.toggle('app-body--reports', isReportsRoute);
+
+    return () => {
+      document.body.classList.remove('app-body--reports');
+    };
+  }, [isReportsRoute]);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent): void {
@@ -322,7 +334,7 @@ export function AppShell({
   }
 
   return (
-    <div className="app-shell app-shell--workspace">
+    <div className={workspaceShellClassName}>
       <aside
         className={
           isSidebarCollapsed

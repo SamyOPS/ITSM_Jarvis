@@ -650,6 +650,7 @@ describe('TicketsController', () => {
 
     expect(createIncident).toHaveBeenCalledWith({
       categoryId: 'category-1',
+      creatorRole: UserRole.AGENT,
       createdByUserId: 'user-1',
       description: 'VPN inaccessible',
       impact: IncidentSeverity.HIGH,
@@ -688,6 +689,7 @@ describe('TicketsController', () => {
 
     expect(createRequest).toHaveBeenCalledWith({
       categoryId: 'category-1',
+      creatorRole: UserRole.AGENT,
       createdByUserId: 'user-1',
       description: 'Besoin d un acces VPN',
       priorityId: 'priority-medium',

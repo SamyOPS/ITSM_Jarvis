@@ -2,9 +2,12 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { AdminUserReadRepository } from '../../auth/repositories/admin-user-read.repository';
 import { ReferentialCategoryReadRepository } from '../../referentials/repositories/referential-category-read.repository';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
+import { TicketHistoryReadRepository } from '../../ticketing/repositories/ticket-history-read.repository';
 import { TicketReadRepository } from '../../ticketing/repositories/ticket-read.repository';
-import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { SlaIndicator } from '../../../domain/ticketing/sla-indicator';
+import { TicketHistoryEntry } from '../../../domain/ticketing/ticket-history-entry';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
+import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketSummary } from '../../../domain/ticketing/ticket-summary';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
 
@@ -66,6 +69,7 @@ export type TicketReportingBreakdown = {
   ticketsByPriority: TicketReportingBreakdownItem[];
   ticketsByStatus: TicketReportingBreakdownItem[];
   ticketsByStatusPeriod: TicketReportingStatusPeriodItem[];
+  ticketsResolutionTimeByPriority: TicketReportingBreakdownItem[];
 };
 
 @Injectable()
@@ -73,6 +77,8 @@ export class GetTicketReportingBreakdownUseCase {
   constructor(
     @Inject(TicketReadRepository)
     private readonly ticketReadRepository: TicketReadRepository,
+    @Inject(TicketHistoryReadRepository)
+    private readonly ticketHistoryReadRepository: TicketHistoryReadRepository,
     @Inject(AdminUserReadRepository)
     private readonly adminUserReadRepository: AdminUserReadRepository,
     @Inject(ReferentialCategoryReadRepository)
@@ -114,6 +120,10 @@ export class GetTicketReportingBreakdownUseCase {
     const prioritiesById = new Map(
       priorities.map((priority) => [priority.id, priority]),
     );
+    const ticketHistoryEntries =
+      await this.ticketHistoryReadRepository.listTicketHistoryEntries({
+        ticketIds: scopedTickets.map((ticket) => ticket.id),
+      });
 
     return {
       filters,
@@ -154,8 +164,73 @@ export class GetTicketReportingBreakdownUseCase {
         (status) => status ?? 'Non defini',
       ),
       ticketsByStatusPeriod: buildTicketStatusPeriod(scopedTickets),
+      ticketsResolutionTimeByPriority: buildResolutionTimeByPriority(
+        scopedTickets,
+        ticketHistoryEntries,
+        prioritiesById,
+      ),
     };
   }
+}
+
+function buildResolutionTimeByPriority(
+  tickets: TicketSummary[],
+  entries: TicketHistoryEntry[],
+  prioritiesById: Map<string, { level: number; name: string }>,
+): TicketReportingBreakdownItem[] {
+  const entriesByTicketId = groupEntriesByTicketId(entries);
+  const buckets = new Map<
+    string,
+    {
+      count: number;
+      id: string | null;
+      totalMinutes: number;
+    }
+  >();
+
+  for (const ticket of tickets) {
+    const duration = getResolutionDurationMinutes(
+      ticket,
+      entriesByTicketId.get(ticket.id) ?? [],
+    );
+
+    if (duration === null) {
+      continue;
+    }
+
+    const id = ticket.priorityId;
+    const key = id ?? '__null__';
+    const current = buckets.get(key) ?? {
+      count: 0,
+      id,
+      totalMinutes: 0,
+    };
+
+    buckets.set(key, {
+      ...current,
+      count: current.count + 1,
+      totalMinutes: current.totalMinutes + duration,
+    });
+  }
+
+  return [...buckets.values()]
+    .map((item) => ({
+      count: Math.round(item.totalMinutes / item.count),
+      id: item.id,
+      name: item.id
+        ? (prioritiesById.get(item.id)?.name ?? item.id)
+        : 'Non definie',
+    }))
+    .sort((left, right) => {
+      const leftLevel = left.id
+        ? (prioritiesById.get(left.id)?.level ?? Number.MAX_SAFE_INTEGER)
+        : Number.MAX_SAFE_INTEGER;
+      const rightLevel = right.id
+        ? (prioritiesById.get(right.id)?.level ?? Number.MAX_SAFE_INTEGER)
+        : Number.MAX_SAFE_INTEGER;
+
+      return leftLevel - rightLevel || left.name.localeCompare(right.name);
+    });
 }
 
 function buildTicketActivityTimeline(
@@ -254,6 +329,57 @@ function buildTicketStatusPeriod(
   return [...buckets.values()].sort((left, right) =>
     left.period.localeCompare(right.period),
   );
+}
+
+function groupEntriesByTicketId(
+  entries: TicketHistoryEntry[],
+): Map<string, TicketHistoryEntry[]> {
+  const groupedEntries = new Map<string, TicketHistoryEntry[]>();
+
+  for (const entry of entries) {
+    const currentEntries = groupedEntries.get(entry.ticketId) ?? [];
+    currentEntries.push(entry);
+    groupedEntries.set(entry.ticketId, currentEntries);
+  }
+
+  for (const ticketEntries of groupedEntries.values()) {
+    ticketEntries.sort((left, right) =>
+      left.createdAt.localeCompare(right.createdAt),
+    );
+  }
+
+  return groupedEntries;
+}
+
+function getResolutionDurationMinutes(
+  ticket: TicketSummary,
+  entries: TicketHistoryEntry[],
+): number | null {
+  const resolutionEntry = entries.find(
+    (entry) =>
+      entry.eventType === TicketHistoryEventType.RESOLVED ||
+      isStatusChangeTo(entry, TicketStatus.RESOLVED),
+  );
+
+  return resolutionEntry
+    ? differenceInMinutes(ticket.createdAt, resolutionEntry.createdAt)
+    : null;
+}
+
+function isStatusChangeTo(
+  entry: TicketHistoryEntry,
+  status: TicketStatus,
+): boolean {
+  return (
+    entry.eventType === TicketHistoryEventType.STATUS_CHANGED &&
+    entry.payload?.toStatus === status
+  );
+}
+
+function differenceInMinutes(fromIso: string, toIso: string): number {
+  const durationMs = new Date(toIso).getTime() - new Date(fromIso).getTime();
+
+  return Math.max(0, Math.round(durationMs / 60000));
 }
 
 function isTicketOverdue(ticket: TicketSummary): boolean {

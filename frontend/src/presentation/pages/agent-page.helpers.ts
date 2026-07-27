@@ -84,6 +84,10 @@ export function validateRequestDraft(
     errors.description = 'La description est obligatoire.';
   }
 
+  if (!draft.categoryId.trim()) {
+    errors.categoryId = 'La categorie est obligatoire.';
+  }
+
   if (!draft.priorityId.trim()) {
     errors.priorityId = 'La priorite est obligatoire.';
   }

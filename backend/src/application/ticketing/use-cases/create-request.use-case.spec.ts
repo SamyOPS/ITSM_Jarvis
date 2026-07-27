@@ -1,4 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
+import { UserRole } from '../../../domain/auth/user-role';
+import { ReferentialChannel } from '../../../domain/referentials/referential-channel';
+import { ReferentialChannelReadRepository } from '../../referentials/repositories/referential-channel-read.repository';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { ReferentialPriority } from '../../../domain/referentials/referential-priority';
 import { CreatedRequest } from '../../../domain/ticketing/created-request';
@@ -52,6 +55,9 @@ describe('CreateRequestUseCase', () => {
       createIncident: jest.fn(),
       createRequest,
     } as unknown as TicketWriteRepository;
+    const channelRepository = {
+      listChannels: jest.fn().mockResolvedValue([]),
+    } as unknown as ReferentialChannelReadRepository;
     const priorityRepository = {
       listPriorities: jest
         .fn()
@@ -67,6 +73,7 @@ describe('CreateRequestUseCase', () => {
     } as ReferentialPriorityReadRepository;
     const useCase = new CreateRequestUseCase(
       ticketWriteRepository,
+      channelRepository,
       priorityRepository,
       {
         write,
@@ -76,6 +83,7 @@ describe('CreateRequestUseCase', () => {
     await expect(
       useCase.execute({
         categoryId: 'category-1',
+        creatorRole: UserRole.AGENT,
         createdByUserId: 'user-1',
         description: 'Besoin d un acces VPN',
         priorityId: 'priority-medium',
@@ -106,16 +114,90 @@ describe('CreateRequestUseCase', () => {
     });
   });
 
+  it('forces the portal channel when a requester creates a request', async () => {
+    const createdRequest = new CreatedRequest(
+      new Ticket(
+        'ticket-2',
+        'TICK-000002',
+        TicketType.REQUEST,
+        TicketStatus.OPEN,
+        'Demande acces VPN',
+        'Besoin d un acces VPN',
+        'priority-medium',
+        'category-1',
+        'user-1',
+        null,
+        'channel-portal',
+        null,
+        null,
+        null,
+        '2026-04-03T09:00:00.000Z',
+      ),
+      new RequestTicket('ticket-2', RequestType.ACCESS, null, null),
+      PriorityName.MEDIUM,
+    );
+    const createRequest = jest.fn().mockResolvedValue(createdRequest);
+    const listChannels = jest
+      .fn()
+      .mockResolvedValue([new ReferentialChannel('channel-portal', 'PORTAL')]);
+    const useCase = new CreateRequestUseCase(
+      {
+        createIncident: jest.fn(),
+        createRequest,
+      } as unknown as TicketWriteRepository,
+      {
+        listChannels,
+      } as unknown as ReferentialChannelReadRepository,
+      {
+        listPriorities: jest
+          .fn()
+          .mockResolvedValue([
+            new ReferentialPriority(
+              'priority-medium',
+              PriorityName.MEDIUM,
+              2,
+              8,
+              24,
+            ),
+          ]),
+      } as ReferentialPriorityReadRepository,
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
+    );
+
+    await useCase.execute({
+      categoryId: 'category-1',
+      channelId: 'channel-email',
+      creatorRole: UserRole.DEMANDEUR,
+      createdByUserId: 'user-1',
+      description: 'Besoin d un acces VPN',
+      priorityId: 'priority-medium',
+      requestType: RequestType.ACCESS,
+      title: 'Demande acces VPN',
+    });
+
+    expect(createRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channelId: 'channel-portal',
+      }),
+    );
+  });
+
   it('rejects the command when the provided priority id is unknown', async () => {
     const ticketWriteRepository = {
       createIncident: jest.fn(),
       createRequest: jest.fn(),
     } as unknown as TicketWriteRepository;
+    const channelRepository = {
+      listChannels: jest.fn().mockResolvedValue([]),
+    } as unknown as ReferentialChannelReadRepository;
     const priorityRepository = {
       listPriorities: jest.fn().mockResolvedValue([]),
     } as ReferentialPriorityReadRepository;
     const useCase = new CreateRequestUseCase(
       ticketWriteRepository,
+      channelRepository,
       priorityRepository,
       {
         write: jest.fn(),
@@ -125,6 +207,7 @@ describe('CreateRequestUseCase', () => {
     await expect(
       useCase.execute({
         categoryId: 'category-1',
+        creatorRole: UserRole.AGENT,
         createdByUserId: 'user-1',
         description: 'Besoin d un acces VPN',
         priorityId: 'unknown-priority',

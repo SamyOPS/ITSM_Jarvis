@@ -41,6 +41,7 @@ import type { TicketSummarySnapshot } from '../../domain/ticketing/ticket-summar
 import {
   translatePriority,
   translateTicketStatus,
+  translateTicketType,
 } from '../../domain/i18n/ticketing-labels';
 
 import { fetchUserDirectory } from '../../infrastructure/api/auth-api';
@@ -60,16 +61,12 @@ import {
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
 
 import type {
-  ReportingBreakdown,
   ReportingBreakdownItem,
   ReportingOverview,
   ReportingTimelineItem,
 } from '../../infrastructure/api/reporting-api';
 
-import {
-  fetchReportingBreakdown,
-  fetchReportingOverview,
-} from '../../infrastructure/api/reporting-api';
+import { fetchReportingOverview } from '../../infrastructure/api/reporting-api';
 
 import { searchTickets } from '../../infrastructure/api/ticketing-api';
 
@@ -99,6 +96,7 @@ import {
   getGroupChatAuthorUserId,
   getGroupMemberColorClass,
   getInitialReportsView,
+  getChannelDisplayName,
   getOverviewOverdueTotal,
   getUserGroupIds,
   groupPersonalPlanningTasksByDate,
@@ -254,6 +252,30 @@ const EMPTY_OVERVIEW_TOTALS: ReportingOverview['totals'] = {
   unassigned: 0,
 };
 
+type DashboardActivityChartKey =
+  | 'AGENT'
+  | 'CATEGORY'
+  | 'GROUP'
+  | 'PRIORITY'
+  | 'SLA'
+  | 'SOURCE'
+  | 'TYPE';
+
+type DashboardTicketActivityMode = 'ACTIVE' | 'ALL';
+
+const INITIAL_DASHBOARD_ACTIVITY_MODES: Record<
+  DashboardActivityChartKey,
+  DashboardTicketActivityMode
+> = {
+  AGENT: 'ACTIVE',
+  CATEGORY: 'ACTIVE',
+  GROUP: 'ACTIVE',
+  PRIORITY: 'ACTIVE',
+  SLA: 'ACTIVE',
+  SOURCE: 'ACTIVE',
+  TYPE: 'ACTIVE',
+};
+
 export function ReportsPage({ session }: ReportsPageProps) {
   const [activeView, setActiveView] = useState<ReportsView>(() =>
     getInitialReportsView(),
@@ -273,6 +295,10 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
   const [filters, setFilters] = useState<ReportsFilterState>(INITIAL_FILTERS);
 
+  const [dashboardActivityModes, setDashboardActivityModes] = useState(
+    INITIAL_DASHBOARD_ACTIVITY_MODES,
+  );
+
   const [dashboardLookup, setDashboardLookup] = useState<
     'AGENT' | 'GROUP' | null
   >(null);
@@ -280,8 +306,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   const [overview, setOverview] = useState<ReportingOverview | null>(null);
-
-  const [breakdown, setBreakdown] = useState<ReportingBreakdown | null>(null);
 
   const [personalTickets, setPersonalTickets] = useState<
     TicketSummarySnapshot[]
@@ -336,8 +360,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
           setOverview(null);
 
-          setBreakdown(null);
-
           setPersonalTickets(nextPersonalTickets);
 
           setCatalog(nextCatalog);
@@ -352,8 +374,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
         const [
           nextOverview,
 
-          nextBreakdown,
-
           nextPersonalTickets,
 
           nextCatalog,
@@ -363,8 +383,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
           nextUsers,
         ] = await Promise.all([
           fetchReportingOverview(session.accessToken, reportingFilters),
-
-          fetchReportingBreakdown(session.accessToken, reportingFilters),
 
           searchTickets(session.accessToken, {
             includeArchived: false,
@@ -378,8 +396,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
         ]);
 
         setOverview(nextOverview);
-
-        setBreakdown(nextBreakdown);
 
         setPersonalTickets(nextPersonalTickets);
 
@@ -455,17 +471,17 @@ export function ReportsPage({ session }: ReportsPageProps) {
     });
   }
 
-  const categoryWidgetItems = useMemo(
-    () => breakdown?.ticketsByCategory ?? [],
+  function handleDashboardActivityModeChange(
+    chartKey: DashboardActivityChartKey,
 
-    [breakdown],
-  );
+    isActive: boolean,
+  ): void {
+    setDashboardActivityModes((currentModes) => ({
+      ...currentModes,
 
-  const agentWidgetItems = useMemo(
-    () => breakdown?.ticketsByAgent ?? [],
-
-    [breakdown],
-  );
+      [chartKey]: isActive ? 'ACTIVE' : 'ALL',
+    }));
+  }
 
   const dashboardFilteredTickets = useMemo(
     () => filterTicketsForDashboard(personalTickets, filters),
@@ -473,20 +489,63 @@ export function ReportsPage({ session }: ReportsPageProps) {
     [filters, personalTickets],
   );
 
-  const groupWidgetItems = useMemo(
-    () => buildTicketsByGroupItems(dashboardFilteredTickets, catalog),
+  const getDashboardTicketsForChart = useCallback(
+    (chartKey: DashboardActivityChartKey) =>
+      filterTicketsByActivityMode(
+        dashboardFilteredTickets,
+        dashboardActivityModes[chartKey],
+      ),
 
-    [catalog, dashboardFilteredTickets],
+    [dashboardActivityModes, dashboardFilteredTickets],
+  );
+
+  const categoryWidgetItems = useMemo(
+    () =>
+      buildTicketsByCategoryItems(
+        getDashboardTicketsForChart('CATEGORY'),
+        catalog,
+      ),
+
+    [catalog, getDashboardTicketsForChart],
+  );
+
+  const agentWidgetItems = useMemo(
+    () => buildTicketsByAgentItems(getDashboardTicketsForChart('AGENT'), users),
+
+    [getDashboardTicketsForChart, users],
+  );
+
+  const groupWidgetItems = useMemo(
+    () =>
+      buildTicketsByGroupItems(getDashboardTicketsForChart('GROUP'), catalog),
+
+    [catalog, getDashboardTicketsForChart],
   );
 
   const priorityWidgetItems = useMemo(
     () =>
-      (breakdown?.ticketsByPriority ?? []).map((item) => ({
-        ...item,
-        name: translatePriority(item.name),
-      })),
+      buildTicketsByPriorityItems(
+        getDashboardTicketsForChart('PRIORITY'),
+        catalog,
+      ),
 
-    [breakdown],
+    [catalog, getDashboardTicketsForChart],
+  );
+
+  const sourceWidgetItems = useMemo(
+    () =>
+      buildTicketsByChannelItems(
+        getDashboardTicketsForChart('SOURCE'),
+        catalog,
+      ),
+
+    [catalog, getDashboardTicketsForChart],
+  );
+
+  const typeWidgetItems = useMemo(
+    () => buildTicketsByTypeItems(getDashboardTicketsForChart('TYPE')),
+
+    [getDashboardTicketsForChart],
   );
 
   const overviewTotals = overview?.totals ?? EMPTY_OVERVIEW_TOTALS;
@@ -494,20 +553,9 @@ export function ReportsPage({ session }: ReportsPageProps) {
   const overdueTotal = getOverviewOverdueTotal(overviewTotals);
 
   const slaWidgetItems = useMemo(
-    () => [
-      {
-        count: Math.max(overviewTotals.total - overdueTotal, 0),
-        id: 'on-time',
-        name: 'Dans les delais',
-      },
-      {
-        count: overdueTotal,
-        id: 'overdue',
-        name: 'En retard',
-      },
-    ],
+    () => buildSlaDistributionItems(getDashboardTicketsForChart('SLA')),
 
-    [overviewTotals.total, overdueTotal],
+    [getDashboardTicketsForChart],
   );
 
   const timelineItems = useMemo(
@@ -1357,14 +1405,26 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 <DashboardTimelineChart items={timelineItems} />
               </DashboardPanel>
 
-              <DashboardPanel title="Top 8 categories">
+              <DashboardPanel
+                activityMode={dashboardActivityModes.CATEGORY}
+                onActivityModeChange={(isActive) =>
+                  handleDashboardActivityModeChange('CATEGORY', isActive)
+                }
+                title="Tickets par categorie"
+              >
                 <DashboardBarWidget
                   items={categoryWidgetItems}
                   variant="category"
                 />
               </DashboardPanel>
 
-              <DashboardPanel title="Respect SLA/TTR">
+              <DashboardPanel
+                activityMode={dashboardActivityModes.SLA}
+                onActivityModeChange={(isActive) =>
+                  handleDashboardActivityModeChange('SLA', isActive)
+                }
+                title="Respect SLA/TTR"
+              >
                 <DashboardDonutWidget
                   colorByKey={{
                     overdue: '#65a196',
@@ -1374,7 +1434,13 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 />
               </DashboardPanel>
 
-              <DashboardPanel title="Tickets par priorite">
+              <DashboardPanel
+                activityMode={dashboardActivityModes.PRIORITY}
+                onActivityModeChange={(isActive) =>
+                  handleDashboardActivityModeChange('PRIORITY', isActive)
+                }
+                title="Tickets par priorite"
+              >
                 <DashboardDonutWidget
                   colorByKey={{
                     Basse: '#65a196',
@@ -1387,11 +1453,50 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 />
               </DashboardPanel>
 
-              <DashboardPanel title="Top 8 groupes">
+              <DashboardPanel
+                activityMode={dashboardActivityModes.TYPE}
+                onActivityModeChange={(isActive) =>
+                  handleDashboardActivityModeChange('TYPE', isActive)
+                }
+                title="Tickets par type"
+              >
+                <DashboardDonutWidget
+                  colorByKey={{
+                    Demande: '#65a196',
+                    Incident: '#6254d9',
+                  }}
+                  colors={['#6254d9', '#65a196']}
+                  items={typeWidgetItems}
+                />
+              </DashboardPanel>
+
+              <DashboardPanel
+                activityMode={dashboardActivityModes.SOURCE}
+                onActivityModeChange={(isActive) =>
+                  handleDashboardActivityModeChange('SOURCE', isActive)
+                }
+                title="Sources des tickets"
+              >
+                <DashboardBarWidget items={sourceWidgetItems} />
+              </DashboardPanel>
+
+              <DashboardPanel
+                activityMode={dashboardActivityModes.GROUP}
+                onActivityModeChange={(isActive) =>
+                  handleDashboardActivityModeChange('GROUP', isActive)
+                }
+                title="Tickets par groupe"
+              >
                 <DashboardBarWidget items={groupWidgetItems} />
               </DashboardPanel>
 
-              <DashboardPanel title="Top 8 agents">
+              <DashboardPanel
+                activityMode={dashboardActivityModes.AGENT}
+                onActivityModeChange={(isActive) =>
+                  handleDashboardActivityModeChange('AGENT', isActive)
+                }
+                title="Tickets par agent"
+              >
                 <DashboardBarWidget items={agentWidgetItems} />
               </DashboardPanel>
             </div>
@@ -2775,25 +2880,35 @@ function GroupChatMemberInfo({
 }
 
 function DashboardPanel({
+  activityMode,
+
   children,
 
   className,
 
+  onActivityModeChange,
+
   title,
 }: {
+  activityMode?: DashboardTicketActivityMode;
+
   children: React.ReactNode;
 
   className?: string;
 
+  onActivityModeChange?: (isActive: boolean) => void;
+
   title: string;
 }) {
   const descriptions: Record<string, string> = {
-    'Top 8 agents': 'Repartition des tickets actifs par technicien',
-    'Top 8 categories': 'Volume par domaine de support',
-    'Top 8 groupes': 'Repartition des tickets actifs par equipe',
     'Evolution des tickets': 'Tendance sur la periode selectionnee',
     'Respect SLA/TTR': 'Performance des delais de resolution',
+    'Sources des tickets': 'Repartition par source de creation',
+    'Tickets par agent': 'Repartition des tickets actifs par technicien',
+    'Tickets par categorie': 'Volume par domaine de support',
+    'Tickets par groupe': 'Repartition des tickets actifs par equipe',
     'Tickets par priorite': 'Repartition par niveau de priorite',
+    'Tickets par type': 'Repartition incidents et demandes',
   };
 
   return (
@@ -2810,6 +2925,26 @@ function DashboardPanel({
 
           <p>{descriptions[title]}</p>
         </div>
+
+        {activityMode && onActivityModeChange ? (
+          <label className="reports-dashboard-activity-toggle">
+            <span>
+              {activityMode === 'ACTIVE'
+                ? 'tickets actifs'
+                : 'tous les tickets'}
+            </span>
+
+            <input
+              checked={activityMode === 'ACTIVE'}
+              onChange={(event) =>
+                onActivityModeChange(event.currentTarget.checked)
+              }
+              type="checkbox"
+            />
+
+            <i aria-hidden="true" />
+          </label>
+        ) : null}
       </header>
 
       {children}
@@ -4229,10 +4364,16 @@ function getDonutItemColor(
 }
 
 function DashboardBarWidget({
+  axisValueFormatter = formatChartValue,
   items,
+  valueFormatter = formatNumber,
+  valueLabel = 'ticket(s)',
   variant = 'default',
 }: {
+  axisValueFormatter?: (value: number) => string;
   items: ReportingBreakdownItem[];
+  valueFormatter?: (value: number) => string;
+  valueLabel?: string;
   variant?: 'category' | 'default';
 }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -4267,7 +4408,7 @@ function DashboardBarWidget({
               } as CSSProperties
             }
           >
-            {formatChartValue(tick)}
+            {axisValueFormatter(tick)}
           </span>
         ))}
       </div>
@@ -4294,7 +4435,9 @@ function DashboardBarWidget({
               >
                 <div className="reports-vertical-bar-track">
                   <button
-                    aria-label={`${item.name}, ${formatNumber(item.count)} ticket(s)`}
+                    aria-label={`${item.name}, ${valueFormatter(
+                      item.count,
+                    )} ${valueLabel}`}
                     className="reports-vertical-bar-fill"
                     onBlur={() => setActiveIndex(null)}
                     onFocus={() => setActiveIndex(index)}
@@ -4306,7 +4449,7 @@ function DashboardBarWidget({
 
                   {activeIndex === index ? (
                     <span className="reports-bar-tooltip" role="status">
-                      <strong>{formatNumber(item.count)}</strong>
+                      <strong>{valueFormatter(item.count)}</strong>
                     </span>
                   ) : null}
                 </div>
@@ -4436,6 +4579,50 @@ function filterTicketsForDashboard(
   });
 }
 
+function filterTicketsByActivityMode(
+  tickets: TicketSummarySnapshot[],
+
+  mode: DashboardTicketActivityMode,
+): TicketSummarySnapshot[] {
+  return mode === 'ACTIVE' ? tickets.filter(isActiveTicket) : tickets;
+}
+
+function isActiveTicket(ticket: TicketSummarySnapshot): boolean {
+  return ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED';
+}
+
+function buildTicketsByCategoryItems(
+  tickets: TicketSummarySnapshot[],
+
+  catalog: ReferentialCatalogSnapshot,
+): ReportingBreakdownItem[] {
+  const categoriesById = new Map(
+    catalog.categories.map((category) => [category.id, category]),
+  );
+
+  return countTicketsByKey(
+    tickets,
+    (ticket) => ticket.categoryId,
+    (categoryId) =>
+      categoryId
+        ? (categoriesById.get(categoryId)?.name ?? categoryId)
+        : 'Non definie',
+  );
+}
+
+function buildTicketsByAgentItems(
+  tickets: TicketSummarySnapshot[],
+
+  users: AdminUserSummary[],
+): ReportingBreakdownItem[] {
+  return countTicketsByKey(
+    tickets,
+    (ticket) => ticket.assignedToUserId,
+    (agentId) =>
+      agentId ? formatAssignedUserName(agentId, users) : 'Non assigne',
+  );
+}
+
 function buildTicketsByGroupItems(
   tickets: TicketSummarySnapshot[],
 
@@ -4470,5 +4657,113 @@ function buildTicketsByGroupItems(
 
   return Array.from(countsByGroup.values()).sort(
     (firstItem, secondItem) => secondItem.count - firstItem.count,
+  );
+}
+
+function buildTicketsByPriorityItems(
+  tickets: TicketSummarySnapshot[],
+
+  catalog: ReferentialCatalogSnapshot,
+): ReportingBreakdownItem[] {
+  const prioritiesById = new Map(
+    catalog.priorities.map((priority) => [priority.id, priority]),
+  );
+
+  return countTicketsByKey(
+    tickets,
+    (ticket) => ticket.priorityId,
+    (priorityId) =>
+      priorityId
+        ? translatePriority(prioritiesById.get(priorityId)?.name ?? priorityId)
+        : 'Non definie',
+  );
+}
+
+function buildTicketsByChannelItems(
+  tickets: TicketSummarySnapshot[],
+
+  catalog: ReferentialCatalogSnapshot,
+): ReportingBreakdownItem[] {
+  return countTicketsByKey(
+    tickets,
+    (ticket) => ticket.channelId,
+    (channelId) =>
+      getChannelDisplayName(
+        {
+          count: 0,
+          id: channelId,
+          name: channelId ?? 'Non renseigne',
+        },
+        catalog,
+      ),
+  );
+}
+
+function buildTicketsByTypeItems(
+  tickets: TicketSummarySnapshot[],
+): ReportingBreakdownItem[] {
+  return countTicketsByKey(
+    tickets,
+    (ticket) => ticket.type,
+    (type) => (type ? translateTicketType(type) : 'Non defini'),
+  );
+}
+
+function buildSlaDistributionItems(
+  tickets: TicketSummarySnapshot[],
+): ReportingBreakdownItem[] {
+  const overdueTotal = tickets.filter(
+    (ticket) =>
+      ticket.responseSlaStatus === 'OVERDUE' ||
+      ticket.resolutionSlaStatus === 'OVERDUE',
+  ).length;
+
+  return [
+    {
+      count: Math.max(tickets.length - overdueTotal, 0),
+      id: 'on-time',
+      name: 'Dans les delais',
+    },
+    {
+      count: overdueTotal,
+      id: 'overdue',
+      name: 'En retard',
+    },
+  ];
+}
+
+function countTicketsByKey(
+  tickets: TicketSummarySnapshot[],
+
+  getKey: (ticket: TicketSummarySnapshot) => string | null,
+
+  getName: (key: string | null) => string,
+): ReportingBreakdownItem[] {
+  const countsByKey = new Map<string, ReportingBreakdownItem>();
+
+  tickets.forEach((ticket) => {
+    const id = getKey(ticket);
+    const key = id ?? '__null__';
+    const existingItem = countsByKey.get(key);
+
+    if (existingItem) {
+      countsByKey.set(key, {
+        ...existingItem,
+        count: existingItem.count + 1,
+      });
+      return;
+    }
+
+    countsByKey.set(key, {
+      count: 1,
+      id,
+      name: getName(id),
+    });
+  });
+
+  return Array.from(countsByKey.values()).sort(
+    (firstItem, secondItem) =>
+      secondItem.count - firstItem.count ||
+      firstItem.name.localeCompare(secondItem.name),
   );
 }

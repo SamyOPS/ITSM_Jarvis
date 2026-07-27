@@ -1,6 +1,7 @@
 ﻿import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { ReferentialPriority } from '../../../domain/referentials/referential-priority';
 import { UserRole } from '../../../domain/auth/user-role';
+import { ReferentialChannelReadRepository } from '../../referentials/repositories/referential-channel-read.repository';
 import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { CreatedIncident } from '../../../domain/ticketing/created-incident';
 import { Incident } from '../../../domain/ticketing/incident';
@@ -38,6 +39,9 @@ describe('Ticket flow', () => {
     } as unknown as TicketAuditService;
     const createIncidentUseCase = new CreateIncidentUseCase(
       repository,
+      {
+        listChannels: jest.fn().mockResolvedValue([]),
+      } as unknown as ReferentialChannelReadRepository,
       {
         listPriorities: jest
           .fn()
@@ -102,6 +106,7 @@ describe('Ticket flow', () => {
     const createdIncident = await createIncidentUseCase.execute({
       categoryId: 'category-1',
       channelId: 'channel-portal',
+      creatorRole: UserRole.AGENT,
       createdByUserId: 'demandeur-1',
       description: 'Impossible de se connecter au VPN depuis ce matin',
       impact: IncidentSeverity.HIGH,
