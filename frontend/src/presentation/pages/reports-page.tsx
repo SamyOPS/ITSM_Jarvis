@@ -1357,7 +1357,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 <DashboardTimelineChart items={timelineItems} />
               </DashboardPanel>
 
-              <DashboardPanel title="Top 8 categories">
+              <DashboardPanel title="Tickets par categorie">
                 <DashboardBarWidget
                   items={categoryWidgetItems}
                   variant="category"
@@ -1387,11 +1387,11 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 />
               </DashboardPanel>
 
-              <DashboardPanel title="Top 8 groupes">
+              <DashboardPanel title="Tickets par groupe">
                 <DashboardBarWidget items={groupWidgetItems} />
               </DashboardPanel>
 
-              <DashboardPanel title="Top 8 agents">
+              <DashboardPanel title="Tickets par agent">
                 <DashboardBarWidget items={agentWidgetItems} />
               </DashboardPanel>
             </div>
@@ -2788,11 +2788,11 @@ function DashboardPanel({
   title: string;
 }) {
   const descriptions: Record<string, string> = {
-    'Top 8 agents': 'Repartition des tickets actifs par technicien',
-    'Top 8 categories': 'Volume par domaine de support',
-    'Top 8 groupes': 'Repartition des tickets actifs par equipe',
     'Evolution des tickets': 'Tendance sur la periode selectionnee',
     'Respect SLA/TTR': 'Performance des delais de resolution',
+    'Tickets par agent': 'Repartition des tickets actifs par technicien',
+    'Tickets par categorie': 'Volume par domaine de support',
+    'Tickets par groupe': 'Repartition des tickets actifs par equipe',
     'Tickets par priorite': 'Repartition par niveau de priorite',
   };
 
