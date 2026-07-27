@@ -41,6 +41,7 @@ import type { TicketSummarySnapshot } from '../../domain/ticketing/ticket-summar
 import {
   translatePriority,
   translateTicketStatus,
+  translateTicketType,
 } from '../../domain/i18n/ticketing-labels';
 
 import { fetchUserDirectory } from '../../infrastructure/api/auth-api';
@@ -60,16 +61,12 @@ import {
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
 
 import type {
-  ReportingBreakdown,
   ReportingBreakdownItem,
   ReportingOverview,
   ReportingTimelineItem,
 } from '../../infrastructure/api/reporting-api';
 
-import {
-  fetchReportingBreakdown,
-  fetchReportingOverview,
-} from '../../infrastructure/api/reporting-api';
+import { fetchReportingOverview } from '../../infrastructure/api/reporting-api';
 
 import { searchTickets } from '../../infrastructure/api/ticketing-api';
 
@@ -163,25 +160,6 @@ const PERSONAL_EQUIPMENT_LIMIT = 8;
 const GROUP_TICKET_LIMIT = 8;
 
 const TIMELINE_TOOLTIP_WIDTH = 190;
-
-const PRIORITY_RESOLUTION_ROWS = [
-  {
-    color: '#65a196',
-    label: 'Basse',
-  },
-  {
-    color: '#6254d9',
-    label: 'Moyenne',
-  },
-  {
-    color: '#c18b38',
-    label: 'Haute',
-  },
-  {
-    color: '#ce626a',
-    label: 'Critique',
-  },
-] as const;
 
 const ASSIGNED_TO_ME_COLUMNS: PersonalTicketColumn[] = [
   'ID',
@@ -280,7 +258,8 @@ type DashboardActivityChartKey =
   | 'GROUP'
   | 'PRIORITY'
   | 'SLA'
-  | 'SOURCE';
+  | 'SOURCE'
+  | 'TYPE';
 
 type DashboardTicketActivityMode = 'ACTIVE' | 'ALL';
 
@@ -294,6 +273,7 @@ const INITIAL_DASHBOARD_ACTIVITY_MODES: Record<
   PRIORITY: 'ACTIVE',
   SLA: 'ACTIVE',
   SOURCE: 'ACTIVE',
+  TYPE: 'ACTIVE',
 };
 
 export function ReportsPage({ session }: ReportsPageProps) {
@@ -326,8 +306,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   const [overview, setOverview] = useState<ReportingOverview | null>(null);
-
-  const [breakdown, setBreakdown] = useState<ReportingBreakdown | null>(null);
 
   const [personalTickets, setPersonalTickets] = useState<
     TicketSummarySnapshot[]
@@ -382,8 +360,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
           setOverview(null);
 
-          setBreakdown(null);
-
           setPersonalTickets(nextPersonalTickets);
 
           setCatalog(nextCatalog);
@@ -398,8 +374,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
         const [
           nextOverview,
 
-          nextBreakdown,
-
           nextPersonalTickets,
 
           nextCatalog,
@@ -409,8 +383,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
           nextUsers,
         ] = await Promise.all([
           fetchReportingOverview(session.accessToken, reportingFilters),
-
-          fetchReportingBreakdown(session.accessToken, reportingFilters),
 
           searchTickets(session.accessToken, {
             includeArchived: false,
@@ -424,8 +396,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
         ]);
 
         setOverview(nextOverview);
-
-        setBreakdown(nextBreakdown);
 
         setPersonalTickets(nextPersonalTickets);
 
@@ -572,30 +542,10 @@ export function ReportsPage({ session }: ReportsPageProps) {
     [catalog, getDashboardTicketsForChart],
   );
 
-  const priorityResolutionTimeWidgetItems = useMemo(
-    () =>
-      (breakdown?.ticketsResolutionTimeByPriority ?? []).map((item) => ({
-        ...item,
-        name: translatePriority(item.name),
-      })),
+  const typeWidgetItems = useMemo(
+    () => buildTicketsByTypeItems(getDashboardTicketsForChart('TYPE')),
 
-    [breakdown],
-  );
-
-  const priorityResolutionListItems = useMemo(
-    () =>
-      PRIORITY_RESOLUTION_ROWS.map((priority) => {
-        const item = priorityResolutionTimeWidgetItems.find(
-          (candidate) => candidate.name === priority.label,
-        );
-
-        return {
-          ...priority,
-          count: item?.count ?? 0,
-        };
-      }),
-
-    [priorityResolutionTimeWidgetItems],
+    [getDashboardTicketsForChart],
   );
 
   const overviewTotals = overview?.totals ?? EMPTY_OVERVIEW_TOTALS;
@@ -1504,6 +1454,23 @@ export function ReportsPage({ session }: ReportsPageProps) {
               </DashboardPanel>
 
               <DashboardPanel
+                activityMode={dashboardActivityModes.TYPE}
+                onActivityModeChange={(isActive) =>
+                  handleDashboardActivityModeChange('TYPE', isActive)
+                }
+                title="Tickets par type"
+              >
+                <DashboardDonutWidget
+                  colorByKey={{
+                    Demande: '#65a196',
+                    Incident: '#6254d9',
+                  }}
+                  colors={['#6254d9', '#65a196']}
+                  items={typeWidgetItems}
+                />
+              </DashboardPanel>
+
+              <DashboardPanel
                 activityMode={dashboardActivityModes.SOURCE}
                 onActivityModeChange={(isActive) =>
                   handleDashboardActivityModeChange('SOURCE', isActive)
@@ -1511,12 +1478,6 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 title="Sources des tickets"
               >
                 <DashboardBarWidget items={sourceWidgetItems} />
-              </DashboardPanel>
-
-              <DashboardPanel title="Temps de resolution par priorite">
-                <DashboardResolutionListWidget
-                  items={priorityResolutionListItems}
-                />
               </DashboardPanel>
 
               <DashboardPanel
@@ -2947,7 +2908,7 @@ function DashboardPanel({
     'Tickets par categorie': 'Volume par domaine de support',
     'Tickets par groupe': 'Repartition des tickets actifs par equipe',
     'Tickets par priorite': 'Repartition par niveau de priorite',
-    'Temps de resolution par priorite': 'Duree moyenne des tickets resolus',
+    'Tickets par type': 'Repartition incidents et demandes',
   };
 
   return (
@@ -4402,66 +4363,6 @@ function getDonutItemColor(
   );
 }
 
-function formatResolutionDuration(minutes: number): string {
-  if (!Number.isFinite(minutes) || minutes <= 0) {
-    return '0 min';
-  }
-
-  if (minutes < 60) {
-    return `${Math.round(minutes)} min`;
-  }
-
-  const hours = minutes / 60;
-
-  if (hours < 24) {
-    return `${formatCompactDurationNumber(roundDurationValue(hours))} h`;
-  }
-
-  const days = Math.floor(hours / 24);
-  const remainingHours = Math.round(hours % 24);
-
-  return remainingHours > 0 ? `${days} j ${remainingHours} h` : `${days} j`;
-}
-
-function roundDurationValue(value: number): number {
-  return value >= 10 ? Math.round(value) : Math.round(value * 10) / 10;
-}
-
-function formatCompactDurationNumber(value: number): string {
-  return Number.isInteger(value)
-    ? String(value)
-    : value.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
-}
-
-function DashboardResolutionListWidget({
-  items,
-}: {
-  items: Array<{
-    color: string;
-    count: number;
-    label: string;
-  }>;
-}) {
-  return (
-    <div className="reports-resolution-list-widget">
-      {items.map((item) => (
-        <div className="reports-resolution-list-row" key={item.label}>
-          <span className="reports-resolution-list-label">
-            <i
-              aria-hidden="true"
-              style={{ background: item.color } as CSSProperties}
-            />
-
-            {item.label}
-          </span>
-
-          <strong>{formatResolutionDuration(item.count)}</strong>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function DashboardBarWidget({
   axisValueFormatter = formatChartValue,
   items,
@@ -4795,6 +4696,16 @@ function buildTicketsByChannelItems(
         },
         catalog,
       ),
+  );
+}
+
+function buildTicketsByTypeItems(
+  tickets: TicketSummarySnapshot[],
+): ReportingBreakdownItem[] {
+  return countTicketsByKey(
+    tickets,
+    (ticket) => ticket.type,
+    (type) => (type ? translateTicketType(type) : 'Non defini'),
   );
 }
 
