@@ -1161,16 +1161,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     [catalog.channels],
   );
 
-  const portalChannel = useMemo(
-    () =>
-      catalog.channels.find((channel) => {
-        const normalizedName = normalizeSearchText(channel.name);
-
-        return normalizedName === 'portail' || normalizedName === 'portal';
-      }),
-    [catalog.channels],
-  );
-
   const cisById = useMemo(
     () => new Map(catalog.cis.map((ci) => [ci.id, ci])),
 
@@ -2067,11 +2057,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       try {
         const incidentChannelId = showCreationChannelField
           ? normalizeOptionalId(incidentDraft.channelId)
-          : (portalChannel?.id ?? null);
-
-        if (!showCreationChannelField && !incidentChannelId) {
-          throw new Error("Le canal 'Portail' est manquant dans Supabase.");
-        }
+          : null;
 
         const result = await createIncident(session.accessToken, {
           categoryId: incidentDraft.categoryId.trim(),
@@ -2216,11 +2202,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
       const requestChannelId = showCreationChannelField
         ? normalizeOptionalId(requestDraft.channelId)
-        : (portalChannel?.id ?? null);
-
-      if (!showCreationChannelField && !requestChannelId) {
-        throw new Error("Le canal 'Portail' est manquant dans Supabase.");
-      }
+        : null;
 
       const result = await createRequest(session.accessToken, {
         categoryId: requestCategoryId,

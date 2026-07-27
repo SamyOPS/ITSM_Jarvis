@@ -81,6 +81,7 @@ export type ReportingBreakdown = {
   ticketsByPriority: ReportingBreakdownItem[];
   ticketsByStatus: ReportingBreakdownItem[];
   ticketsByStatusPeriod: ReportingStatusPeriodItem[];
+  ticketsResolutionTimeByPriority: ReportingBreakdownItem[];
 };
 
 export type AgentPerformanceItem = {

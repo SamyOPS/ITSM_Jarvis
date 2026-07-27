@@ -5,7 +5,10 @@ import { ReferentialPriority } from '../../../domain/referentials/referential-pr
 import { PriorityName } from '../../../domain/ticketing/priority-name';
 import { ReferentialCategoryReadRepository } from '../../referentials/repositories/referential-category-read.repository';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
+import { TicketHistoryReadRepository } from '../../ticketing/repositories/ticket-history-read.repository';
 import { TicketReadRepository } from '../../ticketing/repositories/ticket-read.repository';
+import { TicketHistoryEntry } from '../../../domain/ticketing/ticket-history-entry';
+import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketSummary } from '../../../domain/ticketing/ticket-summary';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
@@ -165,6 +168,7 @@ describe('GetTicketReportingBreakdownUseCase', () => {
           resolved: 0,
         },
       ],
+      ticketsResolutionTimeByPriority: [],
     });
   });
 
@@ -214,6 +218,79 @@ describe('GetTicketReportingBreakdownUseCase', () => {
     );
   });
 
+  it('returns average resolution time by priority', async () => {
+    const searchTickets = jest.fn().mockResolvedValue([
+      createTicketSummary('ticket-high-1', {
+        createdAt: '2026-04-03T10:00:00.000Z',
+        priorityId: 'priority-high',
+        status: TicketStatus.RESOLVED,
+      }),
+      createTicketSummary('ticket-high-2', {
+        createdAt: '2026-04-03T10:00:00.000Z',
+        priorityId: 'priority-high',
+        status: TicketStatus.CLOSED,
+      }),
+      createTicketSummary('ticket-medium', {
+        createdAt: '2026-04-03T10:00:00.000Z',
+        priorityId: 'priority-medium',
+        status: TicketStatus.RESOLVED,
+      }),
+    ]);
+    const listTicketHistoryEntries = jest
+      .fn()
+      .mockResolvedValue([
+        createHistoryEntry(
+          'history-high-1',
+          'ticket-high-1',
+          '2026-04-03T12:00:00.000Z',
+        ),
+        createHistoryEntry(
+          'history-high-2',
+          'ticket-high-2',
+          '2026-04-03T14:00:00.000Z',
+        ),
+        createHistoryEntry(
+          'history-medium',
+          'ticket-medium',
+          '2026-04-03T11:00:00.000Z',
+        ),
+      ]);
+    const useCase = createUseCase({
+      listPriorities: jest
+        .fn()
+        .mockResolvedValue([
+          new ReferentialPriority('priority-high', PriorityName.HIGH, 3, 4, 8),
+          new ReferentialPriority(
+            'priority-medium',
+            PriorityName.MEDIUM,
+            2,
+            8,
+            24,
+          ),
+        ]),
+      listTicketHistoryEntries,
+      searchTickets,
+    });
+
+    const result = await useCase.execute();
+
+    expect(result.ticketsResolutionTimeByPriority).toEqual([
+      {
+        count: 60,
+        id: 'priority-medium',
+        name: PriorityName.MEDIUM,
+      },
+      {
+        count: 180,
+        id: 'priority-high',
+        name: PriorityName.HIGH,
+      },
+    ]);
+    expect(listTicketHistoryEntries).toHaveBeenCalledWith({
+      ticketIds: ['ticket-high-1', 'ticket-high-2', 'ticket-medium'],
+    });
+  });
+
   it('rejects invalid date ranges', async () => {
     const useCase = createUseCase();
 
@@ -255,13 +332,30 @@ function createTicketSummary(
   );
 }
 
+function createHistoryEntry(
+  id: string,
+  ticketId: string,
+  createdAt: string,
+): TicketHistoryEntry {
+  return new TicketHistoryEntry(
+    id,
+    ticketId,
+    'agent-1',
+    TicketHistoryEventType.RESOLVED,
+    null,
+    createdAt,
+  );
+}
+
 function createUseCase({
   listCategories = jest.fn().mockResolvedValue([]),
+  listTicketHistoryEntries = jest.fn().mockResolvedValue([]),
   listPriorities = jest.fn().mockResolvedValue([]),
   listUsers = jest.fn().mockResolvedValue([]),
   searchTickets = jest.fn().mockResolvedValue([]),
 }: Partial<{
   listCategories: jest.Mock;
+  listTicketHistoryEntries: jest.Mock;
   listPriorities: jest.Mock;
   listUsers: jest.Mock;
   searchTickets: jest.Mock;
@@ -270,6 +364,9 @@ function createUseCase({
     {
       searchTickets,
     } as unknown as TicketReadRepository,
+    {
+      listTicketHistoryEntries,
+    } as unknown as TicketHistoryReadRepository,
     {
       listUsers,
     } as unknown as AdminUserReadRepository,

@@ -99,6 +99,7 @@ import {
   getGroupChatAuthorUserId,
   getGroupMemberColorClass,
   getInitialReportsView,
+  getChannelDisplayName,
   getOverviewOverdueTotal,
   getUserGroupIds,
   groupPersonalPlanningTasksByDate,
@@ -482,6 +483,26 @@ export function ReportsPage({ session }: ReportsPageProps) {
   const priorityWidgetItems = useMemo(
     () =>
       (breakdown?.ticketsByPriority ?? []).map((item) => ({
+        ...item,
+        name: translatePriority(item.name),
+      })),
+
+    [breakdown],
+  );
+
+  const sourceWidgetItems = useMemo(
+    () =>
+      (breakdown?.ticketsByChannel ?? []).map((item) => ({
+        ...item,
+        name: getChannelDisplayName(item, catalog),
+      })),
+
+    [breakdown, catalog],
+  );
+
+  const priorityResolutionTimeWidgetItems = useMemo(
+    () =>
+      (breakdown?.ticketsResolutionTimeByPriority ?? []).map((item) => ({
         ...item,
         name: translatePriority(item.name),
       })),
@@ -1384,6 +1405,30 @@ export function ReportsPage({ session }: ReportsPageProps) {
                   }}
                   colors={['#6254d9', '#c18b38', '#65a196', '#ce626a']}
                   items={priorityWidgetItems}
+                />
+              </DashboardPanel>
+
+              <DashboardPanel title="Sources des tickets">
+                <DashboardDonutWidget
+                  colorByKey={{
+                    Autre: '#9d93fa',
+                    Chat: '#6254d9',
+                    Email: '#c18b38',
+                    Portail: '#65a196',
+                    Telephone: '#ce626a',
+                    Téléphone: '#ce626a',
+                  }}
+                  colors={['#6254d9', '#c18b38', '#65a196', '#ce626a']}
+                  items={sourceWidgetItems}
+                />
+              </DashboardPanel>
+
+              <DashboardPanel title="Temps de resolution par priorite">
+                <DashboardBarWidget
+                  axisValueFormatter={formatResolutionDuration}
+                  items={priorityResolutionTimeWidgetItems}
+                  valueFormatter={formatResolutionDuration}
+                  valueLabel="temps moyen de resolution"
                 />
               </DashboardPanel>
 
@@ -2790,10 +2835,12 @@ function DashboardPanel({
   const descriptions: Record<string, string> = {
     'Evolution des tickets': 'Tendance sur la periode selectionnee',
     'Respect SLA/TTR': 'Performance des delais de resolution',
+    'Sources des tickets': 'Repartition par source de creation',
     'Tickets par agent': 'Repartition des tickets actifs par technicien',
     'Tickets par categorie': 'Volume par domaine de support',
     'Tickets par groupe': 'Repartition des tickets actifs par equipe',
     'Tickets par priorite': 'Repartition par niveau de priorite',
+    'Temps de resolution par priorite': 'Duree moyenne des tickets resolus',
   };
 
   return (
@@ -4228,11 +4275,45 @@ function getDonutItemColor(
   );
 }
 
+function formatResolutionDuration(minutes: number): string {
+  if (!Number.isFinite(minutes) || minutes <= 0) {
+    return '0 min';
+  }
+
+  if (minutes < 60) {
+    return `${Math.round(minutes)} min`;
+  }
+
+  const hours = minutes / 60;
+
+  if (hours < 24) {
+    return `${formatCompactDurationNumber(roundDurationValue(hours))} h`;
+  }
+
+  return `${formatCompactDurationNumber(roundDurationValue(hours / 24))} j`;
+}
+
+function roundDurationValue(value: number): number {
+  return value >= 10 ? Math.round(value) : Math.round(value * 10) / 10;
+}
+
+function formatCompactDurationNumber(value: number): string {
+  return Number.isInteger(value)
+    ? String(value)
+    : value.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+}
+
 function DashboardBarWidget({
+  axisValueFormatter = formatChartValue,
   items,
+  valueFormatter = formatNumber,
+  valueLabel = 'ticket(s)',
   variant = 'default',
 }: {
+  axisValueFormatter?: (value: number) => string;
   items: ReportingBreakdownItem[];
+  valueFormatter?: (value: number) => string;
+  valueLabel?: string;
   variant?: 'category' | 'default';
 }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -4267,7 +4348,7 @@ function DashboardBarWidget({
               } as CSSProperties
             }
           >
-            {formatChartValue(tick)}
+            {axisValueFormatter(tick)}
           </span>
         ))}
       </div>
@@ -4294,7 +4375,9 @@ function DashboardBarWidget({
               >
                 <div className="reports-vertical-bar-track">
                   <button
-                    aria-label={`${item.name}, ${formatNumber(item.count)} ticket(s)`}
+                    aria-label={`${item.name}, ${valueFormatter(
+                      item.count,
+                    )} ${valueLabel}`}
                     className="reports-vertical-bar-fill"
                     onBlur={() => setActiveIndex(null)}
                     onFocus={() => setActiveIndex(index)}
@@ -4306,7 +4389,7 @@ function DashboardBarWidget({
 
                   {activeIndex === index ? (
                     <span className="reports-bar-tooltip" role="status">
-                      <strong>{formatNumber(item.count)}</strong>
+                      <strong>{valueFormatter(item.count)}</strong>
                     </span>
                   ) : null}
                 </div>

@@ -331,6 +331,7 @@ export class TicketsController {
   ): Promise<CreatedIncident> {
     return this.createIncidentUseCase.execute({
       ...body,
+      creatorRole: user.role,
       createdByUserId: user.id,
     });
   }
@@ -343,6 +344,7 @@ export class TicketsController {
   ): Promise<CreatedRequest> {
     return this.createRequestUseCase.execute({
       ...body,
+      creatorRole: user.role,
       createdByUserId: user.id,
     });
   }

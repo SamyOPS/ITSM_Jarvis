@@ -1,9 +1,12 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { UserRole } from '../../../domain/auth/user-role';
 import { CreatedIncident } from '../../../domain/ticketing/created-incident';
 import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
+import { ReferentialChannelReadRepository } from '../../referentials/repositories/referential-channel-read.repository';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { TicketAuditService } from '../ticket-audit.service';
+import { resolveCreationChannelId } from '../creation-channel';
 import { resolveIncidentPriorityName } from '../incident-priority';
 import {
   CreateIncidentRecord,
@@ -15,6 +18,7 @@ export type CreateIncidentCommand = {
   categoryId: string;
   channelId?: string | null;
   ciId?: string | null;
+  creatorRole: UserRole;
   createdByUserId: string;
   description: string;
   impact: IncidentSeverity;
@@ -30,6 +34,8 @@ export class CreateIncidentUseCase {
   constructor(
     @Inject(TicketWriteRepository)
     private readonly ticketWriteRepository: TicketWriteRepository,
+    @Inject(ReferentialChannelReadRepository)
+    private readonly channelRepository: ReferentialChannelReadRepository,
     @Inject(ReferentialPriorityReadRepository)
     private readonly priorityRepository: ReferentialPriorityReadRepository,
     private readonly ticketAuditService: TicketAuditService,
@@ -73,10 +79,15 @@ export class CreateIncidentUseCase {
     }
 
     const slaTargets = calculateSlaTargets(resolvedPriority);
+    const channelId = await resolveCreationChannelId({
+      channelId: command.channelId,
+      channelRepository: this.channelRepository,
+      creatorRole: command.creatorRole,
+    });
 
     const record: CreateIncidentRecord = {
       categoryId,
-      channelId: normalizeOptionalId(command.channelId),
+      channelId,
       ciId: normalizeOptionalId(command.ciId),
       createdByUserId,
       description,

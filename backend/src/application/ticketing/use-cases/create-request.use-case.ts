@@ -1,9 +1,12 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { UserRole } from '../../../domain/auth/user-role';
 import { CreatedRequest } from '../../../domain/ticketing/created-request';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { RequestType } from '../../../domain/ticketing/request-type';
+import { ReferentialChannelReadRepository } from '../../referentials/repositories/referential-channel-read.repository';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { TicketAuditService } from '../ticket-audit.service';
+import { resolveCreationChannelId } from '../creation-channel';
 import {
   CreateRequestRecord,
   TicketWriteRepository,
@@ -14,6 +17,7 @@ export type CreateRequestCommand = {
   categoryId: string;
   channelId?: string | null;
   ciId?: string | null;
+  creatorRole: UserRole;
   createdByUserId: string;
   description: string;
   priorityId: string;
@@ -27,6 +31,8 @@ export class CreateRequestUseCase {
   constructor(
     @Inject(TicketWriteRepository)
     private readonly ticketWriteRepository: TicketWriteRepository,
+    @Inject(ReferentialChannelReadRepository)
+    private readonly channelRepository: ReferentialChannelReadRepository,
     @Inject(ReferentialPriorityReadRepository)
     private readonly priorityRepository: ReferentialPriorityReadRepository,
     private readonly ticketAuditService: TicketAuditService,
@@ -71,11 +77,16 @@ export class CreateRequestUseCase {
     }
 
     const slaTargets = calculateSlaTargets(resolvedPriority);
+    const channelId = await resolveCreationChannelId({
+      channelId: command.channelId,
+      channelRepository: this.channelRepository,
+      creatorRole: command.creatorRole,
+    });
 
     const record: CreateRequestRecord = {
       approvalStatus: null,
       categoryId,
-      channelId: normalizeOptionalId(command.channelId),
+      channelId,
       ciId: normalizeOptionalId(command.ciId),
       createdByUserId,
       description,
