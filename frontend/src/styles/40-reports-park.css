@@ -2314,6 +2314,68 @@
   font-weight: 650;
 }
 
+.reports-dashboard-activity-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  color: #6f788a;
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.reports-dashboard-activity-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.reports-dashboard-activity-toggle i {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #e9eef7;
+  box-shadow: inset 0 0 0 1px #dbe3ef;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.reports-dashboard-activity-toggle i::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #9bc8ff;
+  box-shadow: 0 1px 4px rgba(23, 51, 95, 0.16);
+  content: '';
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.reports-dashboard-activity-toggle input:checked + i {
+  background: #e4f1ff;
+  box-shadow: inset 0 0 0 1px #cfe2fb;
+}
+
+.reports-dashboard-activity-toggle input:checked + i::after {
+  background: #60a5fa;
+  transform: translateX(14px);
+}
+
+.reports-dashboard-activity-toggle input:focus-visible + i {
+  outline: 2px solid #8fbfff;
+  outline-offset: 2px;
+}
+
 .reports-chart-empty {
   display: grid;
   min-height: 260px;
