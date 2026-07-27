@@ -487,7 +487,7 @@ describe('AuthController', () => {
     expect(updateUser).not.toHaveBeenCalled();
   });
 
-  it('rejects regular admins updating another admin account', async () => {
+  it('lets regular admins update another admin account', async () => {
     const updateUser = jest.fn();
 
     controller = new AuthController(
@@ -531,24 +531,31 @@ describe('AuthController', () => {
       mockUserLicenseWriteUseCase(),
     );
 
-    await expect(
-      controller.updateAdminUser(
-        'admin-2',
-        {
-          accessToken: 'token',
-          email: 'admin@example.com',
-          id: 'admin-1',
-          role: UserRole.ADMIN,
-        },
-        {
-          email: 'second-admin@example.com',
-          firstName: 'Second',
-          lastName: 'Admin',
-          role: UserRole.AGENT,
-        },
-      ),
-    ).rejects.toThrow('Only super admins can update this account.');
-    expect(updateUser).not.toHaveBeenCalled();
+    await controller.updateAdminUser(
+      'admin-2',
+      {
+        accessToken: 'token',
+        email: 'admin@example.com',
+        id: 'admin-1',
+        role: UserRole.ADMIN,
+      },
+      {
+        email: 'second-admin@example.com',
+        firstName: 'Second',
+        lastName: 'Admin',
+        role: UserRole.AGENT,
+      },
+    );
+
+    expect(updateUser).toHaveBeenCalledWith({
+      email: 'second-admin@example.com',
+      firstName: 'Second',
+      groupId: undefined,
+      groupIds: undefined,
+      lastName: 'Admin',
+      role: UserRole.AGENT,
+      userId: 'admin-2',
+    });
   });
 
   it('rejects downgrading another super admin account', async () => {
