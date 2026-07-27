@@ -2773,18 +2773,17 @@
 .reports-vertical-bar-widget {
   --reports-bar-label-space: 52px;
   --reports-bar-plot-height: 240px;
-  --reports-bar-scroll-width: 680px;
   --reports-bar-total-height: calc(
     var(--reports-bar-plot-height) + var(--reports-bar-label-space)
   );
   display: grid;
+  min-width: 0;
   min-height: 310px;
   padding: 20px 20px 16px;
   align-items: start;
   grid-template-columns: 40px minmax(0, 1fr);
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: hidden;
-  scrollbar-width: thin;
 }
 
 .reports-vertical-bar-widget--category {
@@ -2818,7 +2817,7 @@
 
 .reports-vertical-bar-plot {
   position: relative;
-  min-width: calc(var(--reports-bar-scroll-width) - 40px);
+  min-width: 0;
   height: var(--reports-bar-total-height);
   overflow: visible;
 }
@@ -2863,7 +2862,7 @@
   z-index: 1;
   display: grid;
   box-sizing: border-box;
-  min-width: calc(var(--reports-bar-scroll-width) - 40px);
+  min-width: 0;
   height: var(--reports-bar-total-height);
   grid-template-columns: repeat(8, minmax(58px, 1fr));
   gap: clamp(6px, 1.4vw, 18px);
@@ -2993,4 +2992,18 @@
   .reports-vertical-bar-list {
     overflow: visible;
   }
+}
+
+.app-shell--reports,
+.app-shell--reports .workspace-main,
+.app-shell--reports .workspace-topbar,
+.app-shell--reports .app-main--workspace,
+.app-shell--reports .reports-page {
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.app-body--reports {
+  max-width: 100%;
+  overflow-x: clip;
 }
