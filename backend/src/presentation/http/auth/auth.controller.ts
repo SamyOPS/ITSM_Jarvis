@@ -415,10 +415,6 @@ export class AuthController {
       );
     }
 
-    if (targetUser.role === UserRole.ADMIN) {
-      throw new BadRequestException(`Only super admins can ${options.action}.`);
-    }
-
     if (
       options.nextRole === UserRole.SUPER_ADMIN ||
       (options.nextRole &&

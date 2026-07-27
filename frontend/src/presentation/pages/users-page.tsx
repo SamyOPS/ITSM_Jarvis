@@ -135,7 +135,7 @@ export function UsersPage({ session }: UsersPageProps) {
   const canManageSelectedUser =
     !selectedUser ||
     session.user.role === 'SUPER_ADMIN' ||
-    (selectedUser.role !== 'ADMIN' && selectedUser.role !== 'SUPER_ADMIN');
+    selectedUser.role !== 'SUPER_ADMIN';
   const userRoleOptions = useMemo(() => {
     if (selectedUser?.role === 'SUPER_ADMIN') {
       return ['SUPER_ADMIN'] satisfies UserRole[];
