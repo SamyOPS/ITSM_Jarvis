@@ -2800,10 +2800,13 @@
   position: relative;
   z-index: 1;
   display: grid;
+  box-sizing: border-box;
   min-width: calc(var(--reports-bar-scroll-width) - 40px);
   height: var(--reports-bar-total-height);
   grid-template-columns: repeat(8, minmax(58px, 1fr));
-  gap: clamp(10px, 2.5vw, 28px);
+  gap: clamp(6px, 1.4vw, 18px);
+  padding-right: clamp(8px, 1vw, 16px);
+  padding-left: clamp(8px, 1.4vw, 18px);
 }
 
 .reports-vertical-bar-item {

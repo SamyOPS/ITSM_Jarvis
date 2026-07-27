@@ -1409,18 +1409,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
               </DashboardPanel>
 
               <DashboardPanel title="Sources des tickets">
-                <DashboardDonutWidget
-                  colorByKey={{
-                    Autre: '#9d93fa',
-                    Chat: '#6254d9',
-                    Email: '#c18b38',
-                    Portail: '#65a196',
-                    Telephone: '#ce626a',
-                    Téléphone: '#ce626a',
-                  }}
-                  colors={['#6254d9', '#c18b38', '#65a196', '#ce626a']}
-                  items={sourceWidgetItems}
-                />
+                <DashboardBarWidget items={sourceWidgetItems} />
               </DashboardPanel>
 
               <DashboardPanel title="Temps de resolution par priorite">
