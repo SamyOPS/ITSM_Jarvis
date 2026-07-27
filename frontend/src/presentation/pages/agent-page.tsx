@@ -18,7 +18,11 @@ import {
 } from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
-import { isAdminRole, isSupportRole } from '../../domain/auth/user-role';
+import {
+  isAdminRole,
+  isSupportManagerRole,
+  isSupportRole,
+} from '../../domain/auth/user-role';
 import { AppPagination } from '../components/app-pagination';
 
 import {
@@ -537,7 +541,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const showCreationChannelField = canManageTicketActions(session.user.role);
 
   const canDeleteTickets = isAdminRole(session.user.role);
-  const canEditTicket = isAdminRole(session.user.role);
+  const canEditTicket = isSupportManagerRole(session.user.role);
 
   const isIncidentCreatePage = section === 'INCIDENT_CREATE';
   const isArchiveListPage = section === 'ARCHIVES';

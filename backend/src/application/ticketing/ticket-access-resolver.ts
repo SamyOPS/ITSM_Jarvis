@@ -1,6 +1,10 @@
 import { NotFoundException } from '@nestjs/common';
 import { UserAssignmentProfileRepository } from '../auth/repositories/user-assignment-profile.repository';
-import { UserRole } from '../../domain/auth/user-role';
+import {
+  isSupportManagerRole,
+  isSupportRole,
+  UserRole,
+} from '../../domain/auth/user-role';
 import { TicketDetail } from '../../domain/ticketing/ticket-detail';
 import { assertTicketAttachmentAccess } from './ticket-attachment-access';
 import { assertTicketCommentAccess } from './ticket-comment-access';
@@ -19,7 +23,7 @@ export async function resolveAccessibleTicket(params: {
 }): Promise<TicketDetail> {
   const [ticket, userProfile] = await Promise.all([
     params.ticketReadRepository.getTicketById(params.ticketId),
-    params.userRole === UserRole.AGENT
+    !isSupportManagerRole(params.userRole) && isSupportRole(params.userRole)
       ? (params.userAssignmentProfileRepository?.getById(params.userId) ??
         Promise.resolve(null))
       : Promise.resolve(null),

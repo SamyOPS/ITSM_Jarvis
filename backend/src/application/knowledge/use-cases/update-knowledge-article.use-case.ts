@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
+import { isSupportManagerRole, UserRole } from '../../../domain/auth/user-role';
 import { KnowledgeArticle } from '../../../domain/knowledge/knowledge-article';
 import {
   type KnowledgeArticleInput,
@@ -27,7 +27,7 @@ export class UpdateKnowledgeArticleUseCase {
       throw new NotFoundException('Knowledge article not found.');
     }
 
-    if (!isAdminRole(userRole)) {
+    if (!isSupportManagerRole(userRole)) {
       if (
         existing.createdByUserId !== currentUserId ||
         existing.status === 'PUBLISHED'
@@ -42,7 +42,7 @@ export class UpdateKnowledgeArticleUseCase {
     return this.repository.updateArticle(id, currentUserId, {
       category,
       content,
-      status: isAdminRole(userRole) ? status : 'DRAFT',
+      status: isSupportManagerRole(userRole) ? status : 'DRAFT',
       title,
     });
   }

@@ -223,6 +223,10 @@ function resolveUserRole(role: string): UserRole {
     return UserRole.ADMIN;
   }
 
+  if (role === 'MANAGER') {
+    return UserRole.MANAGER;
+  }
+
   if (role === 'AGENT') {
     return UserRole.AGENT;
   }

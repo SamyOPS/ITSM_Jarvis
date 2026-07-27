@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
+import {
+  isSupportManagerRole,
+  isSupportRole,
+  UserRole,
+} from '../../../domain/auth/user-role';
 import { KnowledgeArticle } from '../../../domain/knowledge/knowledge-article';
 import { KnowledgeArticleRepository } from '../repositories/knowledge-article.repository';
 
@@ -11,7 +15,7 @@ export class ListKnowledgeArticlesUseCase {
     userRole: UserRole,
     currentUserId: string,
   ): Promise<KnowledgeArticle[]> {
-    if (isAdminRole(userRole)) {
+    if (isSupportManagerRole(userRole)) {
       return this.repository.listArticles(currentUserId);
     }
 
@@ -20,8 +24,7 @@ export class ListKnowledgeArticlesUseCase {
     return articles.filter(
       (article) =>
         article.status === 'PUBLISHED' ||
-        (userRole === UserRole.AGENT &&
-          article.createdByUserId === currentUserId),
+        (isSupportRole(userRole) && article.createdByUserId === currentUserId),
     );
   }
 }

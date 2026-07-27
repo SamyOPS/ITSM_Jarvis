@@ -126,6 +126,7 @@ export function UsersPage({ session }: UsersPageProps) {
 
   const activeUsers = users.filter((user) => user.isActive).length;
   const agentUsers = users.filter((user) => user.role === 'AGENT').length;
+  const managerUsers = users.filter((user) => user.role === 'MANAGER').length;
   const adminUsers = users.filter((user) => user.role === 'ADMIN').length;
   const selectedUser = selectedUserId
     ? (users.find((user) => user.id === selectedUserId) ?? null)
@@ -1019,6 +1020,10 @@ export function UsersPage({ session }: UsersPageProps) {
             <article>
               <span>Agents</span>
               <strong>{agentUsers}</strong>
+            </article>
+            <article>
+              <span>Managers</span>
+              <strong>{managerUsers}</strong>
             </article>
             <article>
               <span>Admins</span>

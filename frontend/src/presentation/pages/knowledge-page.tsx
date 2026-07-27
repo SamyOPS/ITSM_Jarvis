@@ -26,7 +26,11 @@ import type {
   KnowledgeArticleStatus,
   UpdateKnowledgeArticlePayload,
 } from '../../domain/knowledge/knowledge-article';
-import { isAdminRole } from '../../domain/auth/user-role';
+import {
+  isAdminRole,
+  isSupportManagerRole,
+  isSupportRole,
+} from '../../domain/auth/user-role';
 import type { KnowledgeArticleAttachmentSnapshot } from '../../domain/knowledge/knowledge-article-attachment';
 import { AppPagination } from '../components/app-pagination';
 import {
@@ -116,20 +120,21 @@ export function KnowledgePage({
   const [attachmentInputKey, setAttachmentInputKey] = useState(0);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const isAdmin = isAdminRole(session.user.role);
-  const isAgent = session.user.role === 'AGENT';
-  const canCreateArticle = isAdmin || isAgent;
+  const canValidateArticles = isSupportManagerRole(session.user.role);
+  const isSupport = isSupportRole(session.user.role);
+  const canCreateArticle = isSupport;
   const isArticleFormPage = mode === 'CREATE' || mode === 'EDIT';
   const isArticleEditPage = mode === 'EDIT';
   const canEditSelectedArticle =
     selectedArticle !== null &&
-    (isAdmin ||
-      (isAgent &&
+    (canValidateArticles ||
+      (isSupport &&
         selectedArticle.createdByUserId === session.user.id &&
         selectedArticle.status !== 'PUBLISHED'));
   const canDeleteSelectedArticle =
     selectedArticle !== null &&
     (isAdmin ||
-      (isAgent &&
+      (isSupport &&
         selectedArticle.createdByUserId === session.user.id &&
         selectedArticle.status !== 'PUBLISHED'));
   const articleListBackPath = withPageQuery(
@@ -252,7 +257,7 @@ export function KnowledgePage({
 
     setForm({
       ...EMPTY_FORM,
-      status: isAdmin ? 'PUBLISHED' : 'DRAFT',
+      status: canValidateArticles ? 'PUBLISHED' : 'DRAFT',
     });
     setContentTab('edit');
     setErrorMessage(null);
@@ -260,7 +265,7 @@ export function KnowledgePage({
     setIsAttachmentDragOver(false);
     setAttachmentErrorMessage(null);
     setAttachmentSuccessMessage(null);
-  }, [isAdmin, mode]);
+  }, [canValidateArticles, mode]);
 
   useEffect(() => {
     if (mode !== 'EDIT' || !selectedArticle) {
@@ -541,7 +546,7 @@ export function KnowledgePage({
       const payload: CreateKnowledgeArticlePayload = {
         category: form.category,
         content: form.content,
-        status: isAdmin ? form.status : 'DRAFT',
+        status: canValidateArticles ? form.status : 'DRAFT',
         title: form.title,
       };
 
@@ -603,7 +608,7 @@ export function KnowledgePage({
       const payload: UpdateKnowledgeArticlePayload = {
         category: form.category,
         content: form.content,
-        status: isAdmin ? form.status : 'DRAFT',
+        status: canValidateArticles ? form.status : 'DRAFT',
         title: form.title,
       };
 
@@ -865,7 +870,7 @@ export function KnowledgePage({
           <label className="field">
             <span>Statut</span>
             <select
-              disabled={!isAdmin}
+              disabled={!canValidateArticles}
               onChange={(event) =>
                 setForm((currentForm) => ({
                   ...currentForm,
@@ -880,7 +885,7 @@ export function KnowledgePage({
             </select>
           </label>
 
-          {!isAdmin ? (
+          {!canValidateArticles ? (
             <p className="ticket-form-helper">
               Votre article sera envoye en validation avant publication.
             </p>
@@ -1071,7 +1076,7 @@ export function KnowledgePage({
                   ? 'Sauvegarde...'
                   : 'Création...'
                 : isArticleEditPage
-                  ? isAdmin
+                  ? canValidateArticles
                     ? 'Sauvegarder'
                     : 'Envoyer en attente'
                   : "Créer l'article"}
@@ -1227,7 +1232,7 @@ export function KnowledgePage({
                       </div>
 
                       <div className="kb-attachment-item-actions">
-                        {isAdmin ? (
+                        {canValidateArticles ? (
                           <button
                             aria-label={`Supprimer ${attachment.fileName}`}
                             className="tdp-attachment-remove-btn"
@@ -1273,7 +1278,7 @@ export function KnowledgePage({
                 type="button"
               >
                 <Plus size={16} />
-                {isAdmin ? 'Nouvel article' : 'Proposer un article'}
+                {canValidateArticles ? 'Nouvel article' : 'Proposer un article'}
               </button>
             ) : null}
 

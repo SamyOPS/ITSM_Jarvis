@@ -38,7 +38,7 @@ type KnowledgeArticleBodyDto = {
 
 @Controller('knowledge/articles')
 @UseGuards(BearerAuthGuard, RolesGuard)
-@Roles(UserRole.DEMANDEUR, UserRole.AGENT, UserRole.ADMIN)
+@Roles(UserRole.DEMANDEUR, UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
 export class KnowledgeController {
   constructor(
     private readonly addKnowledgeArticleAttachmentUseCase: AddKnowledgeArticleAttachmentUseCase,
@@ -92,7 +92,7 @@ export class KnowledgeController {
   }
 
   @Post()
-  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
   createArticle(
     @Body() body: KnowledgeArticleBodyDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -101,7 +101,7 @@ export class KnowledgeController {
   }
 
   @Post(':id/attachments')
-  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
   addAttachment(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -120,7 +120,7 @@ export class KnowledgeController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
   updateArticle(
     @Param('id') id: string,
     @Body() body: KnowledgeArticleBodyDto,
@@ -136,7 +136,7 @@ export class KnowledgeController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
   deleteArticle(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,

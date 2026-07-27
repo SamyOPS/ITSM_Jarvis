@@ -8,6 +8,8 @@ export function translateUserRole(role: UserRole | string): string {
       return 'Demandeur';
     case 'AGENT':
       return 'Agent';
+    case 'MANAGER':
+      return 'Manager';
     case 'ADMIN':
       return 'Administrateur';
     case 'SUPER_ADMIN':

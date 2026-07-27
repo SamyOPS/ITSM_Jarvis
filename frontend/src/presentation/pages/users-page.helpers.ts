@@ -15,6 +15,7 @@ import type {
 export const USER_ROLES: UserRole[] = [
   'DEMANDEUR',
   'AGENT',
+  'MANAGER',
   'ADMIN',
   'SUPER_ADMIN',
 ];

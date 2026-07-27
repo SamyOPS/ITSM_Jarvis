@@ -1,6 +1,11 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { UserAssignmentProfile } from '../../../domain/auth/user-assignment-profile';
-import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
+import {
+  isAdminRole,
+  isSupportManagerRole,
+  isSupportRole,
+  UserRole,
+} from '../../../domain/auth/user-role';
 import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { TicketStatus } from '../../../domain/ticketing/ticket-status';
 import { TicketSummary } from '../../../domain/ticketing/ticket-summary';
@@ -39,14 +44,16 @@ export class SearchTicketsUseCase {
     };
     const requesterUserId = normalizeRequiredId(query.requesterUserId);
 
-    if (isAdminRole(query.requesterUserRole)) {
+    if (isSupportManagerRole(query.requesterUserRole)) {
       const tickets =
         await this.ticketReadRepository.searchTickets(normalizedFilters);
 
-      return query.includeArchived ? tickets : withoutArchivedTickets(tickets);
+      return isAdminRole(query.requesterUserRole) && query.includeArchived
+        ? tickets
+        : withoutArchivedTickets(tickets);
     }
 
-    if (query.requesterUserRole === UserRole.AGENT) {
+    if (isSupportRole(query.requesterUserRole)) {
       const [tickets, profile] = await Promise.all([
         this.ticketReadRepository.searchTickets(normalizedFilters),
         this.userAssignmentProfileRepository.getById(requesterUserId),

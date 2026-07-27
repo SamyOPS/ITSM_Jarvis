@@ -3,7 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
+import {
+  isSupportManagerRole,
+  isSupportRole,
+  UserRole,
+} from '../../../domain/auth/user-role';
 import { KnowledgeArticle } from '../../../domain/knowledge/knowledge-article';
 import { KnowledgeArticleRepository } from '../repositories/knowledge-article.repository';
 
@@ -24,8 +28,8 @@ export class GetKnowledgeArticleUseCase {
 
     if (
       article.status !== 'PUBLISHED' &&
-      !isAdminRole(userRole) &&
-      (userRole !== UserRole.AGENT || article.createdByUserId !== currentUserId)
+      !isSupportManagerRole(userRole) &&
+      (!isSupportRole(userRole) || article.createdByUserId !== currentUserId)
     ) {
       throw new ForbiddenException('Knowledge article access denied.');
     }
