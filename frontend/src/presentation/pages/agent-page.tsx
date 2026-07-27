@@ -223,7 +223,7 @@ const INITIAL_REQUEST_DRAFT: RequestDraftState = {
   title: '',
 };
 
-const REQUEST_DEFAULT_CATEGORY_NAME = 'Demande';
+const REQUEST_TECHNICAL_CATEGORY_NAME = 'Demande';
 
 const INITIAL_SEARCH_FILTERS: TicketSearchFiltersState = {
   categoryId: '',
@@ -1113,22 +1113,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     [catalog.categories],
   );
 
-  const requestDefaultCategory = useMemo(
-    () =>
-      catalog.categories.find(
-        (category) =>
-          normalizeSearchText(category.name) ===
-          normalizeSearchText(REQUEST_DEFAULT_CATEGORY_NAME),
-      ),
-    [catalog.categories],
-  );
-
   const incidentCategoryOptions = useMemo(
     () =>
       catalog.categories.filter(
         (category) =>
           normalizeSearchText(category.name) !==
-          normalizeSearchText(REQUEST_DEFAULT_CATEGORY_NAME),
+          normalizeSearchText(REQUEST_TECHNICAL_CATEGORY_NAME),
       ),
     [catalog.categories],
   );
@@ -2222,14 +2212,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setIsSubmitting(true);
 
     try {
-      const requestCategoryId =
-        requestDraft.categoryId.trim() || requestDefaultCategory?.id || '';
-
-      if (!requestCategoryId) {
-        throw new Error(
-          "La categorie technique 'Demande' est manquante dans Supabase.",
-        );
-      }
+      const requestCategoryId = requestDraft.categoryId.trim();
 
       const requestChannelId = showCreationChannelField
         ? normalizeOptionalId(requestDraft.channelId)
@@ -2506,11 +2489,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           ? normalizeOptionalText(ticketEditDraft.workaround)
           : undefined;
 
-        if (
-          !nextCategoryId ||
-          (nextSelectedTicketDetail.ticket.type === 'REQUEST' &&
-            nextCategoryId === requestDefaultCategory?.id)
-        ) {
+        if (!nextCategoryId) {
           setDetailActionErrorMessage('Veuillez choisir une categorie.');
           return;
         }
@@ -3809,6 +3788,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             </option>
                           ))}
                         </select>
+                        {requestValidationErrors.categoryId ? (
+                          <small className="field-error">
+                            {requestValidationErrors.categoryId}
+                          </small>
+                        ) : null}
                       </label>
                     </>
                   )}
