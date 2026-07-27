@@ -1,5 +1,5 @@
 import {
-  isAdminRole,
+  isSupportManagerRole,
   isSupportRole,
   UserRole,
 } from '../../domain/auth/user-role';
@@ -109,7 +109,7 @@ export function assertAllowedTicketStatusTransition(
 function getAllowedStatusTransitionsForRole(
   userRole: UserRole | null | undefined,
 ): Record<TicketStatus, readonly TicketStatus[]> {
-  if (userRole && isAdminRole(userRole)) {
+  if (userRole && isSupportManagerRole(userRole)) {
     return ADMIN_STATUS_TRANSITIONS;
   }
 
@@ -125,7 +125,7 @@ export function assertTicketCanBeModifiedByRole(
   archivedAt: string | null,
   userRole: UserRole | null | undefined,
 ): void {
-  if (userRole && isAdminRole(userRole)) {
+  if (userRole && isSupportManagerRole(userRole)) {
     return;
   }
 

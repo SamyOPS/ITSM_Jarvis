@@ -6,16 +6,40 @@ const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
   '/admin/groups': ['ADMIN', 'SUPER_ADMIN'],
   '/admin/license': ['SUPER_ADMIN'],
   '/admin/users': ['ADMIN', 'SUPER_ADMIN'],
-  '/agent': ['DEMANDEUR', 'AGENT', 'ADMIN', 'SUPER_ADMIN'],
+  '/agent': ['DEMANDEUR', 'AGENT', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'],
   '/agent/archives': ['ADMIN', 'SUPER_ADMIN'],
-  '/agent/incidents/new': ['DEMANDEUR', 'AGENT', 'ADMIN', 'SUPER_ADMIN'],
-  '/agent/my-tickets': ['DEMANDEUR', 'AGENT', 'ADMIN', 'SUPER_ADMIN'],
-  '/agent/requests/new': ['DEMANDEUR', 'AGENT', 'ADMIN', 'SUPER_ADMIN'],
-  '/agent/tickets': ['DEMANDEUR', 'AGENT', 'ADMIN', 'SUPER_ADMIN'],
-  '/knowledge/articles': ['DEMANDEUR', 'AGENT', 'ADMIN', 'SUPER_ADMIN'],
+  '/agent/incidents/new': [
+    'DEMANDEUR',
+    'AGENT',
+    'MANAGER',
+    'ADMIN',
+    'SUPER_ADMIN',
+  ],
+  '/agent/my-tickets': [
+    'DEMANDEUR',
+    'AGENT',
+    'MANAGER',
+    'ADMIN',
+    'SUPER_ADMIN',
+  ],
+  '/agent/requests/new': [
+    'DEMANDEUR',
+    'AGENT',
+    'MANAGER',
+    'ADMIN',
+    'SUPER_ADMIN',
+  ],
+  '/agent/tickets': ['DEMANDEUR', 'AGENT', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'],
+  '/knowledge/articles': [
+    'DEMANDEUR',
+    'AGENT',
+    'MANAGER',
+    'ADMIN',
+    'SUPER_ADMIN',
+  ],
   '/parc/cis/new': ['ADMIN', 'SUPER_ADMIN'],
   '/parc/cis': ['ADMIN', 'SUPER_ADMIN'],
-  '/reports': ['AGENT', 'ADMIN', 'SUPER_ADMIN'],
+  '/reports': ['AGENT', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'],
 };
 
 export function canAccessRoute(
@@ -38,6 +62,7 @@ export function canAccessRoute(
 export function getHomeRoute(session: AuthSessionSnapshot | null): RoutePath {
   if (
     session?.user.role === 'AGENT' ||
+    session?.user.role === 'MANAGER' ||
     session?.user.role === 'ADMIN' ||
     session?.user.role === 'SUPER_ADMIN'
   ) {

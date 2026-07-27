@@ -3,7 +3,11 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { isAdminRole, UserRole } from '../../domain/auth/user-role';
+import {
+  isSupportManagerRole,
+  isSupportRole,
+  UserRole,
+} from '../../domain/auth/user-role';
 import {
   PlanningTask,
   type PlanningTaskStatus,
@@ -66,16 +70,16 @@ export function assertPlanningTaskWriteAccess(
   actorGroupIds: string[] = [],
   technicianGroupIds: string[] = [],
 ): void {
-  if (isAdminRole(userRole)) {
+  if (isSupportManagerRole(userRole)) {
     return;
   }
 
-  if (userRole === UserRole.AGENT && technicianId === userId) {
+  if (isSupportRole(userRole) && technicianId === userId) {
     return;
   }
 
   if (
-    userRole === UserRole.AGENT &&
+    isSupportRole(userRole) &&
     groupId &&
     actorGroupIds.includes(groupId) &&
     technicianGroupIds.includes(groupId)

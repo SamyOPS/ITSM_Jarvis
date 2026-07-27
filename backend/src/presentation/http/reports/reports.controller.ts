@@ -41,7 +41,7 @@ export class ReportsController {
 
   @Get('agent-performance')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
   getAgentPerformance(
     @Query() query: TicketReportingOverviewQueryDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -53,7 +53,7 @@ export class ReportsController {
 
   @Get('breakdown')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
   getBreakdown(
     @Query() query: TicketReportingOverviewQueryDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -65,7 +65,7 @@ export class ReportsController {
 
   @Get('overview')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
   getOverview(
     @Query() query: TicketReportingOverviewQueryDto,
     @CurrentUser() user: AuthenticatedUser,

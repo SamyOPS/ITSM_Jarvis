@@ -15,7 +15,7 @@ type GroupChatMessageBodyDto = {
 
 @Controller('groups/:groupId/chat/messages')
 @UseGuards(BearerAuthGuard, RolesGuard)
-@Roles(UserRole.AGENT, UserRole.ADMIN)
+@Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
 export class GroupChatController {
   constructor(
     private readonly createGroupChatMessageUseCase: CreateGroupChatMessageUseCase,

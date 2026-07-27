@@ -184,7 +184,7 @@ export class AuthController {
 
   @Get('agent-area')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_AGENT_AREA)
   getAgentArea(@CurrentUser() user: AuthenticatedUser) {
     return {

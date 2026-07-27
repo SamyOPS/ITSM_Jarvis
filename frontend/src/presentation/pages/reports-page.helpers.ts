@@ -428,6 +428,10 @@ export function formatGroupMemberRole(role: AdminUserSummary['role']): string {
     return 'Agent';
   }
 
+  if (role === 'MANAGER') {
+    return 'Manager';
+  }
+
   return 'Demandeur';
 }
 

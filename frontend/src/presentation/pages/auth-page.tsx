@@ -2,7 +2,11 @@
 import type { ProtectedApiResult } from '../../domain/auth/protected-api-result';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { AuthSetupSnapshot } from '../../domain/auth/auth-setup';
-import { DEFAULT_USER_ROLES, isAdminRole } from '../../domain/auth/user-role';
+import {
+  DEFAULT_USER_ROLES,
+  isAdminRole,
+  isSupportRole,
+} from '../../domain/auth/user-role';
 import {
   fetchAuthSetup,
   fetchProtectedAdminArea,
@@ -192,7 +196,7 @@ export function AuthPage({ onLogout, session, sessionState }: AuthPageProps) {
               <dd>
                 {session && isAdminRole(session.user.role)
                   ? 'Zones agent et administration visibles'
-                  : session?.user.role === 'AGENT'
+                  : session && isSupportRole(session.user.role)
                     ? 'Zone agent visible'
                     : session
                       ? 'Zones utilisateur authentifié visibles'

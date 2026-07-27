@@ -2,7 +2,7 @@ import { createElement } from 'react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import {
-  isAdminRole,
+  isSupportManagerRole,
   isSupportRole,
   type UserRole,
 } from '../../domain/auth/user-role';
@@ -194,11 +194,11 @@ export function canChangeTicketStatus(
   currentUserId: string,
   ticketDetail: TicketDetailSnapshot,
 ): boolean {
-  if (isAdminRole(role)) {
+  if (isSupportManagerRole(role)) {
     return true;
   }
 
-  if (role === 'AGENT') {
+  if (isSupportRole(role)) {
     return ticketDetail.ticket.status !== 'CLOSED';
   }
 
@@ -214,7 +214,7 @@ export function getStatusOptionsForRole(
   role: UserRole,
   ticketDetail: TicketDetailSnapshot,
 ): Array<{ label: string; value: TicketStatus }> {
-  if (isAdminRole(role)) {
+  if (isSupportManagerRole(role)) {
     return [
       { label: 'Nouveau', value: 'OPEN' },
       { label: 'En cours', value: 'IN_PROGRESS' },

@@ -159,6 +159,10 @@ export class SupabaseTokenValidatorService {
       return UserRole.ADMIN;
     }
 
+    if (role === UserRole.MANAGER) {
+      return UserRole.MANAGER;
+    }
+
     if (role === UserRole.AGENT) {
       return UserRole.AGENT;
     }

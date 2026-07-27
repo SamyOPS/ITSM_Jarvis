@@ -46,6 +46,16 @@ describe('access-control', () => {
     expect(canAccessRoute('/parc/cis', session)).toBe(false);
   });
 
+  it('lets manager access support routes but not admin', () => {
+    const session = buildSession('MANAGER');
+
+    expect(canAccessRoute('/reports', session)).toBe(true);
+    expect(canAccessRoute('/agent/tickets', session)).toBe(true);
+    expect(canAccessRoute('/knowledge/articles', session)).toBe(true);
+    expect(canAccessRoute('/parc/cis', session)).toBe(false);
+    expect(canAccessRoute('/admin/users', session)).toBe(false);
+  });
+
   it('lets admin access reports and admin routes', () => {
     const session = buildSession('ADMIN');
 
@@ -65,6 +75,7 @@ describe('access-control', () => {
   it('returns the expected home route for each role', () => {
     expect(getHomeRoute(buildSession('DEMANDEUR'))).toBe('/');
     expect(getHomeRoute(buildSession('AGENT'))).toBe('/reports');
+    expect(getHomeRoute(buildSession('MANAGER'))).toBe('/reports');
     expect(getHomeRoute(buildSession('ADMIN'))).toBe('/reports');
     expect(getHomeRoute(buildSession('SUPER_ADMIN'))).toBe('/reports');
     expect(getHomeRoute(null)).toBe('/');

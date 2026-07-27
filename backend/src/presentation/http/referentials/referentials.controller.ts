@@ -8,7 +8,7 @@ import { RolesGuard } from '../auth/roles.guard';
 
 @Controller('referentials')
 @UseGuards(BearerAuthGuard, RolesGuard)
-@Roles(UserRole.DEMANDEUR, UserRole.AGENT, UserRole.ADMIN)
+@Roles(UserRole.DEMANDEUR, UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
 export class ReferentialsController {
   constructor(
     private readonly getReferentialCatalogUseCase: GetReferentialCatalogUseCase,

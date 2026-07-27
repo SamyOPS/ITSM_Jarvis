@@ -33,7 +33,7 @@ type PlanningTaskBodyDto = {
 
 @Controller('planning/tasks')
 @UseGuards(BearerAuthGuard, RolesGuard)
-@Roles(UserRole.AGENT, UserRole.ADMIN)
+@Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
 export class PlanningController {
   constructor(
     private readonly createPlanningTaskUseCase: CreatePlanningTaskUseCase,

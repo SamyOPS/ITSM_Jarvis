@@ -159,7 +159,7 @@ export class TicketsController {
 
   @Patch(':id')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MANAGER, UserRole.ADMIN)
   updateTicket(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -276,7 +276,7 @@ export class TicketsController {
 
   @Patch(':id/assign')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
   assignTicket(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -293,7 +293,7 @@ export class TicketsController {
 
   @Patch(':id/status')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.AGENT, UserRole.ADMIN, UserRole.DEMANDEUR)
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN, UserRole.DEMANDEUR)
   changeStatus(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -309,7 +309,7 @@ export class TicketsController {
 
   @Patch(':id/priority')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.AGENT, UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
   changePriority(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
