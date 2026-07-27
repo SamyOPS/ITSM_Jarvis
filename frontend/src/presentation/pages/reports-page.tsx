@@ -164,6 +164,25 @@ const GROUP_TICKET_LIMIT = 8;
 
 const TIMELINE_TOOLTIP_WIDTH = 190;
 
+const PRIORITY_RESOLUTION_ROWS = [
+  {
+    color: '#65a196',
+    label: 'Basse',
+  },
+  {
+    color: '#6254d9',
+    label: 'Moyenne',
+  },
+  {
+    color: '#c18b38',
+    label: 'Haute',
+  },
+  {
+    color: '#ce626a',
+    label: 'Critique',
+  },
+] as const;
+
 const ASSIGNED_TO_ME_COLUMNS: PersonalTicketColumn[] = [
   'ID',
   'TITLE',
@@ -508,6 +527,22 @@ export function ReportsPage({ session }: ReportsPageProps) {
       })),
 
     [breakdown],
+  );
+
+  const priorityResolutionListItems = useMemo(
+    () =>
+      PRIORITY_RESOLUTION_ROWS.map((priority) => {
+        const item = priorityResolutionTimeWidgetItems.find(
+          (candidate) => candidate.name === priority.label,
+        );
+
+        return {
+          ...priority,
+          count: item?.count ?? 0,
+        };
+      }),
+
+    [priorityResolutionTimeWidgetItems],
   );
 
   const overviewTotals = overview?.totals ?? EMPTY_OVERVIEW_TOTALS;
@@ -1413,11 +1448,8 @@ export function ReportsPage({ session }: ReportsPageProps) {
               </DashboardPanel>
 
               <DashboardPanel title="Temps de resolution par priorite">
-                <DashboardBarWidget
-                  axisValueFormatter={formatResolutionDuration}
-                  items={priorityResolutionTimeWidgetItems}
-                  valueFormatter={formatResolutionDuration}
-                  valueLabel="temps moyen de resolution"
+                <DashboardResolutionListWidget
+                  items={priorityResolutionListItems}
                 />
               </DashboardPanel>
 
@@ -4279,7 +4311,10 @@ function formatResolutionDuration(minutes: number): string {
     return `${formatCompactDurationNumber(roundDurationValue(hours))} h`;
   }
 
-  return `${formatCompactDurationNumber(roundDurationValue(hours / 24))} j`;
+  const days = Math.floor(hours / 24);
+  const remainingHours = Math.round(hours % 24);
+
+  return remainingHours > 0 ? `${days} j ${remainingHours} h` : `${days} j`;
 }
 
 function roundDurationValue(value: number): number {
@@ -4290,6 +4325,35 @@ function formatCompactDurationNumber(value: number): string {
   return Number.isInteger(value)
     ? String(value)
     : value.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+}
+
+function DashboardResolutionListWidget({
+  items,
+}: {
+  items: Array<{
+    color: string;
+    count: number;
+    label: string;
+  }>;
+}) {
+  return (
+    <div className="reports-resolution-list-widget">
+      {items.map((item) => (
+        <div className="reports-resolution-list-row" key={item.label}>
+          <span className="reports-resolution-list-label">
+            <i
+              aria-hidden="true"
+              style={{ background: item.color } as CSSProperties}
+            />
+
+            {item.label}
+          </span>
+
+          <strong>{formatResolutionDuration(item.count)}</strong>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function DashboardBarWidget({
