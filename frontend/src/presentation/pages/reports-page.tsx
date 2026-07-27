@@ -1312,7 +1312,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 <DashboardTimelineChart items={timelineItems} />
               </DashboardPanel>
 
-              <DashboardPanel title="Tickets par categorie">
+              <DashboardPanel title="Top 8 categories">
                 <DashboardBarWidget
                   items={categoryWidgetItems}
                   variant="category"
@@ -1342,11 +1342,11 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 />
               </DashboardPanel>
 
-              <DashboardPanel title="Charge par groupe">
+              <DashboardPanel title="Top 8 groupes">
                 <DashboardBarWidget items={groupWidgetItems} />
               </DashboardPanel>
 
-              <DashboardPanel title="Charge par agent">
+              <DashboardPanel title="Top 8 agents">
                 <DashboardBarWidget items={agentWidgetItems} />
               </DashboardPanel>
             </div>
@@ -2743,11 +2743,11 @@ function DashboardPanel({
   title: string;
 }) {
   const descriptions: Record<string, string> = {
-    'Charge par agent': 'Repartition des tickets actifs par technicien',
-    'Charge par groupe': 'Repartition des tickets actifs par equipe',
+    'Top 8 agents': 'Repartition des tickets actifs par technicien',
+    'Top 8 categories': 'Volume par domaine de support',
+    'Top 8 groupes': 'Repartition des tickets actifs par equipe',
     'Evolution des tickets': 'Tendance sur la periode selectionnee',
     'Respect SLA/TTR': 'Performance des delais de resolution',
-    'Tickets par categorie': 'Volume par domaine de support',
     'Tickets par priorite': 'Repartition par niveau de priorite',
   };
 
@@ -3970,7 +3970,7 @@ function DashboardDonutWidget({
     return <p className="reports-chart-empty">Aucune donnee.</p>;
   }
 
-  const topItems = items.slice(0, 5);
+  const topItems = items.slice(0, 8);
 
   const total = topItems.reduce((sum, item) => sum + item.count, 0);
   const activeItem = activeIndex === null ? null : topItems[activeIndex];
@@ -4139,7 +4139,7 @@ function DashboardBarWidget({
     return <p className="reports-chart-empty">Aucune donnee.</p>;
   }
 
-  const topItems = items.slice(0, 5);
+  const topItems = items.slice(0, 8);
 
   const rawMaxValue = Math.max(...topItems.map((item) => item.count), 1);
 
