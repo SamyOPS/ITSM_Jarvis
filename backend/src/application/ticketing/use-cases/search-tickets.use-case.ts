@@ -15,6 +15,7 @@ import {
 
 export type SearchTicketsQuery = SearchTicketsFilters & {
   includeArchived?: boolean;
+  includeClosed?: boolean;
   requesterUserId: string;
   requesterUserRole: UserRole;
 };
