@@ -800,7 +800,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
         if (isMyTicketsPage) {
           displayedTickets = activeTickets.filter(
-            (ticket) => ticket.createdByUserId === session.user.id,
+            (ticket) =>
+              ticket.createdByUserId === session.user.id ||
+              ticket.requestedForUserId === session.user.id,
           );
         } else if (isListPage && session.user.role === 'DEMANDEUR') {
           displayedTickets = activeTickets.filter(
