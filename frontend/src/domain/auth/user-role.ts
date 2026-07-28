@@ -17,8 +17,12 @@ export function isAdminRole(role: UserRole): boolean {
   return role === 'ADMIN' || role === 'SUPER_ADMIN';
 }
 
+export function isManagerRole(role: UserRole): boolean {
+  return role === 'MANAGER';
+}
+
 export function isSupportManagerRole(role: UserRole): boolean {
-  return role === 'MANAGER' || isAdminRole(role);
+  return isManagerRole(role) || isAdminRole(role);
 }
 
 export function isSupportRole(role: UserRole): boolean {

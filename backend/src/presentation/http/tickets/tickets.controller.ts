@@ -34,7 +34,7 @@ import {
 } from '../../../application/ticketing/use-cases/suggest-ticket-draft.use-case';
 import { UpdateTicketUseCase } from '../../../application/ticketing/use-cases/update-ticket.use-case';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
-import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
+import { isSupportManagerRole, UserRole } from '../../../domain/auth/user-role';
 import { CreatedIncident } from '../../../domain/ticketing/created-incident';
 import { CreatedRequest } from '../../../domain/ticketing/created-request';
 import { TicketAttachment } from '../../../domain/ticketing/ticket-attachment';
@@ -104,7 +104,7 @@ export class TicketsController {
     return this.searchTicketsUseCase.execute({
       ...query,
       includeArchived:
-        isAdminRole(user.role) && query.includeArchived === 'true',
+        isSupportManagerRole(user.role) && query.includeArchived === 'true',
       requesterUserId: user.id,
       requesterUserRole: user.role,
     });
@@ -125,7 +125,7 @@ export class TicketsController {
 
   @Post('archive-expired')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MANAGER, UserRole.ADMIN)
   archiveExpiredTickets(): Promise<ArchiveExpiredTicketsResult> {
     return this.archiveExpiredTicketsUseCase.execute();
   }
@@ -145,7 +145,7 @@ export class TicketsController {
 
   @Delete(':id')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MANAGER, UserRole.ADMIN)
   async deleteTicket(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,

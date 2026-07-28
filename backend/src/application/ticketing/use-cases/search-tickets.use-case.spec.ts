@@ -247,6 +247,34 @@ describe('SearchTicketsUseCase', () => {
     ).resolves.toEqual([closedTicket]);
   });
 
+  it('shows archived tickets to managers when explicitly requested', async () => {
+    const closedTicket = createTicketSummary('ticket-1', TicketStatus.CLOSED);
+    const archivedTicket = createTicketSummary(
+      'ticket-2',
+      TicketStatus.CLOSED,
+      '2026-04-17T10:00:00.000Z',
+    );
+    const searchTickets = jest
+      .fn()
+      .mockResolvedValue([closedTicket, archivedTicket]);
+    const useCase = new SearchTicketsUseCase(
+      {
+        searchTickets,
+      } as unknown as TicketReadRepository,
+      {
+        getById: jest.fn(),
+      } as unknown as UserAssignmentProfileRepository,
+    );
+
+    await expect(
+      useCase.execute({
+        includeArchived: true,
+        requesterUserId: 'manager-1',
+        requesterUserRole: UserRole.MANAGER,
+      }),
+    ).resolves.toEqual([closedTicket, archivedTicket]);
+  });
+
   it('accepts a single-character search text', async () => {
     const searchTickets = jest.fn().mockResolvedValue([]);
     const useCase = new SearchTicketsUseCase(

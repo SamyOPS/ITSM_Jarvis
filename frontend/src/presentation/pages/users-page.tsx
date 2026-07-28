@@ -22,7 +22,7 @@ import {
   PASSWORD_MIN_LENGTH,
   validatePasswordPolicy,
 } from '../../domain/auth/password-policy';
-import type { UserRole } from '../../domain/auth/user-role';
+import { isManagerRole, type UserRole } from '../../domain/auth/user-role';
 import { translateUserRole } from '../../domain/i18n/ticketing-labels';
 import { AppPagination } from '../components/app-pagination';
 import type {
@@ -137,9 +137,33 @@ export function UsersPage({ session }: UsersPageProps) {
     !selectedUser ||
     session.user.role === 'SUPER_ADMIN' ||
     selectedUser.role !== 'SUPER_ADMIN';
+  const isRoleProtectedFromManager =
+    session.user.role === 'MANAGER' &&
+    selectedUser !== null &&
+    (selectedUser.role === 'ADMIN' || isManagerRole(selectedUser.role));
+  const canChangeSelectedUserRole =
+    canManageSelectedUser &&
+    !isSelectedCurrentUser &&
+    !isSelectedSuperAdmin &&
+    !isRoleProtectedFromManager;
+  const canChangeSelectedUserGroups =
+    canManageSelectedUser &&
+    !(
+      session.user.role === 'MANAGER' &&
+      selectedUser !== null &&
+      isManagerRole(selectedUser.role)
+    );
   const userRoleOptions = useMemo(() => {
     if (selectedUser?.role === 'SUPER_ADMIN') {
       return ['SUPER_ADMIN'] satisfies UserRole[];
+    }
+
+    if (
+      session.user.role === 'MANAGER' &&
+      selectedUser &&
+      (selectedUser.role === 'ADMIN' || isManagerRole(selectedUser.role))
+    ) {
+      return [selectedUser.role] satisfies UserRole[];
     }
 
     if (session.user.role === 'SUPER_ADMIN') {
@@ -151,7 +175,7 @@ export function UsersPage({ session }: UsersPageProps) {
     }
 
     return USER_ROLES.filter((role) => role !== 'SUPER_ADMIN');
-  }, [formState.role, selectedUser?.role, session.user.role]);
+  }, [formState.role, selectedUser, session.user.role]);
   const filteredUsers = useMemo(
     () => filterUsers(users, searchText, searchField, roleFilter, showTrash),
     [roleFilter, searchField, searchText, showTrash, users],
@@ -364,6 +388,18 @@ export function UsersPage({ session }: UsersPageProps) {
       return;
     }
 
+    if (
+      selectedUser &&
+      formState.role !== selectedUser.role &&
+      !canChangeSelectedUserRole
+    ) {
+      setFormMessage(
+        'Un manager ne peut pas modifier le role d un admin ou d un manager.',
+      );
+
+      return;
+    }
+
     setIsUpdating(true);
     setFormMessage(null);
 
@@ -519,6 +555,14 @@ export function UsersPage({ session }: UsersPageProps) {
       return;
     }
 
+    if (!canChangeSelectedUserGroups) {
+      setFormMessage(
+        'Un manager ne peut pas modifier les groupes d un autre manager.',
+      );
+
+      return;
+    }
+
     const nextGroupIds = normalizeUserGroupIds([
       ...getUserGroupIds(selectedUser),
       group.id,
@@ -540,6 +584,14 @@ export function UsersPage({ session }: UsersPageProps) {
     if (!canManageSelectedUser) {
       setFormMessage(
         'Seul un super administrateur peut modifier les groupes de ce compte.',
+      );
+
+      return;
+    }
+
+    if (!canChangeSelectedUserGroups) {
+      setFormMessage(
+        'Un manager ne peut pas modifier les groupes d un autre manager.',
       );
 
       return;
@@ -770,11 +822,7 @@ export function UsersPage({ session }: UsersPageProps) {
                 <label className="field">
                   <span>Role</span>
                   <select
-                    disabled={
-                      isSelectedCurrentUser ||
-                      isSelectedSuperAdmin ||
-                      !canManageSelectedUser
-                    }
+                    disabled={!canChangeSelectedUserRole}
                     onChange={(event) =>
                       handleFieldChange('role', event.target.value as UserRole)
                     }
@@ -797,6 +845,12 @@ export function UsersPage({ session }: UsersPageProps) {
                   <p className="ticket-form-helper">
                     Le role super admin ne peut pas etre retire depuis ce
                     formulaire.
+                  </p>
+                ) : null}
+                {isRoleProtectedFromManager ? (
+                  <p className="ticket-form-helper">
+                    Un manager ne peut pas modifier le role d'un admin ou d'un
+                    manager.
                   </p>
                 ) : null}
                 {!isSelectedCurrentUser && !canManageSelectedUser ? (
@@ -825,7 +879,9 @@ export function UsersPage({ session }: UsersPageProps) {
 
                       <button
                         className="primary-button admin-user-save-button admin-group-add-button"
-                        disabled={isMembershipSaving || !canManageSelectedUser}
+                        disabled={
+                          isMembershipSaving || !canChangeSelectedUserGroups
+                        }
                         onClick={() => {
                           setIsGroupPickerOpen(true);
                           setGroupLookupPage(1);
@@ -841,6 +897,13 @@ export function UsersPage({ session }: UsersPageProps) {
                       </button>
                     </div>
                   </header>
+
+                  {!canChangeSelectedUserGroups ? (
+                    <p className="ticket-form-helper">
+                      Un manager ne peut pas modifier les groupes d'un autre
+                      manager.
+                    </p>
+                  ) : null}
 
                   {isGroupPickerOpen ? (
                     <div
@@ -980,7 +1043,8 @@ export function UsersPage({ session }: UsersPageProps) {
                                 <button
                                   className="admin-user-delete-button admin-group-remove-member-button"
                                   disabled={
-                                    isMembershipSaving || !canManageSelectedUser
+                                    isMembershipSaving ||
+                                    !canChangeSelectedUserGroups
                                   }
                                   onClick={() =>
                                     void handleRemoveUserGroup(group.id)

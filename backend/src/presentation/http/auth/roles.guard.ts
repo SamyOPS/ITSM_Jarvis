@@ -9,7 +9,7 @@ import { type Request } from 'express';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
 import { AuthPolicy } from '../../../domain/auth/auth-policy';
 import {
-  isAdminRole,
+  isSupportManagerRole,
   isSupportRole,
   UserRole,
   type UserRole as UserRoleType,
@@ -74,7 +74,7 @@ export class RolesGuard implements CanActivate {
     switch (policy) {
       case AuthPolicy.ACCESS_ADMIN_AREA:
       case AuthPolicy.MANAGE_REFERENTIALS:
-        return isAdminRole(user.role);
+        return isSupportManagerRole(user.role);
       case AuthPolicy.ACCESS_AGENT_AREA:
         return isSupportRole(user.role);
       default:
