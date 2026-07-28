@@ -2,6 +2,7 @@ import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { UserRole } from '../../domain/auth/user-role';
 
 export type UsersPageProps = {
+  mode?: 'LIST' | 'PROTECTED_TRASH';
   session: AuthSessionSnapshot;
 };
 

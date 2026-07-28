@@ -48,6 +48,7 @@ import {
   inferUserNameParts,
   mapCreateUserErrorMessage,
   normalizeOptionalText,
+  normalizeSearchText,
   normalizeUserGroupIds,
   sortUsers,
   USER_GROUPS_PER_PAGE,
@@ -96,7 +97,40 @@ const USER_SORT_OPTIONS: Array<{
   },
 ];
 
-export function UsersPage({ session }: UsersPageProps) {
+function isProtectedTrashUser(user: AdminUserSummary): boolean {
+  return !user.isActive && (user.role === 'ADMIN' || user.role === 'MANAGER');
+}
+
+function filterUsersBySearchAndRole(
+  users: AdminUserSummary[],
+  searchText: string,
+  searchField: UserSearchField,
+  roleFilter: UserRoleFilter,
+): AdminUserSummary[] {
+  const normalizedSearch = normalizeSearchText(searchText);
+
+  return users.filter((user) => {
+    if (roleFilter !== 'ALL' && user.role !== roleFilter) {
+      return false;
+    }
+
+    if (!normalizedSearch) {
+      return true;
+    }
+
+    const value =
+      searchField === 'IDENTIFIER'
+        ? formatUserIdentifier(user)
+        : searchField === 'FIRST_NAME'
+          ? (user.firstName ?? '')
+          : (user.lastName ?? '');
+
+    return normalizeSearchText(value).includes(normalizedSearch);
+  });
+}
+
+export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
+  const isProtectedTrashMode = mode === 'PROTECTED_TRASH';
   const [catalog, setCatalog] =
     useState<ReferentialCatalogSnapshot>(EMPTY_CATALOG);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -176,10 +210,35 @@ export function UsersPage({ session }: UsersPageProps) {
 
     return USER_ROLES.filter((role) => role !== 'SUPER_ADMIN');
   }, [formState.role, selectedUser, session.user.role]);
-  const filteredUsers = useMemo(
-    () => filterUsers(users, searchText, searchField, roleFilter, showTrash),
-    [roleFilter, searchField, searchText, showTrash, users],
-  );
+  const filteredUsers = useMemo(() => {
+    if (isProtectedTrashMode) {
+      return filterUsersBySearchAndRole(
+        users.filter(isProtectedTrashUser),
+        searchText,
+        searchField,
+        roleFilter,
+      );
+    }
+
+    const nextUsers = filterUsers(
+      users,
+      searchText,
+      searchField,
+      roleFilter,
+      showTrash,
+    );
+
+    return showTrash
+      ? nextUsers.filter((user) => !isProtectedTrashUser(user))
+      : nextUsers;
+  }, [
+    isProtectedTrashMode,
+    roleFilter,
+    searchField,
+    searchText,
+    showTrash,
+    users,
+  ]);
   const sortedUsers = useMemo(
     () => sortUsers(filteredUsers, sortBy),
     [filteredUsers, sortBy],
@@ -1072,52 +1131,62 @@ export function UsersPage({ session }: UsersPageProps) {
             <p className="referentials-feedback">{formMessage}</p>
           ) : null}
 
-          <div className="referentials-summary">
-            <article>
-              <span>Total utilisateurs</span>
-              <strong>{users.length}</strong>
-            </article>
-            <article>
-              <span>Comptes actifs</span>
-              <strong>{activeUsers}</strong>
-            </article>
-            <article>
-              <span>Agents</span>
-              <strong>{agentUsers}</strong>
-            </article>
-            <article>
-              <span>Managers</span>
-              <strong>{managerUsers}</strong>
-            </article>
-            <article>
-              <span>Admins</span>
-              <strong>{adminUsers}</strong>
-            </article>
-          </div>
+          {isProtectedTrashMode ? null : (
+            <div className="referentials-summary">
+              <article>
+                <span>Total utilisateurs</span>
+                <strong>{users.length}</strong>
+              </article>
+              <article>
+                <span>Comptes actifs</span>
+                <strong>{activeUsers}</strong>
+              </article>
+              <article>
+                <span>Agents</span>
+                <strong>{agentUsers}</strong>
+              </article>
+              <article>
+                <span>Managers</span>
+                <strong>{managerUsers}</strong>
+              </article>
+              <article>
+                <span>Admins</span>
+                <strong>{adminUsers}</strong>
+              </article>
+            </div>
+          )}
 
           <section className="admin-users-card">
             <header className="referentials-card-header">
               <div>
-                <h3>Liste des utilisateurs</h3>
+                <h3>
+                  {isProtectedTrashMode
+                    ? 'Corbeille admin/manager'
+                    : 'Liste des utilisateurs'}
+                </h3>
               </div>
               <div className="ticket-list-toolbar">
                 <div className="ticket-list-count" aria-live="polite">
-                  <strong>{users.length}</strong>
+                  <strong>
+                    {isProtectedTrashMode ? filteredUsers.length : users.length}
+                  </strong>
                   <span>utilisateurs</span>
                 </div>
 
-                <button
-                  className="primary-button admin-user-save-button admin-group-add-button"
-                  onClick={handleOpenCreateForm}
-                  type="button"
-                >
-                  <Plus
-                    size={16}
-                    strokeWidth={2.3}
-                    style={{ marginRight: 8 }}
-                  />
-                  Ajouter
-                </button>
+                {isProtectedTrashMode ? null : (
+                  <button
+                    className="primary-button admin-user-save-button admin-group-add-button"
+                    onClick={handleOpenCreateForm}
+                    type="button"
+                  >
+                    <Plus
+                      size={16}
+                      strokeWidth={2.3}
+                      style={{ marginRight: 8 }}
+                    />
+                    Ajouter
+                  </button>
+                )}
 
                 <div className="ticket-list-sort-menu" ref={sortMenuRef}>
                   <button
@@ -1221,16 +1290,18 @@ export function UsersPage({ session }: UsersPageProps) {
                 </select>
               </label>
 
-              <label className="admin-users-trash-toggle">
-                <input
-                  checked={showTrash}
-                  onChange={(event) => setShowTrash(event.target.checked)}
-                  type="checkbox"
-                />
-                <span className="admin-users-trash-label">
-                  Montrer la corbeille
-                </span>
-              </label>
+              {isProtectedTrashMode ? null : (
+                <label className="admin-users-trash-toggle">
+                  <input
+                    checked={showTrash}
+                    onChange={(event) => setShowTrash(event.target.checked)}
+                    type="checkbox"
+                  />
+                  <span className="admin-users-trash-label">
+                    Montrer la corbeille
+                  </span>
+                </label>
+              )}
             </div>
 
             {isLoading ? (

@@ -10,6 +10,7 @@ import {
   Monitor,
   Plus,
   Ticket,
+  Trash2,
   User,
   Users,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ export const administrationRouteOrder: RoutePath[] = [
   '/admin/users',
   '/admin/groups',
   '/admin/license',
+  '/admin/trash',
   '/agent/archives',
 ];
 
@@ -30,6 +32,7 @@ export const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/': LayoutDashboard,
   '/admin/groups': Users,
   '/admin/license': BadgeEuro,
+  '/admin/trash': Trash2,
   '/admin/users': User,
   '/agent': LayoutDashboard,
   '/agent/archives': Archive,

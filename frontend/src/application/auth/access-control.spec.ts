@@ -57,6 +57,7 @@ describe('access-control', () => {
     expect(canAccessRoute('/admin/users', session)).toBe(true);
     expect(canAccessRoute('/admin/groups', session)).toBe(true);
     expect(canAccessRoute('/admin/license', session)).toBe(false);
+    expect(canAccessRoute('/admin/trash', session)).toBe(false);
   });
 
   it('lets admin access reports and admin routes', () => {
@@ -67,12 +68,14 @@ describe('access-control', () => {
     expect(canAccessRoute('/parc/cis/new', session)).toBe(true);
     expect(canAccessRoute('/admin/users', session)).toBe(true);
     expect(canAccessRoute('/admin/license', session)).toBe(false);
+    expect(canAccessRoute('/admin/trash', session)).toBe(false);
   });
 
   it('lets super admin access the license route', () => {
     const session = buildSession('SUPER_ADMIN');
 
     expect(canAccessRoute('/admin/license', session)).toBe(true);
+    expect(canAccessRoute('/admin/trash', session)).toBe(true);
   });
 
   it('returns the expected home route for each role', () => {
@@ -105,5 +108,6 @@ describe('access-control', () => {
     const visibleRoutes = getVisibleRoutes(buildSession('SUPER_ADMIN'));
 
     expect(visibleRoutes).toContain('/admin/license');
+    expect(visibleRoutes).toContain('/admin/trash');
   });
 });

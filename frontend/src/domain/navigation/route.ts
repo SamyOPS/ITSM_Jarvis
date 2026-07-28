@@ -2,6 +2,7 @@ export type RoutePath =
   | '/'
   | '/admin/groups'
   | '/admin/license'
+  | '/admin/trash'
   | '/admin/users'
   | '/agent'
   | '/agent/incidents/new'
@@ -90,6 +91,11 @@ export const ROUTES: RouteDefinition[] = [
     description: 'Liste des utilisateurs et de leurs roles.',
     path: '/admin/users',
     title: 'Utilisateurs',
+  },
+  {
+    description: 'Corbeille reservee aux comptes administrateurs et managers.',
+    path: '/admin/trash',
+    title: 'Corbeille',
   },
   {
     description: 'Liste et gestion des groupes de support.',

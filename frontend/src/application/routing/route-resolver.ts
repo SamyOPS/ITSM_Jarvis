@@ -25,6 +25,7 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
     pathname === '/' ||
     pathname === '/admin/groups' ||
     pathname === '/admin/license' ||
+    pathname === '/admin/trash' ||
     pathname === '/admin/users' ||
     pathname === '/agent' ||
     pathname === '/agent/archives' ||

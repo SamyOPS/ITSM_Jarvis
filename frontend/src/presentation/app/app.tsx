@@ -168,6 +168,12 @@ function renderPage({
       return session ? <GroupsPage session={session} /> : <NotFoundPage />;
     case '/admin/license':
       return session ? <LicensePage session={session} /> : <NotFoundPage />;
+    case '/admin/trash':
+      return session ? (
+        <UsersPage mode="PROTECTED_TRASH" session={session} />
+      ) : (
+        <NotFoundPage />
+      );
     case '/admin/users':
       return session ? <UsersPage session={session} /> : <NotFoundPage />;
     case '/agent':
