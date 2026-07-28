@@ -165,6 +165,41 @@ describe('SearchTicketsUseCase', () => {
     ).resolves.toEqual([openTicket]);
   });
 
+  it('keeps closed tickets visible to agent searches when requested', async () => {
+    const openTicket = createTicketSummary('ticket-1', TicketStatus.OPEN);
+    const closedTicket = createTicketSummary('ticket-2', TicketStatus.CLOSED);
+    const archivedTicket = createTicketSummary(
+      'ticket-3',
+      TicketStatus.OPEN,
+      '2026-04-17T10:00:00.000Z',
+    );
+    const searchTickets = jest
+      .fn()
+      .mockResolvedValue([openTicket, closedTicket, archivedTicket]);
+    const useCase = new SearchTicketsUseCase(
+      {
+        searchTickets,
+      } as unknown as TicketReadRepository,
+      {
+        getById: jest.fn().mockResolvedValue({
+          groupId: null,
+          groupIds: [],
+          id: 'agent-1',
+          isActive: true,
+          role: UserRole.AGENT,
+        }),
+      } as unknown as UserAssignmentProfileRepository,
+    );
+
+    await expect(
+      useCase.execute({
+        includeClosed: true,
+        requesterUserId: 'agent-1',
+        requesterUserRole: UserRole.AGENT,
+      }),
+    ).resolves.toEqual([openTicket, closedTicket]);
+  });
+
   it('limits agent searches to unassigned tickets, direct assignments, and own groups', async () => {
     const unassignedTicket = createTicketSummary('ticket-1', TicketStatus.OPEN);
     const assignedToCurrentAgent = createTicketSummaryWithAssignment({
