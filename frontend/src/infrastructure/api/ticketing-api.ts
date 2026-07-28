@@ -113,6 +113,10 @@ export async function searchTickets(
     query.set('includeArchived', 'true');
   }
 
+  if (filters.includeClosed) {
+    query.set('includeClosed', 'true');
+  }
+
   const suffix = query.toString() ? `?${query.toString()}` : '';
   return ticketingJsonRequest<TicketSummarySnapshot[]>(
     accessToken,

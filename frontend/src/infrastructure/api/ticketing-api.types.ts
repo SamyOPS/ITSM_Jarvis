@@ -51,6 +51,7 @@ export type TicketDraftSuggestion = {
 export type SearchTicketsFilters = {
   categoryId?: string | null;
   includeArchived?: boolean;
+  includeClosed?: boolean;
   priorityId?: string | null;
   q?: string | null;
   status?: 'OPEN' | 'IN_PROGRESS' | 'PENDING' | 'RESOLVED' | 'CLOSED' | null;

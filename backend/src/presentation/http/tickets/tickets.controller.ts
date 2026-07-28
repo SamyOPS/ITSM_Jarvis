@@ -65,6 +65,7 @@ type SearchTicketsQueryDto = {
   channelId?: string;
   createdByUserId?: string;
   includeArchived?: string;
+  includeClosed?: string;
   priorityId?: string;
   q?: string;
   requestedForUserId?: string;
@@ -105,6 +106,7 @@ export class TicketsController {
       ...query,
       includeArchived:
         isAdminRole(user.role) && query.includeArchived === 'true',
+      includeClosed: query.includeClosed === 'true',
       requesterUserId: user.id,
       requesterUserRole: user.role,
     });

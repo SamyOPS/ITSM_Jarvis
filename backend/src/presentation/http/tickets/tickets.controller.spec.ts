@@ -382,6 +382,7 @@ describe('TicketsController', () => {
 
     expect(searchTickets).toHaveBeenCalledWith({
       includeArchived: false,
+      includeClosed: false,
       requesterUserId: 'user-1',
       requesterUserRole: UserRole.AGENT,
       q: 'vpn',
