@@ -501,8 +501,10 @@
 }
 
 .ticket-ai-chat-footer {
+  --ticket-ai-composer-height: 50px;
+
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) auto;
+  grid-template-columns: var(--ticket-ai-composer-height) minmax(0, 1fr) auto;
   gap: 10px;
   align-items: end;
   padding: 14px;
@@ -510,10 +512,21 @@
   background: #fff;
 }
 
+.ticket-ai-chat-footer > button {
+  min-height: var(--ticket-ai-composer-height);
+  height: var(--ticket-ai-composer-height);
+  align-self: end;
+}
+
+.ticket-ai-chat-footer > button:first-child {
+  width: var(--ticket-ai-composer-height);
+}
+
 .ticket-ai-chat-footer textarea {
-  min-height: 38px;
-  max-height: 120px;
-  resize: vertical;
+  min-height: var(--ticket-ai-composer-height);
+  max-height: min(320px, calc(100vh - 420px));
+  overflow-y: hidden;
+  resize: none;
 }
 
 .ticket-preview-card {

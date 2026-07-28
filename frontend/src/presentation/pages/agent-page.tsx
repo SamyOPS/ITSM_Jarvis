@@ -592,9 +592,32 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     1,
     Math.ceil(searchedTickets.length / TICKETS_PER_PAGE),
   );
+  const aiDraftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const ticketListTitle = getTicketListTitle(section, session.user.role);
   const ticketListEmptyMessage = getTicketListEmptyMessage(section);
+
+  function resizeAiDraftTextarea(
+    textarea: HTMLTextAreaElement | null = aiDraftTextareaRef.current,
+  ): void {
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = 'auto';
+
+    const maxHeight = Number.parseFloat(
+      window.getComputedStyle(textarea).maxHeight,
+    );
+    const boundedHeight = Math.min(
+      textarea.scrollHeight,
+      Number.isFinite(maxHeight) ? maxHeight : 320,
+    );
+
+    textarea.style.height = `${boundedHeight}px`;
+    textarea.style.overflowY =
+      textarea.scrollHeight > boundedHeight + 1 ? 'auto' : 'hidden';
+  }
 
   useEffect(() => {
     if (showDetailPanel) {
@@ -604,6 +627,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     setSelectedTicketId(null);
   }, [showDetailPanel, ticketId]);
+
+  useEffect(() => {
+    if (!isAiChatOpen) {
+      return;
+    }
+
+    resizeAiDraftTextarea();
+  }, [aiDraftInput, isAiChatOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -3977,6 +4008,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           onChange={(event) => {
                             setAiDraftInput(event.target.value);
                             setAiDraftErrorMessage(null);
+                            resizeAiDraftTextarea(event.target);
                           }}
                           onKeyDown={(event) => {
                             if (
@@ -3989,6 +4021,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             }
                           }}
                           placeholder="Decrivez votre besoin..."
+                          ref={aiDraftTextareaRef}
                           rows={1}
                           value={aiDraftInput}
                         />
