@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
-import { isSupportRole } from '../../domain/auth/user-role';
+import { isAdminRole, isSupportRole } from '../../domain/auth/user-role';
 import { AppPagination } from '../components/app-pagination';
 
 import type { PlanningTask } from '../../domain/planning/planning-task';
@@ -335,7 +335,19 @@ export function ReportsPage({ session }: ReportsPageProps) {
     [users],
   );
 
-  const isPersonalAgentReporting = session.user.role === 'AGENT';
+  const isRestrictedAgentReporting = !isAdminRole(session.user.role);
+
+  const effectiveDashboardFilters = useMemo<ReportsFilterState>(
+    () =>
+      isRestrictedAgentReporting
+        ? {
+            ...filters,
+            assignedToUserId: session.user.id,
+          }
+        : filters,
+
+    [filters, isRestrictedAgentReporting, session.user.id],
+  );
 
   const loadReports = useCallback(
     async (nextFilters: ReportsFilterState): Promise<void> => {
@@ -386,6 +398,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
           searchTickets(session.accessToken, {
             includeArchived: false,
+            includeClosed: isRestrictedAgentReporting,
           }),
 
           fetchReferentialCatalog(session.accessToken),
@@ -415,7 +428,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
       }
     },
 
-    [session],
+    [isRestrictedAgentReporting, session],
   );
 
   useEffect(() => {
@@ -423,8 +436,8 @@ export function ReportsPage({ session }: ReportsPageProps) {
   }, []);
 
   useEffect(() => {
-    void loadReports(filters);
-  }, [filters, loadReports]);
+    void loadReports(effectiveDashboardFilters);
+  }, [effectiveDashboardFilters, loadReports]);
 
   useEffect(() => {
     function showDashboardView(): void {
@@ -484,9 +497,9 @@ export function ReportsPage({ session }: ReportsPageProps) {
   }
 
   const dashboardFilteredTickets = useMemo(
-    () => filterTicketsForDashboard(personalTickets, filters),
+    () => filterTicketsForDashboard(personalTickets, effectiveDashboardFilters),
 
-    [filters, personalTickets],
+    [effectiveDashboardFilters, personalTickets],
   );
 
   const getDashboardTicketsForChart = useCallback(
@@ -559,9 +572,13 @@ export function ReportsPage({ session }: ReportsPageProps) {
   );
 
   const timelineItems = useMemo(
-    () => buildDashboardTimelineItems(dashboardFilteredTickets, filters),
+    () =>
+      buildDashboardTimelineItems(
+        dashboardFilteredTickets,
+        effectiveDashboardFilters,
+      ),
 
-    [dashboardFilteredTickets, filters],
+    [dashboardFilteredTickets, effectiveDashboardFilters],
   );
 
   const personalPrioritiesById = useMemo(
@@ -594,9 +611,12 @@ export function ReportsPage({ session }: ReportsPageProps) {
   );
 
   const selectedDashboardAgent = useMemo(
-    () => users.find((user) => user.id === filters.assignedToUserId) ?? null,
+    () =>
+      users.find(
+        (user) => user.id === effectiveDashboardFilters.assignedToUserId,
+      ) ?? null,
 
-    [filters.assignedToUserId, users],
+    [effectiveDashboardFilters.assignedToUserId, users],
   );
 
   const personalEquipment = useMemo<PersonalEquipmentItem[]>(() => {
@@ -657,9 +677,9 @@ export function ReportsPage({ session }: ReportsPageProps) {
   }, [catalog.groups, currentUserSummary]);
 
   const dashboardGroupOptions = useMemo(
-    () => (isPersonalAgentReporting ? availableReportGroups : catalog.groups),
+    () => (isRestrictedAgentReporting ? availableReportGroups : catalog.groups),
 
-    [availableReportGroups, catalog.groups, isPersonalAgentReporting],
+    [availableReportGroups, catalog.groups, isRestrictedAgentReporting],
   );
 
   const selectedDashboardGroup = useMemo(
@@ -673,7 +693,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
   useEffect(() => {
     if (
-      !isPersonalAgentReporting ||
+      !isRestrictedAgentReporting ||
       !currentUserSummary ||
       !filters.assignmentGroupId
     ) {
@@ -697,7 +717,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
     availableReportGroups,
     currentUserSummary,
     filters.assignmentGroupId,
-    isPersonalAgentReporting,
+    isRestrictedAgentReporting,
   ]);
 
   const updateGroupSelectorScrollState = useCallback(() => {
@@ -1247,18 +1267,20 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
                 <div className="incident-lookup-field">
                   <input
-                    disabled={isPersonalAgentReporting}
+                    disabled={isRestrictedAgentReporting}
                     readOnly
                     value={
-                      isPersonalAgentReporting
-                        ? 'Moi uniquement'
+                      isRestrictedAgentReporting
+                        ? selectedDashboardAgent
+                          ? formatUserName(selectedDashboardAgent)
+                          : 'Moi uniquement'
                         : selectedDashboardAgent
                           ? formatUserName(selectedDashboardAgent)
                           : 'Tous'
                     }
                   />
 
-                  {filters.assignedToUserId && !isPersonalAgentReporting ? (
+                  {filters.assignedToUserId && !isRestrictedAgentReporting ? (
                     <button
                       aria-label="Retirer l'agent"
                       onClick={() => handleFilterChange('assignedToUserId', '')}
@@ -1270,7 +1292,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
                   <button
                     aria-label="Choisir un agent"
-                    disabled={isPersonalAgentReporting}
+                    disabled={isRestrictedAgentReporting}
                     onClick={() => setDashboardLookup('AGENT')}
                     type="button"
                   >

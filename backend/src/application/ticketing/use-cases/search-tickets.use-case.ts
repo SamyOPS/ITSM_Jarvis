@@ -56,8 +56,11 @@ export class SearchTicketsUseCase {
         this.ticketReadRepository.searchTickets(normalizedFilters),
         this.userAssignmentProfileRepository.getById(requesterUserId),
       ]);
+      const visibleTickets = query.includeClosed
+        ? withoutArchivedTickets(tickets)
+        : withoutClosedOrArchivedTickets(tickets);
 
-      return withoutClosedOrArchivedTickets(tickets).filter((ticket) =>
+      return visibleTickets.filter((ticket) =>
         isTicketVisibleToAgent(ticket, requesterUserId, profile),
       );
     }
