@@ -570,7 +570,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         : '/reports?view=PERSONAL'
       : detailOrigin === 'reports-group'
         ? '/reports?view=GROUP'
-        : withPageQuery('/agent/tickets', getPageQueryParam('fromPage'));
+        : detailOrigin === 'my-tickets'
+          ? withPageQuery('/agent/my-tickets', getPageQueryParam('fromPage'))
+          : withPageQuery('/agent/tickets', getPageQueryParam('fromPage'));
   const searchedTickets = useMemo(
     () =>
       filterTicketsByListSearch(
@@ -800,7 +802,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
         if (isMyTicketsPage) {
           displayedTickets = activeTickets.filter(
-            (ticket) => ticket.createdByUserId === session.user.id,
+            (ticket) =>
+              ticket.requestedForUserId === session.user.id ||
+              (!ticket.requestedForUserId &&
+                ticket.createdByUserId === session.user.id),
           );
         } else if (isListPage && session.user.role === 'DEMANDEUR') {
           displayedTickets = activeTickets.filter(
@@ -4577,7 +4582,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                           ticketPage,
                                         )
                                       : withReturnPageQuery(
-                                          `/agent/tickets/${ticket.id}`,
+                                          isMyTicketsPage
+                                            ? `/agent/tickets/${ticket.id}?from=my-tickets`
+                                            : `/agent/tickets/${ticket.id}`,
                                           ticketPage,
                                         ),
                                   )
