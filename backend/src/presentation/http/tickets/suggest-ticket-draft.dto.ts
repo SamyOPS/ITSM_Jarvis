@@ -3,8 +3,6 @@ import {
   IsEnum,
   IsOptional,
   IsString,
-  MaxLength,
-  MinLength,
 } from 'class-validator';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
 
@@ -24,7 +22,5 @@ export class SuggestTicketDraftDto {
   priorities?: string[];
 
   @IsString()
-  @MinLength(10)
-  @MaxLength(3000)
   userInput!: string;
 }

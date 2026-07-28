@@ -8,6 +8,7 @@ import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
 import { PriorityName } from '../../../domain/ticketing/priority-name';
 import { RequestType } from '../../../domain/ticketing/request-type';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
+import { resolveIncidentPriorityName } from '../incident-priority';
 
 export type SuggestTicketDraftCommand = {
   categories?: string[];
@@ -51,16 +52,8 @@ export class SuggestTicketDraftUseCase {
   ): Promise<TicketDraftAssistantResponse> {
     const userInput = command.userInput.trim();
 
-    if (userInput.length < 10) {
-      throw new BadRequestException(
-        'Decrivez le besoin en quelques mots avant de demander une suggestion.',
-      );
-    }
-
-    if (userInput.length > 3000) {
-      throw new BadRequestException(
-        'La description est trop longue pour une suggestion IA.',
-      );
+    if (!userInput) {
+      throw new BadRequestException('Le message ne peut pas etre vide.');
     }
 
     const config = getBackendRuntimeConfig();
@@ -147,15 +140,18 @@ export class SuggestTicketDraftUseCase {
 
     if (!response.ok) {
       throw new ServiceUnavailableException(
-        "La generation IA du ticket a echoue.",
+        'La generation IA du ticket a echoue.',
       );
     }
 
     const body = (await response.json()) as OpenAiResponse;
-    return this.normalizeAssistantResponse(this.extractText(body));
+    return this.normalizeAssistantResponse(this.extractText(body), userInput);
   }
 
-  private buildPrompt(command: SuggestTicketDraftCommand, userInput: string): string {
+  private buildPrompt(
+    command: SuggestTicketDraftCommand,
+    userInput: string,
+  ): string {
     const categories = command.categories?.filter(Boolean).slice(0, 80) ?? [];
     const priorities = command.priorities?.filter(Boolean).slice(0, 20) ?? [];
 
@@ -165,14 +161,33 @@ export class SuggestTicketDraftUseCase {
       `Priorites disponibles: ${priorities.length ? priorities.join(', ') : 'LOW, MEDIUM, HIGH, CRITICAL'}.`,
       '',
       'Objectif:',
-      "- si les informations sont suffisantes, action=SUGGEST_TICKET et tu prepares le ticket;",
-      "- s'il manque une information importante, action=ASK_QUESTION et tu poses une seule question courte, adaptee au contexte;",
-      "- ne repose jamais une question dont la reponse est deja evidente dans la conversation;",
-      "- par exemple si l'utilisateur parle deja de son ordinateur, ne demande pas quel equipement est concerne; demande plutot s'il s'allume, s'il y a un message d'erreur, ou si c'est portable/fixe si utile;",
+      "- raisonne comme un assistant ITSM conversationnel: comprendre, aider un peu si c'est raisonnable, puis preparer un brouillon de ticket;",
+      '- si le message est seulement une salutation ou ne contient aucun probleme/demande identifiable, action=ASK_QUESTION avec une question naturelle pour connaitre le sujet;',
+      '- phase diagnostic: tu peux poser 0 a 3 questions utiles pour mieux qualifier le ticket et enrichir la description;',
+      '- phase aide simple: tu peux proposer 0 a 3 actions simples si un utilisateur normal peut les tenter sans risque et sans procedure complexe;',
+      "- adapte le nombre de questions/actions a la situation: 0 si le probleme est complexe, urgent, risque, ou clairement a traiter par le support; 1 a 3 si c'est simple et utile;",
+      "- pour les problemes simples et frequents comme PC qui ne s'allume pas, Wi-Fi/Internet, application bloquee, imprimante ou accessoire, fais au moins une aide simple avant le brouillon si aucune tentative de resolution n'est deja mentionnee;",
+      "- exemple PC qui ne s'allume pas: avant le brouillon, proposer de brancher le chargeur/secteur, tester une autre prise ou un autre cable, patienter quelques minutes si batterie vide, puis demander ce que cela donne;",
+      "- apres quelques questions/actions ou des que l'utilisateur donne assez d'elements, action=SUGGEST_TICKET;",
+      "- si l'utilisateur dit que tes conseils ne changent rien, qu'il ne peut pas les faire, ou qu'il veut un ticket, action=SUGGEST_TICKET;",
+      "- ne force pas toujours une proposition apres un seul message d'aide; ne prolonge pas non plus la conversation inutilement;",
+      "- ne demande jamais de repondre en une phrase; l'utilisateur peut donner autant de details qu'il le souhaite;",
+      "- n'ecris jamais l'expression exacte: le probleme persiste-t-il;",
+      '- ne fais jamais une longue procedure de diagnostic technique;',
+      "- si l'utilisateur demande une modification de la proposition, produis une nouvelle proposition corrigee avec action=SUGGEST_TICKET;",
+      '- si le probleme est urgent, bloquant, securite, perte de donnees, ou impacte plusieurs utilisateurs, action=SUGGEST_TICKET sans triage;',
+      '- si une information secondaire manque, fais une hypothese raisonnable avec une confidence plus basse au lieu de prolonger la conversation;',
       '- choisir INCIDENT si un service/equipement ne fonctionne plus ou est degrade;',
       '- choisir REQUEST si la personne demande un acces, une installation, un materiel ou un service;',
+      "- pour un INCIDENT, renseigner impact et urgency: la priorite sera calculee a partir de ces deux valeurs, pas l'inverse;",
+      '- pour un INCIDENT, priorityName doit rester coherent avec impact et urgency, mais impact et urgency sont les donnees sources;',
+      "- n'utilise une priorite CRITICAL que si plusieurs utilisateurs, un service global, la production, la securite ou des donnees sont fortement impactes;",
+      '- pour un poste utilisateur seul, un ecran, un cable, une imprimante ou un probleme individuel sans contexte critique, ne depasse generalement pas HIGH;',
+      '- pour une REQUEST, renseigner priorityName directement;',
       '- proposer un titre de 40 caracteres maximum quand action=SUGGEST_TICKET;',
-      '- reformuler une description claire et exploitable pour le support quand action=SUGGEST_TICKET;',
+      "- quand action=SUGGEST_TICKET, la description doit seulement decrire le probleme ou la demande avec les informations deja donnees par l'utilisateur;",
+      '- la description ne doit jamais contenir de questions, de checklist, de consignes au technicien, ni de phrases comme informations a preciser, a confirmer, besoin urgent ou delai souhaite;',
+      '- si des informations manquent, ne les invente pas et ne les liste pas dans la description; garde une description simple du besoin connu;',
       '- si une categorie semble evidente, reprendre exactement son nom depuis la liste fournie.',
       '',
       `Description utilisateur: ${userInput}`,
@@ -191,14 +206,17 @@ export class SuggestTicketDraftUseCase {
 
     if (!text) {
       throw new ServiceUnavailableException(
-        "La reponse IA ne contient pas de suggestion exploitable.",
+        'La reponse IA ne contient pas de suggestion exploitable.',
       );
     }
 
     return text;
   }
 
-  private normalizeAssistantResponse(rawText: string): TicketDraftAssistantResponse {
+  private normalizeAssistantResponse(
+    rawText: string,
+    userInput: string,
+  ): TicketDraftAssistantResponse {
     let parsed: TicketDraftAssistantResponse & TicketDraftSuggestion;
 
     try {
@@ -214,11 +232,41 @@ export class SuggestTicketDraftUseCase {
       return {
         action: 'ASK_QUESTION',
         question:
-          this.normalizeNullableText(parsed.question) ??
+          this.normalizeAssistantQuestion(parsed.question) ??
           'Pouvez-vous apporter une precision supplementaire ?',
         suggestion: null,
       };
     }
+
+    const type =
+      parsed.type === TicketType.REQUEST
+        ? TicketType.REQUEST
+        : TicketType.INCIDENT;
+
+    if (type === TicketType.INCIDENT) {
+      const troubleshootingQuestion =
+        this.getMissingSimpleTroubleshootingQuestion(userInput);
+
+      if (troubleshootingQuestion) {
+        return {
+          action: 'ASK_QUESTION',
+          question: troubleshootingQuestion,
+          suggestion: null,
+        };
+      }
+    }
+
+    const impact = this.normalizeEnum(parsed.impact, IncidentSeverity);
+    const urgency = this.normalizeEnum(parsed.urgency, IncidentSeverity);
+    const [incidentImpact, incidentUrgency] = this.normalizeIncidentSeverity(
+      impact ?? IncidentSeverity.MEDIUM,
+      urgency ?? IncidentSeverity.MEDIUM,
+      [userInput, parsed.title, parsed.description].filter(Boolean).join('\n'),
+    );
+    const priorityName =
+      type === TicketType.INCIDENT
+        ? resolveIncidentPriorityName(incidentImpact, incidentUrgency)
+        : this.normalizeEnum(parsed.priorityName, PriorityName);
 
     return {
       action: 'SUGGEST_TICKET',
@@ -226,16 +274,13 @@ export class SuggestTicketDraftUseCase {
       suggestion: {
         categoryName: this.normalizeNullableText(parsed.categoryName),
         confidence: Math.min(Math.max(Number(parsed.confidence) || 0, 0), 1),
-        description: parsed.description?.trim() || '',
-        impact: this.normalizeEnum(parsed.impact, IncidentSeverity),
-        priorityName: this.normalizeEnum(parsed.priorityName, PriorityName),
+        description: this.normalizeTicketDescription(parsed.description),
+        impact: type === TicketType.INCIDENT ? incidentImpact : null,
+        priorityName,
         requestType: this.normalizeEnum(parsed.requestType, RequestType),
         title: (parsed.title?.trim() || 'Ticket a qualifier').slice(0, 40),
-        type:
-          parsed.type === TicketType.REQUEST
-            ? TicketType.REQUEST
-            : TicketType.INCIDENT,
-        urgency: this.normalizeEnum(parsed.urgency, IncidentSeverity),
+        type,
+        urgency: type === TicketType.INCIDENT ? incidentUrgency : null,
       },
     };
   }
@@ -243,6 +288,146 @@ export class SuggestTicketDraftUseCase {
   private normalizeNullableText(value: string | null): string | null {
     const normalized = value?.trim();
     return normalized ? normalized : null;
+  }
+
+  private normalizeTicketDescription(value: string | null | undefined): string {
+    const description = value?.trim() ?? '';
+    const normalizedDescription = description
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    const stopPatterns = [
+      'informations a preciser',
+      'a preciser',
+      'a confirmer',
+      'questions a poser',
+      'pour quel',
+      'besoin urgent',
+      'delai souhaite',
+      'Informations a preciser',
+      'Informations à préciser',
+      'A preciser',
+      'À préciser',
+      'A confirmer',
+      'À confirmer',
+      'Questions a poser',
+      'Questions à poser',
+      'Pour quel',
+      'Besoin urgent',
+      'Delai souhaite',
+      'Délai souhaité',
+    ];
+    const firstStopIndex = stopPatterns
+      .map((pattern) => normalizedDescription.indexOf(pattern))
+      .filter((index) => index >= 0)
+      .sort((left, right) => left - right)[0];
+
+    return (
+      firstStopIndex === undefined
+        ? description
+        : description.slice(0, firstStopIndex)
+    )
+      .replace(/\s*[-:;,.]\s*$/u, '')
+      .trim();
+  }
+
+  private normalizeAssistantQuestion(value: string | null): string | null {
+    const normalized = this.normalizeNullableText(value);
+
+    if (!normalized) {
+      return null;
+    }
+
+    const question = normalized
+      .replace(/le probl[eè]me persiste-t-il\s*\?/giu, '')
+      .replace(/le probleme persiste-t-il\s*\?/giu, '')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s*[-:;,.]\s*$/u, '')
+      .trim();
+
+    return question || 'Dites-moi ce que donnent ces verifications.';
+  }
+
+  private getMissingSimpleTroubleshootingQuestion(
+    conversation: string,
+  ): string | null {
+    const normalizedConversation = this.normalizeForMatching(conversation);
+    const mentionsComputerPowerIssue =
+      /(pc|ordinateur|portable|poste|ecran).*(s[' ]?allume pas|demarre pas|ne demarre pas|aucun voyant|pas de voyant|ventilateur)/u.test(
+        normalizedConversation,
+      ) ||
+      /(s[' ]?allume pas|demarre pas|ne demarre pas|aucun voyant|pas de voyant|ventilateur).*(pc|ordinateur|portable|poste|ecran)/u.test(
+        normalizedConversation,
+      );
+
+    if (!mentionsComputerPowerIssue) {
+      return null;
+    }
+
+    const alreadySuggestedPowerCheck =
+      /(chargeur|batterie|secteur|prise|cable d alimentation|cable alimentation|alimentation|brancher|branche|autre prise|laisser charger)/u.test(
+        normalizedConversation,
+      );
+
+    if (alreadySuggestedPowerCheck) {
+      return null;
+    }
+
+    return 'Avant de creer le ticket, pouvez-vous brancher le PC au chargeur/secteur, tester une autre prise si possible, puis attendre quelques minutes si la batterie etait vide ? Dites-moi ensuite ce que cela donne.';
+  }
+
+  private normalizeIncidentSeverity(
+    impact: IncidentSeverity,
+    urgency: IncidentSeverity,
+    context: string,
+  ): [IncidentSeverity, IncidentSeverity] {
+    const priorityName = resolveIncidentPriorityName(impact, urgency);
+
+    if (
+      priorityName !== PriorityName.CRITICAL ||
+      this.hasCriticalIncidentSignal(context)
+    ) {
+      return [impact, urgency];
+    }
+
+    return [IncidentSeverity.HIGH, IncidentSeverity.MEDIUM];
+  }
+
+  private hasCriticalIncidentSignal(context: string): boolean {
+    const normalizedContext = this.normalizeForMatching(context);
+    const criticalPatterns = [
+      'plusieurs utilisateurs',
+      'tous les utilisateurs',
+      'tout le monde',
+      'equipe entiere',
+      'site complet',
+      'panne generale',
+      'service global',
+      'service indisponible',
+      'production',
+      'securite',
+      'cyber',
+      'virus',
+      'ransom',
+      'intrusion',
+      'fuite de donnees',
+      'perte de donnees',
+      'donnees perdues',
+      'serveur',
+      'reseau general',
+      'application metier indisponible',
+    ];
+
+    return criticalPatterns.some((pattern) =>
+      normalizedContext.includes(pattern),
+    );
+  }
+
+  private normalizeForMatching(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
   }
 
   private normalizeEnum<T extends Record<string, string>>(

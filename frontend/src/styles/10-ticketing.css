@@ -481,6 +481,23 @@
 
 .ticket-ai-message--suggestion .primary-button {
   justify-self: start;
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #174174;
+  font-weight: 400;
+  box-shadow: none;
+}
+
+.ticket-ai-message--suggestion .primary-button:hover:not(:disabled) {
+  background: #f3f7ff;
+  color: #123866;
+  transform: none;
+}
+
+.ticket-ai-chat-footer .primary-button {
+  font-weight: 400;
 }
 
 .ticket-ai-chat-footer {

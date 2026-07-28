@@ -1643,8 +1643,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     setAiDraftErrorMessage(null);
 
-    if (userInput.length < 10) {
-      setAiDraftErrorMessage('Decrivez le besoin avec un peu plus de detail.');
+    if (!userInput) {
       return;
     }
 
@@ -1666,13 +1665,27 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         categories: incidentCategoryOptions.map((category) => category.name),
         currentMode: mode,
         priorities: catalog.priorities.map((priority) => priority.name),
-        userInput: nextMessages
-          .map((message) =>
-            message.role === 'assistant'
-              ? `Assistant: ${message.body}`
-              : `Utilisateur: ${message.body}`,
-          )
-          .join('\n'),
+        userInput: [
+          nextMessages
+            .map((message) =>
+              message.role === 'assistant'
+                ? `Assistant: ${message.body}`
+                : `Utilisateur: ${message.body}`,
+            )
+            .join('\n'),
+          aiDraftSuggestion
+            ? [
+                'Proposition actuelle:',
+                `Type: ${aiDraftSuggestion.type}`,
+                `Titre: ${aiDraftSuggestion.title}`,
+                `Categorie: ${aiDraftSuggestion.categoryName ?? 'non renseignee'}`,
+                `Priorite: ${aiDraftSuggestion.priorityName ?? 'non renseignee'}`,
+                `Description: ${aiDraftSuggestion.description}`,
+              ].join('\n')
+            : '',
+        ]
+          .filter(Boolean)
+          .join('\n\n'),
       });
 
       if (assistantResponse.action === 'ASK_QUESTION') {
@@ -1735,6 +1748,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     const suggestedPriority = catalog.priorities.find(
       (priority) => priority.name === aiDraftSuggestion.priorityName,
     );
+    const targetCreatePath =
+      nextMode === 'INCIDENT' ? '/agent/incidents/new' : '/agent/requests/new';
+    const shouldNavigateToSuggestedType =
+      (isIncidentCreatePage && nextMode === 'REQUEST') ||
+      (isRequestCreatePage && nextMode === 'INCIDENT');
 
     setMode(nextMode);
 
@@ -1762,6 +1780,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     setSubmitErrorMessage(null);
     setIsAiChatOpen(false);
+
+    if (shouldNavigateToSuggestedType) {
+      navigateTo(targetCreatePath);
+    }
   }
 
   function closeAiChat(): void {
@@ -3871,7 +3893,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     <section className="ticket-ai-chat">
                       <header className="ticket-ai-chat-header">
                         <div>
-                          <h3>Assistant IA TikAI</h3>
+                          <h3>Assistant IA Vision</h3>
                           <p>Pre-remplissage intelligent du ticket</p>
                         </div>
                         <button
@@ -3911,10 +3933,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                         {aiDraftSuggestion ? (
                           <div className="ticket-ai-message ticket-ai-message--assistant ticket-ai-message--suggestion">
-                            <span>
-                              Proposition :{' '}
-                              {translateTicketType(aiDraftSuggestion.type)}
-                            </span>
                             <strong>{aiDraftSuggestion.title}</strong>
                             <div className="ticket-ai-suggestion-details">
                               <small>
@@ -3926,26 +3944,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   Categorie : {aiDraftSuggestion.categoryName}
                                 </small>
                               ) : null}
-                              {aiDraftSuggestion.type === 'INCIDENT' ? (
-                                <>
-                                  {aiDraftSuggestion.impact ? (
-                                    <small>
-                                      Impact :{' '}
-                                      {translateIncidentSeverity(
-                                        aiDraftSuggestion.impact,
-                                      )}
-                                    </small>
-                                  ) : null}
-                                  {aiDraftSuggestion.urgency ? (
-                                    <small>
-                                      Urgence :{' '}
-                                      {translateIncidentSeverity(
-                                        aiDraftSuggestion.urgency,
-                                      )}
-                                    </small>
-                                  ) : null}
-                                </>
-                              ) : aiDraftSuggestion.priorityName ? (
+                              {aiDraftSuggestion.priorityName ? (
                                 <small>
                                   Priorite :{' '}
                                   {translatePriority(
