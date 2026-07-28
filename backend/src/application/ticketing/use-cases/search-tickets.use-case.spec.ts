@@ -132,13 +132,22 @@ describe('SearchTicketsUseCase', () => {
   });
 
   it('hides closed and archived tickets from agent searches', async () => {
-    const openTicket = createTicketSummary('ticket-1', TicketStatus.OPEN);
-    const closedTicket = createTicketSummary('ticket-2', TicketStatus.CLOSED);
-    const archivedTicket = createTicketSummary(
-      'ticket-3',
-      TicketStatus.OPEN,
-      '2026-04-17T10:00:00.000Z',
-    );
+    const openTicket = createTicketSummaryWithAssignment({
+      assignedToUserId: 'agent-1',
+      id: 'ticket-1',
+      status: TicketStatus.OPEN,
+    });
+    const closedTicket = createTicketSummaryWithAssignment({
+      assignedToUserId: 'agent-1',
+      id: 'ticket-2',
+      status: TicketStatus.CLOSED,
+    });
+    const archivedTicket = createTicketSummaryWithAssignment({
+      archivedAt: '2026-04-17T10:00:00.000Z',
+      assignedToUserId: 'agent-1',
+      id: 'ticket-3',
+      status: TicketStatus.OPEN,
+    });
     const searchTickets = jest
       .fn()
       .mockResolvedValue([openTicket, closedTicket, archivedTicket]);
@@ -166,13 +175,22 @@ describe('SearchTicketsUseCase', () => {
   });
 
   it('keeps closed tickets visible to agent searches when requested', async () => {
-    const openTicket = createTicketSummary('ticket-1', TicketStatus.OPEN);
-    const closedTicket = createTicketSummary('ticket-2', TicketStatus.CLOSED);
-    const archivedTicket = createTicketSummary(
-      'ticket-3',
-      TicketStatus.OPEN,
-      '2026-04-17T10:00:00.000Z',
-    );
+    const openTicket = createTicketSummaryWithAssignment({
+      assignedToUserId: 'agent-1',
+      id: 'ticket-1',
+      status: TicketStatus.OPEN,
+    });
+    const closedTicket = createTicketSummaryWithAssignment({
+      assignedToUserId: 'agent-1',
+      id: 'ticket-2',
+      status: TicketStatus.CLOSED,
+    });
+    const archivedTicket = createTicketSummaryWithAssignment({
+      archivedAt: '2026-04-17T10:00:00.000Z',
+      assignedToUserId: 'agent-1',
+      id: 'ticket-3',
+      status: TicketStatus.OPEN,
+    });
     const searchTickets = jest
       .fn()
       .mockResolvedValue([openTicket, closedTicket, archivedTicket]);
@@ -200,7 +218,7 @@ describe('SearchTicketsUseCase', () => {
     ).resolves.toEqual([openTicket, closedTicket]);
   });
 
-  it('limits agent searches to unassigned tickets, direct assignments, and own groups', async () => {
+  it('limits agent searches to direct assignments and own groups', async () => {
     const unassignedTicket = createTicketSummary('ticket-1', TicketStatus.OPEN);
     const assignedToCurrentAgent = createTicketSummaryWithAssignment({
       assignedToUserId: 'agent-1',
@@ -248,11 +266,7 @@ describe('SearchTicketsUseCase', () => {
         requesterUserId: 'agent-1',
         requesterUserRole: UserRole.AGENT,
       }),
-    ).resolves.toEqual([
-      unassignedTicket,
-      assignedToCurrentAgent,
-      assignedToOwnGroup,
-    ]);
+    ).resolves.toEqual([assignedToCurrentAgent, assignedToOwnGroup]);
   });
 
   it('keeps closed tickets visible to admins before archival', async () => {
@@ -373,19 +387,23 @@ function createTicketSummary(
 }
 
 function createTicketSummaryWithAssignment({
+  archivedAt = null,
   assignedToUserId = null,
   assignmentGroupId = null,
   id,
+  status = TicketStatus.OPEN,
 }: {
+  archivedAt?: string | null;
   assignedToUserId?: string | null;
   assignmentGroupId?: string | null;
   id: string;
+  status?: TicketStatus;
 }): TicketSummary {
   return new TicketSummary(
     id,
     'TICK-000001',
     TicketType.INCIDENT,
-    TicketStatus.OPEN,
+    status,
     'VPN KO',
     'priority-1',
     'HIGH',
@@ -397,5 +415,10 @@ function createTicketSummaryWithAssignment({
     assignedToUserId,
     null,
     '2026-04-02T10:00:00.000Z',
+    null,
+    null,
+    null,
+    null,
+    archivedAt,
   );
 }

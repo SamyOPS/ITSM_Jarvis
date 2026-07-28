@@ -109,7 +109,7 @@ function isTicketVisibleToAgent(
     return ticket.assignedToUserId === agentUserId;
   }
 
-  return true;
+  return false;
 }
 
 function withoutArchivedTickets(tickets: TicketSummary[]): TicketSummary[] {
