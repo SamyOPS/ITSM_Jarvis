@@ -146,7 +146,7 @@ export class KnowledgeController {
 
   @Delete(':articleId/attachments/:attachmentId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MANAGER, UserRole.ADMIN)
   deleteAttachment(
     @Param('articleId') articleId: string,
     @Param('attachmentId') attachmentId: string,

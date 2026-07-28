@@ -564,6 +564,200 @@ describe('AuthController', () => {
     });
   });
 
+  it('lets managers update regular user account details', async () => {
+    const updateUser = jest.fn();
+
+    controller = new AuthController(
+      {
+        execute: jest.fn(),
+      } as unknown as CreateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as DeleteAdminUserUseCase,
+      new GetAuthSetupUseCase(),
+      {
+        execute: jest.fn(),
+      } as unknown as GetAuthenticatedUserUseCase,
+      mockUserLicenseReadUseCase(),
+      {
+        execute: jest.fn().mockResolvedValue([
+          {
+            displayName: 'Agent Client',
+            email: 'agent@example.com',
+            firstName: 'Agent',
+            groupId: null,
+            id: 'agent-1',
+            isActive: true,
+            lastName: 'Client',
+            role: UserRole.AGENT,
+          },
+        ]),
+      } as unknown as ListAdminUsersUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as RegisterRequesterUseCase,
+      {
+        execute: updateUser,
+      } as unknown as UpdateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserGroupsUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserStatusUseCase,
+      mockUserLicenseWriteUseCase(),
+    );
+
+    await controller.updateAdminUser(
+      'agent-1',
+      {
+        accessToken: 'token',
+        email: 'manager@example.com',
+        id: 'manager-1',
+        role: UserRole.MANAGER,
+      },
+      {
+        email: 'agent@example.com',
+        firstName: 'Agent',
+        lastName: 'Client',
+        role: UserRole.AGENT,
+      },
+    );
+
+    expect(updateUser).toHaveBeenCalledWith({
+      email: 'agent@example.com',
+      firstName: 'Agent',
+      groupId: undefined,
+      groupIds: undefined,
+      lastName: 'Client',
+      role: UserRole.AGENT,
+      userId: 'agent-1',
+    });
+  });
+
+  it('rejects manager role changes on admin or manager accounts', async () => {
+    const updateUser = jest.fn();
+
+    controller = new AuthController(
+      {
+        execute: jest.fn(),
+      } as unknown as CreateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as DeleteAdminUserUseCase,
+      new GetAuthSetupUseCase(),
+      {
+        execute: jest.fn(),
+      } as unknown as GetAuthenticatedUserUseCase,
+      mockUserLicenseReadUseCase(),
+      {
+        execute: jest.fn().mockResolvedValue([
+          {
+            displayName: 'Admin Client',
+            email: 'admin@example.com',
+            firstName: 'Admin',
+            groupId: null,
+            id: 'admin-2',
+            isActive: true,
+            lastName: 'Client',
+            role: UserRole.ADMIN,
+          },
+        ]),
+      } as unknown as ListAdminUsersUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as RegisterRequesterUseCase,
+      {
+        execute: updateUser,
+      } as unknown as UpdateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserGroupsUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserStatusUseCase,
+      mockUserLicenseWriteUseCase(),
+    );
+
+    await expect(
+      controller.updateAdminUser(
+        'admin-2',
+        {
+          accessToken: 'token',
+          email: 'manager@example.com',
+          id: 'manager-1',
+          role: UserRole.MANAGER,
+        },
+        {
+          email: 'admin@example.com',
+          firstName: 'Admin',
+          lastName: 'Client',
+          role: UserRole.AGENT,
+        },
+      ),
+    ).rejects.toThrow('Managers cannot change admin or manager roles.');
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+
+  it('rejects manager group changes on another manager account', async () => {
+    const updateGroups = jest.fn();
+
+    controller = new AuthController(
+      {
+        execute: jest.fn(),
+      } as unknown as CreateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as DeleteAdminUserUseCase,
+      new GetAuthSetupUseCase(),
+      {
+        execute: jest.fn(),
+      } as unknown as GetAuthenticatedUserUseCase,
+      mockUserLicenseReadUseCase(),
+      {
+        execute: jest.fn().mockResolvedValue([
+          {
+            displayName: 'Other Manager',
+            email: 'other-manager@example.com',
+            firstName: 'Other',
+            groupId: null,
+            id: 'manager-2',
+            isActive: true,
+            lastName: 'Manager',
+            role: UserRole.MANAGER,
+          },
+        ]),
+      } as unknown as ListAdminUsersUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as RegisterRequesterUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserUseCase,
+      {
+        execute: updateGroups,
+      } as unknown as UpdateAdminUserGroupsUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserStatusUseCase,
+      mockUserLicenseWriteUseCase(),
+    );
+
+    await expect(
+      controller.updateAdminUserGroups(
+        'manager-2',
+        {
+          accessToken: 'token',
+          email: 'manager@example.com',
+          id: 'manager-1',
+          role: UserRole.MANAGER,
+        },
+        { groupIds: ['group-1'] },
+      ),
+    ).rejects.toThrow('Managers cannot change groups for other managers.');
+    expect(updateGroups).not.toHaveBeenCalled();
+  });
+
   it('rejects downgrading another super admin account', async () => {
     const updateUser = jest.fn();
 

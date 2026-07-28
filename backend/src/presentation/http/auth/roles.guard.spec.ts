@@ -63,6 +63,19 @@ describe('RolesGuard', () => {
     expect(guard.canActivate(createContext(UserRole.ADMIN))).toBe(true);
   });
 
+  it('allows managers to pass admin area policies', () => {
+    const reflector = {
+      getAllAndOverride: jest
+        .fn()
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([AuthPolicy.ACCESS_ADMIN_AREA]),
+    };
+
+    const guard = new RolesGuard(reflector as Reflector);
+
+    expect(guard.canActivate(createContext(UserRole.MANAGER))).toBe(true);
+  });
+
   it('denies access when the required policy fails', () => {
     const reflector = {
       getAllAndOverride: jest

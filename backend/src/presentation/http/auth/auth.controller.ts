@@ -42,7 +42,11 @@ import { type AdminUserSummary } from '../../../domain/auth/admin-user-summary';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
 import { AuthPolicy } from '../../../domain/auth/auth-policy';
 import { type UserLicenseSnapshot } from '../../../domain/auth/user-license';
-import { isAdminRole, UserRole } from '../../../domain/auth/user-role';
+import {
+  isAdminRole,
+  isManagerRole,
+  UserRole,
+} from '../../../domain/auth/user-role';
 import { isBillableRole } from '../../../application/auth/user-license-policy';
 import { CurrentUser } from './current-user.decorator';
 import { BearerAuthGuard } from './bearer-auth.guard';
@@ -195,7 +199,7 @@ export class AuthController {
 
   @Get('admin-area')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MANAGER, UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
   getAdminArea(@CurrentUser() user: AuthenticatedUser) {
     return {
@@ -206,7 +210,7 @@ export class AuthController {
 
   @Get('admin/users')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MANAGER, UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
   async listAdminUsers(
     @CurrentUser() user: AuthenticatedUser,
@@ -242,7 +246,7 @@ export class AuthController {
 
   @Post('admin/users')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MANAGER, UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
   createAdminUser(
     @CurrentUser() user: AuthenticatedUser,
@@ -270,7 +274,7 @@ export class AuthController {
 
   @Patch('admin/users/:userId')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MANAGER, UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
   async updateAdminUser(
     @Param('userId') userId: string,
@@ -326,7 +330,7 @@ export class AuthController {
 
   @Patch('admin/users/:userId/status')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MANAGER, UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
   async updateAdminUserStatus(
     @Param('userId') userId: string,
@@ -358,7 +362,7 @@ export class AuthController {
 
   @Patch('admin/users/:userId/groups')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MANAGER, UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
   async updateAdminUserGroups(
     @Param('userId') userId: string,
@@ -367,6 +371,7 @@ export class AuthController {
   ): Promise<AdminUserSummary> {
     await this.assertCanManageTargetUser(user, userId, {
       action: 'update groups for this account',
+      protectManagerPeerGroups: true,
     });
 
     return this.updateAdminUserGroupsUseCase.execute({
@@ -377,7 +382,7 @@ export class AuthController {
 
   @Delete('admin/users/:userId')
   @UseGuards(BearerAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MANAGER, UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
   async deleteAdminUser(
     @Param('userId') userId: string,
@@ -401,6 +406,7 @@ export class AuthController {
       action: string;
       allowAdminCreation?: boolean;
       nextRole?: UserRole;
+      protectManagerPeerGroups?: boolean;
     },
   ): Promise<AdminUserSummary> {
     const targetUser = await this.findAdminUserOrThrow(targetUserId);
@@ -422,6 +428,28 @@ export class AuthController {
         isAdminRole(options.nextRole))
     ) {
       throw new BadRequestException('Only super admins can grant this role.');
+    }
+
+    if (
+      isManagerRole(actor.role) &&
+      options.protectManagerPeerGroups &&
+      targetUser.role === UserRole.MANAGER
+    ) {
+      throw new BadRequestException(
+        'Managers cannot change groups for other managers.',
+      );
+    }
+
+    if (
+      isManagerRole(actor.role) &&
+      options.nextRole &&
+      options.nextRole !== targetUser.role &&
+      (targetUser.role === UserRole.ADMIN ||
+        targetUser.role === UserRole.MANAGER)
+    ) {
+      throw new BadRequestException(
+        'Managers cannot change admin or manager roles.',
+      );
     }
 
     return targetUser;

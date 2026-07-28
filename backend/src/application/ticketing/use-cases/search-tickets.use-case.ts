@@ -1,7 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { UserAssignmentProfile } from '../../../domain/auth/user-assignment-profile';
 import {
-  isAdminRole,
   isSupportManagerRole,
   isSupportRole,
   UserRole,
@@ -49,9 +48,7 @@ export class SearchTicketsUseCase {
       const tickets =
         await this.ticketReadRepository.searchTickets(normalizedFilters);
 
-      return isAdminRole(query.requesterUserRole) && query.includeArchived
-        ? tickets
-        : withoutArchivedTickets(tickets);
+      return query.includeArchived ? tickets : withoutArchivedTickets(tickets);
     }
 
     if (isSupportRole(query.requesterUserRole)) {

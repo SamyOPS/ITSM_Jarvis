@@ -3,11 +3,12 @@ import type { UserRole } from '../../domain/auth/user-role';
 import type { RoutePath } from '../../domain/navigation/route';
 
 const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
-  '/admin/groups': ['ADMIN', 'SUPER_ADMIN'],
+  '/admin/groups': ['MANAGER', 'ADMIN', 'SUPER_ADMIN'],
   '/admin/license': ['SUPER_ADMIN'],
-  '/admin/users': ['ADMIN', 'SUPER_ADMIN'],
+  '/admin/trash': ['SUPER_ADMIN'],
+  '/admin/users': ['MANAGER', 'ADMIN', 'SUPER_ADMIN'],
   '/agent': ['DEMANDEUR', 'AGENT', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'],
-  '/agent/archives': ['ADMIN', 'SUPER_ADMIN'],
+  '/agent/archives': ['MANAGER', 'ADMIN', 'SUPER_ADMIN'],
   '/agent/incidents/new': [
     'DEMANDEUR',
     'AGENT',
@@ -37,8 +38,8 @@ const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
     'ADMIN',
     'SUPER_ADMIN',
   ],
-  '/parc/cis/new': ['ADMIN', 'SUPER_ADMIN'],
-  '/parc/cis': ['ADMIN', 'SUPER_ADMIN'],
+  '/parc/cis/new': ['MANAGER', 'ADMIN', 'SUPER_ADMIN'],
+  '/parc/cis': ['MANAGER', 'ADMIN', 'SUPER_ADMIN'],
   '/reports': ['AGENT', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'],
 };
 
@@ -93,6 +94,7 @@ export function getVisibleRoutes(
       '/admin/users',
       '/admin/groups',
       '/admin/license',
+      '/admin/trash',
       '/login',
     ] as const
   )
