@@ -168,6 +168,9 @@ export class SuggestTicketDraftUseCase {
       "- adapte le nombre de questions/actions a la situation: 0 si le probleme est complexe, urgent, risque, ou clairement a traiter par le support; 1 a 3 si c'est simple et utile;",
       "- pour les problemes simples et frequents comme PC qui ne s'allume pas, Wi-Fi/Internet, application bloquee, imprimante ou accessoire, fais au moins une aide simple avant le brouillon si aucune tentative de resolution n'est deja mentionnee;",
       "- exemple PC qui ne s'allume pas: avant le brouillon, proposer de brancher le chargeur/secteur, tester une autre prise ou un autre cable, patienter quelques minutes si batterie vide, puis demander ce que cela donne;",
+      "- Vision est l'application actuelle de ticketing/portail; si l'utilisateur parle de mdp Vision, compte Vision ou mot de passe de cette appli, ne demande pas quelle application est concernee;",
+      "- si l'utilisateur parle seulement d'un mot de passe oublie sans nommer Vision, ne suppose jamais que c'est Vision; demande d'abord de quel compte/service il s'agit: session PC, messagerie, application, VPN, Vision ou autre;",
+      "- pour un mot de passe oublie Vision/portail, proposer d'abord d'utiliser le lien Mot de passe oublie sur l'ecran de connexion et de verifier l'email de reinitialisation; si cela ne marche pas, preparer une demande;",
       "- apres quelques questions/actions ou des que l'utilisateur donne assez d'elements, action=SUGGEST_TICKET;",
       "- si l'utilisateur dit que tes conseils ne changent rien, qu'il ne peut pas les faire, ou qu'il veut un ticket, action=SUGGEST_TICKET;",
       "- ne force pas toujours une proposition apres un seul message d'aide; ne prolonge pas non plus la conversation inutilement;",
@@ -232,7 +235,7 @@ export class SuggestTicketDraftUseCase {
       return {
         action: 'ASK_QUESTION',
         question:
-          this.normalizeAssistantQuestion(parsed.question) ??
+          this.normalizeAssistantQuestion(parsed.question, userInput) ??
           'Pouvez-vous apporter une precision supplementaire ?',
         suggestion: null,
       };
@@ -243,17 +246,15 @@ export class SuggestTicketDraftUseCase {
         ? TicketType.REQUEST
         : TicketType.INCIDENT;
 
-    if (type === TicketType.INCIDENT) {
-      const troubleshootingQuestion =
-        this.getMissingSimpleTroubleshootingQuestion(userInput);
+    const troubleshootingQuestion =
+      this.getMissingSimpleTroubleshootingQuestion(userInput);
 
-      if (troubleshootingQuestion) {
-        return {
-          action: 'ASK_QUESTION',
-          question: troubleshootingQuestion,
-          suggestion: null,
-        };
-      }
+    if (troubleshootingQuestion) {
+      return {
+        action: 'ASK_QUESTION',
+        question: troubleshootingQuestion,
+        suggestion: null,
+      };
     }
 
     const impact = this.normalizeEnum(parsed.impact, IncidentSeverity);
@@ -331,11 +332,38 @@ export class SuggestTicketDraftUseCase {
       .trim();
   }
 
-  private normalizeAssistantQuestion(value: string | null): string | null {
+  private normalizeAssistantQuestion(
+    value: string | null,
+    conversation: string,
+  ): string | null {
     const normalized = this.normalizeNullableText(value);
 
     if (!normalized) {
       return null;
+    }
+
+    const normalizedConversation = this.normalizeForMatching(conversation);
+    const normalizedQuestion = this.normalizeForMatching(normalized);
+    const mentionsPasswordIssue =
+      /(mdp|mot de passe|password|connexion|connecter|login|identifiant)/u.test(
+        normalizedConversation,
+      );
+    const userMentionedVision =
+      /\b(vision|portail|cette appli|application actuelle|appli de ticketing|ticketing)\b/u.test(
+        normalizedConversation,
+      );
+    const questionAssumesVision =
+      /\b(vision|portail)\b/u.test(normalizedQuestion) &&
+      /(mdp|mot de passe|password|connexion|connecter|login|reinitialisation|reinitialiser|mot de passe oublie)/u.test(
+        normalizedQuestion,
+      );
+
+    if (
+      mentionsPasswordIssue &&
+      questionAssumesVision &&
+      !userMentionedVision
+    ) {
+      return "De quel mot de passe s'agit-il : session du PC, messagerie, application, VPN, Vision ou autre service ?";
     }
 
     const question = normalized
@@ -352,6 +380,25 @@ export class SuggestTicketDraftUseCase {
     conversation: string,
   ): string | null {
     const normalizedConversation = this.normalizeForMatching(conversation);
+    const mentionsVisionPasswordIssue =
+      /(vision|portail|cette appli|application actuelle|appli de ticketing|ticketing).*(mdp|mot de passe|password|connexion|connecter|login)/u.test(
+        normalizedConversation,
+      ) ||
+      /(mdp|mot de passe|password|connexion|connecter|login).*(vision|portail|cette appli|application actuelle|appli de ticketing|ticketing)/u.test(
+        normalizedConversation,
+      );
+
+    if (mentionsVisionPasswordIssue) {
+      const alreadySuggestedPasswordReset =
+        /(mot de passe oublie|mdp oublie|reinitialisation|reinitialiser|email de reinitialisation|mail de reinitialisation|lien de reinitialisation)/u.test(
+          normalizedConversation,
+        );
+
+      if (!alreadySuggestedPasswordReset) {
+        return "Vision est bien l'application actuelle. Avant de creer une demande, essayez le lien Mot de passe oublie sur l'ecran de connexion, puis verifiez l'email de reinitialisation. Si vous ne recevez rien ou si cela ne fonctionne pas, dites-le-moi et je preparerai la demande.";
+      }
+    }
+
     const mentionsComputerPowerIssue =
       /(pc|ordinateur|portable|poste|ecran).*(s[' ]?allume pas|demarre pas|ne demarre pas|aucun voyant|pas de voyant|ventilateur)/u.test(
         normalizedConversation,
