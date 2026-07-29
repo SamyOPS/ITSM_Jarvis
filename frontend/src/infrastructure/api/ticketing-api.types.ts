@@ -25,8 +25,10 @@ export type CreateRequestPayload = {
 
 export type SuggestTicketDraftPayload = {
   categories?: string[];
+  channels?: string[];
   currentMode?: 'INCIDENT' | 'REQUEST' | null;
   priorities?: string[];
+  requesters?: string[];
   userInput: string;
 };
 
@@ -38,10 +40,13 @@ export type TicketDraftAssistantResponse = {
 
 export type TicketDraftSuggestion = {
   categoryName: string | null;
+  channelName: string | null;
   confidence: number;
   description: string;
   impact: IncidentSeverity | null;
   priorityName: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | null;
+  requesterName: string | null;
+  requesterScope: 'SELF' | 'OTHER' | null;
   requestType: RequestType | null;
   title: string;
   type: 'INCIDENT' | 'REQUEST';

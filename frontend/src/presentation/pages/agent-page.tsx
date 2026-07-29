@@ -1257,6 +1257,19 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     [incidentSelectableUsers],
   );
 
+  const aiRequesterNames = useMemo(
+    () =>
+      requesters
+        .map((user) => formatKnownUserName(user, user.id))
+        .filter((name) => Boolean(name.trim())),
+    [requesters],
+  );
+
+  const aiChannelNames = useMemo(
+    () => catalog.channels.map((channel) => translateChannel(channel.name)),
+    [catalog.channels],
+  );
+
   const assignableTechnicians = useMemo(
     () =>
       technicians.filter(
@@ -1669,6 +1682,158 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setSubmitErrorMessage(null);
   }
 
+  function findSuggestedChannelId(channelName: string | null): string {
+    const normalizedChannelName = normalizeSearchText(channelName ?? '');
+
+    if (!normalizedChannelName) {
+      return '';
+    }
+
+    const getChannelAliases = (channelNameValue: string): string[] => {
+      const normalizedChannel = normalizeSearchText(channelNameValue);
+
+      if (
+        normalizedChannel.includes('email') ||
+        normalizedChannel.includes('mail')
+      ) {
+        return ['email', 'mail', 'courriel'];
+      }
+
+      if (
+        normalizedChannel.includes('phone') ||
+        normalizedChannel.includes('telephone') ||
+        normalizedChannel.includes('tel')
+      ) {
+        return ['telephone', 'tel', 'appel'];
+      }
+
+      if (
+        normalizedChannel.includes('portal') ||
+        normalizedChannel.includes('portail')
+      ) {
+        return ['portail', 'portal'];
+      }
+
+      if (
+        normalizedChannel.includes('chat') ||
+        normalizedChannel.includes('message')
+      ) {
+        return ['chat', 'message', 'messagerie'];
+      }
+
+      if (
+        normalizedChannel.includes('other') ||
+        normalizedChannel.includes('autre')
+      ) {
+        return ['autre', 'oral', 'face a face', 'direct'];
+      }
+
+      return [];
+    };
+
+    return (
+      catalog.channels.find((channel) => {
+        const candidates = [
+          channel.name,
+          translateChannel(channel.name),
+          ...getChannelAliases(channel.name),
+          ...getChannelAliases(translateChannel(channel.name)),
+        ];
+
+        return candidates.some((candidate) => {
+          const normalizedCandidate = normalizeSearchText(candidate);
+
+          return (
+            normalizedCandidate === normalizedChannelName ||
+            normalizedCandidate.includes(normalizedChannelName) ||
+            normalizedChannelName.includes(normalizedCandidate)
+          );
+        });
+      })?.id ?? ''
+    );
+  }
+
+  function findSuggestedRequesterId(
+    requesterScope: TicketDraftSuggestion['requesterScope'],
+    requesterName: string | null,
+  ): string {
+    if (requesterScope === 'SELF') {
+      return session.user.id;
+    }
+
+    const normalizedRequesterName = normalizeSearchText(requesterName ?? '');
+
+    if (!normalizedRequesterName) {
+      return session.user.id;
+    }
+
+    const requesterSearchTerms = normalizedRequesterName
+      .split(/\s+/u)
+      .filter(Boolean);
+
+    const matchingRequesters = requesters.filter((user) => {
+      const candidates = [
+        formatKnownUserName(user, user.id),
+        user.displayName ?? '',
+        `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
+        `${user.lastName ?? ''} ${user.firstName ?? ''}`.trim(),
+        user.email ?? '',
+      ].filter(Boolean);
+
+      return candidates.some((candidate) => {
+        const normalizedCandidate = normalizeSearchText(candidate);
+        const candidateTerms = normalizedCandidate
+          .split(/\s+/u)
+          .filter(Boolean);
+
+        return (
+          normalizedCandidate === normalizedRequesterName ||
+          requesterSearchTerms.every((term) =>
+            candidateTerms.some(
+              (candidateTerm) =>
+                candidateTerm === term ||
+                candidateTerm.startsWith(term) ||
+                term.startsWith(candidateTerm),
+            ),
+          )
+        );
+      });
+    });
+
+    return matchingRequesters.length === 1
+      ? matchingRequesters[0].id
+      : session.user.id;
+  }
+
+  function findSuggestedPriorityId(
+    priorityName: TicketDraftSuggestion['priorityName'],
+  ): string {
+    if (!priorityName) {
+      return '';
+    }
+
+    const normalizedPriorityName = normalizeSearchText(priorityName);
+    const normalizedTranslatedPriorityName = normalizeSearchText(
+      translatePriority(priorityName),
+    );
+
+    return (
+      catalog.priorities.find((priority) => {
+        const normalizedCandidateName = normalizeSearchText(priority.name);
+        const normalizedTranslatedCandidateName = normalizeSearchText(
+          translatePriority(priority.name),
+        );
+
+        return (
+          normalizedCandidateName === normalizedPriorityName ||
+          normalizedCandidateName === normalizedTranslatedPriorityName ||
+          normalizedTranslatedCandidateName === normalizedPriorityName ||
+          normalizedTranslatedCandidateName === normalizedTranslatedPriorityName
+        );
+      })?.id ?? ''
+    );
+  }
+
   async function handleSendAiChatMessage(): Promise<void> {
     const userInput = aiDraftInput.trim();
 
@@ -1694,8 +1859,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     try {
       const assistantResponse = await suggestTicketDraft(session.accessToken, {
         categories: incidentCategoryOptions.map((category) => category.name),
+        channels: aiChannelNames,
         currentMode: mode,
         priorities: catalog.priorities.map((priority) => priority.name),
+        requesters: aiRequesterNames,
         userInput: [
           nextMessages
             .map((message) =>
@@ -1711,6 +1878,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                 `Titre: ${aiDraftSuggestion.title}`,
                 `Categorie: ${aiDraftSuggestion.categoryName ?? 'non renseignee'}`,
                 `Priorite: ${aiDraftSuggestion.priorityName ?? 'non renseignee'}`,
+                `Demandeur: ${
+                  aiDraftSuggestion.requesterScope === 'SELF'
+                    ? 'utilisateur courant'
+                    : (aiDraftSuggestion.requesterName ?? 'non renseigne')
+                }`,
+                `Canal: ${aiDraftSuggestion.channelName ?? 'non renseigne'}`,
                 `Description: ${aiDraftSuggestion.description}`,
               ].join('\n')
             : '',
@@ -1776,8 +1949,15 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
             normalizedSuggestedCategory.includes(normalizedCategory))
         );
       });
-    const suggestedPriority = catalog.priorities.find(
-      (priority) => priority.name === aiDraftSuggestion.priorityName,
+    const suggestedPriorityId = findSuggestedPriorityId(
+      aiDraftSuggestion.priorityName,
+    );
+    const suggestedChannelId = findSuggestedChannelId(
+      aiDraftSuggestion.channelName,
+    );
+    const suggestedRequesterId = findSuggestedRequesterId(
+      aiDraftSuggestion.requesterScope,
+      aiDraftSuggestion.requesterName,
     );
     const targetCreatePath =
       nextMode === 'INCIDENT' ? '/agent/incidents/new' : '/agent/requests/new';
@@ -1791,8 +1971,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       setIncidentDraft((currentDraft) => ({
         ...currentDraft,
         categoryId: suggestedCategory?.id ?? currentDraft.categoryId,
+        channelId: suggestedChannelId || currentDraft.channelId,
         description: aiDraftSuggestion.description || currentDraft.description,
         impact: aiDraftSuggestion.impact ?? currentDraft.impact,
+        requestedForUserId:
+          suggestedRequesterId || currentDraft.requestedForUserId,
         title: aiDraftSuggestion.title || currentDraft.title,
         urgency: aiDraftSuggestion.urgency ?? currentDraft.urgency,
       }));
@@ -1801,8 +1984,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       setRequestDraft((currentDraft) => ({
         ...currentDraft,
         categoryId: suggestedCategory?.id ?? currentDraft.categoryId,
+        channelId: suggestedChannelId || currentDraft.channelId,
         description: aiDraftSuggestion.description || currentDraft.description,
-        priorityId: suggestedPriority?.id ?? currentDraft.priorityId,
+        priorityId: suggestedPriorityId || currentDraft.priorityId,
+        requestedForUserId:
+          suggestedRequesterId || currentDraft.requestedForUserId,
         requestType: aiDraftSuggestion.requestType ?? currentDraft.requestType,
         title: aiDraftSuggestion.title || currentDraft.title,
       }));
@@ -3981,6 +4167,20 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   {translatePriority(
                                     aiDraftSuggestion.priorityName,
                                   )}
+                                </small>
+                              ) : null}
+                              {aiDraftSuggestion.requesterScope ? (
+                                <small>
+                                  Demandeur :{' '}
+                                  {aiDraftSuggestion.requesterScope === 'SELF'
+                                    ? 'Vous'
+                                    : (aiDraftSuggestion.requesterName ??
+                                      'Non renseigne')}
+                                </small>
+                              ) : null}
+                              {aiDraftSuggestion.channelName ? (
+                                <small>
+                                  Canal : {aiDraftSuggestion.channelName}
                                 </small>
                               ) : null}
                             </div>
