@@ -568,6 +568,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
   const overviewTotals = overview?.totals ?? EMPTY_OVERVIEW_TOTALS;
 
   const overdueTotal = getOverviewOverdueTotal(overviewTotals);
+  const canViewOperationalBreakdowns = session.user.role !== 'AGENT';
 
   const slaWidgetItems = useMemo(
     () =>
@@ -1509,25 +1510,29 @@ export function ReportsPage({ session }: ReportsPageProps) {
                 <DashboardBarWidget items={sourceWidgetItems} />
               </DashboardPanel>
 
-              <DashboardPanel
-                activityMode={dashboardActivityModes.GROUP}
-                onActivityModeChange={(isActive) =>
-                  handleDashboardActivityModeChange('GROUP', isActive)
-                }
-                title="Tickets par groupe"
-              >
-                <DashboardBarWidget items={groupWidgetItems} />
-              </DashboardPanel>
+              {canViewOperationalBreakdowns ? (
+                <>
+                  <DashboardPanel
+                    activityMode={dashboardActivityModes.GROUP}
+                    onActivityModeChange={(isActive) =>
+                      handleDashboardActivityModeChange('GROUP', isActive)
+                    }
+                    title="Tickets par groupe"
+                  >
+                    <DashboardBarWidget items={groupWidgetItems} />
+                  </DashboardPanel>
 
-              <DashboardPanel
-                activityMode={dashboardActivityModes.AGENT}
-                onActivityModeChange={(isActive) =>
-                  handleDashboardActivityModeChange('AGENT', isActive)
-                }
-                title="Tickets par agent"
-              >
-                <DashboardBarWidget items={agentWidgetItems} />
-              </DashboardPanel>
+                  <DashboardPanel
+                    activityMode={dashboardActivityModes.AGENT}
+                    onActivityModeChange={(isActive) =>
+                      handleDashboardActivityModeChange('AGENT', isActive)
+                    }
+                    title="Tickets par agent"
+                  >
+                    <DashboardBarWidget items={agentWidgetItems} />
+                  </DashboardPanel>
+                </>
+              ) : null}
             </div>
           </section>
         </>
