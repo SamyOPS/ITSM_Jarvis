@@ -187,12 +187,13 @@ export class SuggestTicketDraftUseCase {
       "- pour les problemes simples et frequents comme PC qui ne s'allume pas, Wi-Fi/Internet, application bloquee, imprimante ou accessoire, fais au moins une aide simple avant le brouillon si aucune tentative de resolution n'est deja mentionnee;",
       "- exemple PC qui ne s'allume pas: avant le brouillon, proposer de brancher le chargeur/secteur, tester une autre prise ou un autre cable, patienter quelques minutes si batterie vide, puis demander ce que cela donne;",
       "- Vision est l'application actuelle de ticketing/portail; si l'utilisateur parle de mdp Vision, compte Vision ou mot de passe de cette appli, ne demande pas quelle application est concernee;",
-      "- si l'utilisateur parle seulement d'un mot de passe oublie sans nommer Vision, ne suppose jamais que c'est Vision; demande d'abord de quel compte/service il s'agit: session PC, messagerie, application, VPN, Vision ou autre;",
+      "- si l'utilisateur parle seulement d'un mot de passe oublie sans nommer Vision, ne suppose jamais que c'est Vision; demande d'abord uniquement de quel compte/service il s'agit: session PC, messagerie, application, VPN, Vision ou autre;",
+      '- pose une seule question de cadrage par message; ne combine jamais le compte/service concerne avec la question pour savoir si le ticket est pour lui ou pour un autre utilisateur;',
       "- si le mot de passe oublie concerne la session PC et que le ticket est pour l'utilisateur lui-meme, ne redemande pas l'identifiant exact ni le poste; ces informations sont utiles mais non bloquantes, prepare le ticket avec ce qui est connu;",
       "- si le mot de passe oublie concerne une messagerie ou une application avec mecanisme de reinitialisation simple, propose d'abord l'action simple Mot de passe oublie/reinitialisation avant de preparer le ticket;",
       "- pour un mot de passe oublie Vision/portail, proposer d'abord d'utiliser le lien Mot de passe oublie sur l'ecran de connexion et de verifier l'email de reinitialisation; si cela ne marche pas, preparer une demande;",
       "- avant action=SUGGEST_TICKET, identifie toujours si le ticket est pour l'utilisateur lui-meme ou pour un autre utilisateur de l'application;",
-      "- si ce n'est pas clair, action=ASK_QUESTION avec: Est-ce que le ticket est pour vous ou pour un autre utilisateur ?",
+      "- une fois le probleme ou le compte/service concerne compris, si ce n'est pas clair pour qui est le ticket, action=ASK_QUESTION avec exactement: Est-ce que le ticket est pour vous ou pour un autre utilisateur ?",
       '- si le ticket est pour lui-meme, requesterScope=SELF, requesterName=null, channelName=Portail;',
       "- si le ticket est pour quelqu'un d'autre, requesterScope=OTHER; si le nom/prenom manque, demande l'identite de cette personne;",
       "- si l'utilisateur repond seulement un autre, autre utilisateur ou equivalent, ce n'est pas un nom: requesterName doit rester null;",
@@ -274,7 +275,8 @@ export class SuggestTicketDraftUseCase {
           ? 'Portail'
           : this.inferChannelName(userInput);
       const requesterContextQuestion =
-        requesterScope === 'OTHER'
+        requesterScope === 'OTHER' ||
+        (!requesterScope && this.shouldAskRequesterScopeNow(userInput))
           ? this.getMissingRequesterContextQuestion(
               requesterScope,
               requesterName,
@@ -433,7 +435,7 @@ export class SuggestTicketDraftUseCase {
         normalizedConversation,
       );
     const mentionsPcSession =
-      /(session pc|session windows|compte windows|poste|ordinateur|pc portable|pc du taf|pc travail|pc professionnel)/u.test(
+      /(session pc|session windows|compte windows|mon pc|le pc|poste|ordinateur|pc portable|pc du taf|pc travail|pc professionnel|\bpc\b)/u.test(
         normalizedConversation,
       );
     const requesterScope = this.inferRequesterScope(conversation);
@@ -459,12 +461,19 @@ export class SuggestTicketDraftUseCase {
       /(canal|email|mail|chat|telephone|tel|portail|oral|face a face|autre)/u.test(
         normalizedQuestion,
       );
+    const questionAsksRequesterScope =
+      /(ticket|demande).*(pour vous|pour moi|autre utilisateur)/u.test(
+        normalizedQuestion,
+      ) ||
+      /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(
+        normalizedQuestion,
+      );
 
     if (
       mentionsPasswordIssue &&
       mentionsPcSession &&
       requesterScope === 'SELF' &&
-      questionAsksOptionalPcDetails
+      (questionAsksOptionalPcDetails || questionAsksRequesterScope)
     ) {
       return {
         action: 'SUGGEST_TICKET',
@@ -581,9 +590,20 @@ export class SuggestTicketDraftUseCase {
   }
 
   private inferRequesterScope(conversation: string): 'SELF' | 'OTHER' | null {
-    const normalizedConversation = this.normalizeForMatching(conversation);
+    const normalizedConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+    const userMessages = normalizedConversation
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
 
     if (
+      userMessages.some((message) =>
+        /^(moi|nous|pour moi|pour nous|c est pour moi|cest pour moi|c est pour nous|cest pour nous|moi meme|moi-meme)$/u.test(
+          message,
+        ),
+      ) ||
       /\b(pour moi|pour nous|me concerne|nous concerne|me concernant|nous concernant|mon ticket|notre ticket|moi-meme|moi meme|c'est pour moi|cest pour moi|c'est pour nous|cest pour nous)\b/u.test(
         normalizedConversation,
       ) ||
@@ -595,6 +615,11 @@ export class SuggestTicketDraftUseCase {
     }
 
     if (
+      userMessages.some((message) =>
+        /^(autre|un autre|une autre|pour un autre|pour une autre|autre utilisateur|un autre utilisateur|une autre utilisateur|pour quelqu un d autre|pour quelquun dautre)$/u.test(
+          message,
+        ),
+      ) ||
       /\b(un autre|une autre|pour quelqu'un d'autre|pour quelquun dautre|pour un autre|pour une autre|autre utilisateur|pour un collegue|pour une collegue|pour mon collegue|pour ma collegue)\b/u.test(
         normalizedConversation,
       ) ||
@@ -606,6 +631,26 @@ export class SuggestTicketDraftUseCase {
     }
 
     return null;
+  }
+
+  private shouldAskRequesterScopeNow(conversation: string): boolean {
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+    const mentionsPasswordIssue =
+      /(mdp|mot de passe|password|connexion|connecter|login|identifiant)/u.test(
+        normalizedUserConversation,
+      );
+    const mentionsPasswordTarget =
+      /(session pc|session windows|compte windows|mon pc|le pc|ordinateur|poste|pc portable|\bpc\b|messagerie|gmail|email|mail|application|appli|vpn|vision|portail)/u.test(
+        normalizedUserConversation,
+      );
+
+    if (mentionsPasswordIssue) {
+      return mentionsPasswordTarget;
+    }
+
+    return false;
   }
 
   private inferPartialRequesterName(conversation: string): string | null {
@@ -702,10 +747,12 @@ export class SuggestTicketDraftUseCase {
       ? lastUserMessage
       : latestRequesterAnswer;
     const firstWordMatch = requesterAnswer.match(/^([a-z][a-z'-]{1,40})\b/u);
+    const hasRequesterAnswerFromHistory = Boolean(latestRequesterAnswer);
 
     if (
       !unknownLastNameMentioned &&
-      !(assistantAskedRequesterName && firstWordMatch?.[1])
+      !(assistantAskedRequesterName && firstWordMatch?.[1]) &&
+      !(hasRequesterAnswerFromHistory && firstWordMatch?.[1])
     ) {
       return null;
     }
@@ -832,6 +879,18 @@ export class SuggestTicketDraftUseCase {
       /(mdp|mot de passe|password|connexion|connecter|login|reinitialisation|reinitialiser|mot de passe oublie)/u.test(
         normalizedQuestion,
       );
+    const questionCombinesPasswordTargetAndRequesterScope =
+      mentionsPasswordIssue &&
+      /(session pc|messagerie|application|vpn|vision|autre service|compte\/service|compte service)/u.test(
+        normalizedQuestion,
+      ) &&
+      /(pour vous|autre utilisateur|demande est pour)/u.test(
+        normalizedQuestion,
+      );
+
+    if (questionCombinesPasswordTargetAndRequesterScope) {
+      return "De quel mot de passe s'agit-il : session du PC, messagerie, application, VPN, Vision ou autre service ?";
+    }
 
     if (
       mentionsPasswordIssue &&

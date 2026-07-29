@@ -593,6 +593,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     Math.ceil(searchedTickets.length / TICKETS_PER_PAGE),
   );
   const aiDraftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const aiChatBodyRef = useRef<HTMLDivElement | null>(null);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const ticketListTitle = getTicketListTitle(section, session.user.role);
   const ticketListEmptyMessage = getTicketListEmptyMessage(section);
@@ -635,6 +636,30 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     resizeAiDraftTextarea();
   }, [aiDraftInput, isAiChatOpen]);
+
+  useEffect(() => {
+    if (!isAiChatOpen) {
+      return;
+    }
+
+    const animationFrameId = window.requestAnimationFrame(() => {
+      const chatBody = aiChatBodyRef.current;
+
+      if (!chatBody) {
+        return;
+      }
+
+      chatBody.scrollTop = chatBody.scrollHeight;
+    });
+
+    return () => window.cancelAnimationFrame(animationFrameId);
+  }, [
+    aiChatMessages.length,
+    aiDraftErrorMessage,
+    aiDraftSuggestion,
+    isAiChatOpen,
+    isSuggestingDraft,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -4122,7 +4147,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         </button>
                       </header>
 
-                      <div className="ticket-ai-chat-body">
+                      <div className="ticket-ai-chat-body" ref={aiChatBodyRef}>
                         {aiChatMessages.map((message) => (
                           <div
                             className={
