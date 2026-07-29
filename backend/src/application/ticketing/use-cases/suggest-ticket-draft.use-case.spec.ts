@@ -138,4 +138,49 @@ describe('SuggestTicketDraftUseCase', () => {
       },
     });
   });
+
+  it('forces Portal channel for self tickets and removes unsupported description details', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'SUGGEST_TICKET',
+        categoryName: 'Materiel',
+        channelName: 'Autre',
+        confidence: 0.8,
+        description:
+          "L'imprimante s'allume, mais aucun bouton ne fonctionne. Lorsqu'une impression est lancee, la situation ne semble pas permettre d'utiliser l'appareil.",
+        impact: 'HIGH',
+        priorityName: 'HIGH',
+        requesterScope: 'SELF',
+        title: 'Imprimante boutons inactifs',
+        type: TicketType.INCIDENT,
+        urgency: 'MEDIUM',
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          "Utilisateur: l'imprimante ne fonctionne plus",
+          "Assistant: L'imprimante affiche-t-elle un message d'erreur ou clignote-t-elle ?",
+          'Utilisateur: non rien',
+          "Assistant: L'imprimante s'allume-t-elle ?",
+          'Utilisateur: oui',
+          "Utilisateur: l'imprimante s'allume mais aucun bouton ne fonctionne",
+          'Assistant: Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+          'Utilisateur: pour moi',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'SUGGEST_TICKET',
+      suggestion: {
+        channelName: 'Portail',
+        description: "L'imprimante s'allume, mais aucun bouton ne fonctionne.",
+        requesterName: null,
+        requesterScope: 'SELF',
+      },
+    });
+  });
 });
