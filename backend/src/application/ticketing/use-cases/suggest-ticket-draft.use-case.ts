@@ -190,7 +190,8 @@ export class SuggestTicketDraftUseCase {
       '- pour une demande materielle trop generale, pose 1 petite question simple avant le brouillon si cela aide vraiment a fournir le bon materiel;',
       "- exemple demande de chargeur sans appareil precise: demander pour quel appareil (PC, telephone, tablette ou autre); si c'est un chargeur de telephone/portable, demander si l'utilisateur sait si c'est USB-C, Lightning, ou peu importe; si c'est un chargeur de PC, ne demande pas le type exact;",
       "- si l'utilisateur demande un cable reseau, un cable Wi-Fi, ou un cable pour avoir le Wi-Fi, considere que le besoin est assez clair: ne demande pas de confirmer Ethernet/RJ45 et ne demande pas pour quel materiel;",
-      '- pour un cable deja clairement identifie comme HDMI, DisplayPort, Ethernet/RJ45, USB-C, VGA ou DVI, ne demande pas pour quel appareil il est destine; cette question est inutile. Si la longueur manque vraiment, demande exactement: Quelle longueur de câble souhaitez-vous ?',
+      '- pour un cable deja clairement identifie comme HDMI, DisplayPort, Ethernet/RJ45, USB-C, VGA ou DVI, ne demande pas pour quel appareil il est destine, pour quel usage, quel type de connexion, TV/ecran, PC/moniteur; ces questions sont inutiles. Si la longueur manque vraiment, demande exactement: Quelle longueur de câble souhaitez-vous ?',
+      "- pour un cable USB-C destine a charger un PC, ne demande jamais si c'est pour synchronisation de donnees, alimentation, Power Delivery, ou type de port; prepare le ticket avec une description simple;",
       '- exemple demande de cle USB sans capacite: demander si une capacite precise est souhaitee ou si peu importe;',
       '- phase aide simple: tu peux proposer 0 a 3 actions simples si un utilisateur normal peut les tenter sans risque et sans procedure complexe;',
       "- adapte le nombre de questions/actions a la situation: 0 si le probleme est complexe, urgent, risque, ou clairement a traiter par le support; 1 a 3 si c'est simple et utile;",
@@ -455,6 +456,17 @@ export class SuggestTicketDraftUseCase {
       };
     }
 
+    const simpleCableSuggestion = this.getSimpleCableRequestSuggestion(
+      userInput,
+      requesterScope,
+      requesterName,
+      channelName,
+    );
+
+    if (simpleCableSuggestion) {
+      return simpleCableSuggestion;
+    }
+
     const impact = this.normalizeEnum(parsed.impact, IncidentSeverity);
     const urgency = this.normalizeEnum(parsed.urgency, IncidentSeverity);
     const [incidentImpact, incidentUrgency] = this.normalizeIncidentSeverity(
@@ -573,6 +585,16 @@ export class SuggestTicketDraftUseCase {
       /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(
         normalizedQuestion,
       );
+    const simpleCableSuggestion = this.getSimpleCableRequestSuggestion(
+      conversation,
+      requesterScope,
+      requesterName,
+      channelName,
+    );
+
+    if (simpleCableSuggestion) {
+      return simpleCableSuggestion;
+    }
 
     if (
       mentionsPasswordIssue &&
@@ -706,6 +728,77 @@ export class SuggestTicketDraftUseCase {
     return null;
   }
 
+  private getSimpleCableRequestSuggestion(
+    conversation: string,
+    requesterScope: 'SELF' | 'OTHER' | null,
+    requesterName: string | null,
+    channelName: string | null,
+  ): TicketDraftAssistantResponse | null {
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+
+    if (
+      !this.hasSpecificCableRequest(normalizedUserConversation) ||
+      !this.hasSpecificCableLengthAnswer(normalizedUserConversation) ||
+      !requesterScope
+    ) {
+      return null;
+    }
+
+    if (requesterScope === 'OTHER' && (!requesterName || !channelName)) {
+      return null;
+    }
+
+    const cableName = this.inferSpecificCableName(normalizedUserConversation);
+
+    if (!cableName) {
+      return null;
+    }
+
+    const lengthDescription = this.inferCableLengthDescription(
+      normalizedUserConversation,
+    );
+    const mentionsChargingPc =
+      /(charger|charge|recharger|alimentation|alim).*(pc|ordinateur|portable|poste)/u.test(
+        normalizedUserConversation,
+      ) ||
+      /(pc|ordinateur|portable|poste).*(charger|charge|recharger|alimentation|alim)/u.test(
+        normalizedUserConversation,
+      );
+    const descriptionParts = [`Besoin d'un ${cableName}`];
+
+    if (lengthDescription) {
+      descriptionParts.push(lengthDescription);
+    }
+
+    if (mentionsChargingPc) {
+      descriptionParts.push('pour charger un PC');
+    }
+
+    return {
+      action: 'SUGGEST_TICKET',
+      question: null,
+      suggestion: {
+        categoryName: 'Matériel',
+        channelName: requesterScope === 'SELF' ? 'Portail' : channelName,
+        confidence: 0.82,
+        description: `${descriptionParts.join(' ')}.`,
+        impact: null,
+        priorityName: PriorityName.LOW,
+        requesterName: requesterScope === 'OTHER' ? requesterName : null,
+        requesterScope,
+        requestType: RequestType.HARDWARE,
+        title:
+          cableName === 'cable USB-C' && mentionsChargingPc
+            ? 'Cable USB-C pour PC'
+            : this.normalizeTicketTitle(cableName, requesterName),
+        type: TicketType.REQUEST,
+        urgency: null,
+      },
+    };
+  }
+
   private normalizeTicketTitle(
     value: string | null | undefined,
     requesterName: string | null,
@@ -820,9 +913,26 @@ export class SuggestTicketDraftUseCase {
   }
 
   private inferRequesterScope(conversation: string): 'SELF' | 'OTHER' | null {
+    const normalizedFullConversation = this.normalizeForMatching(conversation);
     const normalizedConversation = this.normalizeForMatching(
       this.getUserConversationText(conversation),
     );
+    const conversationLines = normalizedFullConversation
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const lastAssistantQuestion =
+      [...conversationLines]
+        .reverse()
+        .find((line) => line.startsWith('assistant:'))
+        ?.replace(/^assistant:\s*/u, '')
+        .trim() ?? '';
+    const lastUserMessage =
+      [...conversationLines]
+        .reverse()
+        .find((line) => line.startsWith('utilisateur:'))
+        ?.replace(/^utilisateur:\s*/u, '')
+        .trim() ?? '';
     const userMessages = normalizedConversation
       .split('\n')
       .map((line) => line.trim())
@@ -858,6 +968,27 @@ export class SuggestTicketDraftUseCase {
 
       return Boolean(match?.[1] && this.isLikelyRequesterFirstName(match[1]));
     });
+    const assistantAskedRequesterScope =
+      /(ticket|demande).*(pour vous|pour moi|autre utilisateur)/u.test(
+        lastAssistantQuestion,
+      ) ||
+      /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(
+        lastAssistantQuestion,
+      );
+    const requesterScopeAnswerNameMatch =
+      lastUserMessage.match(
+        /^(?:c est|c'est|cest)\s+pour\s+(?!moi\b|nous\b)([a-z][a-z'-]{1,40})\b/u,
+      ) ??
+      lastUserMessage.match(
+        /^pour\s+(?!moi\b|nous\b|un autre\b|une autre\b|autre utilisateur\b)([a-z][a-z'-]{1,40})\b/u,
+      ) ??
+      lastUserMessage.match(/^([a-z][a-z'-]{1,40})\b/u);
+    const requesterScopeAnswerNamesOther =
+      assistantAskedRequesterScope &&
+      Boolean(
+        requesterScopeAnswerNameMatch?.[1] &&
+        this.isLikelyRequesterFirstName(requesterScopeAnswerNameMatch[1]),
+      );
 
     if (
       userMessages.some((message) =>
@@ -866,6 +997,7 @@ export class SuggestTicketDraftUseCase {
         ),
       ) ||
       explicitlyNamesOtherRequester ||
+      requesterScopeAnswerNamesOther ||
       /\b(un autre|une autre|pour quelqu'un d'autre|pour quelquun dautre|pour un autre|pour une autre|autre utilisateur|pour un collegue|pour une collegue|pour mon collegue|pour ma collegue)\b/u.test(
         normalizedConversation,
       ) ||
@@ -894,6 +1026,13 @@ export class SuggestTicketDraftUseCase {
 
     if (mentionsPasswordIssue) {
       return mentionsPasswordTarget;
+    }
+
+    if (
+      this.hasSpecificCableRequest(normalizedUserConversation) &&
+      this.hasSpecificCableLengthAnswer(normalizedUserConversation)
+    ) {
+      return true;
     }
 
     return false;
@@ -962,6 +1101,8 @@ export class SuggestTicketDraftUseCase {
       'quelle',
       'demandeur',
       'utilisateur',
+      'moi',
+      'nous',
     ]);
     const requesterScopeNameMatch = [...userMessages]
       .reverse()
@@ -1007,6 +1148,29 @@ export class SuggestTicketDraftUseCase {
       /(prenom|nom|utilisateur concerne|identite|demandeur)/u.test(
         lastAssistantQuestion,
       );
+    const assistantAskedRequesterScope =
+      /(ticket|demande).*(pour vous|pour moi|autre utilisateur)/u.test(
+        lastAssistantQuestion,
+      ) ||
+      /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(
+        lastAssistantQuestion,
+      );
+    const requesterScopeAnswerNameMatch = assistantAskedRequesterScope
+      ? (lastUserMessage.match(
+          /^(?:c est|c'est|cest)\s+pour\s+([a-z][a-z'-]{1,40})\b/u,
+        ) ??
+        lastUserMessage.match(/^pour\s+([a-z][a-z'-]{1,40})\b/u) ??
+        lastUserMessage.match(/^([a-z][a-z'-]{1,40})\b/u))
+      : null;
+
+    if (
+      requesterScopeAnswerNameMatch?.[1] &&
+      !rejectedWords.has(requesterScopeAnswerNameMatch[1]) &&
+      this.isLikelyRequesterFirstName(requesterScopeAnswerNameMatch[1])
+    ) {
+      return this.capitalizeName(requesterScopeAnswerNameMatch[1]);
+    }
+
     const requesterAnswer = assistantAskedRequesterName
       ? lastUserMessage
       : latestRequesterAnswer;
@@ -1420,7 +1584,7 @@ export class SuggestTicketDraftUseCase {
       );
     const questionAsksSpecificCableDevice =
       this.hasSpecificCableRequest(normalizedUserConversation) &&
-      /(pour quel appareil|quel appareil|pc, ecran|pc ou ecran|ecran, autre|appareil.*besoin|besoin.*appareil)/u.test(
+      /(pour quel appareil|quel appareil|pour quel usage|quel usage|type de connexion|connexion.*destine|cable.*destine|destine.*cable|tv\/ecran|tv|moniteur|pc\/moniteur|pc, ecran|pc ou ecran|ecran, autre|appareil.*besoin|besoin.*appareil)/u.test(
         normalizedQuestion,
       );
     const questionAsksWifiCableDevice =
@@ -1438,11 +1602,24 @@ export class SuggestTicketDraftUseCase {
       /(longueur|court|courte|1-2 m|1 a 2 m|metre|metres|taille)/u.test(
         normalizedQuestion,
       );
+    const questionAsksTechnicalCableUsage =
+      this.hasSpecificCableRequest(normalizedUserConversation) &&
+      /(synchronisation|donnees|alimentation|power delivery|type de port|type de connexion|usage|recharger|chargeur\/pc|relier deux appareils|telephone vers pc)/u.test(
+        normalizedQuestion,
+      );
 
     if (questionAsksSpecificCableDevice) {
       return (
         this.getMissingSpecificCableLengthQuestion(conversation) ??
         'Est-ce que le ticket est pour vous ou pour un autre utilisateur ?'
+      );
+    }
+
+    if (questionAsksTechnicalCableUsage) {
+      return (
+        this.getMissingSpecificCableLengthQuestion(conversation) ??
+        this.getNextRequesterContextQuestion(conversation) ??
+        'Je prepare une proposition de ticket avec les informations deja donnees.'
       );
     }
 
@@ -1634,6 +1811,80 @@ export class SuggestTicketDraftUseCase {
         normalizedUserConversation,
       )
     );
+  }
+
+  private hasSpecificCableLengthAnswer(
+    normalizedUserConversation: string,
+  ): boolean {
+    return /\b(court|courte|petit|petite|moyen|moyenne|long|longue|grand|grande|assez long|assez longue|1-2 m|1 a 2 m|\d+\s*(m|metre|metres)|peu importe|importe peu|n importe|n'importe|je sais pas|je ne sais pas|sais pas|jsp|standard|classique|normal|normale|comme d habitude|comme dhabitude)\b/u.test(
+      normalizedUserConversation,
+    );
+  }
+
+  private inferSpecificCableName(
+    normalizedUserConversation: string,
+  ): string | null {
+    if (/\b(usb-c|usb c|usbc)\b/u.test(normalizedUserConversation)) {
+      return 'cable USB-C';
+    }
+
+    if (/\bdisplayport\b/u.test(normalizedUserConversation)) {
+      return 'cable DisplayPort';
+    }
+
+    if (/\bhdmi\b/u.test(normalizedUserConversation)) {
+      return 'cable HDMI';
+    }
+
+    if (
+      /\b(ethernet|rj45|reseau|wifi|wi-fi)\b/u.test(normalizedUserConversation)
+    ) {
+      return 'cable reseau';
+    }
+
+    if (/\bvga\b/u.test(normalizedUserConversation)) {
+      return 'cable VGA';
+    }
+
+    if (/\bdvi\b/u.test(normalizedUserConversation)) {
+      return 'cable DVI';
+    }
+
+    return null;
+  }
+
+  private inferCableLengthDescription(
+    normalizedUserConversation: string,
+  ): string | null {
+    const exactLength = normalizedUserConversation.match(
+      /\b(\d+\s*(?:m|metre|metres))\b/u,
+    );
+
+    if (exactLength?.[1]) {
+      return `de ${exactLength[1].replace(/\s+/g, ' ')}`;
+    }
+
+    if (/\b(court|courte|petit|petite)\b/u.test(normalizedUserConversation)) {
+      return 'court';
+    }
+
+    if (
+      /\b(long|longue|grand|grande|assez long|assez longue)\b/u.test(
+        normalizedUserConversation,
+      )
+    ) {
+      return 'long';
+    }
+
+    if (
+      /\b(moyen|moyenne|standard|classique|normal|normale|1-2 m|1 a 2 m|comme d habitude|comme dhabitude)\b/u.test(
+        normalizedUserConversation,
+      )
+    ) {
+      return 'de longueur standard';
+    }
+
+    return null;
   }
 
   private getMissingSimpleTroubleshootingQuestion(
