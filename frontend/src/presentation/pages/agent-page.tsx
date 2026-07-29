@@ -8,6 +8,7 @@ import {
   History,
   Paperclip,
   Plus,
+  RotateCcw,
   Search,
   SlidersHorizontal,
   Sparkles,
@@ -594,9 +595,34 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     1,
     Math.ceil(searchedTickets.length / TICKETS_PER_PAGE),
   );
+  const aiDraftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const aiChatBodyRef = useRef<HTMLDivElement | null>(null);
+  const aiChatGenerationRef = useRef(0);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const ticketListTitle = getTicketListTitle(section, session.user.role);
   const ticketListEmptyMessage = getTicketListEmptyMessage(section);
+
+  function resizeAiDraftTextarea(
+    textarea: HTMLTextAreaElement | null = aiDraftTextareaRef.current,
+  ): void {
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = 'auto';
+
+    const maxHeight = Number.parseFloat(
+      window.getComputedStyle(textarea).maxHeight,
+    );
+    const boundedHeight = Math.min(
+      textarea.scrollHeight,
+      Number.isFinite(maxHeight) ? maxHeight : 320,
+    );
+
+    textarea.style.height = `${boundedHeight}px`;
+    textarea.style.overflowY =
+      textarea.scrollHeight > boundedHeight + 1 ? 'auto' : 'hidden';
+  }
 
   useEffect(() => {
     if (showDetailPanel) {
@@ -606,6 +632,38 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     setSelectedTicketId(null);
   }, [showDetailPanel, ticketId]);
+
+  useEffect(() => {
+    if (!isAiChatOpen) {
+      return;
+    }
+
+    resizeAiDraftTextarea();
+  }, [aiDraftInput, isAiChatOpen]);
+
+  useEffect(() => {
+    if (!isAiChatOpen) {
+      return;
+    }
+
+    const animationFrameId = window.requestAnimationFrame(() => {
+      const chatBody = aiChatBodyRef.current;
+
+      if (!chatBody) {
+        return;
+      }
+
+      chatBody.scrollTop = chatBody.scrollHeight;
+    });
+
+    return () => window.cancelAnimationFrame(animationFrameId);
+  }, [
+    aiChatMessages.length,
+    aiDraftErrorMessage,
+    aiDraftSuggestion,
+    isAiChatOpen,
+    isSuggestingDraft,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1231,6 +1289,19 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     [incidentSelectableUsers],
   );
 
+  const aiRequesterNames = useMemo(
+    () =>
+      requesters
+        .map((user) => formatKnownUserName(user, user.id))
+        .filter((name) => Boolean(name.trim())),
+    [requesters],
+  );
+
+  const aiChannelNames = useMemo(
+    () => catalog.channels.map((channel) => translateChannel(channel.name)),
+    [catalog.channels],
+  );
+
   const assignableTechnicians = useMemo(
     () =>
       technicians.filter(
@@ -1643,13 +1714,164 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setSubmitErrorMessage(null);
   }
 
+  function findSuggestedChannelId(channelName: string | null): string {
+    const normalizedChannelName = normalizeSearchText(channelName ?? '');
+
+    if (!normalizedChannelName) {
+      return '';
+    }
+
+    const getChannelAliases = (channelNameValue: string): string[] => {
+      const normalizedChannel = normalizeSearchText(channelNameValue);
+
+      if (
+        normalizedChannel.includes('email') ||
+        normalizedChannel.includes('mail')
+      ) {
+        return ['email', 'mail', 'courriel'];
+      }
+
+      if (
+        normalizedChannel.includes('phone') ||
+        normalizedChannel.includes('telephone') ||
+        normalizedChannel.includes('tel')
+      ) {
+        return ['telephone', 'tel', 'appel'];
+      }
+
+      if (
+        normalizedChannel.includes('portal') ||
+        normalizedChannel.includes('portail')
+      ) {
+        return ['portail', 'portal'];
+      }
+
+      if (
+        normalizedChannel.includes('chat') ||
+        normalizedChannel.includes('message')
+      ) {
+        return ['chat', 'message', 'messagerie'];
+      }
+
+      if (
+        normalizedChannel.includes('other') ||
+        normalizedChannel.includes('autre')
+      ) {
+        return ['autre', 'oral', 'face a face', 'direct'];
+      }
+
+      return [];
+    };
+
+    return (
+      catalog.channels.find((channel) => {
+        const candidates = [
+          channel.name,
+          translateChannel(channel.name),
+          ...getChannelAliases(channel.name),
+          ...getChannelAliases(translateChannel(channel.name)),
+        ];
+
+        return candidates.some((candidate) => {
+          const normalizedCandidate = normalizeSearchText(candidate);
+
+          return (
+            normalizedCandidate === normalizedChannelName ||
+            normalizedCandidate.includes(normalizedChannelName) ||
+            normalizedChannelName.includes(normalizedCandidate)
+          );
+        });
+      })?.id ?? ''
+    );
+  }
+
+  function findSuggestedRequesterId(
+    requesterScope: TicketDraftSuggestion['requesterScope'],
+    requesterName: string | null,
+  ): string {
+    if (requesterScope === 'SELF') {
+      return session.user.id;
+    }
+
+    const normalizedRequesterName = normalizeSearchText(requesterName ?? '');
+
+    if (!normalizedRequesterName) {
+      return session.user.id;
+    }
+
+    const requesterSearchTerms = normalizedRequesterName
+      .split(/\s+/u)
+      .filter(Boolean);
+
+    const matchingRequesters = requesters.filter((user) => {
+      const candidates = [
+        formatKnownUserName(user, user.id),
+        user.displayName ?? '',
+        `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
+        `${user.lastName ?? ''} ${user.firstName ?? ''}`.trim(),
+        user.email ?? '',
+      ].filter(Boolean);
+
+      return candidates.some((candidate) => {
+        const normalizedCandidate = normalizeSearchText(candidate);
+        const candidateTerms = normalizedCandidate
+          .split(/\s+/u)
+          .filter(Boolean);
+
+        return (
+          normalizedCandidate === normalizedRequesterName ||
+          requesterSearchTerms.every((term) =>
+            candidateTerms.some(
+              (candidateTerm) =>
+                candidateTerm === term ||
+                candidateTerm.startsWith(term) ||
+                term.startsWith(candidateTerm),
+            ),
+          )
+        );
+      });
+    });
+
+    return matchingRequesters.length === 1
+      ? matchingRequesters[0].id
+      : session.user.id;
+  }
+
+  function findSuggestedPriorityId(
+    priorityName: TicketDraftSuggestion['priorityName'],
+  ): string {
+    if (!priorityName) {
+      return '';
+    }
+
+    const normalizedPriorityName = normalizeSearchText(priorityName);
+    const normalizedTranslatedPriorityName = normalizeSearchText(
+      translatePriority(priorityName),
+    );
+
+    return (
+      catalog.priorities.find((priority) => {
+        const normalizedCandidateName = normalizeSearchText(priority.name);
+        const normalizedTranslatedCandidateName = normalizeSearchText(
+          translatePriority(priority.name),
+        );
+
+        return (
+          normalizedCandidateName === normalizedPriorityName ||
+          normalizedCandidateName === normalizedTranslatedPriorityName ||
+          normalizedTranslatedCandidateName === normalizedPriorityName ||
+          normalizedTranslatedCandidateName === normalizedTranslatedPriorityName
+        );
+      })?.id ?? ''
+    );
+  }
+
   async function handleSendAiChatMessage(): Promise<void> {
     const userInput = aiDraftInput.trim();
 
     setAiDraftErrorMessage(null);
 
-    if (userInput.length < 10) {
-      setAiDraftErrorMessage('Decrivez le besoin avec un peu plus de detail.');
+    if (!userInput) {
       return;
     }
 
@@ -1659,6 +1881,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       role: 'user',
     };
     const nextMessages = [...aiChatMessages, userMessage];
+    const chatGeneration = aiChatGenerationRef.current;
 
     setAiDraftInput('');
     setAiChatMessages(nextMessages);
@@ -1669,16 +1892,42 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     try {
       const assistantResponse = await suggestTicketDraft(session.accessToken, {
         categories: incidentCategoryOptions.map((category) => category.name),
+        channels: aiChannelNames,
         currentMode: mode,
         priorities: catalog.priorities.map((priority) => priority.name),
-        userInput: nextMessages
-          .map((message) =>
-            message.role === 'assistant'
-              ? `Assistant: ${message.body}`
-              : `Utilisateur: ${message.body}`,
-          )
-          .join('\n'),
+        requesters: aiRequesterNames,
+        userInput: [
+          nextMessages
+            .map((message) =>
+              message.role === 'assistant'
+                ? `Assistant: ${message.body}`
+                : `Utilisateur: ${message.body}`,
+            )
+            .join('\n'),
+          aiDraftSuggestion
+            ? [
+                'Proposition actuelle:',
+                `Type: ${aiDraftSuggestion.type}`,
+                `Titre: ${aiDraftSuggestion.title}`,
+                `Categorie: ${aiDraftSuggestion.categoryName ?? 'non renseignee'}`,
+                `Priorite: ${aiDraftSuggestion.priorityName ?? 'non renseignee'}`,
+                `Demandeur: ${
+                  aiDraftSuggestion.requesterScope === 'SELF'
+                    ? 'utilisateur courant'
+                    : (aiDraftSuggestion.requesterName ?? 'non renseigne')
+                }`,
+                `Canal: ${aiDraftSuggestion.channelName ?? 'non renseigne'}`,
+                `Description: ${aiDraftSuggestion.description}`,
+              ].join('\n')
+            : '',
+        ]
+          .filter(Boolean)
+          .join('\n\n'),
       });
+
+      if (chatGeneration !== aiChatGenerationRef.current) {
+        return;
+      }
 
       if (assistantResponse.action === 'ASK_QUESTION') {
         setAiChatMessages([
@@ -1704,14 +1953,39 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         },
       ]);
     } catch (error) {
+      if (chatGeneration !== aiChatGenerationRef.current) {
+        return;
+      }
+
       setAiDraftErrorMessage(
         error instanceof Error
           ? error.message
           : "L assistance IA n'a pas pu generer de proposition.",
       );
     } finally {
-      setIsSuggestingDraft(false);
+      if (chatGeneration === aiChatGenerationRef.current) {
+        setIsSuggestingDraft(false);
+      }
     }
+  }
+
+  function resetAiChat(): void {
+    aiChatGenerationRef.current += 1;
+    setAiDraftInput('');
+    setAiDraftSuggestion(null);
+    setAiDraftErrorMessage(null);
+    setAiChatMessages(INITIAL_AI_CHAT_MESSAGES);
+    setIsSuggestingDraft(false);
+
+    window.requestAnimationFrame(() => {
+      resizeAiDraftTextarea();
+
+      const chatBody = aiChatBodyRef.current;
+
+      if (chatBody) {
+        chatBody.scrollTop = 0;
+      }
+    });
   }
 
   function handleApplyTicketDraftSuggestion(): void {
@@ -1737,9 +2011,21 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
             normalizedSuggestedCategory.includes(normalizedCategory))
         );
       });
-    const suggestedPriority = catalog.priorities.find(
-      (priority) => priority.name === aiDraftSuggestion.priorityName,
+    const suggestedPriorityId = findSuggestedPriorityId(
+      aiDraftSuggestion.priorityName,
     );
+    const suggestedChannelId = findSuggestedChannelId(
+      aiDraftSuggestion.channelName,
+    );
+    const suggestedRequesterId = findSuggestedRequesterId(
+      aiDraftSuggestion.requesterScope,
+      aiDraftSuggestion.requesterName,
+    );
+    const targetCreatePath =
+      nextMode === 'INCIDENT' ? '/agent/incidents/new' : '/agent/requests/new';
+    const shouldNavigateToSuggestedType =
+      (isIncidentCreatePage && nextMode === 'REQUEST') ||
+      (isRequestCreatePage && nextMode === 'INCIDENT');
 
     setMode(nextMode);
 
@@ -1747,8 +2033,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       setIncidentDraft((currentDraft) => ({
         ...currentDraft,
         categoryId: suggestedCategory?.id ?? currentDraft.categoryId,
+        channelId: suggestedChannelId || currentDraft.channelId,
         description: aiDraftSuggestion.description || currentDraft.description,
         impact: aiDraftSuggestion.impact ?? currentDraft.impact,
+        requestedForUserId:
+          suggestedRequesterId || currentDraft.requestedForUserId,
         title: aiDraftSuggestion.title || currentDraft.title,
         urgency: aiDraftSuggestion.urgency ?? currentDraft.urgency,
       }));
@@ -1757,8 +2046,11 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       setRequestDraft((currentDraft) => ({
         ...currentDraft,
         categoryId: suggestedCategory?.id ?? currentDraft.categoryId,
+        channelId: suggestedChannelId || currentDraft.channelId,
         description: aiDraftSuggestion.description || currentDraft.description,
-        priorityId: suggestedPriority?.id ?? currentDraft.priorityId,
+        priorityId: suggestedPriorityId || currentDraft.priorityId,
+        requestedForUserId:
+          suggestedRequesterId || currentDraft.requestedForUserId,
         requestType: aiDraftSuggestion.requestType ?? currentDraft.requestType,
         title: aiDraftSuggestion.title || currentDraft.title,
       }));
@@ -1767,6 +2059,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     setSubmitErrorMessage(null);
     setIsAiChatOpen(false);
+
+    if (shouldNavigateToSuggestedType) {
+      navigateTo(targetCreatePath);
+    }
   }
 
   function closeAiChat(): void {
@@ -3876,19 +4172,30 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     <section className="ticket-ai-chat">
                       <header className="ticket-ai-chat-header">
                         <div>
-                          <h3>Assistant IA TikAI</h3>
+                          <h3>Assistant IA Vision</h3>
                           <p>Pre-remplissage intelligent du ticket</p>
                         </div>
-                        <button
-                          aria-label="Fermer l assistant IA"
-                          onClick={closeAiChat}
-                          type="button"
-                        >
-                          <X size={18} />
-                        </button>
+                        <div className="ticket-ai-chat-header-actions">
+                          <button
+                            className="ticket-ai-chat-reset"
+                            onClick={resetAiChat}
+                            type="button"
+                          >
+                            <RotateCcw size={15} />
+                            Nouveau chat
+                          </button>
+                          <button
+                            aria-label="Fermer l assistant IA"
+                            className="ticket-ai-chat-close"
+                            onClick={closeAiChat}
+                            type="button"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
                       </header>
 
-                      <div className="ticket-ai-chat-body">
+                      <div className="ticket-ai-chat-body" ref={aiChatBodyRef}>
                         {aiChatMessages.map((message) => (
                           <div
                             className={
@@ -3916,10 +4223,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                         {aiDraftSuggestion ? (
                           <div className="ticket-ai-message ticket-ai-message--assistant ticket-ai-message--suggestion">
-                            <span>
-                              Proposition :{' '}
-                              {translateTicketType(aiDraftSuggestion.type)}
-                            </span>
                             <strong>{aiDraftSuggestion.title}</strong>
                             <div className="ticket-ai-suggestion-details">
                               <small>
@@ -3931,31 +4234,26 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   Categorie : {aiDraftSuggestion.categoryName}
                                 </small>
                               ) : null}
-                              {aiDraftSuggestion.type === 'INCIDENT' ? (
-                                <>
-                                  {aiDraftSuggestion.impact ? (
-                                    <small>
-                                      Impact :{' '}
-                                      {translateIncidentSeverity(
-                                        aiDraftSuggestion.impact,
-                                      )}
-                                    </small>
-                                  ) : null}
-                                  {aiDraftSuggestion.urgency ? (
-                                    <small>
-                                      Urgence :{' '}
-                                      {translateIncidentSeverity(
-                                        aiDraftSuggestion.urgency,
-                                      )}
-                                    </small>
-                                  ) : null}
-                                </>
-                              ) : aiDraftSuggestion.priorityName ? (
+                              {aiDraftSuggestion.priorityName ? (
                                 <small>
                                   Priorite :{' '}
                                   {translatePriority(
                                     aiDraftSuggestion.priorityName,
                                   )}
+                                </small>
+                              ) : null}
+                              {aiDraftSuggestion.requesterScope ? (
+                                <small>
+                                  Demandeur :{' '}
+                                  {aiDraftSuggestion.requesterScope === 'SELF'
+                                    ? 'Vous'
+                                    : (aiDraftSuggestion.requesterName ??
+                                      'Non renseigne')}
+                                </small>
+                              ) : null}
+                              {aiDraftSuggestion.channelName ? (
+                                <small>
+                                  Canal : {aiDraftSuggestion.channelName}
                                 </small>
                               ) : null}
                             </div>
@@ -3983,6 +4281,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           onChange={(event) => {
                             setAiDraftInput(event.target.value);
                             setAiDraftErrorMessage(null);
+                            resizeAiDraftTextarea(event.target);
                           }}
                           onKeyDown={(event) => {
                             if (
@@ -3995,6 +4294,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             }
                           }}
                           placeholder="Decrivez votre besoin..."
+                          ref={aiDraftTextareaRef}
                           rows={1}
                           value={aiDraftInput}
                         />
