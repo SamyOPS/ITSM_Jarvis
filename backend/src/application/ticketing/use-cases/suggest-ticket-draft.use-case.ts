@@ -181,12 +181,23 @@ export class SuggestTicketDraftUseCase {
       'Objectif:',
       "- raisonne comme un assistant ITSM conversationnel: comprendre, aider un peu si c'est raisonnable, puis preparer un brouillon de ticket;",
       '- si le message est seulement une salutation ou ne contient aucun probleme/demande identifiable, action=ASK_QUESTION avec une question naturelle pour connaitre le sujet;',
-      '- phase diagnostic: tu peux poser 0 a 3 questions utiles pour mieux qualifier le ticket et enrichir la description;',
+      '- phase diagnostic: tu peux poser 0 a 3 questions utiles pour mieux qualifier le ticket et enrichir la description, mais uniquement si la reponse change vraiment le type, la categorie, la priorite, le demandeur, le canal ou une information importante de description;',
+      '- ne pose jamais une question de curiosite ou de confort si la reponse ne change pas le brouillon de ticket; fais plutot une hypothese raisonnable avec une confidence plus basse;',
+      "- interprete les reponses naturelles et approximatives: grand, moyen, court, peu importe, je ne sais pas, pour moi, pour quelqu'un d'autre, oral, mail, message, etc. sont des reponses valables selon la question posee; ne redemande pas une reponse exacte;",
+      "- accepte les petites fautes d'orthographe si le sens est evident: chatr veut dire chat, emial veut dire email, telephonne veut dire telephone, etc.;",
+      "- si l'utilisateur dit qu'il n'a pas compris une question, reformule-la plus simplement au lieu de la repeter mot pour mot;",
+      "- si l'utilisateur a deja repondu a une question de precision de maniere comprehensible, ne repose pas la meme question; passe a l'etape suivante du cadrage ou prepare le ticket;",
+      '- pour une demande materielle trop generale, pose 1 petite question simple avant le brouillon si cela aide vraiment a fournir le bon materiel;',
+      "- exemple demande de chargeur sans appareil precise: demander pour quel appareil (PC, telephone, tablette ou autre); si c'est un chargeur de telephone/portable, demander si l'utilisateur sait si c'est USB-C, Lightning, ou peu importe; si c'est un chargeur de PC, ne demande pas le type exact;",
+      "- si l'utilisateur demande un cable reseau, un cable Wi-Fi, ou un cable pour avoir le Wi-Fi, considere que le besoin est assez clair: ne demande pas de confirmer Ethernet/RJ45 et ne demande pas pour quel materiel;",
+      '- pour un cable deja clairement identifie comme HDMI, DisplayPort, Ethernet/RJ45, USB-C, VGA ou DVI, ne demande pas pour quel appareil il est destine; cette question est inutile. Si la longueur manque vraiment, demande exactement: Quelle longueur de câble souhaitez-vous ?',
+      '- exemple demande de cle USB sans capacite: demander si une capacite precise est souhaitee ou si peu importe;',
       '- phase aide simple: tu peux proposer 0 a 3 actions simples si un utilisateur normal peut les tenter sans risque et sans procedure complexe;',
       "- adapte le nombre de questions/actions a la situation: 0 si le probleme est complexe, urgent, risque, ou clairement a traiter par le support; 1 a 3 si c'est simple et utile;",
       "- pour les problemes simples et frequents comme PC qui ne s'allume pas, Wi-Fi/Internet, application bloquee, imprimante ou accessoire, fais au moins une aide simple avant le brouillon si aucune tentative de resolution n'est deja mentionnee;",
       "- exemple PC qui ne s'allume pas: avant le brouillon, proposer de brancher le chargeur/secteur, tester une autre prise ou un autre cable, patienter quelques minutes si batterie vide, puis demander ce que cela donne;",
       "- Vision est l'application actuelle de ticketing/portail; si l'utilisateur parle de mdp Vision, compte Vision ou mot de passe de cette appli, ne demande pas quelle application est concernee;",
+      "- les expressions cette appli, cette application, cette appli de ticket, l'application actuelle, l'appli actuelle, appli de ticketing ou portail actuel designent Vision quand le contexte parle de mot de passe/connexion;",
       "- si l'utilisateur parle seulement d'un mot de passe oublie sans nommer Vision, ne suppose jamais que c'est Vision; demande d'abord uniquement de quel compte/service il s'agit: session PC, messagerie, application, VPN, Vision ou autre;",
       '- pose une seule question de cadrage par message; ne combine jamais le compte/service concerne avec la question pour savoir si le ticket est pour lui ou pour un autre utilisateur;',
       "- si le mot de passe oublie concerne la session PC et que le ticket est pour l'utilisateur lui-meme, ne redemande pas l'identifiant exact ni le poste; ces informations sont utiles mais non bloquantes, prepare le ticket avec ce qui est connu;",
@@ -196,12 +207,14 @@ export class SuggestTicketDraftUseCase {
       "- une fois le probleme ou le compte/service concerne compris, si ce n'est pas clair pour qui est le ticket, action=ASK_QUESTION avec exactement: Est-ce que le ticket est pour vous ou pour un autre utilisateur ?",
       '- si le ticket est pour lui-meme, requesterScope=SELF, requesterName=null, channelName=Portail;',
       "- si le ticket est pour quelqu'un d'autre, requesterScope=OTHER; si le nom/prenom manque, demande l'identite de cette personne;",
+      "- si l'utilisateur dit c'est pour X ou pour X, comprends que le ticket est pour un autre utilisateur et utilise X comme requesterName partiel;",
       "- si l'utilisateur repond seulement un autre, autre utilisateur ou equivalent, ce n'est pas un nom: requesterName doit rester null;",
       "- si seul le prenom est connu ou si l'utilisateur dit qu'il ne connait pas le nom, accepte ce prenom dans requesterName et avance; ne redemande pas le nom complet;",
       "- si requesterScope=OTHER et que le canal de demande manque, demande exactement: Pouvez-vous préciser comment on vous a fait la demande (Email, Chat, Téléphone, à l'oral, ...) ?",
       "- n'utilise pas le mot canal dans les questions a l'utilisateur; dis plutot comment la demande a ete faite;",
       "- si l'utilisateur demande ce que veut dire canal ou ce que tu demandes, explique simplement que c'est la facon dont la demande est arrivee: email, chat/message, telephone, oral, portail, etc.;",
       "- pour le canal interne, choisis un nom depuis les canaux disponibles quand c'est possible; mail/email=Email, message/chat=Chat, telephone/appel=Telephone, portail=Portail, oral/en face a face=Autre;",
+      "- ne confonds jamais le service concerne par le probleme avec le canal de demande: je n'ai plus acces a mon mail parle du probleme, pas du canal Email;",
       "- apres quelques questions/actions ou des que l'utilisateur donne assez d'elements, action=SUGGEST_TICKET;",
       "- si l'utilisateur dit que tes conseils ne changent rien, qu'il ne peut pas les faire, ou qu'il veut un ticket, action=SUGGEST_TICKET;",
       "- ne force pas toujours une proposition apres un seul message d'aide; ne prolonge pas non plus la conversation inutilement;",
@@ -220,7 +233,9 @@ export class SuggestTicketDraftUseCase {
       '- pour un poste utilisateur seul, un ecran, un cable, une imprimante ou un probleme individuel sans contexte critique, ne depasse generalement pas HIGH;',
       '- pour une REQUEST, renseigner priorityName directement;',
       '- proposer un titre de 40 caracteres maximum quand action=SUGGEST_TICKET;',
+      '- le titre doit etre tres simple et ne doit jamais contenir le demandeur ni une formule comme pour utilisateur, pour un autre utilisateur, pour X;',
       "- quand action=SUGGEST_TICKET, la description doit seulement decrire le probleme ou la demande avec les informations deja donnees par l'utilisateur;",
+      "- la description ne doit pas rappeler le demandeur ni dire que c'est pour un autre utilisateur: cette information est deja dans requesterScope/requesterName;",
       '- la description ne doit jamais contenir de questions, de checklist, de consignes au technicien, ni de phrases comme informations a preciser, a confirmer, besoin urgent ou delai souhaite;',
       '- si des informations manquent, ne les invente pas et ne les liste pas dans la description; garde une description simple du besoin connu;',
       '- si une categorie semble evidente, reprendre exactement son nom depuis la liste fournie.',
@@ -264,6 +279,28 @@ export class SuggestTicketDraftUseCase {
     }
 
     if (parsed.action === 'ASK_QUESTION') {
+      const questionClarification =
+        this.getLastQuestionClarification(userInput);
+
+      if (questionClarification) {
+        return {
+          action: 'ASK_QUESTION',
+          question: questionClarification,
+          suggestion: null,
+        };
+      }
+
+      const genericRequestQuestion =
+        this.getMissingGenericRequestPrecisionQuestion(userInput);
+
+      if (genericRequestQuestion) {
+        return {
+          action: 'ASK_QUESTION',
+          question: genericRequestQuestion,
+          suggestion: null,
+        };
+      }
+
       const requesterScope = this.inferRequesterScope(userInput);
       const requesterName =
         requesterScope === 'OTHER'
@@ -274,6 +311,17 @@ export class SuggestTicketDraftUseCase {
         requesterScope === 'SELF'
           ? 'Portail'
           : this.inferChannelName(userInput);
+      const requesterScopeClarification =
+        this.getRequesterScopeClarification(userInput);
+
+      if (requesterScopeClarification) {
+        return {
+          action: 'ASK_QUESTION',
+          question: requesterScopeClarification,
+          suggestion: null,
+        };
+      }
+
       const requesterContextQuestion =
         requesterScope === 'OTHER' ||
         (!requesterScope && this.shouldAskRequesterScopeNow(userInput))
@@ -302,6 +350,24 @@ export class SuggestTicketDraftUseCase {
         return forcedSuggestion;
       }
 
+      const troubleshootingQuestion =
+        this.getMissingSimpleTroubleshootingQuestion(userInput);
+
+      if (
+        troubleshootingQuestion &&
+        !this.hasCompleteOtherRequesterContext(
+          requesterScope,
+          requesterName,
+          channelName,
+        )
+      ) {
+        return {
+          action: 'ASK_QUESTION',
+          question: troubleshootingQuestion,
+          suggestion: null,
+        };
+      }
+
       return {
         action: 'ASK_QUESTION',
         question:
@@ -328,13 +394,49 @@ export class SuggestTicketDraftUseCase {
       requesterScope === 'SELF'
         ? (this.normalizeNullableText(parsed.channelName) ?? 'Portail')
         : this.inferChannelName(userInput);
+    const requesterScopeClarification =
+      this.getRequesterScopeClarification(userInput);
+    const questionClarification = this.getLastQuestionClarification(userInput);
     const troubleshootingQuestion =
       this.getMissingSimpleTroubleshootingQuestion(userInput);
+    const genericRequestQuestion =
+      this.getMissingGenericRequestPrecisionQuestion(userInput);
 
-    if (troubleshootingQuestion) {
+    if (requesterScopeClarification) {
+      return {
+        action: 'ASK_QUESTION',
+        question: requesterScopeClarification,
+        suggestion: null,
+      };
+    }
+
+    if (questionClarification) {
+      return {
+        action: 'ASK_QUESTION',
+        question: questionClarification,
+        suggestion: null,
+      };
+    }
+
+    if (
+      troubleshootingQuestion &&
+      !this.hasCompleteOtherRequesterContext(
+        requesterScope,
+        requesterName,
+        channelName,
+      )
+    ) {
       return {
         action: 'ASK_QUESTION',
         question: troubleshootingQuestion,
+        suggestion: null,
+      };
+    }
+
+    if (genericRequestQuestion) {
+      return {
+        action: 'ASK_QUESTION',
+        question: genericRequestQuestion,
         suggestion: null,
       };
     }
@@ -373,13 +475,16 @@ export class SuggestTicketDraftUseCase {
         categoryName: this.normalizeNullableText(parsed.categoryName),
         channelName,
         confidence: Math.min(Math.max(Number(parsed.confidence) || 0, 0), 1),
-        description: this.normalizeTicketDescription(parsed.description),
+        description: this.normalizeTicketDescription(
+          parsed.description,
+          requesterName,
+        ),
         impact: type === TicketType.INCIDENT ? incidentImpact : null,
         priorityName,
         requesterName: requesterScope === 'OTHER' ? requesterName : null,
         requesterScope,
         requestType: this.normalizeEnum(parsed.requestType, RequestType),
-        title: (parsed.title?.trim() || 'Ticket a qualifier').slice(0, 40),
+        title: this.normalizeTicketTitle(parsed.title, requesterName),
         type,
         urgency: type === TicketType.INCIDENT ? incidentUrgency : null,
       },
@@ -482,8 +587,7 @@ export class SuggestTicketDraftUseCase {
           categoryName: 'Accès',
           channelName: 'Portail',
           confidence: 0.78,
-          description:
-            "L'utilisateur ne connait plus le mot de passe de sa session PC professionnelle.",
+          description: 'Mot de passe de session PC professionnelle oublie.',
           impact: IncidentSeverity.MEDIUM,
           priorityName: PriorityName.MEDIUM,
           requesterName: null,
@@ -497,10 +601,62 @@ export class SuggestTicketDraftUseCase {
     }
 
     if (
+      requesterScope === 'SELF' &&
+      (questionAsksChannelClarification ||
+        questionAsksFullRequesterName ||
+        questionAsksRequesterScope)
+    ) {
+      const type =
+        parsed.type === TicketType.REQUEST
+          ? TicketType.REQUEST
+          : TicketType.INCIDENT;
+      const impact = this.normalizeEnum(parsed.impact, IncidentSeverity);
+      const urgency = this.normalizeEnum(parsed.urgency, IncidentSeverity);
+      const [incidentImpact, incidentUrgency] = this.normalizeIncidentSeverity(
+        impact ?? IncidentSeverity.MEDIUM,
+        urgency ?? IncidentSeverity.MEDIUM,
+        [conversation, parsed.title, parsed.description]
+          .filter(Boolean)
+          .join('\n'),
+      );
+
+      return {
+        action: 'SUGGEST_TICKET',
+        question: null,
+        suggestion: {
+          categoryName: this.normalizeNullableText(parsed.categoryName),
+          channelName: 'Portail',
+          confidence: Math.min(
+            Math.max(Number(parsed.confidence) || 0.65, 0),
+            1,
+          ),
+          description: this.normalizeTicketDescription(
+            parsed.description,
+            null,
+          ),
+          impact: type === TicketType.INCIDENT ? incidentImpact : null,
+          priorityName:
+            type === TicketType.INCIDENT
+              ? resolveIncidentPriorityName(incidentImpact, incidentUrgency)
+              : (this.normalizeEnum(parsed.priorityName, PriorityName) ??
+                PriorityName.MEDIUM),
+          requesterName: null,
+          requesterScope: 'SELF',
+          requestType: this.normalizeEnum(parsed.requestType, RequestType),
+          title: this.normalizeTicketTitle(parsed.title, null),
+          type,
+          urgency: type === TicketType.INCIDENT ? incidentUrgency : null,
+        },
+      };
+    }
+
+    if (
       requesterScope === 'OTHER' &&
       requesterName &&
       channelName &&
-      (questionAsksChannelClarification || questionAsksFullRequesterName)
+      (questionAsksChannelClarification ||
+        questionAsksFullRequesterName ||
+        questionAsksRequesterScope)
     ) {
       const type =
         parsed.type === TicketType.REQUEST
@@ -528,8 +684,10 @@ export class SuggestTicketDraftUseCase {
             1,
           ),
           description:
-            this.normalizeTicketDescription(parsed.description) ||
-            `Demande formulee pour un utilisateur prenomme ${requesterName}, nom non connu.`,
+            this.normalizeTicketDescription(
+              parsed.description,
+              requesterName,
+            ) || 'Demande a qualifier.',
           impact: type === TicketType.INCIDENT ? incidentImpact : null,
           priorityName:
             type === TicketType.INCIDENT
@@ -538,7 +696,7 @@ export class SuggestTicketDraftUseCase {
           requesterName,
           requesterScope: 'OTHER',
           requestType: this.normalizeEnum(parsed.requestType, RequestType),
-          title: (parsed.title?.trim() || 'Ticket a qualifier').slice(0, 40),
+          title: this.normalizeTicketTitle(parsed.title, requesterName),
           type,
           urgency: type === TicketType.INCIDENT ? incidentUrgency : null,
         },
@@ -548,7 +706,25 @@ export class SuggestTicketDraftUseCase {
     return null;
   }
 
-  private normalizeTicketDescription(value: string | null | undefined): string {
+  private normalizeTicketTitle(
+    value: string | null | undefined,
+    requesterName: string | null,
+  ): string {
+    const title = this.removeRequesterMentions(
+      value?.trim() || 'Ticket a qualifier',
+      requesterName,
+    )
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s*[-:;,.]\s*$/u, '')
+      .trim();
+
+    return (title || 'Ticket a qualifier').slice(0, 40);
+  }
+
+  private normalizeTicketDescription(
+    value: string | null | undefined,
+    requesterName: string | null,
+  ): string {
     const description = value?.trim() ?? '';
     const normalizedDescription = description
       .normalize('NFD')
@@ -585,8 +761,62 @@ export class SuggestTicketDraftUseCase {
         ? description
         : description.slice(0, firstStopIndex)
     )
+      .replace(
+        /^\s*l['’]utilisateur\s+(?:indique\s+|demande\s+|signale\s+|souhaite\s+|a\s+besoin\s+de\s+)/iu,
+        '',
+      )
+      .replace(/^\s*l['’]utilisateur\s+(?:ne\s+|n['’]\s*)/iu, (match) =>
+        match.replace(/l['’]utilisateur\s+/iu, ''),
+      )
+      .replace(
+        /\s+(?:pour|concernant|destine(?:e)?\s+a|destine(?:e)?\s+pour)\s+(?:un\s+)?(?:autre\s+)?utilisateur\b.*$/iu,
+        '',
+      )
+      .replace(
+        /\s+(?:pour|concernant|destine(?:e)?\s+a|destine(?:e)?\s+pour)\s+la\s+personne\s+concernee\b.*$/iu,
+        '',
+      )
+      .replace(
+        /\s+(?:pour|concernant|destine(?:e)?\s+a|destine(?:e)?\s+pour)\s+le\s+demandeur\b.*$/iu,
+        '',
+      )
+      .replace(
+        requesterName
+          ? new RegExp(
+              `\\s+(?:pour|concernant|destine(?:e)?\\s+a|destine(?:e)?\\s+pour)\\s+(?:l['’]utilisateur\\s+)?${this.escapeRegExp(requesterName)}\\b.*$`,
+              'iu',
+            )
+          : /a^/u,
+        '',
+      )
       .replace(/\s*[-:;,.]\s*$/u, '')
-      .trim();
+      .trim()
+      .replace(/^./u, (char) => char.toUpperCase());
+  }
+
+  private removeRequesterMentions(
+    value: string,
+    requesterName: string | null,
+  ): string {
+    return value
+      .replace(
+        /\s+(?:pour|concernant)\s+(?:un\s+)?(?:autre\s+)?utilisateur\b.*$/iu,
+        '',
+      )
+      .replace(/\s+(?:pour|concernant)\s+le\s+demandeur\b.*$/iu, '')
+      .replace(
+        requesterName
+          ? new RegExp(
+              `\\s+(?:pour|concernant)\\s+(?:l['’]utilisateur\\s+)?${this.escapeRegExp(requesterName)}\\b.*$`,
+              'iu',
+            )
+          : /a^/u,
+        '',
+      );
+  }
+
+  private escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private inferRequesterScope(conversation: string): 'SELF' | 'OTHER' | null {
@@ -607,6 +837,9 @@ export class SuggestTicketDraftUseCase {
       /\b(pour moi|pour nous|me concerne|nous concerne|me concernant|nous concernant|mon ticket|notre ticket|moi-meme|moi meme|c'est pour moi|cest pour moi|c'est pour nous|cest pour nous)\b/u.test(
         normalizedConversation,
       ) ||
+      /\b(personne\s+n[' ]?a\s+fait\s+(?:de\s+)?demande|personne.*demande|aucune demande|pas de demande|c est mon besoin|cest mon besoin)\b/u.test(
+        normalizedConversation,
+      ) ||
       /utilisateur:\s*(moi|nous|pour moi|pour nous|c'est pour moi|cest pour moi|c'est pour nous|cest pour nous)\b/u.test(
         normalizedConversation,
       )
@@ -614,12 +847,25 @@ export class SuggestTicketDraftUseCase {
       return 'SELF';
     }
 
+    const explicitlyNamesOtherRequester = userMessages.some((message) => {
+      const match =
+        message.match(
+          /^(?:c est|c'est|cest)\s+pour\s+(?!moi\b|nous\b)([a-z][a-z'-]{1,40})\b/u,
+        ) ??
+        message.match(
+          /^pour\s+(?!moi\b|nous\b|un autre\b|une autre\b|autre utilisateur\b)([a-z][a-z'-]{1,40})\b/u,
+        );
+
+      return Boolean(match?.[1] && this.isLikelyRequesterFirstName(match[1]));
+    });
+
     if (
       userMessages.some((message) =>
         /^(autre|un autre|une autre|pour un autre|pour une autre|autre utilisateur|un autre utilisateur|une autre utilisateur|pour quelqu un d autre|pour quelquun dautre)$/u.test(
           message,
         ),
       ) ||
+      explicitlyNamesOtherRequester ||
       /\b(un autre|une autre|pour quelqu'un d'autre|pour quelquun dautre|pour un autre|pour une autre|autre utilisateur|pour un collegue|pour une collegue|pour mon collegue|pour ma collegue)\b/u.test(
         normalizedConversation,
       ) ||
@@ -642,9 +888,9 @@ export class SuggestTicketDraftUseCase {
         normalizedUserConversation,
       );
     const mentionsPasswordTarget =
-      /(session pc|session windows|compte windows|mon pc|le pc|ordinateur|poste|pc portable|\bpc\b|messagerie|gmail|email|mail|application|appli|vpn|vision|portail)/u.test(
+      /(session pc|session windows|compte windows|mon pc|le pc|ordinateur|poste|pc portable|\bpc\b|messagerie|gmail|email|mail|application|appli|vpn)/u.test(
         normalizedUserConversation,
-      );
+      ) || this.mentionsCurrentVisionApplication(normalizedUserConversation);
 
     if (mentionsPasswordIssue) {
       return mentionsPasswordTarget;
@@ -717,6 +963,24 @@ export class SuggestTicketDraftUseCase {
       'demandeur',
       'utilisateur',
     ]);
+    const requesterScopeNameMatch = [...userMessages]
+      .reverse()
+      .map(
+        (message) =>
+          message.match(
+            /^(?:c est|c'est|cest)\s+pour\s+([a-z][a-z'-]{1,40})\b/u,
+          ) ?? message.match(/^pour\s+([a-z][a-z'-]{1,40})\b/u),
+      )
+      .find((match) => Boolean(match?.[1]));
+
+    if (
+      requesterScopeNameMatch?.[1] &&
+      !rejectedWords.has(requesterScopeNameMatch[1]) &&
+      this.isLikelyRequesterFirstName(requesterScopeNameMatch[1])
+    ) {
+      return this.capitalizeName(requesterScopeNameMatch[1]);
+    }
+
     const explicitFirstNameMatch =
       normalizedConversation.match(
         /(?:prenom)\s*(?:c est|c'est|est|:)\s*([a-z][a-z'-]{1,40})/u,
@@ -768,25 +1032,94 @@ export class SuggestTicketDraftUseCase {
 
   private inferChannelName(conversation: string): string | null {
     const normalizedConversation = this.normalizeForMatching(conversation);
+    const conversationLines = normalizedConversation
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const userMessages = conversationLines
+      .filter((line) => line.startsWith('utilisateur:'))
+      .map((line) => line.replace(/^utilisateur:\s*/u, '').trim())
+      .filter(Boolean);
+    const channelAnswerMessages: string[] = [];
+    let previousAssistantAskedChannel = false;
 
-    if (/\b(email|mail|courriel)\b/u.test(normalizedConversation)) {
+    for (const line of conversationLines) {
+      if (line.startsWith('assistant:')) {
+        previousAssistantAskedChannel =
+          /(comment.*demande|demande.*faite|fait.*demande|faite.*demande|canal|email, chat|telephone.*oral|oral.*telephone)/u.test(
+            line,
+          );
+        continue;
+      }
+
+      if (line.startsWith('utilisateur:')) {
+        if (previousAssistantAskedChannel) {
+          const answer = line.replace(/^utilisateur:\s*/u, '').trim();
+
+          if (answer) {
+            channelAnswerMessages.push(answer);
+          }
+        }
+
+        previousAssistantAskedChannel = false;
+      }
+    }
+
+    const latestChannelAnswer =
+      channelAnswerMessages[channelAnswerMessages.length - 1] ?? '';
+    const explicitChannelText =
+      latestChannelAnswer ||
+      [...userMessages]
+        .reverse()
+        .find((message) =>
+          /(demande|demander|demandeur|fait|faite|contact|envoye|envoie|recu|dit|oral|telephone|tel|appel|chat|message|mail|email|courriel|portail)/u.test(
+            message,
+          ),
+        ) ||
+      '';
+
+    if (!explicitChannelText) {
+      return null;
+    }
+
+    const channelContext =
+      latestChannelAnswer ||
+      (/(par\s+(email|mail|courriel|chat|message|telephone|tel|appel)|via\s+(email|mail|courriel|chat|message|telephone|tel|appel|portail)|a l[' ]?oral|oral|face a face|direct|il m a demande|elle m a demande|on m a demande|demande faite|demande par|recu par)/u.test(
+        explicitChannelText,
+      )
+        ? explicitChannelText
+        : '');
+
+    if (!channelContext) {
+      return null;
+    }
+
+    if (/\b(email|emial|mail|mael|courriel)\b/u.test(channelContext)) {
       return 'Email';
     }
 
-    if (/\b(chat|message)\b/u.test(normalizedConversation)) {
+    if (
+      /\b(chat|chatr|tchat|tchatte|message|msg|messagerie instantanee)\b/u.test(
+        channelContext,
+      )
+    ) {
       return 'Chat';
     }
 
-    if (/\b(telephone|tel|appel)\b/u.test(normalizedConversation)) {
+    if (
+      /\b(telephone|telephonne|tel|appel|apelle|phone)\b/u.test(channelContext)
+    ) {
       return 'Telephone';
     }
 
-    if (/\b(portail|portal)\b/u.test(normalizedConversation)) {
+    if (/\b(portail|portal)\b/u.test(channelContext)) {
       return 'Portail';
     }
 
     if (
-      /\b(oral|a l oral|face a face|direct)\b/u.test(normalizedConversation)
+      /\b(oral|orale|a l oral|face a face|direct|en personne)\b/u.test(
+        channelContext,
+      )
     ) {
       return 'Autre';
     }
@@ -803,6 +1136,49 @@ export class SuggestTicketDraftUseCase {
           : part.charAt(0).toUpperCase() + part.slice(1).toLowerCase(),
       )
       .join('');
+  }
+
+  private isLikelyRequesterFirstName(value: string): boolean {
+    const normalized = this.normalizeForMatching(value).trim();
+    const rejectedTokens = new Set([
+      'le',
+      'la',
+      'les',
+      'un',
+      'une',
+      'autre',
+      'reseau',
+      'wifi',
+      'internet',
+      'pc',
+      'ordinateur',
+      'portable',
+      'ecran',
+      'cable',
+      'chargeur',
+      'souris',
+      'clavier',
+      'casque',
+      'imprimante',
+      'telephone',
+      'application',
+      'appli',
+      'mail',
+      'email',
+      'messagerie',
+      'vpn',
+      'vision',
+      'hdmi',
+      'displayport',
+      'usb',
+      'usb-c',
+      'rj45',
+      'ethernet',
+    ]);
+
+    return /^[a-z][a-z'-]{1,40}$/u.test(normalized)
+      ? !rejectedTokens.has(normalized)
+      : false;
   }
 
   private getMissingRequesterContextQuestion(
@@ -825,6 +1201,145 @@ export class SuggestTicketDraftUseCase {
     return null;
   }
 
+  private getRequesterScopeClarification(conversation: string): string | null {
+    const conversationLines = this.normalizeForMatching(conversation)
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const lastAssistantMessage =
+      [...conversationLines]
+        .reverse()
+        .find((line) => line.startsWith('assistant:'))
+        ?.replace(/^assistant:\s*/u, '')
+        .trim() ?? '';
+    const lastUserMessage =
+      [...conversationLines]
+        .reverse()
+        .find((line) => line.startsWith('utilisateur:'))
+        ?.replace(/^utilisateur:\s*/u, '')
+        .trim() ?? '';
+    const assistantAskedRequesterScope =
+      /(ticket|demande).*(pour vous|pour moi|autre utilisateur)/u.test(
+        lastAssistantMessage,
+      ) ||
+      /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(
+        lastAssistantMessage,
+      );
+    const userAsksForExplanation =
+      /^(comment|comment ca|comment sa|quoi|c est a dire|c'est a dire|pas compris|j ai pas compris|j'ai pas compris|je comprends pas|je ne comprends pas)/u.test(
+        lastUserMessage,
+      );
+
+    return assistantAskedRequesterScope && userAsksForExplanation
+      ? "Je veux simplement savoir si le ticket concerne votre besoin a vous, ou si vous le creez pour quelqu'un d'autre. Repondez par exemple : pour moi, ou pour un autre utilisateur."
+      : null;
+  }
+
+  private getLastQuestionClarification(conversation: string): string | null {
+    const conversationLines = this.normalizeForMatching(conversation)
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const lastUserMessage =
+      [...conversationLines]
+        .reverse()
+        .find((line) => line.startsWith('utilisateur:'))
+        ?.replace(/^utilisateur:\s*/u, '')
+        .trim() ?? '';
+
+    if (!this.userDoesNotUnderstand(lastUserMessage)) {
+      return null;
+    }
+
+    const lastAssistantQuestion =
+      [...conversationLines]
+        .reverse()
+        .find((line) => line.startsWith('assistant:'))
+        ?.replace(/^assistant:\s*/u, '')
+        .trim() ?? '';
+
+    if (!lastAssistantQuestion) {
+      return "Pas de souci. Dites simplement avec vos mots ce que vous savez, je m'adapte.";
+    }
+
+    if (
+      /(comment.*demande|demande.*faite|fait.*demande|faite.*demande|email, chat|telephone.*oral|oral.*telephone|canal)/u.test(
+        lastAssistantQuestion,
+      )
+    ) {
+      return "Pas de souci. Je veux juste savoir comment la personne vous a transmis la demande : par email, par chat/message, par telephone, a l'oral, etc.";
+    }
+
+    if (
+      /(prenom|nom|utilisateur concerne|identite|demandeur)/u.test(
+        lastAssistantQuestion,
+      )
+    ) {
+      return "Pas de souci. Donnez simplement le prenom et le nom de la personne concernee. Si vous ne connaissez qu'un prenom, donnez seulement le prenom.";
+    }
+
+    if (
+      /(ticket|demande).*(pour vous|pour moi|autre utilisateur)/u.test(
+        lastAssistantQuestion,
+      ) ||
+      /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(
+        lastAssistantQuestion,
+      )
+    ) {
+      return "Pas de souci. Dites simplement si le ticket concerne votre besoin a vous, ou si vous le creez pour quelqu'un d'autre.";
+    }
+
+    if (
+      /(longueur|court|courte|1-2 m|1 a 2 m|metre|metres|taille)/u.test(
+        lastAssistantQuestion,
+      )
+    ) {
+      return 'Pas de souci. Dites simplement court, moyen, long, ou peu importe.';
+    }
+
+    if (
+      /(mot de passe|mdp|compte|service|session pc|messagerie|application|vpn|vision)/u.test(
+        lastAssistantQuestion,
+      )
+    ) {
+      return "Pas de souci. Dites simplement de quel compte il s'agit : PC, messagerie/mail, VPN, Vision, ou une autre application.";
+    }
+
+    return 'Pas de souci. Je reformule plus simplement : dites-moi juste ce que vous savez, même approximativement.';
+  }
+
+  private userDoesNotUnderstand(value: string): boolean {
+    return /^(j ai pas compris|j'ai pas compris|j ai pas comprit|j'ai pas comprit|g pas compris|g pas comprit|je n ai pas compris|je n'ai pas compris|je n ai pas comprit|je n'ai pas comprit|pas compris|pas comprit|je comprends pas|je comprend pas|je ne comprends pas|je ne comprend pas|comprend pas|compris pas|pas clair|quoi|comment ca|comment sa|c est a dire|c'est a dire)/u.test(
+      value,
+    );
+  }
+
+  private hasCompleteOtherRequesterContext(
+    requesterScope: 'SELF' | 'OTHER' | null,
+    requesterName: string | null,
+    channelName: string | null,
+  ): boolean {
+    return requesterScope === 'OTHER' && Boolean(requesterName && channelName);
+  }
+
+  private getNextRequesterContextQuestion(conversation: string): string | null {
+    const requesterScope = this.inferRequesterScope(conversation);
+    const requesterName =
+      requesterScope === 'OTHER'
+        ? this.inferPartialRequesterName(conversation)
+        : null;
+    const channelName =
+      requesterScope === 'SELF'
+        ? 'Portail'
+        : this.inferChannelName(conversation);
+
+    return this.getMissingRequesterContextQuestion(
+      requesterScope,
+      requesterName,
+      channelName,
+    );
+  }
+
   private normalizeAssistantQuestion(
     value: string | null,
     conversation: string,
@@ -840,6 +1355,7 @@ export class SuggestTicketDraftUseCase {
       this.getUserConversationText(conversation),
     );
     const normalizedQuestion = this.normalizeForMatching(normalized);
+    const requesterScope = this.inferRequesterScope(conversation);
     const userAsksChannelMeaning =
       /(c est quoi|c'est quoi|ca veut dire quoi|ça veut dire quoi|je comprends pas|j ai pas compris|j'ai pas compris).*(canal|demande)/u.test(
         normalizedConversation,
@@ -857,6 +1373,18 @@ export class SuggestTicketDraftUseCase {
       /(email|mail|chat|telephone|tel|portail|oral|autre|demande)/u.test(
         normalizedQuestion,
       );
+    const questionAsksRequesterName =
+      /(prenom|nom|utilisateur concerne|identite|demandeur)/u.test(
+        normalizedQuestion,
+      );
+
+    if (questionAsksRequesterName && requesterScope !== 'OTHER') {
+      return 'Est-ce que le ticket est pour vous ou pour un autre utilisateur ?';
+    }
+
+    if (questionAsksChannel && requesterScope !== 'OTHER') {
+      return 'Est-ce que le ticket est pour vous ou pour un autre utilisateur ?';
+    }
 
     if (questionAsksChannel) {
       return "Pouvez-vous préciser comment on vous a fait la demande (Email, Chat, Téléphone, à l'oral, ...) ?";
@@ -870,13 +1398,16 @@ export class SuggestTicketDraftUseCase {
       /(pas compris|comprend pas|pas clair|je comprends pas|je ne comprends pas)/u.test(
         normalizedConversation,
       );
-    const userMentionedVision =
-      /\b(vision|portail|cette appli|application actuelle|appli de ticketing|ticketing)\b/u.test(
-        normalizedUserConversation,
-      );
+    const userMentionedVision = this.mentionsCurrentVisionApplication(
+      normalizedUserConversation,
+    );
     const questionAssumesVision =
       /\b(vision|portail)\b/u.test(normalizedQuestion) &&
       /(mdp|mot de passe|password|connexion|connecter|login|reinitialisation|reinitialiser|mot de passe oublie)/u.test(
+        normalizedQuestion,
+      );
+    const questionAsksApplicationAgain =
+      /(quelle application|quelle appli|application.*exactement|appli.*exactement|nom.*application|nom.*appli)/u.test(
         normalizedQuestion,
       );
     const questionCombinesPasswordTargetAndRequesterScope =
@@ -887,6 +1418,47 @@ export class SuggestTicketDraftUseCase {
       /(pour vous|autre utilisateur|demande est pour)/u.test(
         normalizedQuestion,
       );
+    const questionAsksSpecificCableDevice =
+      this.hasSpecificCableRequest(normalizedUserConversation) &&
+      /(pour quel appareil|quel appareil|pc, ecran|pc ou ecran|ecran, autre|appareil.*besoin|besoin.*appareil)/u.test(
+        normalizedQuestion,
+      );
+    const questionAsksWifiCableDevice =
+      this.hasWifiCableRequest(normalizedUserConversation) &&
+      /(pour quel materiel|quel materiel|pour quel appareil|quel appareil|pc, borne|borne\/routeur|imprimante|routeur|appareil.*besoin|materiel.*besoin)/u.test(
+        normalizedQuestion,
+      );
+    const questionAsksNetworkCableConfirmation =
+      this.hasNetworkCableRequest(normalizedUserConversation) &&
+      /(souhaitez|voulez|besoin|confirmez|confirmer|dire).*(cable reseau|ethernet|rj45)/u.test(
+        normalizedQuestion,
+      );
+    const questionAsksCableLength =
+      this.hasSpecificCableRequest(normalizedUserConversation) &&
+      /(longueur|court|courte|1-2 m|1 a 2 m|metre|metres|taille)/u.test(
+        normalizedQuestion,
+      );
+
+    if (questionAsksSpecificCableDevice) {
+      return (
+        this.getMissingSpecificCableLengthQuestion(conversation) ??
+        'Est-ce que le ticket est pour vous ou pour un autre utilisateur ?'
+      );
+    }
+
+    if (questionAsksCableLength) {
+      return (
+        this.getMissingSpecificCableLengthQuestion(conversation) ??
+        this.getNextRequesterContextQuestion(conversation)
+      );
+    }
+
+    if (questionAsksWifiCableDevice || questionAsksNetworkCableConfirmation) {
+      return (
+        this.getMissingSpecificCableLengthQuestion(conversation) ??
+        'Est-ce que le ticket est pour vous ou pour un autre utilisateur ?'
+      );
+    }
 
     if (questionCombinesPasswordTargetAndRequesterScope) {
       return "De quel mot de passe s'agit-il : session du PC, messagerie, application, VPN, Vision ou autre service ?";
@@ -898,6 +1470,14 @@ export class SuggestTicketDraftUseCase {
       !userMentionedVision
     ) {
       return "De quel mot de passe s'agit-il : session du PC, messagerie, application, VPN, Vision ou autre service ?";
+    }
+
+    if (
+      mentionsPasswordIssue &&
+      userMentionedVision &&
+      questionAsksApplicationAgain
+    ) {
+      return 'Est-ce que le ticket est pour vous ou pour un autre utilisateur ?';
     }
 
     if (
@@ -918,6 +1498,142 @@ export class SuggestTicketDraftUseCase {
       .trim();
 
     return question || 'Dites-moi ce que donnent ces verifications.';
+  }
+
+  private getMissingGenericRequestPrecisionQuestion(
+    conversation: string,
+  ): string | null {
+    const normalizedConversation = this.normalizeForMatching(conversation);
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+    const hasChargerRequest = /\bchargeur\b/u.test(normalizedUserConversation);
+    const specificCableLengthQuestion =
+      this.getMissingSpecificCableLengthQuestion(conversation);
+    const hasUsbKeyRequest = /\b(cle usb|clef usb|clé usb|cléf usb)\b/u.test(
+      normalizedUserConversation,
+    );
+    const askedChargerDevice =
+      /chargeur.*(quel appareil|pour quel appareil|pc, telephone, tablette)/u.test(
+        normalizedConversation,
+      ) ||
+      /(quel appareil|pour quel appareil|pc, telephone, tablette).*chargeur/u.test(
+        normalizedConversation,
+      );
+    const askedChargerConnector =
+      /(usb-c|usb c|lightning|connecteur|type de chargeur|quel type)/u.test(
+        normalizedConversation,
+      );
+    const askedUsbCapacity =
+      /(cle usb|clef usb).*(capacite|stockage|combien de go|go souhaite)/u.test(
+        normalizedConversation,
+      ) ||
+      /(capacite|stockage|combien de go|go souhaite).*(cle usb|clef usb)/u.test(
+        normalizedConversation,
+      );
+    const mentionsPcCharger =
+      /(chargeur).*(pc|ordinateur|pc portable|poste)/u.test(
+        normalizedUserConversation,
+      ) ||
+      /(pc|ordinateur|pc portable|poste).*(chargeur)/u.test(
+        normalizedUserConversation,
+      );
+    const mentionsPhoneOrTabletCharger =
+      !mentionsPcCharger &&
+      (/(chargeur).*(telephone|tel|smartphone|iphone|portable|tablette)/u.test(
+        normalizedUserConversation,
+      ) ||
+        /(telephone|tel|smartphone|iphone|portable|tablette).*(chargeur)/u.test(
+          normalizedUserConversation,
+        ));
+    const mentionsConnector =
+      /(usb-c|usb c|usbc|lightning|micro usb|peu importe|importe peu|n importe|je sais pas|je ne sais pas|sais pas|jsp)/u.test(
+        normalizedUserConversation,
+      );
+    const mentionsUsbCapacity =
+      /\b(\d+\s*(go|gb|to|tb)|peu importe|importe peu|n importe|je sais pas|je ne sais pas|sais pas|jsp)\b/u.test(
+        normalizedUserConversation,
+      );
+
+    if (specificCableLengthQuestion) {
+      return specificCableLengthQuestion;
+    }
+
+    if (hasChargerRequest) {
+      if (!mentionsPcCharger && !mentionsPhoneOrTabletCharger) {
+        return askedChargerDevice
+          ? null
+          : "C'est un chargeur pour quel appareil : PC, telephone, tablette ou autre ?";
+      }
+
+      if (mentionsPhoneOrTabletCharger && !mentionsConnector) {
+        return askedChargerConnector
+          ? null
+          : "Vous savez si c'est USB-C, Lightning, ou peu importe ?";
+      }
+    }
+
+    if (hasUsbKeyRequest && !mentionsUsbCapacity) {
+      return askedUsbCapacity
+        ? null
+        : "Vous avez besoin d'une capacite precise pour la cle USB, ou peu importe ?";
+    }
+
+    return null;
+  }
+
+  private hasWifiCableRequest(normalizedUserConversation: string): boolean {
+    return (
+      /\bcable\b/u.test(normalizedUserConversation) &&
+      /\b(wifi|wi-fi)\b/u.test(normalizedUserConversation)
+    );
+  }
+
+  private hasNetworkCableRequest(normalizedUserConversation: string): boolean {
+    return (
+      /\bcable\b/u.test(normalizedUserConversation) &&
+      /\b(wifi|wi-fi|reseau|ethernet|rj45)\b/u.test(normalizedUserConversation)
+    );
+  }
+
+  private getMissingSpecificCableLengthQuestion(
+    conversation: string,
+  ): string | null {
+    const normalizedConversation = this.normalizeForMatching(conversation);
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+
+    if (!this.hasSpecificCableRequest(normalizedUserConversation)) {
+      return null;
+    }
+
+    const alreadyAskedLength =
+      /(longueur|court|courte|1-2 m|1 a 2 m|metre|metres|m souhaite|taille).*cable/u.test(
+        normalizedConversation,
+      ) ||
+      /cable.*(longueur|court|courte|1-2 m|1 a 2 m|metre|metres|m souhaite|taille)/u.test(
+        normalizedConversation,
+      );
+    const mentionsCableLength =
+      /\b(court|courte|petit|petite|moyen|moyenne|long|longue|grand|grande|assez long|assez longue|1-2 m|1 a 2 m|\d+\s*(m|metre|metres)|peu importe|importe peu|n importe|n'importe|je sais pas|je ne sais pas|jsp|standard|classique|normal|normale|comme d habitude|comme dhabitude)\b/u.test(
+        normalizedUserConversation,
+      );
+
+    if (alreadyAskedLength || mentionsCableLength) {
+      return null;
+    }
+
+    return 'Quelle longueur de câble souhaitez-vous ?';
+  }
+
+  private hasSpecificCableRequest(normalizedUserConversation: string): boolean {
+    return (
+      /\bcable\b/u.test(normalizedUserConversation) &&
+      /\b(displayport|hdmi|ethernet|rj45|reseau|wifi|wi-fi|usb-c|usb c|usbc|vga|dvi)\b/u.test(
+        normalizedUserConversation,
+      )
+    );
   }
 
   private getMissingSimpleTroubleshootingQuestion(
@@ -943,12 +1659,8 @@ export class SuggestTicketDraftUseCase {
       normalizedConversation,
     );
     const mentionsVisionPasswordIssue =
-      /(vision|portail|cette appli|application actuelle|appli de ticketing|ticketing).*(mdp|mot de passe|password|connexion|connecter|login)/u.test(
-        normalizedUserConversation,
-      ) ||
-      /(mdp|mot de passe|password|connexion|connecter|login).*(vision|portail|cette appli|application actuelle|appli de ticketing|ticketing)/u.test(
-        normalizedUserConversation,
-      );
+      this.mentionsCurrentVisionApplication(normalizedUserConversation) &&
+      mentionsPasswordIssue;
 
     if (mentionsVisionPasswordIssue && !mentionsPcSessionPassword) {
       if (!alreadySuggestedPasswordReset) {
@@ -1010,6 +1722,14 @@ export class SuggestTicketDraftUseCase {
     normalizedConversation: string,
   ): boolean {
     return /(essayez|essaye|tester|testez|utilisez|utilise|via|lien|recuperer le compte|reinitialisation|reinitialiser|email de reinitialisation|mail de reinitialisation|telephone de recuperation|methode de recuperation)/u.test(
+      normalizedConversation,
+    );
+  }
+
+  private mentionsCurrentVisionApplication(
+    normalizedConversation: string,
+  ): boolean {
+    return /\b(vision|portail|cette appli|cette application|cette app|l appli actuelle|appli actuelle|application actuelle|appli de ticket|application de ticket|appli de ticketing|application de ticketing|ticketing|cette appli de ticket|cette application de ticket)\b/u.test(
       normalizedConversation,
     );
   }

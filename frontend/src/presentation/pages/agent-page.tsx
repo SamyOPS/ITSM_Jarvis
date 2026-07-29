@@ -8,6 +8,7 @@ import {
   History,
   Paperclip,
   Plus,
+  RotateCcw,
   Search,
   SlidersHorizontal,
   Sparkles,
@@ -594,6 +595,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   );
   const aiDraftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const aiChatBodyRef = useRef<HTMLDivElement | null>(null);
+  const aiChatGenerationRef = useRef(0);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const ticketListTitle = getTicketListTitle(section, session.user.role);
   const ticketListEmptyMessage = getTicketListEmptyMessage(section);
@@ -1874,6 +1876,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       role: 'user',
     };
     const nextMessages = [...aiChatMessages, userMessage];
+    const chatGeneration = aiChatGenerationRef.current;
 
     setAiDraftInput('');
     setAiChatMessages(nextMessages);
@@ -1917,6 +1920,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           .join('\n\n'),
       });
 
+      if (chatGeneration !== aiChatGenerationRef.current) {
+        return;
+      }
+
       if (assistantResponse.action === 'ASK_QUESTION') {
         setAiChatMessages([
           ...nextMessages,
@@ -1941,14 +1948,39 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         },
       ]);
     } catch (error) {
+      if (chatGeneration !== aiChatGenerationRef.current) {
+        return;
+      }
+
       setAiDraftErrorMessage(
         error instanceof Error
           ? error.message
           : "L assistance IA n'a pas pu generer de proposition.",
       );
     } finally {
-      setIsSuggestingDraft(false);
+      if (chatGeneration === aiChatGenerationRef.current) {
+        setIsSuggestingDraft(false);
+      }
     }
+  }
+
+  function resetAiChat(): void {
+    aiChatGenerationRef.current += 1;
+    setAiDraftInput('');
+    setAiDraftSuggestion(null);
+    setAiDraftErrorMessage(null);
+    setAiChatMessages(INITIAL_AI_CHAT_MESSAGES);
+    setIsSuggestingDraft(false);
+
+    window.requestAnimationFrame(() => {
+      resizeAiDraftTextarea();
+
+      const chatBody = aiChatBodyRef.current;
+
+      if (chatBody) {
+        chatBody.scrollTop = 0;
+      }
+    });
   }
 
   function handleApplyTicketDraftSuggestion(): void {
@@ -4138,13 +4170,24 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           <h3>Assistant IA Vision</h3>
                           <p>Pre-remplissage intelligent du ticket</p>
                         </div>
-                        <button
-                          aria-label="Fermer l assistant IA"
-                          onClick={closeAiChat}
-                          type="button"
-                        >
-                          <X size={18} />
-                        </button>
+                        <div className="ticket-ai-chat-header-actions">
+                          <button
+                            className="ticket-ai-chat-reset"
+                            onClick={resetAiChat}
+                            type="button"
+                          >
+                            <RotateCcw size={15} />
+                            Nouveau chat
+                          </button>
+                          <button
+                            aria-label="Fermer l assistant IA"
+                            className="ticket-ai-chat-close"
+                            onClick={closeAiChat}
+                            type="button"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
                       </header>
 
                       <div className="ticket-ai-chat-body" ref={aiChatBodyRef}>

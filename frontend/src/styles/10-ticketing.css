@@ -399,6 +399,13 @@
   font-size: 0.92rem;
 }
 
+.ticket-ai-chat-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .ticket-ai-chat-header button,
 .ticket-ai-chat-footer > button:first-child {
   display: inline-grid;
@@ -409,6 +416,30 @@
   border-radius: 12px;
   background: #fff;
   color: #174174;
+}
+
+.ticket-ai-chat-header .ticket-ai-chat-reset {
+  display: inline-flex;
+  width: auto;
+  min-width: 0;
+  padding: 0 12px;
+  gap: 6px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.ticket-ai-chat-header .ticket-ai-chat-reset:hover {
+  background: #f3f7ff;
+  border-color: #9ebcf0;
+}
+
+.ticket-ai-chat-header .ticket-ai-chat-close:hover,
+.ticket-ai-chat-header .ticket-ai-chat-close:focus-visible {
+  border-color: rgba(220, 38, 38, 0.28);
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .ticket-ai-chat-body {
