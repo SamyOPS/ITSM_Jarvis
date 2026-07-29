@@ -275,7 +275,6 @@ export class SuggestTicketDraftUseCase {
     rawText: string,
 
     userInput: string,
-
   ): TicketDraftAssistantResponse {
     let parsed: TicketDraftAssistantResponse & TicketDraftSuggestion;
 
@@ -401,9 +400,7 @@ export class SuggestTicketDraftUseCase {
           this.normalizeRequesterName(parsed.requesterName))
         : null;
     const channelName =
-      requesterScope === 'SELF'
-        ? (this.normalizeNullableText(parsed.channelName) ?? 'Portail')
-        : this.inferChannelName(userInput);
+      requesterScope === 'SELF' ? 'Portail' : this.inferChannelName(userInput);
     const requesterScopeClarification =
       this.getRequesterScopeClarification(userInput);
     const questionClarification = this.getLastQuestionClarification(userInput);
@@ -499,6 +496,7 @@ export class SuggestTicketDraftUseCase {
         description: this.normalizeTicketDescription(
           parsed.description,
           requesterName,
+          userInput,
         ),
         impact: type === TicketType.INCIDENT ? incidentImpact : null,
         priorityName,
@@ -664,6 +662,7 @@ export class SuggestTicketDraftUseCase {
           description: this.normalizeTicketDescription(
             parsed.description,
             null,
+            conversation,
           ),
           impact: type === TicketType.INCIDENT ? incidentImpact : null,
           priorityName:
@@ -718,6 +717,7 @@ export class SuggestTicketDraftUseCase {
             this.normalizeTicketDescription(
               parsed.description,
               requesterName,
+              conversation,
             ) || 'Demande a qualifier.',
           impact: type === TicketType.INCIDENT ? incidentImpact : null,
           priorityName:
@@ -826,8 +826,12 @@ export class SuggestTicketDraftUseCase {
   private normalizeTicketDescription(
     value: string | null | undefined,
     requesterName: string | null,
+    sourceText?: string,
   ): string {
     const description = value?.trim() ?? '';
+    const userSource = sourceText
+      ? this.normalizeForMatching(this.getUserConversationText(sourceText))
+      : '';
     const normalizedDescription = description
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
@@ -858,7 +862,7 @@ export class SuggestTicketDraftUseCase {
       .filter((index) => index >= 0)
       .sort((left, right) => left - right)[0];
 
-    return (
+    const cleanedDescription = (
       firstStopIndex === undefined
         ? description
         : description.slice(0, firstStopIndex)
@@ -894,6 +898,58 @@ export class SuggestTicketDraftUseCase {
       .replace(/\s*[-:;,.]\s*$/u, '')
       .trim()
       .replace(/^./u, (char) => char.toUpperCase());
+
+    return this.removeUnsupportedDescriptionDetails(
+      cleanedDescription,
+      userSource,
+    );
+  }
+
+  private removeUnsupportedDescriptionDetails(
+    description: string,
+    normalizedUserSource: string,
+  ): string {
+    if (!description || !normalizedUserSource) {
+      return description;
+    }
+
+    const sentences = description
+      .split(/(?<=[.!?])\s+/u)
+      .map((sentence) => sentence.trim())
+      .filter(Boolean);
+
+    if (sentences.length <= 1) {
+      return description;
+    }
+
+    const keptSentences = sentences.filter((sentence) => {
+      const normalizedSentence = this.normalizeForMatching(sentence);
+      const startsWithUnsupportedContext =
+        /^(lorsqu|lorsque|quand|si|au moment|apres|avant)\b/u.test(
+          normalizedSentence,
+        );
+
+      if (!startsWithUnsupportedContext) {
+        return true;
+      }
+
+      const significantWords = normalizedSentence
+        .replace(/[^a-z0-9\s]/gu, ' ')
+        .split(/\s+/u)
+        .filter((word) => word.length >= 5);
+      const supportedWords = significantWords.filter((word) =>
+        normalizedUserSource.includes(word),
+      );
+
+      return (
+        significantWords.length > 0 &&
+        supportedWords.length / significantWords.length >= 0.6
+      );
+    });
+
+    return (keptSentences.length ? keptSentences : sentences.slice(0, 1))
+      .join(' ')
+      .trim();
   }
 
   private removeRequesterMentions(
