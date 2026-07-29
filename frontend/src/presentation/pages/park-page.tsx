@@ -20,6 +20,7 @@ import {
 } from 'react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import { isAdminRole } from '../../domain/auth/user-role';
 import { AppPagination } from '../components/app-pagination';
 import {
   type ReferentialCatalogSnapshot,
@@ -494,10 +495,17 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
 
   const isCreateMode = mode === 'CREATE';
   const isDetailMode = mode === 'DETAIL';
+  const canManageEquipment = isAdminRole(session.user.role);
   const detailBackPath = withPageQuery(
     '/parc/cis',
     getPageQueryParam('fromPage'),
   );
+
+  useEffect(() => {
+    if (!canManageEquipment && mode !== 'LIST') {
+      navigateTo('/parc/cis');
+    }
+  }, [canManageEquipment, mode]);
 
   return (
     <section className="reports-page">
@@ -538,7 +546,7 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                     </span>
                   ) : null}
 
-                  {selectedEquipment ? (
+                  {selectedEquipment && canManageEquipment ? (
                     <div className="tdp-status-form">
                       <select
                         className={
@@ -564,7 +572,7 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                     </div>
                   ) : null}
 
-                  {selectedEquipment ? (
+                  {selectedEquipment && canManageEquipment ? (
                     <button
                       className="primary-button admin-user-save-button"
                       disabled={isSaving}
@@ -580,7 +588,7 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                     </button>
                   ) : null}
 
-                  {selectedEquipment ? (
+                  {selectedEquipment && canManageEquipment ? (
                     <button
                       className="admin-user-delete-button"
                       disabled={deletingEquipmentId === selectedEquipment.id}
@@ -1282,6 +1290,7 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                       <tbody>
                         {paginatedEquipment.map((ci) => (
                           <EquipmentRow
+                            canOpenDetail={canManageEquipment}
                             ci={ci}
                             ciType={ciTypesById.get(ci.ciTypeId) ?? null}
                             key={ci.id}
@@ -1314,29 +1323,39 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
 }
 
 function EquipmentRow({
+  canOpenDetail,
   ci,
   ciType,
   page,
   user,
 }: {
+  canOpenDetail: boolean;
   ci: ReferentialCi;
   ciType: ReferentialCiType | null;
   page: number;
   user: AdminUserSummary | null;
 }) {
+  const detailPath = withReturnPageQuery(`/parc/cis/${ci.id}`, page);
+
   return (
     <tr
-      className="ticket-table-row park-equipment-row park-equipment-row--clickable"
-      onClick={() =>
-        navigateTo(withReturnPageQuery(`/parc/cis/${ci.id}`, page))
+      className={
+        canOpenDetail
+          ? 'ticket-table-row park-equipment-row park-equipment-row--clickable'
+          : 'ticket-table-row park-equipment-row'
       }
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          navigateTo(withReturnPageQuery(`/parc/cis/${ci.id}`, page));
+      onClick={() => {
+        if (canOpenDetail) {
+          navigateTo(detailPath);
         }
       }}
-      tabIndex={0}
+      onKeyDown={(event) => {
+        if (canOpenDetail && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          navigateTo(detailPath);
+        }
+      }}
+      tabIndex={canOpenDetail ? 0 : undefined}
     >
       <td>
         <strong className="ticket-table-number">

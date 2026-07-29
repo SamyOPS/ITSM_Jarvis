@@ -64,7 +64,7 @@ type CiBody = {
 
 @Controller('admin/referentials')
 @UseGuards(BearerAuthGuard, RolesGuard)
-@Roles(UserRole.MANAGER, UserRole.ADMIN)
+@Roles(UserRole.ADMIN)
 @Policies(AuthPolicy.MANAGE_REFERENTIALS)
 export class AdminReferentialsController {
   constructor(
