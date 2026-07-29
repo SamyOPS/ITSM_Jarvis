@@ -23,9 +23,8 @@ describe('AdminReferentialsController', () => {
     );
   });
 
-  it('protects the controller with manager/admin RBAC metadata', () => {
+  it('protects the controller with admin-only RBAC metadata', () => {
     expect(Reflect.getMetadata('roles', AdminReferentialsController)).toEqual([
-      UserRole.MANAGER,
       UserRole.ADMIN,
     ]);
     expect(

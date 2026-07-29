@@ -43,6 +43,8 @@ export type TicketReportingOverview = {
     unassigned: number;
     responseOverdue: number;
     resolutionOverdue: number;
+    slaTtrOnTime: number;
+    slaTtrOverdue: number;
     total: number;
   };
   kpis: {
@@ -85,7 +87,12 @@ export class GetTicketReportingOverviewUseCase {
       await this.ticketHistoryReadRepository.listTicketHistoryEntries({
         ticketIds: scopedTickets.map((ticket) => ticket.id),
       });
-    const kpis = calculateKpis(scopedTickets, ticketHistoryEntries);
+    const historyEntriesByTicketId =
+      groupEntriesByTicketId(ticketHistoryEntries);
+    const kpis = calculateKpis(scopedTickets, historyEntriesByTicketId);
+    const slaTtrOverdue = scopedTickets.filter((ticket) =>
+      isSlaTtrOverdue(ticket, historyEntriesByTicketId),
+    ).length;
 
     return {
       filters,
@@ -110,6 +117,8 @@ export class GetTicketReportingOverviewUseCase {
         resolutionOverdue: scopedTickets.filter(
           (ticket) => ticket.resolutionSlaStatus === SlaIndicator.OVERDUE,
         ).length,
+        slaTtrOnTime: Math.max(scopedTickets.length - slaTtrOverdue, 0),
+        slaTtrOverdue,
         total: scopedTickets.length,
       },
     };
@@ -118,9 +127,8 @@ export class GetTicketReportingOverviewUseCase {
 
 function calculateKpis(
   tickets: TicketSummary[],
-  entries: TicketHistoryEntry[],
+  entriesByTicketId: Map<string, TicketHistoryEntry[]>,
 ): TicketReportingOverview['kpis'] {
-  const entriesByTicketId = groupEntriesByTicketId(entries);
   const responseDurations = tickets
     .map((ticket) =>
       getResponseDurationMinutes(
@@ -272,6 +280,63 @@ function isTicketOverdue(ticket: TicketSummary): boolean {
     ticket.responseSlaStatus === SlaIndicator.OVERDUE ||
     ticket.resolutionSlaStatus === SlaIndicator.OVERDUE
   );
+}
+
+function isSlaTtrOverdue(
+  ticket: TicketSummary,
+  entriesByTicketId: Map<string, TicketHistoryEntry[]>,
+): boolean {
+  return (
+    ticket.responseSlaStatus === SlaIndicator.OVERDUE ||
+    isResolutionTtrOverdue(ticket, entriesByTicketId)
+  );
+}
+
+function isResolutionTtrOverdue(
+  ticket: TicketSummary,
+  entriesByTicketId: Map<string, TicketHistoryEntry[]>,
+): boolean {
+  if (
+    ticket.status !== TicketStatus.RESOLVED &&
+    ticket.status !== TicketStatus.CLOSED
+  ) {
+    return ticket.resolutionSlaStatus === SlaIndicator.OVERDUE;
+  }
+
+  if (!ticket.resolutionDueAt) {
+    return ticket.resolutionSlaStatus === SlaIndicator.OVERDUE;
+  }
+
+  const lastCompletionDate = getLastCompletionDate(
+    entriesByTicketId.get(ticket.id) ?? [],
+  );
+
+  if (!lastCompletionDate) {
+    return ticket.resolutionSlaStatus === SlaIndicator.OVERDUE;
+  }
+
+  return (
+    lastCompletionDate.getTime() > new Date(ticket.resolutionDueAt).getTime()
+  );
+}
+
+function getLastCompletionDate(entries: TicketHistoryEntry[]): Date | null {
+  const completionEntries = entries.filter(
+    (entry) =>
+      entry.eventType === TicketHistoryEventType.RESOLVED ||
+      entry.eventType === TicketHistoryEventType.CLOSED ||
+      isStatusChangeTo(entry, TicketStatus.RESOLVED) ||
+      isStatusChangeTo(entry, TicketStatus.CLOSED),
+  );
+
+  if (completionEntries.length === 0) {
+    return null;
+  }
+
+  const lastCompletionEntry = completionEntries[completionEntries.length - 1];
+  const completedAt = new Date(lastCompletionEntry.createdAt);
+
+  return Number.isNaN(completedAt.getTime()) ? null : completedAt;
 }
 
 function countByStatus(tickets: TicketSummary[], status: TicketStatus): number {

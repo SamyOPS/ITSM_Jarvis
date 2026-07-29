@@ -39,6 +39,8 @@ export type ReportingOverview = {
     unassigned: number;
     responseOverdue: number;
     resolutionOverdue: number;
+    slaTtrOnTime: number;
+    slaTtrOverdue: number;
     total: number;
   };
 };

@@ -179,6 +179,12 @@ export class SuggestTicketDraftUseCase {
       `Utilisateurs demandeurs disponibles: ${requesters.length ? requesters.join(', ') : 'non fournis'}.`,
       '',
       'Objectif:',
+
+      '- si les informations sont suffisantes, action=SUGGEST_TICKET et tu prepares le ticket;',
+      "- s'il manque une information importante, action=ASK_QUESTION et tu poses une seule question courte, adaptee au contexte;",
+      '- ne repose jamais une question dont la reponse est deja evidente dans la conversation;',
+      "- par exemple si l'utilisateur parle deja de son ordinateur, ne demande pas quel equipement est concerne; demande plutot s'il s'allume, s'il y a un message d'erreur, ou si c'est portable/fixe si utile;",
+
       "- raisonne comme un assistant ITSM conversationnel: comprendre, aider un peu si c'est raisonnable, puis preparer un brouillon de ticket;",
       '- si le message est seulement une salutation ou ne contient aucun probleme/demande identifiable, action=ASK_QUESTION avec une question naturelle pour connaitre le sujet;',
       '- phase diagnostic: tu peux poser 0 a 3 questions utiles pour mieux qualifier le ticket et enrichir la description, mais uniquement si la reponse change vraiment le type, la categorie, la priorite, le demandeur, le canal ou une information importante de description;',
@@ -225,6 +231,7 @@ export class SuggestTicketDraftUseCase {
       "- si l'utilisateur demande une modification de la proposition, produis une nouvelle proposition corrigee avec action=SUGGEST_TICKET;",
       '- si le probleme est urgent, bloquant, securite, perte de donnees, ou impacte plusieurs utilisateurs, action=SUGGEST_TICKET sans triage;',
       '- si une information secondaire manque, fais une hypothese raisonnable avec une confidence plus basse au lieu de prolonger la conversation;',
+
       '- choisir INCIDENT si un service/equipement ne fonctionne plus ou est degrade;',
       "- choisir INCIDENT si l'utilisateur ne peut pas se connecter, a oublie un mot de passe, a un compte bloque ou un probleme d'acces existant;",
       '- choisir REQUEST si la personne demande un acces, une installation, un materiel ou un service;',
@@ -266,7 +273,9 @@ export class SuggestTicketDraftUseCase {
 
   private normalizeAssistantResponse(
     rawText: string,
+
     userInput: string,
+
   ): TicketDraftAssistantResponse {
     let parsed: TicketDraftAssistantResponse & TicketDraftSuggestion;
 

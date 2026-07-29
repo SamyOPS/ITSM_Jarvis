@@ -38,8 +38,8 @@ const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
     'ADMIN',
     'SUPER_ADMIN',
   ],
-  '/parc/cis/new': ['MANAGER', 'ADMIN', 'SUPER_ADMIN'],
-  '/parc/cis': ['MANAGER', 'ADMIN', 'SUPER_ADMIN'],
+  '/parc/cis/new': ['ADMIN', 'SUPER_ADMIN'],
+  '/parc/cis': ['AGENT', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'],
   '/reports': ['AGENT', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'],
 };
 

@@ -43,7 +43,8 @@ describe('access-control', () => {
     const session = buildSession('AGENT');
 
     expect(canAccessRoute('/reports', session)).toBe(true);
-    expect(canAccessRoute('/parc/cis', session)).toBe(false);
+    expect(canAccessRoute('/parc/cis', session)).toBe(true);
+    expect(canAccessRoute('/parc/cis/new', session)).toBe(false);
   });
 
   it('lets manager access admin-like routes except license', () => {
@@ -54,6 +55,7 @@ describe('access-control', () => {
     expect(canAccessRoute('/knowledge/articles', session)).toBe(true);
     expect(canAccessRoute('/agent/archives', session)).toBe(true);
     expect(canAccessRoute('/parc/cis', session)).toBe(true);
+    expect(canAccessRoute('/parc/cis/new', session)).toBe(false);
     expect(canAccessRoute('/admin/users', session)).toBe(true);
     expect(canAccessRoute('/admin/groups', session)).toBe(true);
     expect(canAccessRoute('/admin/license', session)).toBe(false);
