@@ -139,8 +139,10 @@ export class TicketsController {
   ): Promise<TicketDraftAssistantResponse> {
     return this.suggestTicketDraftUseCase.execute({
       categories: body.categories,
+      channels: body.channels,
       currentMode: body.currentMode ?? null,
       priorities: body.priorities,
+      requesters: body.requesters,
       userInput: body.userInput,
     });
   }

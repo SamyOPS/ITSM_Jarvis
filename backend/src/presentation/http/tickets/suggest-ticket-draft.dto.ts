@@ -1,11 +1,4 @@
-import {
-  IsArray,
-  IsEnum,
-  IsOptional,
-  IsString,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { IsArray, IsEnum, IsOptional, IsString } from 'class-validator';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
 
 export class SuggestTicketDraftDto {
@@ -13,6 +6,11 @@ export class SuggestTicketDraftDto {
   @IsArray()
   @IsString({ each: true })
   categories?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  channels?: string[];
 
   @IsOptional()
   @IsEnum(TicketType)
@@ -23,8 +21,11 @@ export class SuggestTicketDraftDto {
   @IsString({ each: true })
   priorities?: string[];
 
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  requesters?: string[];
+
   @IsString()
-  @MinLength(10)
-  @MaxLength(3000)
   userInput!: string;
 }
