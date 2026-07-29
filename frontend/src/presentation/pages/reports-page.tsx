@@ -245,6 +245,10 @@ const EMPTY_OVERVIEW_TOTALS: ReportingOverview['totals'] = {
 
   resolutionOverdue: 0,
 
+  slaTtrOnTime: 0,
+
+  slaTtrOverdue: 0,
+
   responseOverdue: 0,
 
   total: 0,
@@ -566,9 +570,12 @@ export function ReportsPage({ session }: ReportsPageProps) {
   const overdueTotal = getOverviewOverdueTotal(overviewTotals);
 
   const slaWidgetItems = useMemo(
-    () => buildSlaDistributionItems(getDashboardTicketsForChart('SLA')),
+    () =>
+      dashboardActivityModes.SLA === 'ALL'
+        ? buildSlaDistributionItemsFromTotals(overviewTotals)
+        : buildSlaDistributionItems(getDashboardTicketsForChart('SLA')),
 
-    [getDashboardTicketsForChart],
+    [dashboardActivityModes.SLA, getDashboardTicketsForChart, overviewTotals],
   );
 
   const timelineItems = useMemo(
@@ -4740,9 +4747,28 @@ function buildSlaDistributionItems(
       ticket.resolutionSlaStatus === 'OVERDUE',
   ).length;
 
+  return buildSlaDistributionItemsFromCounts(
+    Math.max(tickets.length - overdueTotal, 0),
+    overdueTotal,
+  );
+}
+
+function buildSlaDistributionItemsFromTotals(
+  totals: ReportingOverview['totals'],
+): ReportingBreakdownItem[] {
+  return buildSlaDistributionItemsFromCounts(
+    totals.slaTtrOnTime,
+    totals.slaTtrOverdue,
+  );
+}
+
+function buildSlaDistributionItemsFromCounts(
+  onTimeTotal: number,
+  overdueTotal: number,
+): ReportingBreakdownItem[] {
   return [
     {
-      count: Math.max(tickets.length - overdueTotal, 0),
+      count: onTimeTotal,
       id: 'on-time',
       name: 'Dans les delais',
     },

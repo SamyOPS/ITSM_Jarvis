@@ -52,6 +52,8 @@ describe('GetTicketReportingOverviewUseCase', () => {
         resolved: 1,
         responseOverdue: 1,
         resolutionOverdue: 1,
+        slaTtrOnTime: 2,
+        slaTtrOverdue: 2,
         total: 4,
         unassigned: 4,
       },
@@ -183,8 +185,90 @@ describe('GetTicketReportingOverviewUseCase', () => {
       totals: {
         responseOverdue: 1,
         resolutionOverdue: 1,
+        slaTtrOnTime: 3,
+        slaTtrOverdue: 1,
         total: 4,
         unassigned: 4,
+      },
+    });
+  });
+
+  it('counts resolved and closed tickets as resolution overdue when their last resolution missed the TTR', async () => {
+    const searchTickets = jest.fn().mockResolvedValue([
+      createTicketSummary('ticket-late-resolved', TicketStatus.RESOLVED, {
+        resolutionDueAt: '2026-04-03T12:00:00.000Z',
+        resolutionSlaStatus: SlaIndicator.OK,
+      }),
+      createTicketSummary('ticket-late-closed', TicketStatus.CLOSED, {
+        resolutionDueAt: '2026-04-03T12:00:00.000Z',
+        resolutionSlaStatus: SlaIndicator.OK,
+      }),
+      createTicketSummary('ticket-on-time-resolved', TicketStatus.RESOLVED, {
+        resolutionDueAt: '2026-04-03T12:00:00.000Z',
+        resolutionSlaStatus: SlaIndicator.OK,
+      }),
+    ]);
+    const listTicketHistoryEntries = jest
+      .fn()
+      .mockResolvedValue([
+        createHistoryEntry(
+          'history-1',
+          'ticket-late-resolved',
+          TicketHistoryEventType.STATUS_CHANGED,
+          '2026-04-03T13:00:00.000Z',
+          { toStatus: TicketStatus.RESOLVED },
+        ),
+        createHistoryEntry(
+          'history-2',
+          'ticket-late-closed',
+          TicketHistoryEventType.RESOLVED,
+          '2026-04-03T14:00:00.000Z',
+        ),
+        createHistoryEntry(
+          'history-3',
+          'ticket-on-time-resolved',
+          TicketHistoryEventType.RESOLVED,
+          '2026-04-03T11:00:00.000Z',
+        ),
+      ]);
+    const useCase = createUseCase(searchTickets, listTicketHistoryEntries);
+
+    await expect(useCase.execute()).resolves.toMatchObject({
+      totals: {
+        overdue: 0,
+        resolutionOverdue: 0,
+        slaTtrOnTime: 1,
+        slaTtrOverdue: 2,
+      },
+    });
+  });
+
+  it('counts directly closed tickets as TTR overdue when closure missed the due date', async () => {
+    const searchTickets = jest.fn().mockResolvedValue([
+      createTicketSummary('ticket-closed-late', TicketStatus.CLOSED, {
+        resolutionDueAt: '2026-04-03T12:00:00.000Z',
+        resolutionSlaStatus: SlaIndicator.OK,
+      }),
+    ]);
+    const listTicketHistoryEntries = jest
+      .fn()
+      .mockResolvedValue([
+        createHistoryEntry(
+          'history-1',
+          'ticket-closed-late',
+          TicketHistoryEventType.STATUS_CHANGED,
+          '2026-04-03T13:00:00.000Z',
+          { toStatus: TicketStatus.CLOSED },
+        ),
+      ]);
+    const useCase = createUseCase(searchTickets, listTicketHistoryEntries);
+
+    await expect(useCase.execute()).resolves.toMatchObject({
+      totals: {
+        overdue: 0,
+        resolutionOverdue: 0,
+        slaTtrOnTime: 0,
+        slaTtrOverdue: 1,
       },
     });
   });
@@ -206,6 +290,7 @@ function createTicketSummary(
   status: TicketStatus,
   overrides: Partial<{
     createdAt: string;
+    resolutionDueAt: string | null;
     resolutionSlaStatus: SlaIndicator | null;
     responseSlaStatus: SlaIndicator | null;
   }> = {},
@@ -227,7 +312,7 @@ function createTicketSummary(
     null,
     overrides.createdAt ?? '2026-04-03T10:00:00.000Z',
     null,
-    null,
+    overrides.resolutionDueAt ?? null,
     overrides.responseSlaStatus ?? null,
     overrides.resolutionSlaStatus ?? null,
   );

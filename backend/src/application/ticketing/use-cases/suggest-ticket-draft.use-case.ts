@@ -147,7 +147,7 @@ export class SuggestTicketDraftUseCase {
 
     if (!response.ok) {
       throw new ServiceUnavailableException(
-        "La generation IA du ticket a echoue.",
+        'La generation IA du ticket a echoue.',
       );
     }
 
@@ -155,7 +155,10 @@ export class SuggestTicketDraftUseCase {
     return this.normalizeAssistantResponse(this.extractText(body));
   }
 
-  private buildPrompt(command: SuggestTicketDraftCommand, userInput: string): string {
+  private buildPrompt(
+    command: SuggestTicketDraftCommand,
+    userInput: string,
+  ): string {
     const categories = command.categories?.filter(Boolean).slice(0, 80) ?? [];
     const priorities = command.priorities?.filter(Boolean).slice(0, 20) ?? [];
 
@@ -165,9 +168,9 @@ export class SuggestTicketDraftUseCase {
       `Priorites disponibles: ${priorities.length ? priorities.join(', ') : 'LOW, MEDIUM, HIGH, CRITICAL'}.`,
       '',
       'Objectif:',
-      "- si les informations sont suffisantes, action=SUGGEST_TICKET et tu prepares le ticket;",
+      '- si les informations sont suffisantes, action=SUGGEST_TICKET et tu prepares le ticket;',
       "- s'il manque une information importante, action=ASK_QUESTION et tu poses une seule question courte, adaptee au contexte;",
-      "- ne repose jamais une question dont la reponse est deja evidente dans la conversation;",
+      '- ne repose jamais une question dont la reponse est deja evidente dans la conversation;',
       "- par exemple si l'utilisateur parle deja de son ordinateur, ne demande pas quel equipement est concerne; demande plutot s'il s'allume, s'il y a un message d'erreur, ou si c'est portable/fixe si utile;",
       '- choisir INCIDENT si un service/equipement ne fonctionne plus ou est degrade;',
       '- choisir REQUEST si la personne demande un acces, une installation, un materiel ou un service;',
@@ -191,14 +194,16 @@ export class SuggestTicketDraftUseCase {
 
     if (!text) {
       throw new ServiceUnavailableException(
-        "La reponse IA ne contient pas de suggestion exploitable.",
+        'La reponse IA ne contient pas de suggestion exploitable.',
       );
     }
 
     return text;
   }
 
-  private normalizeAssistantResponse(rawText: string): TicketDraftAssistantResponse {
+  private normalizeAssistantResponse(
+    rawText: string,
+  ): TicketDraftAssistantResponse {
     let parsed: TicketDraftAssistantResponse & TicketDraftSuggestion;
 
     try {
