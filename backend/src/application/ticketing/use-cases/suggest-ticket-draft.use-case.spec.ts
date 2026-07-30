@@ -48,6 +48,41 @@ describe('SuggestTicketDraftUseCase', () => {
     };
   }
 
+  it('limits suggested ticket titles to 50 characters', async () => {
+    const longTitle =
+      'Demande installation materiel bureautique complet urgent';
+
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'SUGGEST_TICKET',
+        categoryName: 'Materiel',
+        channelName: 'Portail',
+        confidence: 0.82,
+        description: 'Demande de materiel bureautique.',
+        priorityName: PriorityName.MEDIUM,
+        requesterScope: 'SELF',
+        requestType: RequestType.HARDWARE,
+        title: longTitle,
+        type: TicketType.REQUEST,
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    const response = await useCase.execute({
+      userInput: [
+        'Assistant: Bonjour, quel est votre probleme ?',
+        'Utilisateur: Il me faut du materiel pour travailler.',
+        'Assistant: Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+        'Utilisateur: pour moi',
+      ].join('\n'),
+    });
+
+    expect(response.action).toBe('SUGGEST_TICKET');
+    expect(response.suggestion?.title).toHaveLength(50);
+    expect(response.suggestion?.title).toBe(longTitle.slice(0, 50));
+  });
+
   it('asks for requester scope instead of asking useless HDMI usage once cable length is known', async () => {
     mockAssistantResponse(
       baseAssistantPayload({
@@ -103,6 +138,57 @@ describe('SuggestTicketDraftUseCase', () => {
     });
   });
 
+  it('skips useless charger device questions when the connector is already known', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        question:
+          "C'est un chargeur pour quel appareil : PC, telephone, tablette ou autre ?",
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          'Utilisateur: il me faut un chargeur lightning',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'ASK_QUESTION',
+      question:
+        'Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+      suggestion: null,
+    });
+  });
+
+  it('skips useless charger model questions when the connector is already known', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        question: "Pour quel modele d'iPhone souhaitez-vous ce chargeur ?",
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          'Utilisateur: il me faut un chargeur lightning',
+          "Assistant: C'est un chargeur pour quel appareil : PC, telephone, tablette ou autre ?",
+          'Utilisateur: iphone',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'ASK_QUESTION',
+      question:
+        'Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+      suggestion: null,
+    });
+  });
+
   it('understands a named requester answer to the requester scope question', async () => {
     mockAssistantResponse(
       baseAssistantPayload({
@@ -128,6 +214,34 @@ describe('SuggestTicketDraftUseCase', () => {
       action: 'ASK_QUESTION',
       question:
         "Pouvez-vous préciser comment on vous a fait la demande (Email, Chat, Téléphone, à l'oral, ...) ?",
+      suggestion: null,
+    });
+  });
+
+  it('asks requester scope before requester name after a device answer starting with pour', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        question: "Quel est le prenom et le nom de l'utilisateur concerne ?",
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          'Utilisateur: il me faut un chargeur',
+          "Assistant: C'est un chargeur pour quel appareil : PC, telephone, tablette ou autre ?",
+          'Utilisateur: telephone',
+          'Assistant: Quel type de connecteur a votre telephone (USB-C, Lightning, micro-USB) ?',
+          'Utilisateur: pour iphone',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'ASK_QUESTION',
+      question:
+        'Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
       suggestion: null,
     });
   });
@@ -230,6 +344,47 @@ describe('SuggestTicketDraftUseCase', () => {
         requestType: RequestType.HARDWARE,
         title: 'cable HDMI',
         type: TicketType.REQUEST,
+      },
+    });
+  });
+
+  it('keeps the full requester name when the user gives firstname and lastname', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'SUGGEST_TICKET',
+        categoryName: 'Materiel',
+        channelName: 'Email',
+        confidence: 0.8,
+        priorityName: 'MEDIUM',
+        requesterName: 'Nacim',
+        requesterScope: 'OTHER',
+        requestType: RequestType.HARDWARE,
+        title: 'Demande PC',
+        type: TicketType.REQUEST,
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          'Utilisateur: il me faut un pc',
+          'Assistant: Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+          'Utilisateur: un autre',
+          "Assistant: Quel est le prenom et le nom de l'utilisateur concerne ?",
+          'Utilisateur: Nacim Righi',
+          "Assistant: Pouvez-vous preciser comment on vous a fait la demande (Email, Chat, Telephone, a l'oral, ...) ?",
+          'Utilisateur: mail',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'SUGGEST_TICKET',
+      suggestion: {
+        channelName: 'Email',
+        requesterName: 'Nacim Righi',
+        requesterScope: 'OTHER',
       },
     });
   });
