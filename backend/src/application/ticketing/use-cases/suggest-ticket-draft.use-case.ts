@@ -200,6 +200,7 @@ export class SuggestTicketDraftUseCase {
       "- si l'utilisateur a deja repondu a une question de precision de maniere comprehensible, ne repose pas la meme question; passe a l'etape suivante du cadrage ou prepare le ticket;",
       '- pour une demande materielle trop generale, pose 1 petite question simple avant le brouillon si cela aide vraiment a fournir le bon materiel;',
       "- exemple demande de chargeur sans appareil precise: demander pour quel appareil (PC, telephone, tablette ou autre); si c'est un chargeur de telephone/portable, demander si l'utilisateur sait si c'est USB-C, Lightning, ou peu importe; si c'est un chargeur de PC, ne demande pas le type exact;",
+      "- si le type de chargeur ou le connecteur est deja donne (Lightning, USB-C, micro-USB, chargeur PC, etc.) ou si l'utilisateur dit peu importe, ne demande pas l'appareil, le modele, la puissance, ni la compatibilite: cette precision ne change pas le ticket; avance vers le demandeur/canal ou prepare le brouillon;",
       "- si l'utilisateur demande un cable reseau, un cable Wi-Fi, ou un cable pour avoir le Wi-Fi, considere que le besoin est assez clair: ne demande pas de confirmer Ethernet/RJ45 et ne demande pas pour quel materiel;",
       '- pour un cable deja clairement identifie comme HDMI, DisplayPort, Ethernet/RJ45, USB-C, VGA ou DVI, ne demande pas pour quel appareil il est destine, pour quel usage, quel type de connexion, TV/ecran, PC/moniteur; ces questions sont inutiles. Si la longueur manque vraiment, demande exactement: Quelle longueur de câble souhaitez-vous ?',
       '- pour une longueur de cable, ne demande jamais une mesure en metres: accepte une reponse approximative comme court, petit, moyen, normal, grand, long, standard ou peu importe;',
@@ -257,7 +258,7 @@ export class SuggestTicketDraftUseCase {
       "- pour un probleme de stockage/disque presque plein avec appareil/service connu, ne demande pas si la session est accessible, si la machine bloque, ni s'il y a un message d'erreur lie au stockage; ces questions changent rarement le ticket;",
       "- pour un probleme de stockage/disque presque plein, si l'utilisateur dit deja presque plein, quasiment plein, plein, sature, plus de place, ou donne une valeur approximative, ne demande pas de Go/% exact; propose une aide simple comme supprimer/deplacer des gros fichiers, vider la corbeille/cache, desinstaller des applications inutiles ou demander du stockage supplementaire, puis avance vers le cadrage demandeur ou prepare le ticket;",
       '- pour une REQUEST, renseigner priorityName directement;',
-      '- proposer un titre de 40 caracteres maximum quand action=SUGGEST_TICKET;',
+      '- proposer un titre de 50 caracteres maximum quand action=SUGGEST_TICKET;',
       '- garde les details techniques comme le stockage restant dans la description, pas dans le titre;',
       '- le titre doit etre tres simple et ne doit jamais contenir le demandeur ni une formule comme pour utilisateur, pour un autre utilisateur, pour X;',
       "- quand action=SUGGEST_TICKET, la description doit seulement decrire le probleme ou la demande avec les informations deja donnees par l'utilisateur;",
@@ -945,7 +946,7 @@ export class SuggestTicketDraftUseCase {
       .replace(/\s*[-:;,.]\s*$/u, '')
       .trim();
 
-    return (title || 'Ticket a qualifier').slice(0, 40);
+    return (title || 'Ticket a qualifier').slice(0, 50);
   }
 
   private normalizeTicketDescription(
@@ -1102,6 +1103,30 @@ export class SuggestTicketDraftUseCase {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
+  private isRequesterScopeQuestion(question: string): boolean {
+    return (
+      /(ticket|demande).*(pour vous|pour moi|autre utilisateur)/u.test(
+        question,
+      ) ||
+      /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(
+        question,
+      )
+    );
+  }
+
+  private isNamedRequesterScopeAnswer(message: string): boolean {
+    const match =
+      message.match(
+        /^(?:c est|c'est|cest)\s+pour\s+(?!moi\b|nous\b)([a-z][a-z'-]{1,40})\b/u,
+      ) ??
+      message.match(
+        /^pour\s+(?!moi\b|nous\b|un autre\b|une autre\b|autre utilisateur\b)([a-z][a-z'-]{1,40})\b/u,
+      ) ??
+      message.match(/^([a-z][a-z'-]{1,40})\b/u);
+
+    return Boolean(match?.[1] && this.isLikelyRequesterFirstName(match[1]));
+  }
+
   private inferRequesterScope(conversation: string): 'SELF' | 'OTHER' | null {
     const normalizedFullConversation = this.normalizeForMatching(conversation);
     const normalizedConversation = this.normalizeForMatching(
@@ -1147,38 +1172,32 @@ export class SuggestTicketDraftUseCase {
       return 'SELF';
     }
 
-    const explicitlyNamesOtherRequester = userMessages.some((message) => {
-      const match =
-        message.match(
-          /^(?:c est|c'est|cest)\s+pour\s+(?!moi\b|nous\b)([a-z][a-z'-]{1,40})\b/u,
-        ) ??
-        message.match(
-          /^pour\s+(?!moi\b|nous\b|un autre\b|une autre\b|autre utilisateur\b)([a-z][a-z'-]{1,40})\b/u,
-        );
-
-      return Boolean(match?.[1] && this.isLikelyRequesterFirstName(match[1]));
-    });
     const assistantAskedRequesterScope =
-      /(ticket|demande).*(pour vous|pour moi|autre utilisateur)/u.test(
-        lastAssistantQuestion,
-      ) ||
-      /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(
-        lastAssistantQuestion,
-      );
-    const requesterScopeAnswerNameMatch =
-      lastUserMessage.match(
-        /^(?:c est|c'est|cest)\s+pour\s+(?!moi\b|nous\b)([a-z][a-z'-]{1,40})\b/u,
-      ) ??
-      lastUserMessage.match(
-        /^pour\s+(?!moi\b|nous\b|un autre\b|une autre\b|autre utilisateur\b)([a-z][a-z'-]{1,40})\b/u,
-      ) ??
-      lastUserMessage.match(/^([a-z][a-z'-]{1,40})\b/u);
+      this.isRequesterScopeQuestion(lastAssistantQuestion);
     const requesterScopeAnswerNamesOther =
       assistantAskedRequesterScope &&
-      Boolean(
-        requesterScopeAnswerNameMatch?.[1] &&
-        this.isLikelyRequesterFirstName(requesterScopeAnswerNameMatch[1]),
-      );
+      this.isNamedRequesterScopeAnswer(lastUserMessage);
+    let previousAssistantQuestion = '';
+    const requesterScopeAnswerNamesOtherEarlier = conversationLines.some(
+      (line) => {
+        if (line.startsWith('assistant:')) {
+          previousAssistantQuestion = line
+            .replace(/^assistant:\s*/u, '')
+            .trim();
+          return false;
+        }
+
+        if (
+          !line.startsWith('utilisateur:') ||
+          !this.isRequesterScopeQuestion(previousAssistantQuestion)
+        ) {
+          return false;
+        }
+
+        const answer = line.replace(/^utilisateur:\s*/u, '').trim();
+        return this.isNamedRequesterScopeAnswer(answer);
+      },
+    );
 
     if (
       userMessages.some((message) =>
@@ -1186,8 +1205,8 @@ export class SuggestTicketDraftUseCase {
           message,
         ),
       ) ||
-      explicitlyNamesOtherRequester ||
       requesterScopeAnswerNamesOther ||
+      requesterScopeAnswerNamesOtherEarlier ||
       /\b(un autre|une autre|pour quelqu'un d'autre|pour quelquun dautre|pour un autre|pour une autre|autre utilisateur|pour un collegue|pour une collegue|pour mon collegue|pour ma collegue)\b/u.test(
         normalizedConversation,
       ) ||
@@ -1246,30 +1265,47 @@ export class SuggestTicketDraftUseCase {
         ?.replace(/^assistant:\s*/u, '')
         .trim() ?? '';
     const requesterAnswerMessages: string[] = [];
+    const requesterScopeAnswerMessages: string[] = [];
     let previousAssistantAskedRequesterName = false;
+    let previousAssistantAskedRequesterScope = false;
 
     for (const line of conversationLines) {
       if (line.startsWith('assistant:')) {
         previousAssistantAskedRequesterName =
           /(prenom|nom|utilisateur concerne|identite|demandeur)/u.test(line);
+        previousAssistantAskedRequesterScope =
+          /(ticket|demande).*(pour vous|pour moi|autre utilisateur)/u.test(
+            line,
+          ) ||
+          /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(
+            line,
+          );
         continue;
       }
 
       if (line.startsWith('utilisateur:')) {
-        if (previousAssistantAskedRequesterName) {
-          const answer = line.replace(/^utilisateur:\s*/u, '').trim();
+        const answer = line.replace(/^utilisateur:\s*/u, '').trim();
 
+        if (previousAssistantAskedRequesterName) {
           if (answer) {
             requesterAnswerMessages.push(answer);
           }
         }
 
+        if (previousAssistantAskedRequesterScope && answer) {
+          requesterScopeAnswerMessages.push(answer);
+        }
+
         previousAssistantAskedRequesterName = false;
+        previousAssistantAskedRequesterScope = false;
       }
     }
 
     const latestRequesterAnswer =
       requesterAnswerMessages[requesterAnswerMessages.length - 1] ?? '';
+    const latestRequesterScopeAnswer =
+      requesterScopeAnswerMessages[requesterScopeAnswerMessages.length - 1] ??
+      '';
     const rejectedWords = new Set([
       'je',
       'j',
@@ -1294,24 +1330,39 @@ export class SuggestTicketDraftUseCase {
       'moi',
       'nous',
     ]);
-    const requesterScopeNameMatch = [...userMessages]
-      .reverse()
-      .map(
-        (message) =>
-          message.match(
-            /^(?:c est|c'est|cest)\s+pour\s+([a-z][a-z'-]{1,40})\b/u,
-          ) ?? message.match(/^pour\s+([a-z][a-z'-]{1,40})\b/u),
-      )
-      .find((match) => Boolean(match?.[1]));
+    const extractRequesterCandidate = (value: string): string | null => {
+      const cleanedValue = value
+        .replace(/^(?:c est|c'est|cest)\s+pour\s+/u, '')
+        .replace(/^pour\s+/u, '')
+        .replace(
+          /^(?:il s appelle|elle s appelle|l utilisateur s appelle|utilisateur s appelle)\s+/u,
+          '',
+        )
+        .replace(/\b(?:c est|c'est|cest)\s+(?:son|le)\s+prenom\b.*$/u, '')
+        .replace(
+          /\b(?:mais|je connais|je sais|je ne connais|je ne sais|jsp|nom inconnu|son nom|le nom)\b.*$/u,
+          '',
+        )
+        .trim();
+      const requesterMatch = cleanedValue.match(
+        /^([a-z][a-z'-]{1,40}(?:\s+[a-z][a-z'-]{1,40}){0,2})\b/u,
+      );
 
-    if (
-      requesterScopeNameMatch?.[1] &&
-      !rejectedWords.has(requesterScopeNameMatch[1]) &&
-      this.isLikelyRequesterFirstName(requesterScopeNameMatch[1])
-    ) {
-      return this.capitalizeName(requesterScopeNameMatch[1]);
-    }
+      if (!requesterMatch?.[1]) {
+        return null;
+      }
 
+      const requesterNameParts = requesterMatch[1].split(/\s+/u);
+
+      if (
+        requesterNameParts.some((part) => rejectedWords.has(part)) ||
+        !this.isLikelyRequesterFirstName(requesterNameParts[0])
+      ) {
+        return null;
+      }
+
+      return this.capitalizeName(requesterMatch[1]);
+    };
     const explicitFirstNameMatch =
       normalizedConversation.match(
         /(?:prenom)\s*(?:c est|c'est|est|:)\s*([a-z][a-z'-]{1,40})/u,
@@ -1345,43 +1396,41 @@ export class SuggestTicketDraftUseCase {
       /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(
         lastAssistantQuestion,
       );
-    const requesterScopeAnswerNameMatch = assistantAskedRequesterScope
-      ? (lastUserMessage.match(
-          /^(?:c est|c'est|cest)\s+pour\s+([a-z][a-z'-]{1,40})\b/u,
-        ) ??
-        lastUserMessage.match(/^pour\s+([a-z][a-z'-]{1,40})\b/u) ??
-        lastUserMessage.match(/^([a-z][a-z'-]{1,40})\b/u))
+    const requesterScopeAnswerName = assistantAskedRequesterScope
+      ? extractRequesterCandidate(lastUserMessage)
       : null;
 
-    if (
-      requesterScopeAnswerNameMatch?.[1] &&
-      !rejectedWords.has(requesterScopeAnswerNameMatch[1]) &&
-      this.isLikelyRequesterFirstName(requesterScopeAnswerNameMatch[1])
-    ) {
-      return this.capitalizeName(requesterScopeAnswerNameMatch[1]);
+    if (requesterScopeAnswerName) {
+      return requesterScopeAnswerName;
+    }
+
+    const requesterScopeHistoryName = extractRequesterCandidate(
+      latestRequesterScopeAnswer,
+    );
+
+    if (requesterScopeHistoryName) {
+      return requesterScopeHistoryName;
     }
 
     const requesterAnswer = assistantAskedRequesterName
       ? lastUserMessage
       : latestRequesterAnswer;
-    const firstWordMatch = requesterAnswer.match(/^([a-z][a-z'-]{1,40})\b/u);
+    const requesterAnswerName = extractRequesterCandidate(requesterAnswer);
     const hasRequesterAnswerFromHistory = Boolean(latestRequesterAnswer);
 
     if (
       !unknownLastNameMentioned &&
-      !(assistantAskedRequesterName && firstWordMatch?.[1]) &&
-      !(hasRequesterAnswerFromHistory && firstWordMatch?.[1])
+      !(assistantAskedRequesterName && requesterAnswerName) &&
+      !(hasRequesterAnswerFromHistory && requesterAnswerName)
     ) {
       return null;
     }
 
-    if (!firstWordMatch?.[1]) {
+    if (!requesterAnswerName) {
       return null;
     }
 
-    return rejectedWords.has(firstWordMatch[1])
-      ? null
-      : this.capitalizeName(firstWordMatch[1]);
+    return requesterAnswerName;
   }
 
   private inferChannelName(conversation: string): string | null {
@@ -1483,9 +1532,9 @@ export class SuggestTicketDraftUseCase {
 
   private capitalizeName(value: string): string {
     return value
-      .split(/([-'])/u)
+      .split(/(\s+|-|')/u)
       .map((part) =>
-        part === '-' || part === "'"
+        /^\s+$/u.test(part) || part === '-' || part === "'"
           ? part
           : part.charAt(0).toUpperCase() + part.slice(1).toLowerCase(),
       )
@@ -1967,6 +2016,9 @@ export class SuggestTicketDraftUseCase {
       /(synchronisation|donnees|alimentation|power delivery|type de port|type de connexion|usage|recharger|chargeur\/pc|relier deux appareils|telephone vers pc)/u.test(
         normalizedQuestion,
       );
+    const questionAsksUselessChargerDetail =
+      this.hasSpecificChargerRequest(normalizedUserConversation) &&
+      this.questionAsksUselessChargerDetail(normalizedQuestion);
     const questionAsksPhoneCharge =
       this.hasPhonePowerIssue(normalizedUserConversation) &&
       /(charge|chargeur|batterie|branche|voyant|indication|eteigne|eteint)/u.test(
@@ -1998,6 +2050,13 @@ export class SuggestTicketDraftUseCase {
     if (questionAsksExactStorageAmount) {
       return (
         this.getMissingStorageSimpleHelpQuestion(conversation) ??
+        this.getNextRequesterContextQuestion(conversation) ??
+        'Je prepare une proposition de ticket avec les informations deja donnees.'
+      );
+    }
+
+    if (questionAsksUselessChargerDetail) {
+      return (
         this.getNextRequesterContextQuestion(conversation) ??
         'Je prepare une proposition de ticket avec les informations deja donnees.'
       );
@@ -2156,7 +2215,11 @@ export class SuggestTicketDraftUseCase {
     }
 
     if (hasChargerRequest) {
-      if (!mentionsPcCharger && !mentionsPhoneOrTabletCharger) {
+      if (
+        !mentionsPcCharger &&
+        !mentionsPhoneOrTabletCharger &&
+        !mentionsConnector
+      ) {
         return askedChargerDevice
           ? null
           : "C'est un chargeur pour quel appareil : PC, telephone, tablette ou autre ?";
@@ -2247,6 +2310,25 @@ export class SuggestTicketDraftUseCase {
     return (
       /\bcable\b/u.test(normalizedUserConversation) &&
       /\b(wifi|wi-fi|reseau|ethernet|rj45)\b/u.test(normalizedUserConversation)
+    );
+  }
+
+  private hasSpecificChargerRequest(
+    normalizedUserConversation: string,
+  ): boolean {
+    return (
+      /\bchargeur\b/u.test(normalizedUserConversation) &&
+      /\b(usb-c|usb c|usbc|lightning|micro usb|pc|ordinateur|poste|peu importe|importe peu|n importe|je sais pas|je ne sais pas|sais pas|jsp)\b/u.test(
+        normalizedUserConversation,
+      )
+    );
+  }
+
+  private questionAsksUselessChargerDetail(
+    normalizedQuestion: string,
+  ): boolean {
+    return /(pour quel appareil|quel appareil|pour quel modele|quel modele|modele|puissance|watt|compatible|compatibilite|pc, telephone|telephone, tablette|iphone|smartphone|tablette)/u.test(
+      normalizedQuestion,
     );
   }
 

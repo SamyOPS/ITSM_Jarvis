@@ -29,7 +29,7 @@ import type {
   TicketStatus,
 } from './agent-page.types';
 
-export const TICKET_TITLE_MAX_LENGTH = 40;
+export const TICKET_TITLE_MAX_LENGTH = 50;
 
 export function isTicketCommentHistoryEntry(
   entry: TicketHistoryEntrySnapshot,
@@ -47,7 +47,7 @@ export function validateIncidentDraft(
   if (!draft.title.trim()) {
     errors.title = 'Le titre est obligatoire.';
   } else if (draft.title.trim().length > TICKET_TITLE_MAX_LENGTH) {
-    errors.title = '40 caracteres max.';
+    errors.title = '50 caracteres max.';
   }
 
   if (!draft.description.trim()) {
@@ -77,7 +77,7 @@ export function validateRequestDraft(
   if (!draft.title.trim()) {
     errors.title = 'Le titre est obligatoire.';
   } else if (draft.title.trim().length > TICKET_TITLE_MAX_LENGTH) {
-    errors.title = '40 caracteres max.';
+    errors.title = '50 caracteres max.';
   }
 
   if (!draft.description.trim()) {

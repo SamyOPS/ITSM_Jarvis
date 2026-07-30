@@ -1601,7 +1601,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       setIncidentValidationErrors((currentErrors) => ({
         ...currentErrors,
 
-        title: '40 caracteres max.',
+        title: '50 caracteres max.',
       }));
 
       return;
@@ -1667,7 +1667,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       setRequestValidationErrors((currentErrors) => ({
         ...currentErrors,
 
-        title: '40 caracteres max.',
+        title: '50 caracteres max.',
       }));
 
       return;
@@ -1785,18 +1785,36 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     );
   }
 
-  function findSuggestedRequesterId(
+  function resolveSuggestedRequester(
     requesterScope: TicketDraftSuggestion['requesterScope'],
     requesterName: string | null,
-  ): string {
+  ): {
+    notice: string | null;
+    requesterId: string | null;
+    requesterLabel: string | null;
+  } {
     if (requesterScope === 'SELF') {
-      return session.user.id;
+      return {
+        notice: null,
+        requesterId: session.user.id,
+        requesterLabel: 'Vous',
+      };
     }
 
+    if (requesterScope !== 'OTHER') {
+      return { notice: null, requesterId: null, requesterLabel: null };
+    }
+
+    const displayedRequesterName = requesterName?.trim() ?? '';
     const normalizedRequesterName = normalizeSearchText(requesterName ?? '');
 
     if (!normalizedRequesterName) {
-      return session.user.id;
+      return {
+        notice:
+          "Je n'ai pas assez d'informations pour retrouver le demandeur. Le demandeur sera renseigne sur vous.",
+        requesterId: session.user.id,
+        requesterLabel: 'Vous',
+      };
     }
 
     const requesterSearchTerms = normalizedRequesterName
@@ -1804,37 +1822,72 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       .filter(Boolean);
 
     const matchingRequesters = requesters.filter((user) => {
-      const candidates = [
+      const normalizedFirstName = normalizeSearchText(user.firstName ?? '');
+      const normalizedLastName = normalizeSearchText(user.lastName ?? '');
+      const normalizedDisplayName = normalizeSearchText(user.displayName ?? '');
+      const normalizedFormattedName = normalizeSearchText(
         formatKnownUserName(user, user.id),
-        user.displayName ?? '',
-        `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
-        `${user.lastName ?? ''} ${user.firstName ?? ''}`.trim(),
-        user.email ?? '',
+      );
+      const fullNameCandidates = [
+        `${normalizedFirstName} ${normalizedLastName}`.trim(),
+        `${normalizedLastName} ${normalizedFirstName}`.trim(),
+        normalizedDisplayName,
+        normalizedFormattedName,
       ].filter(Boolean);
 
-      return candidates.some((candidate) => {
-        const normalizedCandidate = normalizeSearchText(candidate);
-        const candidateTerms = normalizedCandidate
-          .split(/\s+/u)
-          .filter(Boolean);
+      if (requesterSearchTerms.length > 1) {
+        return fullNameCandidates.some((candidate) => {
+          const candidateTerms = candidate.split(/\s+/u).filter(Boolean);
 
-        return (
-          normalizedCandidate === normalizedRequesterName ||
-          requesterSearchTerms.every((term) =>
-            candidateTerms.some(
-              (candidateTerm) =>
-                candidateTerm === term ||
-                candidateTerm.startsWith(term) ||
-                term.startsWith(candidateTerm),
-            ),
-          )
-        );
-      });
+          return (
+            candidate === normalizedRequesterName ||
+            requesterSearchTerms.every((term) => candidateTerms.includes(term))
+          );
+        });
+      }
+
+      const [requesterSearchTerm] = requesterSearchTerms;
+      const exactSingleNameCandidates = [
+        normalizedFirstName,
+        normalizedLastName,
+        ...normalizedDisplayName.split(/\s+/u),
+        ...normalizedFormattedName.split(/\s+/u),
+      ].filter(Boolean);
+
+      return exactSingleNameCandidates.some(
+        (candidate) => candidate === requesterSearchTerm,
+      );
     });
+    const uniqueMatchingRequesters = Array.from(
+      new Map(matchingRequesters.map((user) => [user.id, user])).values(),
+    );
 
-    return matchingRequesters.length === 1
-      ? matchingRequesters[0].id
-      : session.user.id;
+    if (uniqueMatchingRequesters.length === 1) {
+      const [matchingRequester] = uniqueMatchingRequesters;
+
+      return {
+        notice: null,
+        requesterId: matchingRequester.id,
+        requesterLabel: formatKnownUserName(
+          matchingRequester,
+          matchingRequester.id,
+        ),
+      };
+    }
+
+    if (uniqueMatchingRequesters.length > 1) {
+      return {
+        notice: `J'ai trouve plusieurs utilisateurs correspondant a "${displayedRequesterName}". Le demandeur sera renseigne sur vous pour eviter une mauvaise selection.`,
+        requesterId: session.user.id,
+        requesterLabel: 'Vous',
+      };
+    }
+
+    return {
+      notice: `Je n'ai pas trouve d'utilisateur correspondant a "${displayedRequesterName}". Le demandeur sera renseigne sur vous.`,
+      requesterId: session.user.id,
+      requesterLabel: 'Vous',
+    };
   }
 
   function findSuggestedPriorityId(
@@ -1944,14 +1997,30 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       }
 
       setAiDraftSuggestion(assistantResponse.suggestion);
-      setAiChatMessages([
-        ...nextMessages,
+
+      const requesterResolution = assistantResponse.suggestion
+        ? resolveSuggestedRequester(
+            assistantResponse.suggestion.requesterScope,
+            assistantResponse.suggestion.requesterName,
+          )
+        : { notice: null, requesterId: null, requesterLabel: null };
+      const assistantSuggestionMessages: AiChatMessage[] = [
         {
           body: 'J ai prepare une proposition de ticket. Vous pouvez la relire puis l appliquer au formulaire.',
           id: `assistant-suggestion-${Date.now()}`,
           role: 'assistant',
         },
-      ]);
+      ];
+
+      if (requesterResolution.notice) {
+        assistantSuggestionMessages.push({
+          body: requesterResolution.notice,
+          id: `assistant-requester-notice-${Date.now()}`,
+          role: 'assistant',
+        });
+      }
+
+      setAiChatMessages([...nextMessages, ...assistantSuggestionMessages]);
     } catch (error) {
       if (chatGeneration !== aiChatGenerationRef.current) {
         return;
@@ -2017,7 +2086,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     const suggestedChannelId = findSuggestedChannelId(
       aiDraftSuggestion.channelName,
     );
-    const suggestedRequesterId = findSuggestedRequesterId(
+    const suggestedRequester = resolveSuggestedRequester(
       aiDraftSuggestion.requesterScope,
       aiDraftSuggestion.requesterName,
     );
@@ -2037,7 +2106,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         description: aiDraftSuggestion.description || currentDraft.description,
         impact: aiDraftSuggestion.impact ?? currentDraft.impact,
         requestedForUserId:
-          suggestedRequesterId || currentDraft.requestedForUserId,
+          suggestedRequester.requesterId ?? currentDraft.requestedForUserId,
         title: aiDraftSuggestion.title || currentDraft.title,
         urgency: aiDraftSuggestion.urgency ?? currentDraft.urgency,
       }));
@@ -2050,7 +2119,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         description: aiDraftSuggestion.description || currentDraft.description,
         priorityId: suggestedPriorityId || currentDraft.priorityId,
         requestedForUserId:
-          suggestedRequesterId || currentDraft.requestedForUserId,
+          suggestedRequester.requesterId ?? currentDraft.requestedForUserId,
         requestType: aiDraftSuggestion.requestType ?? currentDraft.requestType,
         title: aiDraftSuggestion.title || currentDraft.title,
       }));
@@ -2680,7 +2749,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     value: string,
   ): void {
     if (field === 'title' && value.length > TICKET_TITLE_MAX_LENGTH) {
-      setDetailActionErrorMessage('40 caracteres max.');
+      setDetailActionErrorMessage('50 caracteres max.');
 
       return;
     }
@@ -4264,10 +4333,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               {aiDraftSuggestion.requesterScope ? (
                                 <small>
                                   Demandeur :{' '}
-                                  {aiDraftSuggestion.requesterScope === 'SELF'
-                                    ? 'Vous'
-                                    : (aiDraftSuggestion.requesterName ??
-                                      'Non renseigne')}
+                                  {resolveSuggestedRequester(
+                                    aiDraftSuggestion.requesterScope,
+                                    aiDraftSuggestion.requesterName,
+                                  ).requesterLabel ?? 'Non renseigne'}
                                 </small>
                               ) : null}
                               {aiDraftSuggestion.channelName ? (
