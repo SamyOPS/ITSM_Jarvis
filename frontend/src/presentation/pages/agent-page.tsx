@@ -4234,7 +4234,26 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   Categorie : {aiDraftSuggestion.categoryName}
                                 </small>
                               ) : null}
-                              {aiDraftSuggestion.priorityName ? (
+                              {aiDraftSuggestion.type === 'INCIDENT' ? (
+                                <>
+                                  {aiDraftSuggestion.impact ? (
+                                    <small>
+                                      Impact :{' '}
+                                      {translateIncidentSeverity(
+                                        aiDraftSuggestion.impact,
+                                      )}
+                                    </small>
+                                  ) : null}
+                                  {aiDraftSuggestion.urgency ? (
+                                    <small>
+                                      Urgence :{' '}
+                                      {translateIncidentSeverity(
+                                        aiDraftSuggestion.urgency,
+                                      )}
+                                    </small>
+                                  ) : null}
+                                </>
+                              ) : aiDraftSuggestion.priorityName ? (
                                 <small>
                                   Priorite :{' '}
                                   {translatePriority(
