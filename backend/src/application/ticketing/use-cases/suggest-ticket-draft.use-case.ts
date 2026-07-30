@@ -188,21 +188,32 @@ export class SuggestTicketDraftUseCase {
       "- raisonne comme un assistant ITSM conversationnel: comprendre, aider un peu si c'est raisonnable, puis preparer un brouillon de ticket;",
       '- si le message est seulement une salutation ou ne contient aucun probleme/demande identifiable, action=ASK_QUESTION avec une question naturelle pour connaitre le sujet;',
       '- phase diagnostic: tu peux poser 0 a 3 questions utiles pour mieux qualifier le ticket et enrichir la description, mais uniquement si la reponse change vraiment le type, la categorie, la priorite, le demandeur, le canal ou une information importante de description;',
+      "- si le probleme ou la demande est trop generique, demande d'abord l'objet concerne uniquement si cela manque vraiment: appareil, service, application ou materiel;",
+      '- quand le symptome principal est deja compris, ne pose pas de questions de detail qui ne changent pas le ticket; propose plutot une aide simple si elle est utile, puis cadre le demandeur/canal ou prepare le ticket;',
       '- ne pose jamais une question de curiosite ou de confort si la reponse ne change pas le brouillon de ticket; fais plutot une hypothese raisonnable avec une confidence plus basse;',
       "- interprete les reponses naturelles et approximatives: grand, moyen, court, peu importe, je ne sais pas, pour moi, pour quelqu'un d'autre, oral, mail, message, etc. sont des reponses valables selon la question posee; ne redemande pas une reponse exacte;",
       "- accepte les petites fautes d'orthographe si le sens est evident: chatr veut dire chat, emial veut dire email, telephonne veut dire telephone, etc.;",
+      '- accepte les variantes courantes de oui/non si le sens est evident: oe, oé, oue, ui, ouais veulent dire oui; nn, nan, nope veulent dire non;',
       "- si l'utilisateur dit qu'il n'a pas compris une question, reformule-la plus simplement au lieu de la repeter mot pour mot;",
+      "- si l'utilisateur pose une question au lieu de repondre, reponds simplement a sa question, puis reprends le cadrage avec une seule question utile si necessaire;",
+      '- si la reponse ne correspond pas exactement a la question posee mais apporte une information exploitable, utilise cette information et avance; ne bloque pas la conversation;',
       "- si l'utilisateur a deja repondu a une question de precision de maniere comprehensible, ne repose pas la meme question; passe a l'etape suivante du cadrage ou prepare le ticket;",
       '- pour une demande materielle trop generale, pose 1 petite question simple avant le brouillon si cela aide vraiment a fournir le bon materiel;',
       "- exemple demande de chargeur sans appareil precise: demander pour quel appareil (PC, telephone, tablette ou autre); si c'est un chargeur de telephone/portable, demander si l'utilisateur sait si c'est USB-C, Lightning, ou peu importe; si c'est un chargeur de PC, ne demande pas le type exact;",
       "- si l'utilisateur demande un cable reseau, un cable Wi-Fi, ou un cable pour avoir le Wi-Fi, considere que le besoin est assez clair: ne demande pas de confirmer Ethernet/RJ45 et ne demande pas pour quel materiel;",
       '- pour un cable deja clairement identifie comme HDMI, DisplayPort, Ethernet/RJ45, USB-C, VGA ou DVI, ne demande pas pour quel appareil il est destine, pour quel usage, quel type de connexion, TV/ecran, PC/moniteur; ces questions sont inutiles. Si la longueur manque vraiment, demande exactement: Quelle longueur de câble souhaitez-vous ?',
+      '- pour une longueur de cable, ne demande jamais une mesure en metres: accepte une reponse approximative comme court, petit, moyen, normal, grand, long, standard ou peu importe;',
       "- pour un cable USB-C destine a charger un PC, ne demande jamais si c'est pour synchronisation de donnees, alimentation, Power Delivery, ou type de port; prepare le ticket avec une description simple;",
       '- exemple demande de cle USB sans capacite: demander si une capacite precise est souhaitee ou si peu importe;',
       '- phase aide simple: tu peux proposer 0 a 3 actions simples si un utilisateur normal peut les tenter sans risque et sans procedure complexe;',
       "- adapte le nombre de questions/actions a la situation: 0 si le probleme est complexe, urgent, risque, ou clairement a traiter par le support; 1 a 3 si c'est simple et utile;",
       "- pour les problemes simples et frequents comme PC qui ne s'allume pas, Wi-Fi/Internet, application bloquee, imprimante ou accessoire, fais au moins une aide simple avant le brouillon si aucune tentative de resolution n'est deja mentionnee;",
       "- exemple PC qui ne s'allume pas: avant le brouillon, proposer de brancher le chargeur/secteur, tester une autre prise ou un autre cable, patienter quelques minutes si batterie vide, puis demander ce que cela donne;",
+      "- pour un telephone qui ne s'allume pas, si tu dois verifier la charge, demande exactement: Est-ce que le telephone affiche un voyant/indication de charge quand il est branche ?",
+      "- si l'utilisateur repond non, aucun voyant, rien, ou equivalent a cette question de charge telephone, comprends la reponse et avance; ne repose pas la meme question;",
+      "- si l'utilisateur repond que le telephone etait deja charge, comprends que la batterie n'est probablement pas la cause; ne demande pas s'il s'est charge un moment sur le chargeur et avance vers le cadrage du ticket;",
+      "- pour une panne reseau vague, demande d'abord si cela touche seulement son poste, plusieurs personnes, ou tout le site; cela change vraiment l'impact;",
+      "- pour un ecran casse/fissure trop generique, demande d'abord de quel type d'ecran il s'agit: PC portable, ecran externe, telephone, tablette ou autre;",
       "- Vision est l'application actuelle de ticketing/portail; si l'utilisateur parle de mdp Vision, compte Vision ou mot de passe de cette appli, ne demande pas quelle application est concernee;",
       "- les expressions cette appli, cette application, cette appli de ticket, l'application actuelle, l'appli actuelle, appli de ticketing ou portail actuel designent Vision quand le contexte parle de mot de passe/connexion;",
       "- si l'utilisateur parle seulement d'un mot de passe oublie sans nommer Vision, ne suppose jamais que c'est Vision; demande d'abord uniquement de quel compte/service il s'agit: session PC, messagerie, application, VPN, Vision ou autre;",
@@ -239,8 +250,15 @@ export class SuggestTicketDraftUseCase {
       '- pour un INCIDENT, priorityName doit rester coherent avec impact et urgency, mais impact et urgency sont les donnees sources;',
       "- n'utilise une priorite CRITICAL que si plusieurs utilisateurs, un service global, la production, la securite ou des donnees sont fortement impactes;",
       '- pour un poste utilisateur seul, un ecran, un cable, une imprimante ou un probleme individuel sans contexte critique, ne depasse generalement pas HIGH;',
+      '- pour une imprimante HS ou qui ne fonctionne plus sans indication que plusieurs personnes ou un service critique sont bloques, MEDIUM/MEDIUM est generalement suffisant;',
+      '- pour un ecran fissure/casse mais encore utilisable ou qui affiche encore, ne mets pas HIGH par defaut; adapte plutot vers MEDIUM sauf blocage reel;',
+      "- pour une panne reseau, la priorite depend du perimetre: poste seul = plutot MEDIUM, plusieurs personnes/site complet = HIGH ou CRITICAL selon l'impact;",
+      "- pour un probleme de stockage/disque presque plein, si l'appareil/service n'est pas connu, demande seulement sur quel appareil ou service manque le stockage;",
+      "- pour un probleme de stockage/disque presque plein avec appareil/service connu, ne demande pas si la session est accessible, si la machine bloque, ni s'il y a un message d'erreur lie au stockage; ces questions changent rarement le ticket;",
+      "- pour un probleme de stockage/disque presque plein, si l'utilisateur dit deja presque plein, quasiment plein, plein, sature, plus de place, ou donne une valeur approximative, ne demande pas de Go/% exact; propose une aide simple comme supprimer/deplacer des gros fichiers, vider la corbeille/cache, desinstaller des applications inutiles ou demander du stockage supplementaire, puis avance vers le cadrage demandeur ou prepare le ticket;",
       '- pour une REQUEST, renseigner priorityName directement;',
       '- proposer un titre de 40 caracteres maximum quand action=SUGGEST_TICKET;',
+      '- garde les details techniques comme le stockage restant dans la description, pas dans le titre;',
       '- le titre doit etre tres simple et ne doit jamais contenir le demandeur ni une formule comme pour utilisateur, pour un autre utilisateur, pour X;',
       "- quand action=SUGGEST_TICKET, la description doit seulement decrire le probleme ou la demande avec les informations deja donnees par l'utilisateur;",
       "- la description ne doit pas rappeler le demandeur ni dire que c'est pour un autre utilisateur: cette information est deja dans requesterScope/requesterName;",
@@ -295,6 +313,60 @@ export class SuggestTicketDraftUseCase {
         return {
           action: 'ASK_QUESTION',
           question: questionClarification,
+          suggestion: null,
+        };
+      }
+
+      const sideQuestionAnswer = this.getUserSideQuestionAnswer(userInput);
+
+      if (sideQuestionAnswer) {
+        return {
+          action: 'ASK_QUESTION',
+          question: sideQuestionAnswer,
+          suggestion: null,
+        };
+      }
+
+      const storageTargetQuestion =
+        this.getMissingStorageTargetQuestion(userInput);
+
+      if (storageTargetQuestion) {
+        return {
+          action: 'ASK_QUESTION',
+          question: storageTargetQuestion,
+          suggestion: null,
+        };
+      }
+
+      const storageSimpleHelpQuestion =
+        this.getMissingStorageSimpleHelpQuestion(userInput);
+
+      if (storageSimpleHelpQuestion) {
+        return {
+          action: 'ASK_QUESTION',
+          question: storageSimpleHelpQuestion,
+          suggestion: null,
+        };
+      }
+
+      const screenPrecisionQuestion =
+        this.getMissingScreenPrecisionQuestion(userInput);
+
+      if (screenPrecisionQuestion) {
+        return {
+          action: 'ASK_QUESTION',
+          question: screenPrecisionQuestion,
+          suggestion: null,
+        };
+      }
+
+      const networkScopeQuestion =
+        this.getMissingNetworkScopeQuestion(userInput);
+
+      if (networkScopeQuestion) {
+        return {
+          action: 'ASK_QUESTION',
+          question: networkScopeQuestion,
           suggestion: null,
         };
       }
@@ -406,6 +478,13 @@ export class SuggestTicketDraftUseCase {
     const questionClarification = this.getLastQuestionClarification(userInput);
     const troubleshootingQuestion =
       this.getMissingSimpleTroubleshootingQuestion(userInput);
+    const storageTargetQuestion =
+      this.getMissingStorageTargetQuestion(userInput);
+    const storageSimpleHelpQuestion =
+      this.getMissingStorageSimpleHelpQuestion(userInput);
+    const screenPrecisionQuestion =
+      this.getMissingScreenPrecisionQuestion(userInput);
+    const networkScopeQuestion = this.getMissingNetworkScopeQuestion(userInput);
     const genericRequestQuestion =
       this.getMissingGenericRequestPrecisionQuestion(userInput);
 
@@ -421,6 +500,48 @@ export class SuggestTicketDraftUseCase {
       return {
         action: 'ASK_QUESTION',
         question: questionClarification,
+        suggestion: null,
+      };
+    }
+
+    const sideQuestionAnswer = this.getUserSideQuestionAnswer(userInput);
+
+    if (sideQuestionAnswer) {
+      return {
+        action: 'ASK_QUESTION',
+        question: sideQuestionAnswer,
+        suggestion: null,
+      };
+    }
+
+    if (storageTargetQuestion) {
+      return {
+        action: 'ASK_QUESTION',
+        question: storageTargetQuestion,
+        suggestion: null,
+      };
+    }
+
+    if (storageSimpleHelpQuestion) {
+      return {
+        action: 'ASK_QUESTION',
+        question: storageSimpleHelpQuestion,
+        suggestion: null,
+      };
+    }
+
+    if (screenPrecisionQuestion) {
+      return {
+        action: 'ASK_QUESTION',
+        question: screenPrecisionQuestion,
+        suggestion: null,
+      };
+    }
+
+    if (networkScopeQuestion) {
+      return {
+        action: 'ASK_QUESTION',
+        question: networkScopeQuestion,
         suggestion: null,
       };
     }
@@ -816,6 +937,10 @@ export class SuggestTicketDraftUseCase {
       value?.trim() || 'Ticket a qualifier',
       requesterName,
     )
+      .replace(
+        /\s*(?:\(|\[)[^)\]]*(?:\d+\s*(?:go|gb|mo|mb|%)|dispo|disponible|restant|reste)[^)\]]*(?:\)|\])/giu,
+        ' ',
+      )
       .replace(/\s{2,}/g, ' ')
       .replace(/\s*[-:;,.]\s*$/u, '')
       .trim();
@@ -1543,6 +1668,152 @@ export class SuggestTicketDraftUseCase {
     );
   }
 
+  private getUserSideQuestionAnswer(conversation: string): string | null {
+    const conversationLines = this.normalizeForMatching(conversation)
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const lastUserMessage =
+      [...conversationLines]
+        .reverse()
+        .find((line) => line.startsWith('utilisateur:'))
+        ?.replace(/^utilisateur:\s*/u, '')
+        .trim() ?? '';
+    const lastAssistantQuestion =
+      [...conversationLines]
+        .reverse()
+        .find((line) => line.startsWith('assistant:'))
+        ?.replace(/^assistant:\s*/u, '')
+        .trim() ?? '';
+
+    if (
+      !lastUserMessage ||
+      !lastAssistantQuestion ||
+      this.userDoesNotUnderstand(lastUserMessage) ||
+      /bonjour.*(probleme|besoin)/u.test(lastAssistantQuestion)
+    ) {
+      return null;
+    }
+
+    const userAsksQuestion =
+      /\?/u.test(lastUserMessage) ||
+      /^(c est quoi|c'est quoi|cest quoi|ca veut dire quoi|qu est ce|qu'est ce|pourquoi|a quoi|comment ca|comment sa|tu veux dire|que veux tu dire|je dois|je peux|il faut quoi)/u.test(
+        lastUserMessage,
+      );
+
+    if (!userAsksQuestion) {
+      return null;
+    }
+
+    const continuation = this.getSideQuestionContinuation(
+      conversation,
+      lastAssistantQuestion,
+    );
+
+    if (
+      /(canal|comment.*demande|demande.*faite|faite.*demande|fait.*demande)/u.test(
+        lastUserMessage,
+      ) ||
+      (/(canal|comment.*demande|demande.*faite|faite.*demande|fait.*demande)/u.test(
+        lastAssistantQuestion,
+      ) &&
+        /(quoi|comment|pourquoi|a quoi)/u.test(lastUserMessage))
+    ) {
+      return `C'est la facon dont la demande est arrivee jusqu'a vous : email, chat/message, telephone, a l'oral, portail, etc. ${continuation}`;
+    }
+
+    if (
+      /(demandeur|utilisateur concerne|utilisateur|prenom|nom)/u.test(
+        lastUserMessage,
+      )
+    ) {
+      return `Le demandeur, c'est la personne pour qui le ticket doit etre cree. ${continuation}`;
+    }
+
+    if (/(synchronisation|donnee|donnees|data)/u.test(lastUserMessage)) {
+      return `La synchronisation de donnees, c'est quand un cable sert a transferer ou echanger des fichiers/informations entre deux appareils. ${continuation}`;
+    }
+
+    if (
+      /\b(vision|cette appli|cette application|appli actuelle)\b/u.test(
+        lastUserMessage,
+      )
+    ) {
+      return `Vision est l'application actuelle de ticketing, celle ou vous creez et suivez les tickets. ${continuation}`;
+    }
+
+    if (/(incident|demande|type)/u.test(lastUserMessage)) {
+      return `Un incident correspond a quelque chose qui ne fonctionne plus ou mal. Une demande correspond a un nouveau besoin : materiel, acces, installation ou service. ${continuation}`;
+    }
+
+    if (/(priorite|urgence|impact)/u.test(lastUserMessage)) {
+      return `La priorite sert a indiquer l'importance du ticket. Pour un incident, elle est calculee avec l'urgence et l'impact. ${continuation}`;
+    }
+
+    if (
+      /(pourquoi|a quoi|comment ca|comment sa|tu veux dire|que veux tu dire)/u.test(
+        lastUserMessage,
+      )
+    ) {
+      return `Je demande ca uniquement pour remplir le ticket correctement. ${continuation}`;
+    }
+
+    return null;
+  }
+
+  private getSideQuestionContinuation(
+    conversation: string,
+    lastAssistantQuestion: string,
+  ): string {
+    if (
+      /(comment.*demande|demande.*faite|faite.*demande|fait.*demande|canal|email, chat|telephone.*oral|oral.*telephone)/u.test(
+        lastAssistantQuestion,
+      )
+    ) {
+      return 'Comment on vous a fait cette demande ?';
+    }
+
+    if (
+      /(prenom|nom|utilisateur concerne|identite|demandeur)/u.test(
+        lastAssistantQuestion,
+      )
+    ) {
+      return 'Donnez simplement le prenom et le nom si vous les connaissez. Un prenom seul suffit.';
+    }
+
+    if (
+      /(ticket|demande).*(pour vous|pour moi|autre utilisateur)/u.test(
+        lastAssistantQuestion,
+      ) ||
+      /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(
+        lastAssistantQuestion,
+      )
+    ) {
+      return 'Dites simplement : pour moi, ou pour un autre utilisateur.';
+    }
+
+    if (
+      /(longueur|court|courte|1-2 m|1 a 2 m|metre|metres|taille)/u.test(
+        lastAssistantQuestion,
+      )
+    ) {
+      return 'Dites simplement : court, moyen, long, ou peu importe.';
+    }
+
+    if (
+      /(mot de passe|mdp|compte|service|session pc|messagerie|application|vpn|vision)/u.test(
+        lastAssistantQuestion,
+      )
+    ) {
+      return "Dites simplement de quel compte il s'agit : PC, messagerie/mail, VPN, Vision, ou une autre application.";
+    }
+
+    return (
+      this.getNextRequesterContextQuestion(conversation) ??
+      'Dites-moi simplement ce que vous savez, meme approximativement.'
+    );
+  }
+
   private hasCompleteOtherRequesterContext(
     requesterScope: 'SELF' | 'OTHER' | null,
     requesterName: string | null,
@@ -1585,6 +1856,26 @@ export class SuggestTicketDraftUseCase {
     );
     const normalizedQuestion = this.normalizeForMatching(normalized);
     const requesterScope = this.inferRequesterScope(conversation);
+    const lastAssistantQuestion = this.getLastConversationMessage(
+      conversation,
+      'assistant',
+    );
+    const lastUserMessage = this.getLastConversationMessage(
+      conversation,
+      'utilisateur',
+    );
+
+    if (
+      lastAssistantQuestion &&
+      this.normalizeForMatching(lastAssistantQuestion) === normalizedQuestion &&
+      this.isClearYesNoAnswer(lastUserMessage)
+    ) {
+      return (
+        this.getNextRequesterContextQuestion(conversation) ??
+        'Je prepare une proposition de ticket avec les informations deja donnees.'
+      );
+    }
+
     const userAsksChannelMeaning =
       /(c est quoi|c'est quoi|ca veut dire quoi|ça veut dire quoi|je comprends pas|j ai pas compris|j'ai pas compris).*(canal|demande)/u.test(
         normalizedConversation,
@@ -1667,11 +1958,64 @@ export class SuggestTicketDraftUseCase {
       /(longueur|court|courte|1-2 m|1 a 2 m|metre|metres|taille)/u.test(
         normalizedQuestion,
       );
+    const questionAsksCableOrChargerLength =
+      /(longueur|court|courte|1-2 m|1 a 2 m|metre|metres|taille)/u.test(
+        normalizedQuestion,
+      ) && /\b(cable|chargeur)\b/u.test(normalizedQuestion);
     const questionAsksTechnicalCableUsage =
       this.hasSpecificCableRequest(normalizedUserConversation) &&
       /(synchronisation|donnees|alimentation|power delivery|type de port|type de connexion|usage|recharger|chargeur\/pc|relier deux appareils|telephone vers pc)/u.test(
         normalizedQuestion,
       );
+    const questionAsksPhoneCharge =
+      this.hasPhonePowerIssue(normalizedUserConversation) &&
+      /(charge|chargeur|batterie|branche|voyant|indication|eteigne|eteint)/u.test(
+        normalizedQuestion,
+      );
+    const questionAsksExactStorageAmount =
+      this.hasStorageAlmostFullIssue(normalizedUserConversation) &&
+      /(go|gb|mo|mb|pourcentage|%|combien|espace disque disponible|disponible restant|stockage restant|place restante|restant sur votre pc)/u.test(
+        normalizedQuestion,
+      );
+    const storageTargetQuestion =
+      this.getMissingStorageTargetQuestion(conversation);
+    const questionAsksUselessStorageDetail =
+      this.hasStorageAlmostFullIssue(normalizedUserConversation) &&
+      this.questionAsksUselessStorageDetail(normalizedQuestion);
+
+    if (storageTargetQuestion) {
+      return storageTargetQuestion;
+    }
+
+    if (questionAsksUselessStorageDetail) {
+      return (
+        this.getMissingStorageSimpleHelpQuestion(conversation) ??
+        this.getNextRequesterContextQuestion(conversation) ??
+        'Je prepare une proposition de ticket avec les informations deja donnees.'
+      );
+    }
+
+    if (questionAsksExactStorageAmount) {
+      return (
+        this.getMissingStorageSimpleHelpQuestion(conversation) ??
+        this.getNextRequesterContextQuestion(conversation) ??
+        'Je prepare une proposition de ticket avec les informations deja donnees.'
+      );
+    }
+
+    if (questionAsksPhoneCharge) {
+      if (
+        this.userAnsweredPhoneChargeQuestion(conversation) ||
+        this.userSaysPhoneWasCharged(normalizedUserConversation)
+      ) {
+        return (
+          this.getNextRequesterContextQuestion(conversation) ??
+          'Je prepare une proposition de ticket avec les informations deja donnees.'
+        );
+      }
+
+      return 'Est-ce que le telephone affiche un voyant/indication de charge quand il est branche ?';
+    }
 
     if (questionAsksSpecificCableDevice) {
       return (
@@ -1692,6 +2036,16 @@ export class SuggestTicketDraftUseCase {
       return (
         this.getMissingSpecificCableLengthQuestion(conversation) ??
         this.getNextRequesterContextQuestion(conversation)
+      );
+    }
+
+    if (
+      questionAsksCableOrChargerLength &&
+      this.hasApproximateCableLengthAnswer(normalizedUserConversation)
+    ) {
+      return (
+        this.getNextRequesterContextQuestion(conversation) ??
+        'Je prepare une proposition de ticket avec les informations deja donnees.'
       );
     }
 
@@ -1824,6 +2178,64 @@ export class SuggestTicketDraftUseCase {
     return null;
   }
 
+  private getMissingScreenPrecisionQuestion(
+    conversation: string,
+  ): string | null {
+    const normalizedConversation = this.normalizeForMatching(conversation);
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+    const hasGenericScreenIssue =
+      /\becran\b/u.test(normalizedUserConversation) &&
+      /(casse|cassee|fissure|fissuree|abime|abimee|hs|marche pas|fonctionne pas|fonctionne plus|affiche pas|affiche plus|noir)/u.test(
+        normalizedUserConversation,
+      );
+    const hasScreenType =
+      /(pc portable|ordinateur portable|laptop|portable pro|portable travail|ecran externe|moniteur|telephone|tel|smartphone|tablette|tv|television)/u.test(
+        normalizedUserConversation,
+      );
+    const alreadyAskedScreenType =
+      /(type d ecran|quel ecran|pc portable|ecran externe|telephone|smartphone|tablette|moniteur)/u.test(
+        normalizedConversation,
+      );
+
+    if (!hasGenericScreenIssue || hasScreenType || alreadyAskedScreenType) {
+      return null;
+    }
+
+    return "De quel type d'ecran s'agit-il : PC portable, ecran externe, telephone, tablette ou autre ?";
+  }
+
+  private getMissingNetworkScopeQuestion(conversation: string): string | null {
+    const normalizedConversation = this.normalizeForMatching(conversation);
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+    const hasVagueNetworkIssue =
+      !/\bcable\b/u.test(normalizedUserConversation) &&
+      (/\bpanne reseau\b/u.test(normalizedUserConversation) ||
+        /\breseau\b.*\b(hs|panne|marche pas|fonctionne pas|fonctionne plus|coupe|indisponible)\b/u.test(
+          normalizedUserConversation,
+        ) ||
+        /\b(internet|wifi|wi-fi)\b.*\b(hs|panne|marche pas|fonctionne pas|fonctionne plus|coupe|indisponible)\b/u.test(
+          normalizedUserConversation,
+        ));
+    const hasScope =
+      /(seulement moi|moi seul|mon poste|mon pc|ma machine|un poste|plusieurs|tout le monde|tous|toutes|site|service|equipe|bureau|global|general|generale|panne generale)/u.test(
+        normalizedUserConversation,
+      );
+    const alreadyAskedScope =
+      /(seulement votre poste|plusieurs personnes|tout le site|qui est touche|combien de personnes|perimetre)/u.test(
+        normalizedConversation,
+      );
+
+    if (!hasVagueNetworkIssue || hasScope || alreadyAskedScope) {
+      return null;
+    }
+
+    return 'Est-ce que cela touche seulement votre poste, plusieurs personnes, ou tout le site ?';
+  }
+
   private hasWifiCableRequest(normalizedUserConversation: string): boolean {
     return (
       /\bcable\b/u.test(normalizedUserConversation) &&
@@ -1857,10 +2269,9 @@ export class SuggestTicketDraftUseCase {
       /cable.*(longueur|court|courte|1-2 m|1 a 2 m|metre|metres|m souhaite|taille)/u.test(
         normalizedConversation,
       );
-    const mentionsCableLength =
-      /\b(court|courte|petit|petite|moyen|moyenne|long|longue|grand|grande|assez long|assez longue|1-2 m|1 a 2 m|\d+\s*(m|metre|metres)|peu importe|importe peu|n importe|n'importe|je sais pas|je ne sais pas|jsp|standard|classique|normal|normale|comme d habitude|comme dhabitude)\b/u.test(
-        normalizedUserConversation,
-      );
+    const mentionsCableLength = this.hasApproximateCableLengthAnswer(
+      normalizedUserConversation,
+    );
 
     if (alreadyAskedLength || mentionsCableLength) {
       return null;
@@ -1879,6 +2290,12 @@ export class SuggestTicketDraftUseCase {
   }
 
   private hasSpecificCableLengthAnswer(
+    normalizedUserConversation: string,
+  ): boolean {
+    return this.hasApproximateCableLengthAnswer(normalizedUserConversation);
+  }
+
+  private hasApproximateCableLengthAnswer(
     normalizedUserConversation: string,
   ): boolean {
     return /\b(court|courte|petit|petite|moyen|moyenne|long|longue|grand|grande|assez long|assez longue|1-2 m|1 a 2 m|\d+\s*(m|metre|metres)|peu importe|importe peu|n importe|n'importe|je sais pas|je ne sais pas|sais pas|jsp|standard|classique|normal|normale|comme d habitude|comme dhabitude)\b/u.test(
@@ -2042,6 +2459,203 @@ export class SuggestTicketDraftUseCase {
     );
   }
 
+  private hasPhonePowerIssue(normalizedUserConversation: string): boolean {
+    return (
+      /\b(telephone|tel|smartphone)\b/u.test(normalizedUserConversation) &&
+      /(s[' ]?allume pas|ne s[' ]?allume pas|demarre pas|ne demarre pas|aucun signe de vie|pas de signe de vie)/u.test(
+        normalizedUserConversation,
+      )
+    );
+  }
+
+  private userSaysPhoneWasCharged(normalizedUserConversation: string): boolean {
+    return (
+      /\b(charge|chargee|batterie)\b/u.test(normalizedUserConversation) &&
+      /\b(deja|etait|dans tous les cas|dans tout les cas|pas a cause|pas la cause|batterie pas|batterie n est pas)\b/u.test(
+        normalizedUserConversation,
+      )
+    );
+  }
+
+  private userAnsweredPhoneChargeQuestion(conversation: string): boolean {
+    const conversationLines = this.normalizeForMatching(conversation)
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const lastAssistantQuestion =
+      [...conversationLines]
+        .reverse()
+        .find((line) => line.startsWith('assistant:'))
+        ?.replace(/^assistant:\s*/u, '')
+        .trim() ?? '';
+    const lastUserMessage =
+      [...conversationLines]
+        .reverse()
+        .find((line) => line.startsWith('utilisateur:'))
+        ?.replace(/^utilisateur:\s*/u, '')
+        .trim() ?? '';
+
+    if (
+      !/(telephone|tel).*(voyant|indication|charge|branche)|(?:voyant|indication|charge|branche).*(telephone|tel)/u.test(
+        lastAssistantQuestion,
+      )
+    ) {
+      return false;
+    }
+
+    return (
+      this.isClearYesNoAnswer(lastUserMessage) ||
+      /^(rien|aucun|aucune|pas de voyant|pas d indication|aucune indication|aucun voyant)\b/u.test(
+        lastUserMessage,
+      ) ||
+      this.userSaysPhoneWasCharged(lastUserMessage)
+    );
+  }
+
+  private getMissingStorageTargetQuestion(conversation: string): string | null {
+    const normalizedConversation = this.normalizeForMatching(conversation);
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+
+    if (
+      !this.hasStorageAlmostFullIssue(normalizedUserConversation) ||
+      this.hasStorageTarget(normalizedUserConversation)
+    ) {
+      return null;
+    }
+
+    const alreadyAskedStorageTarget =
+      /(stockage|place|espace disque).*(appareil|service|ou manque|sur quoi)|(?:appareil|service|sur quoi).*(stockage|place|espace disque)/u.test(
+        normalizedConversation,
+      );
+
+    if (alreadyAskedStorageTarget) {
+      return null;
+    }
+
+    return 'Sur quel appareil ou service manquez-vous de stockage ?';
+  }
+
+  private getMissingStorageSimpleHelpQuestion(
+    conversation: string,
+  ): string | null {
+    const normalizedConversation = this.normalizeForMatching(conversation);
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+
+    if (
+      !this.hasStorageAlmostFullIssue(normalizedUserConversation) ||
+      !this.hasStorageTarget(normalizedUserConversation)
+    ) {
+      return null;
+    }
+
+    if (
+      this.hasStorageTroubleshooting(normalizedConversation) ||
+      this.userWantsTicketNow(normalizedUserConversation) ||
+      this.userAlreadyTriedStorageHelp(normalizedUserConversation)
+    ) {
+      return null;
+    }
+
+    const nextQuestion =
+      this.getNextRequesterContextQuestion(conversation) ??
+      'Je prepare une proposition de ticket avec les informations deja donnees.';
+
+    if (this.hasPhoneStorageTarget(normalizedUserConversation)) {
+      return `Avant de creer le ticket, vous pouvez supprimer ou transferer les photos/videos volumineuses, vider les telechargements/cache et desinstaller les applications inutilisees. Si vous avez besoin de plus d'espace, je peux preparer le ticket. ${nextQuestion}`;
+    }
+
+    if (this.hasMessagingOrCloudStorageTarget(normalizedUserConversation)) {
+      return `Avant de creer le ticket, vous pouvez supprimer ou archiver les gros messages/fichiers et vider la corbeille du service si possible. Si vous avez besoin de plus d'espace ou si vous n'y arrivez pas, je peux preparer le ticket. ${nextQuestion}`;
+    }
+
+    return `Avant de creer le ticket, vous pouvez supprimer ou deplacer les gros fichiers, vider les telechargements/la corbeille et desinstaller les applications inutiles. Si vous avez besoin de plus d'espace ou d'un disque supplementaire, je peux preparer le ticket. ${nextQuestion}`;
+  }
+
+  private hasStorageTarget(normalizedUserConversation: string): boolean {
+    return /(telephone|tel|smartphone|iphone|android|pc|ordinateur|portable|poste|tablette|messagerie|mail|email|gmail|outlook|application|appli|vision|onedrive|drive|cloud|serveur|nas|disque dur|cle usb|clef usb|cle de stockage|partage reseau)/u.test(
+      normalizedUserConversation,
+    );
+  }
+
+  private hasPhoneStorageTarget(normalizedUserConversation: string): boolean {
+    return /\b(telephone|tel|smartphone|iphone|android)\b/u.test(
+      normalizedUserConversation,
+    );
+  }
+
+  private hasMessagingOrCloudStorageTarget(
+    normalizedUserConversation: string,
+  ): boolean {
+    return /\b(messagerie|mail|email|gmail|outlook|onedrive|drive|cloud|serveur|nas|partage reseau)\b/u.test(
+      normalizedUserConversation,
+    );
+  }
+
+  private hasStorageTroubleshooting(normalizedConversation: string): boolean {
+    return /(supprimer|desinstaller|vider|transferer|deplacer|archiver|gros fichiers|photos|videos|telechargements|cache|corbeille|disque supplementaire|stockage supplementaire|plus d espace)/u.test(
+      normalizedConversation,
+    );
+  }
+
+  private userAlreadyTriedStorageHelp(
+    normalizedUserConversation: string,
+  ): boolean {
+    return /(deja fait|j ai deja|j'ai deja|deja essaye|deja teste|ca marche pas|cela ne marche pas|fonctionne pas|impossible|je peux pas|je ne peux pas|pas possible|n y arrive pas|je n y arrive pas)/u.test(
+      normalizedUserConversation,
+    );
+  }
+
+  private userWantsTicketNow(normalizedUserConversation: string): boolean {
+    return /(ticket|demande au support|support|technicien|cree le ticket|creer le ticket|fait le ticket|fais le ticket|prepare le ticket|ouvrir un ticket)/u.test(
+      normalizedUserConversation,
+    );
+  }
+
+  private questionAsksUselessStorageDetail(
+    normalizedQuestion: string,
+  ): boolean {
+    return (
+      /(session|machine|pc|ordinateur|telephone|tel).*(bloque|accessible|acceder|acces|message d erreur|alerte|affiche|ecran)/u.test(
+        normalizedQuestion,
+      ) ||
+      /(bloque|accessible|acceder|acces|message d erreur|alerte|affiche|ecran).*(session|machine|pc|ordinateur|telephone|tel)/u.test(
+        normalizedQuestion,
+      ) ||
+      /(message d erreur|alerte).*(stockage|espace|disque|place)/u.test(
+        normalizedQuestion,
+      ) ||
+      /(stockage|espace|disque|place).*(message d erreur|alerte)/u.test(
+        normalizedQuestion,
+      )
+    );
+  }
+
+  private hasStorageAlmostFullIssue(
+    normalizedUserConversation: string,
+  ): boolean {
+    const mentionsStorage = /\b(stockage|disque|espace|place|memoire)\b/u.test(
+      normalizedUserConversation,
+    );
+    const mentionsAlmostFull =
+      /(plus de stockage|plus assez de stockage|plus d espace|plus assez d espace|plus de place|manque de place|presque plein|quasiment plein|plein|sature|saturee|saturation|\d+\s*(?:go|gb|mo|mb)|\d+\s*%)/u.test(
+        normalizedUserConversation,
+      );
+
+    return mentionsStorage && mentionsAlmostFull;
+  }
+
+  private isClearYesNoAnswer(normalizedUserMessage: string): boolean {
+    const normalized = this.normalizeForMatching(normalizedUserMessage).trim();
+
+    return /^(oui|oe|oue|ui|ouais|yes|yep|non|nn|nan|no|nope|nop)\b/u.test(
+      normalized,
+    );
+  }
+
   private mentionsCurrentVisionApplication(
     normalizedConversation: string,
   ): boolean {
@@ -2055,13 +2669,34 @@ export class SuggestTicketDraftUseCase {
     urgency: IncidentSeverity,
     context: string,
   ): [IncidentSeverity, IncidentSeverity] {
-    const priorityName = resolveIncidentPriorityName(impact, urgency);
+    const normalizedContext = this.normalizeForMatching(context);
+    let adjustedImpact = impact;
+    let adjustedUrgency = urgency;
+
+    if (this.hasUsableCrackedScreenSignal(normalizedContext)) {
+      adjustedImpact = IncidentSeverity.LOW;
+      adjustedUrgency = IncidentSeverity.MEDIUM;
+    } else if (
+      this.hasPrinterIssueWithoutBroadImpactSignal(normalizedContext) &&
+      resolveIncidentPriorityName(adjustedImpact, adjustedUrgency) !==
+        PriorityName.MEDIUM &&
+      resolveIncidentPriorityName(adjustedImpact, adjustedUrgency) !==
+        PriorityName.LOW
+    ) {
+      adjustedImpact = IncidentSeverity.MEDIUM;
+      adjustedUrgency = IncidentSeverity.MEDIUM;
+    }
+
+    const priorityName = resolveIncidentPriorityName(
+      adjustedImpact,
+      adjustedUrgency,
+    );
 
     if (
       priorityName !== PriorityName.CRITICAL ||
-      this.hasCriticalIncidentSignal(context)
+      this.hasCriticalIncidentSignal(normalizedContext)
     ) {
-      return [impact, urgency];
+      return [adjustedImpact, adjustedUrgency];
     }
 
     return [IncidentSeverity.HIGH, IncidentSeverity.MEDIUM];
@@ -2097,6 +2732,44 @@ export class SuggestTicketDraftUseCase {
     );
   }
 
+  private hasBroadImpactSignal(normalizedContext: string): boolean {
+    return /(plusieurs|tout le monde|tous les utilisateurs|site complet|service complet|equipe entiere|bureau entier|global|general|generale|production|critique|urgent|bloque tout|bloquant pour tous|aucun contournement|pas de solution de contournement)/u.test(
+      normalizedContext,
+    );
+  }
+
+  private hasPrinterIssueWithoutBroadImpactSignal(
+    normalizedContext: string,
+  ): boolean {
+    return (
+      /\b(imprimante|printer)\b/u.test(normalizedContext) &&
+      /(hs|panne|marche pas|fonctionne pas|fonctionne plus|bouton|impression|imprimer)/u.test(
+        normalizedContext,
+      ) &&
+      !this.hasBroadImpactSignal(normalizedContext)
+    );
+  }
+
+  private hasUsableCrackedScreenSignal(normalizedContext: string): boolean {
+    const mentionsCrackedScreen =
+      /\b(ecran|moniteur|telephone|tel|smartphone|tablette)\b/u.test(
+        normalizedContext,
+      ) &&
+      /\b(fissure|fissuree|casse|cassee|abime|abimee)\b/u.test(
+        normalizedContext,
+      );
+    const stillUsable =
+      /(affiche encore|affiche normalement|fonctionne encore|fonctionne normalement|encore utilisable|utilisable|malgre la fissure|juste fissure|seulement fissure|oe|oui)/u.test(
+        normalizedContext,
+      );
+    const blocking =
+      /(ecran noir|affiche plus|ne s affiche pas|aucun affichage|illisible|inutilisable|ne fonctionne plus|hs|bloque|bloquant)/u.test(
+        normalizedContext,
+      );
+
+    return mentionsCrackedScreen && stillUsable && !blocking;
+  }
+
   private normalizeForMatching(value: string): string {
     return value
       .normalize('NFD')
@@ -2113,6 +2786,22 @@ export class SuggestTicketDraftUseCase {
       .filter(Boolean);
 
     return userMessages.length ? userMessages.join('\n') : conversation;
+  }
+
+  private getLastConversationMessage(
+    conversation: string,
+    role: 'assistant' | 'utilisateur',
+  ): string {
+    const prefix = new RegExp(`^${role}:\\s*`, 'iu');
+
+    return (
+      [...conversation.split('\n')]
+        .reverse()
+        .map((line) => line.trim())
+        .find((line) => prefix.test(line))
+        ?.replace(prefix, '')
+        .trim() ?? ''
+    );
   }
 
   private normalizeEnum<T extends Record<string, string>>(
