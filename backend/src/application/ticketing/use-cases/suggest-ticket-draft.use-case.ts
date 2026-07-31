@@ -199,7 +199,9 @@ export class SuggestTicketDraftUseCase {
       '- si la reponse ne correspond pas exactement a la question posee mais apporte une information exploitable, utilise cette information et avance; ne bloque pas la conversation;',
       "- si l'utilisateur a deja repondu a une question de precision de maniere comprehensible, ne repose pas la meme question; passe a l'etape suivante du cadrage ou prepare le ticket;",
       '- pour une demande materielle trop generale, pose 1 petite question simple avant le brouillon si cela aide vraiment a fournir le bon materiel;',
-      "- exemple demande de chargeur sans appareil precise: demander pour quel appareil (PC, telephone, tablette ou autre); si c'est un chargeur de telephone/portable, demander si l'utilisateur sait si c'est USB-C, Lightning, ou peu importe; si c'est un chargeur de PC, ne demande pas le type exact;",
+      '- pour une demande ou un incident lie a du materiel physique ou a un accessoire, choisis la categorie Materiel/Matériel depuis la liste fournie: chargeur, cable, adaptateur, souris, clavier, ecran, telephone, imprimante, PC, moniteur, dock, batterie, casque, webcam, peripherique;',
+      "- ne classe jamais une demande de chargeur, cable ou accessoire en Acces/Accès; Acces/Accès sert aux comptes, mots de passe, connexions, droits, sessions, VPN ou acces applicatif;",
+      "- exemple demande de chargeur sans appareil precise: demander pour quel appareil (PC, telephone, tablette ou autre); si c'est un chargeur de telephone/portable, demander si l'utilisateur sait si c'est USB-C, Lightning, micro-USB, autre, ou peu importe; si c'est un chargeur de PC, ne demande pas le type exact;",
       "- si le type de chargeur ou le connecteur est deja donne (Lightning, USB-C, micro-USB, chargeur PC, etc.) ou si l'utilisateur dit peu importe, ne demande pas l'appareil, le modele, la puissance, ni la compatibilite: cette precision ne change pas le ticket; avance vers le demandeur/canal ou prepare le brouillon;",
       "- si l'utilisateur demande un cable reseau, un cable Wi-Fi, ou un cable pour avoir le Wi-Fi, considere que le besoin est assez clair: ne demande pas de confirmer Ethernet/RJ45 et ne demande pas pour quel materiel;",
       '- pour un cable deja clairement identifie comme HDMI, DisplayPort, Ethernet/RJ45, USB-C, VGA ou DVI, ne demande pas pour quel appareil il est destine, pour quel usage, quel type de connexion, TV/ecran, PC/moniteur; ces questions sont inutiles. Si la longueur manque vraiment, demande exactement: Quelle longueur de câble souhaitez-vous ?',
@@ -595,12 +597,15 @@ export class SuggestTicketDraftUseCase {
       return simpleCableSuggestion;
     }
 
+    const suggestionContext = [userInput, parsed.title, parsed.description]
+      .filter(Boolean)
+      .join('\n');
     const impact = this.normalizeEnum(parsed.impact, IncidentSeverity);
     const urgency = this.normalizeEnum(parsed.urgency, IncidentSeverity);
     const [incidentImpact, incidentUrgency] = this.normalizeIncidentSeverity(
       impact ?? IncidentSeverity.MEDIUM,
       urgency ?? IncidentSeverity.MEDIUM,
-      [userInput, parsed.title, parsed.description].filter(Boolean).join('\n'),
+      suggestionContext,
     );
     const priorityName =
       type === TicketType.INCIDENT
@@ -611,8 +616,11 @@ export class SuggestTicketDraftUseCase {
     return {
       action: 'SUGGEST_TICKET',
       question: null,
-      suggestion: {
-        categoryName: this.normalizeNullableText(parsed.categoryName),
+    suggestion: {
+      categoryName: this.normalizeSuggestedCategoryName(
+        parsed.categoryName,
+        suggestionContext,
+      ),
         channelName,
         confidence: Math.min(Math.max(Number(parsed.confidence) || 0, 0), 1),
         description: this.normalizeTicketDescription(
@@ -635,6 +643,50 @@ export class SuggestTicketDraftUseCase {
   private normalizeNullableText(value: string | null): string | null {
     const normalized = value?.trim();
     return normalized ? normalized : null;
+  }
+
+  private normalizeSuggestedCategoryName(
+    value: string | null,
+    conversation: string,
+  ): string | null {
+    const normalized = this.normalizeNullableText(value);
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+
+    if (this.isMaterialContext(normalizedUserConversation)) {
+      return 'Matériel';
+    }
+
+    return normalized;
+  }
+
+  private isMaterialContext(normalizedUserConversation: string): boolean {
+    const accessTerms =
+      /\b(mdp|mot de passe|password|connexion|connecter|login|compte|session|vpn|acces|droit|droits|habilitation|autorisation|identifiant|mail|email|messagerie)\b/u;
+    const systemStorageTerms =
+      /\b(stockage|espace disque|disque plein|memoire pleine|plus de place)\b/u;
+    const physicalMaterialTerms =
+      /\b(chargeur|alimentation|alim|cable|adaptateur|connecteur|usb-c|usb c|usbc|micro usb|micro-usb|lightning|hdmi|displayport|rj45|ethernet|souris|clavier|ecran|imprimante|moniteur|dock|station d accueil|batterie|casque|webcam|peripherique|materiel|disque dur|ssd|cle usb|clef usb)\b/u;
+    const hardwareIssueTerms =
+      /\b(pc|ordinateur|poste|telephone|tel|smartphone|iphone|tablette)\b/u;
+
+    if (systemStorageTerms.test(normalizedUserConversation)) {
+      return false;
+    }
+
+    if (
+      accessTerms.test(normalizedUserConversation) &&
+      !physicalMaterialTerms.test(normalizedUserConversation)
+    ) {
+      return false;
+    }
+
+    if (physicalMaterialTerms.test(normalizedUserConversation)) {
+      return true;
+    }
+
+    return hardwareIssueTerms.test(normalizedUserConversation);
   }
 
   private normalizeRequesterName(value: string | null): string | null {
@@ -775,7 +827,10 @@ export class SuggestTicketDraftUseCase {
         action: 'SUGGEST_TICKET',
         question: null,
         suggestion: {
-          categoryName: this.normalizeNullableText(parsed.categoryName),
+          categoryName: this.normalizeSuggestedCategoryName(
+            parsed.categoryName,
+            conversation,
+          ),
           channelName: 'Portail',
           confidence: Math.min(
             Math.max(Number(parsed.confidence) || 0.65, 0),
@@ -829,7 +884,8 @@ export class SuggestTicketDraftUseCase {
         question: null,
         suggestion: {
           categoryName:
-            this.normalizeNullableText(parsed.categoryName) ?? 'Accès',
+            this.normalizeSuggestedCategoryName(parsed.categoryName, conversation) ??
+            'Accès',
           channelName,
           confidence: Math.min(
             Math.max(Number(parsed.confidence) || 0.65, 0),
@@ -2176,7 +2232,7 @@ export class SuggestTicketDraftUseCase {
         normalizedConversation,
       );
     const askedChargerConnector =
-      /(usb-c|usb c|lightning|connecteur|type de chargeur|quel type)/u.test(
+      /(usb-c|usb c|usbc|lightning|micro usb|micro-usb|autre|connecteur|type de chargeur|quel type)/u.test(
         normalizedConversation,
       );
     const askedUsbCapacity =
@@ -2202,7 +2258,7 @@ export class SuggestTicketDraftUseCase {
           normalizedUserConversation,
         ));
     const mentionsConnector =
-      /(usb-c|usb c|usbc|lightning|micro usb|peu importe|importe peu|n importe|je sais pas|je ne sais pas|sais pas|jsp)/u.test(
+      /(usb-c|usb c|usbc|lightning|micro usb|micro-usb|autre|peu importe|importe peu|n importe|je sais pas|je ne sais pas|sais pas|jsp)/u.test(
         normalizedUserConversation,
       );
     const mentionsUsbCapacity =
@@ -2228,7 +2284,7 @@ export class SuggestTicketDraftUseCase {
       if (mentionsPhoneOrTabletCharger && !mentionsConnector) {
         return askedChargerConnector
           ? null
-          : "Vous savez si c'est USB-C, Lightning, ou peu importe ?";
+          : "Vous savez si c'est USB-C, Lightning, micro-USB, autre, ou peu importe ?";
       }
     }
 
@@ -2318,7 +2374,7 @@ export class SuggestTicketDraftUseCase {
   ): boolean {
     return (
       /\bchargeur\b/u.test(normalizedUserConversation) &&
-      /\b(usb-c|usb c|usbc|lightning|micro usb|pc|ordinateur|poste|peu importe|importe peu|n importe|je sais pas|je ne sais pas|sais pas|jsp)\b/u.test(
+      /\b(usb-c|usb c|usbc|lightning|micro usb|micro-usb|telephone|tel|smartphone|iphone|tablette|portable|pc|ordinateur|poste|alimentation|alim|autre|peu importe|importe peu|n importe|je sais pas|je ne sais pas|sais pas|jsp)\b/u.test(
         normalizedUserConversation,
       )
     );
