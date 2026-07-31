@@ -98,7 +98,7 @@ const USER_SORT_OPTIONS: Array<{
 ];
 
 function isProtectedTrashUser(user: AdminUserSummary): boolean {
-  return !user.isActive && (user.role === 'ADMIN' || user.role === 'MANAGER');
+  return user.accountStatus === 'DELETED';
 }
 
 function filterUsersBySearchAndRole(
@@ -158,10 +158,23 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const activeUsers = users.filter((user) => user.isActive).length;
-  const agentUsers = users.filter((user) => user.role === 'AGENT').length;
-  const managerUsers = users.filter((user) => user.role === 'MANAGER').length;
-  const adminUsers = users.filter((user) => user.role === 'ADMIN').length;
+  const nonDeletedUsers = users.filter(
+    (user) => user.accountStatus !== 'DELETED',
+  );
+  const activeUsers = nonDeletedUsers.filter(
+    (user) =>
+      (user.accountStatus ?? (user.isActive ? 'ACTIVE' : 'TRASHED')) ===
+      'ACTIVE',
+  ).length;
+  const agentUsers = nonDeletedUsers.filter(
+    (user) => user.role === 'AGENT',
+  ).length;
+  const managerUsers = nonDeletedUsers.filter(
+    (user) => user.role === 'MANAGER',
+  ).length;
+  const adminUsers = nonDeletedUsers.filter(
+    (user) => user.role === 'ADMIN',
+  ).length;
   const selectedUser = selectedUserId
     ? (users.find((user) => user.id === selectedUserId) ?? null)
     : null;
@@ -758,18 +771,22 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
               !isSelectedCurrentUser &&
               canManageSelectedUser ? (
                 <>
-                  <button
-                    className="admin-user-delete-button"
-                    disabled={isSubmitting}
-                    onClick={() => void handleDeleteUserPermanently()}
-                    type="button"
-                  >
-                    <Trash2 size={16} strokeWidth={2.2} />
-                    <span className="admin-action-label-desktop">
-                      Supprimer definitivement
-                    </span>
-                    <span className="admin-action-label-mobile">Supprimer</span>
-                  </button>
+                  {selectedUser.accountStatus === 'DELETED' ? null : (
+                    <button
+                      className="admin-user-delete-button"
+                      disabled={isSubmitting}
+                      onClick={() => void handleDeleteUserPermanently()}
+                      type="button"
+                    >
+                      <Trash2 size={16} strokeWidth={2.2} />
+                      <span className="admin-action-label-desktop">
+                        Supprimer definitivement
+                      </span>
+                      <span className="admin-action-label-mobile">
+                        Supprimer
+                      </span>
+                    </button>
+                  )}
                   <button
                     className="admin-user-restore-button"
                     disabled={isSubmitting}
@@ -1135,7 +1152,7 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
             <div className="referentials-summary">
               <article>
                 <span>Total utilisateurs</span>
-                <strong>{users.length}</strong>
+                <strong>{nonDeletedUsers.length}</strong>
               </article>
               <article>
                 <span>Comptes actifs</span>
@@ -1161,14 +1178,16 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
               <div>
                 <h3>
                   {isProtectedTrashMode
-                    ? 'Corbeille admin/manager'
+                    ? 'Corbeille super admin'
                     : 'Liste des utilisateurs'}
                 </h3>
               </div>
               <div className="ticket-list-toolbar">
                 <div className="ticket-list-count" aria-live="polite">
                   <strong>
-                    {isProtectedTrashMode ? filteredUsers.length : users.length}
+                    {isProtectedTrashMode
+                      ? filteredUsers.length
+                      : sortedUsers.length}
                   </strong>
                   <span>utilisateurs</span>
                 </div>

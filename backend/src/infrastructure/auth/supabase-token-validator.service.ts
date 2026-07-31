@@ -5,10 +5,12 @@ import {
 } from '@nestjs/common';
 import { type AuthenticatedUser } from '../../domain/auth/authenticated-user';
 import { type SupabaseUserPayload } from '../../domain/auth/supabase-user-payload';
+import { resolveUserAccountStatus } from '../../domain/auth/user-account-status';
 import { UserRole } from '../../domain/auth/user-role';
 import { getBackendRuntimeConfig } from '../config/app-config';
 
 type SupabaseUserProfileRow = {
+  account_status: string | null;
   first_name: string | null;
   is_active: boolean;
   last_name: string | null;
@@ -104,7 +106,10 @@ export class SupabaseTokenValidatorService {
     }
 
     const url = new URL(`${config.supabaseUrl}/rest/v1/users`);
-    url.searchParams.set('select', 'role,first_name,last_name,is_active');
+    url.searchParams.set(
+      'select',
+      'role,first_name,last_name,is_active,account_status',
+    );
     url.searchParams.set('id', `eq.${userId}`);
     url.searchParams.set('limit', '1');
 
@@ -144,7 +149,9 @@ export class SupabaseTokenValidatorService {
 
     return {
       firstName: row.first_name,
-      isActive: row.is_active,
+      isActive:
+        resolveUserAccountStatus(row.account_status, row.is_active) ===
+        'ACTIVE',
       lastName: row.last_name,
       role: row.role ? this.resolveRoleFallback(row.role) : null,
     };

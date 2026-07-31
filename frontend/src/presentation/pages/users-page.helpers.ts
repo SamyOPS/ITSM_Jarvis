@@ -55,7 +55,14 @@ export function filterUsers(
   const normalizedSearch = normalizeSearchText(searchText);
 
   return users.filter((user) => {
-    if (showTrash ? user.isActive : !user.isActive) {
+    const accountStatus =
+      user.accountStatus ?? (user.isActive ? 'ACTIVE' : 'TRASHED');
+
+    if (showTrash) {
+      if (accountStatus !== 'TRASHED') {
+        return false;
+      }
+    } else if (accountStatus !== 'ACTIVE') {
       return false;
     }
 
