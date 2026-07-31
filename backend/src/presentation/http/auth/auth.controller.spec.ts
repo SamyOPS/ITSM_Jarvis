@@ -327,6 +327,62 @@ describe('AuthController', () => {
     ).resolves.toEqual(users);
   });
 
+  it('keeps deleted accounts in the authenticated users directory for historical labels', async () => {
+    const users = [
+      {
+        accountStatus: 'DELETED',
+        displayName: 'Deleted Requester',
+        email: 'deleted@example.com',
+        firstName: 'Deleted',
+        groupId: null,
+        id: 'deleted-1',
+        isActive: false,
+        lastName: 'Requester',
+        role: UserRole.DEMANDEUR,
+      },
+    ];
+    const useCase = {
+      execute: jest.fn().mockResolvedValue(users),
+    } as unknown as ListAdminUsersUseCase;
+
+    controller = new AuthController(
+      {
+        execute: jest.fn(),
+      } as unknown as CreateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as DeleteAdminUserUseCase,
+      new GetAuthSetupUseCase(),
+      {
+        execute: jest.fn(),
+      } as unknown as GetAuthenticatedUserUseCase,
+      mockUserLicenseReadUseCase(),
+      useCase,
+      {
+        execute: jest.fn(),
+      } as unknown as RegisterRequesterUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserGroupsUseCase,
+      {
+        execute: jest.fn(),
+      } as unknown as UpdateAdminUserStatusUseCase,
+      mockUserLicenseWriteUseCase(),
+    );
+
+    await expect(
+      controller.listUsers({
+        accessToken: 'token',
+        email: 'admin@example.com',
+        id: 'admin-1',
+        role: UserRole.ADMIN,
+      }),
+    ).resolves.toEqual(users);
+  });
+
   it('hides super admin accounts from the authenticated users directory for regular admins', async () => {
     const users = [
       {

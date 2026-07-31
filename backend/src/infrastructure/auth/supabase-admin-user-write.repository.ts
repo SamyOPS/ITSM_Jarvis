@@ -11,6 +11,10 @@ import {
   type UpdateAdminUserRecord,
 } from '../../application/auth/repositories/admin-user-write.repository';
 import { type AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import {
+  resolveUserAccountStatus,
+  type UserAccountStatus,
+} from '../../domain/auth/user-account-status';
 import { UserRole } from '../../domain/auth/user-role';
 import { getBackendRuntimeConfig } from '../config/app-config';
 
@@ -22,6 +26,7 @@ type SupabaseCreatedAuthUser = {
 };
 
 type SupabaseUserRow = {
+  account_status: string | null;
   display_name: string | null;
   email: string | null;
   first_name: string | null;
@@ -81,6 +86,7 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
       groupId: record.role === UserRole.DEMANDEUR ? null : record.groupId,
       groupIds: record.role === UserRole.DEMANDEUR ? [] : record.groupIds,
       id: authUserId,
+      accountStatus: 'ACTIVE',
       isActive: true,
       lastName: record.lastName,
       role: record.role,
@@ -117,6 +123,7 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
         groupId: record.role === UserRole.DEMANDEUR ? null : record.groupId,
         groupIds: record.role === UserRole.DEMANDEUR ? [] : record.groupIds,
         id: userId,
+        accountStatus: 'ACTIVE',
         isActive: true,
         lastName: record.lastName,
         role: record.role,
@@ -164,6 +171,7 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
           Prefer: 'return=representation',
         },
         body: JSON.stringify({
+          account_status: isActive ? 'ACTIVE' : 'TRASHED',
           is_active: isActive,
         }),
       },
@@ -242,8 +250,12 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
       );
     }
 
-    await deleteSupabaseAuthUser(config.supabaseUrl, supabaseApiKey, userId);
-    await deletePublicUser(config.supabaseUrl, supabaseApiKey, userId);
+    await markUserAsDeleted(config.supabaseUrl, supabaseApiKey, userId);
+    await cleanupDeletedUserOperationalState(
+      config.supabaseUrl,
+      supabaseApiKey,
+      userId,
+    );
   }
 }
 
@@ -462,38 +474,7 @@ async function updateSupabaseAuthUser(
   }
 }
 
-async function deleteSupabaseAuthUser(
-  supabaseUrl: string,
-  supabaseApiKey: string,
-  userId: string,
-): Promise<void> {
-  let response: Response;
-
-  try {
-    response = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
-      method: 'DELETE',
-      headers: {
-        apikey: supabaseApiKey,
-        Authorization: `Bearer ${supabaseApiKey}`,
-      },
-    });
-  } catch {
-    throw new ServiceUnavailableException(
-      'Supabase auth user deletion is unreachable.',
-    );
-  }
-
-  if (!response.ok) {
-    const message = await response.text();
-
-    throw new BadRequestException(
-      message ||
-        `Supabase auth user deletion returned status ${response.status}.`,
-    );
-  }
-}
-
-async function deletePublicUser(
+async function markUserAsDeleted(
   supabaseUrl: string,
   supabaseApiKey: string,
   userId: string,
@@ -504,17 +485,23 @@ async function deletePublicUser(
     response = await fetch(
       `${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(userId)}`,
       {
-        method: 'DELETE',
+        method: 'PATCH',
         headers: {
           apikey: supabaseApiKey,
           Authorization: `Bearer ${supabaseApiKey}`,
+          'Content-Type': 'application/json',
           Prefer: 'return=minimal',
         },
+        body: JSON.stringify({
+          account_status: 'DELETED',
+          group_id: null,
+          is_active: false,
+        }),
       },
     );
   } catch {
     throw new ServiceUnavailableException(
-      'Supabase public user deletion is unreachable.',
+      'Supabase public user logical deletion is unreachable.',
     );
   }
 
@@ -523,7 +510,7 @@ async function deletePublicUser(
 
     throw new BadRequestException(
       message ||
-        `Supabase public user deletion returned status ${response.status}.`,
+        `Supabase public user logical deletion returned status ${response.status}.`,
     );
   }
 }
@@ -532,6 +519,7 @@ async function upsertPublicUser(
   supabaseUrl: string,
   supabaseApiKey: string,
   record: {
+    accountStatus: UserAccountStatus;
     displayName: string | null;
     email: string | null;
     firstName: string | null;
@@ -549,6 +537,7 @@ async function upsertPublicUser(
     email: record.email,
     first_name: record.firstName,
     id: record.id,
+    account_status: record.accountStatus,
     is_active: record.isActive,
     last_name: record.lastName,
     role: record.role,
@@ -610,7 +599,7 @@ async function getPublicUserById(
     id: `eq.${userId}`,
     limit: '1',
     select:
-      'id,email,display_name,first_name,last_name,role,group_id,is_active',
+      'id,email,display_name,first_name,last_name,role,group_id,is_active,account_status',
   });
 
   let response: Response;
@@ -929,6 +918,25 @@ async function cleanupRequesterOperationalState(
   await deleteFuturePlanningTasksForUser(supabaseUrl, supabaseApiKey, userId);
 }
 
+async function cleanupDeletedUserOperationalState(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+): Promise<void> {
+  await deleteUserGroupsByUserId(supabaseUrl, supabaseApiKey, userId);
+  await unassignOpenOrResolvedTicketsForUser(
+    supabaseUrl,
+    supabaseApiKey,
+    userId,
+  );
+  await closeOpenOrResolvedRequestedTicketsForUser(
+    supabaseUrl,
+    supabaseApiKey,
+    userId,
+  );
+  await deleteFuturePlanningTasksForUser(supabaseUrl, supabaseApiKey, userId);
+}
+
 async function deleteUserGroupsByUserId(
   supabaseUrl: string,
   supabaseApiKey: string,
@@ -1007,6 +1015,95 @@ async function unassignActiveTicketsForUser(
   }
 }
 
+async function unassignOpenOrResolvedTicketsForUser(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+): Promise<void> {
+  let response: Response;
+  const query = new URLSearchParams({
+    archived_at: 'is.null',
+    assigned_to_user_id: `eq.${userId}`,
+    status: 'in.(OPEN,IN_PROGRESS,PENDING,RESOLVED)',
+  });
+
+  try {
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/tickets?${query.toString()}`,
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          assigned_to_user_id: null,
+        }),
+      },
+    );
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase deleted user ticket assignment cleanup is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase deleted user ticket assignment cleanup returned status ${response.status}.`,
+    );
+  }
+}
+
+async function closeOpenOrResolvedRequestedTicketsForUser(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+): Promise<void> {
+  let response: Response;
+  const query = new URLSearchParams({
+    archived_at: 'is.null',
+    requested_for_user_id: `eq.${userId}`,
+    status: 'in.(OPEN,IN_PROGRESS,PENDING,RESOLVED)',
+  });
+
+  try {
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/tickets?${query.toString()}`,
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          closed_at: new Date().toISOString(),
+          status: 'CLOSED',
+        }),
+      },
+    );
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase deleted requester ticket cleanup is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase deleted requester ticket cleanup returned status ${response.status}.`,
+    );
+  }
+}
+
 async function deleteFuturePlanningTasksForUser(
   supabaseUrl: string,
   supabaseApiKey: string,
@@ -1051,14 +1148,20 @@ function mapUserRow(
   email: string | null,
   groupIds?: string[],
 ): AdminUserSummary {
+  const accountStatus = resolveUserAccountStatus(
+    row.account_status,
+    row.is_active,
+  );
+
   return {
+    accountStatus,
     displayName: row.display_name,
     email,
     firstName: row.first_name,
     groupId: groupIds ? (groupIds[0] ?? null) : row.group_id,
     groupIds: groupIds ?? (row.group_id ? [row.group_id] : []),
     id: row.id,
-    isActive: row.is_active,
+    isActive: accountStatus === 'ACTIVE',
     lastName: row.last_name,
     role: resolveUserRole(row.role),
   };

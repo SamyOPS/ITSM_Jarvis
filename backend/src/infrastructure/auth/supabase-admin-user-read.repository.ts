@@ -1,10 +1,12 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { AdminUserReadRepository } from '../../application/auth/repositories/admin-user-read.repository';
 import { type AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import { resolveUserAccountStatus } from '../../domain/auth/user-account-status';
 import { UserRole } from '../../domain/auth/user-role';
 import { getBackendRuntimeConfig } from '../config/app-config';
 
 type SupabaseAdminUserRow = {
+  account_status: string | null;
   display_name: string | null;
   first_name: string | null;
   group_id: string | null;
@@ -41,7 +43,8 @@ export class SupabaseAdminUserReadRepository implements AdminUserReadRepository 
 
     const query = new URLSearchParams({
       order: 'display_name.asc.nullslast,role.asc',
-      select: 'id,display_name,first_name,last_name,role,group_id,is_active',
+      select:
+        'id,display_name,first_name,last_name,role,group_id,is_active,account_status',
     });
 
     let response: Response;
@@ -81,6 +84,10 @@ export class SupabaseAdminUserReadRepository implements AdminUserReadRepository 
     );
 
     return rows.map((row) => ({
+      accountStatus: resolveUserAccountStatus(
+        row.account_status,
+        row.is_active,
+      ),
       displayName: row.display_name,
       email: emailsByUserId.get(row.id) ?? null,
       firstName: row.first_name,

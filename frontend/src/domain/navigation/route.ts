@@ -93,7 +93,7 @@ export const ROUTES: RouteDefinition[] = [
     title: 'Utilisateurs',
   },
   {
-    description: 'Corbeille reservee aux comptes administrateurs et managers.',
+    description: 'Corbeille reservee aux comptes supprimes.',
     path: '/admin/trash',
     title: 'Corbeille',
   },

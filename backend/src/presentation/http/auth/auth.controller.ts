@@ -222,7 +222,9 @@ export class AuthController {
     }
 
     return users.filter(
-      (listedUser) => listedUser.role !== UserRole.SUPER_ADMIN,
+      (listedUser) =>
+        listedUser.role !== UserRole.SUPER_ADMIN &&
+        listedUser.accountStatus !== 'DELETED',
     );
   }
 
@@ -413,6 +415,12 @@ export class AuthController {
 
     if (actor.role === UserRole.SUPER_ADMIN) {
       return targetUser;
+    }
+
+    if (targetUser.accountStatus === 'DELETED') {
+      throw new BadRequestException(
+        'Only super admins can manage deleted accounts.',
+      );
     }
 
     if (targetUser.role === UserRole.SUPER_ADMIN) {
