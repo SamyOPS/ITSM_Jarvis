@@ -41,10 +41,28 @@ import {
 } from './app-shell.helpers';
 import type { AppShellProps } from './app-shell.types';
 
-const sidebarRouteGroups: readonly (readonly RoutePath[])[] = [
-  ['/reports', '/agent/incidents/new', '/agent/requests/new', '/agent/tickets'],
-  ['/parc/cis/new', '/parc/cis', '/knowledge/articles'],
-  ['/admin/users', '/admin/groups', '/agent/archives'],
+type SidebarRouteGroup = {
+  label: string;
+  routes: readonly RoutePath[];
+};
+
+const sidebarRouteGroups: readonly SidebarRouteGroup[] = [
+  {
+    label: 'Accueil',
+    routes: ['/reports'],
+  },
+  {
+    label: 'Tickets',
+    routes: ['/agent/incidents/new', '/agent/requests/new', '/agent/tickets'],
+  },
+  {
+    label: 'Parc',
+    routes: ['/parc/cis/new', '/parc/cis', '/knowledge/articles'],
+  },
+  {
+    label: 'Administration',
+    routes: ['/admin/users', '/admin/groups', '/agent/archives'],
+  },
 ];
 
 function isRouteDefinition(
@@ -71,6 +89,7 @@ export function AppShell({
   );
   const [isDeletingAllNotifications, setIsDeletingAllNotifications] =
     useState(false);
+  const sidebarRef = useRef<HTMLElement | null>(null);
   const ticketMenuRef = useRef<HTMLDivElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const notificationMenuRef = useRef<HTMLDivElement | null>(null);
@@ -93,13 +112,14 @@ export function AppShell({
     (notification) => !notification.readAt,
   ).length;
   const sidebarGroups = sidebarRouteGroups
-    .map((group) =>
-      group
+    .map((group) => ({
+      label: group.label,
+      routes: group.routes
         .map((path) => ROUTES.find((route) => route.path === path) ?? null)
         .filter(isRouteDefinition)
         .filter((route) => canAccessRoute(route.path, session)),
-    )
-    .filter((group) => group.length > 0);
+    }))
+    .filter((group) => group.routes.length > 0);
 
   useEffect(() => {
     document.body.classList.toggle('app-body--reports', isReportsRoute);
@@ -305,6 +325,17 @@ export function AppShell({
     onLogout();
   }
 
+  function handleSidebarMouseLeave(): void {
+    const activeElement = document.activeElement;
+
+    if (
+      activeElement instanceof HTMLElement &&
+      sidebarRef.current?.contains(activeElement)
+    ) {
+      activeElement.blur();
+    }
+  }
+
   if (isLoginShell) {
     return <div className="app-shell app-shell--login">{children}</div>;
   }
@@ -315,12 +346,13 @@ export function AppShell({
 
   return (
     <div className={workspaceShellClassName}>
-      <aside className="workspace-sidebar">
+      <aside
+        className="workspace-sidebar"
+        onMouseLeave={handleSidebarMouseLeave}
+        ref={sidebarRef}
+      >
         <div className="workspace-sidebar-header">
           <div className="workspace-sidebar-brand">
-            <span className="workspace-sidebar-mark" aria-hidden="true">
-              V
-            </span>
             <div className="workspace-sidebar-brand-copy">
               <strong>Vision</strong>
               <span>By JarvisConnect</span>
@@ -340,7 +372,11 @@ export function AppShell({
                 <div className="workspace-sidebar-separator" />
               ) : null}
 
-              {group.map((route) => {
+              <span className="workspace-sidebar-group-title">
+                {group.label}
+              </span>
+
+              {group.routes.map((route) => {
                 const Icon = routeIcons[route.path] ?? House;
                 const isActive = isRouteActive(route.path, pathname);
                 const routeTitle = getRouteDisplayTitle(
