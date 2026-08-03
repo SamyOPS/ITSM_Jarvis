@@ -13,6 +13,7 @@ export type DeleteKnowledgeArticleAttachmentCommand = {
   actorRole: UserRole;
   actorUserId: string;
   articleId: string;
+  canReviewArticles?: boolean;
   attachmentId: string;
 };
 
@@ -49,6 +50,7 @@ export class DeleteKnowledgeArticleAttachmentUseCase {
       normalizedArticleId,
       command.actorRole,
       normalizedActorUserId,
+      Boolean(command.canReviewArticles),
     );
 
     const attachment =

@@ -7,10 +7,14 @@ import {
 } from '../repositories/admin-user-write.repository';
 
 export type UpdateAdminUserCommand = {
+  canManageAssets?: boolean | null;
+  canManageKnowledgeBase?: boolean | null;
+  canValidateKnowledgeBase?: boolean | null;
   email: string;
   firstName?: string | null;
   groupId?: string | null;
   groupIds?: string[] | null;
+  isVip?: boolean | null;
   lastName?: string | null;
   role: UserRole;
   userId: string;
@@ -55,6 +59,43 @@ export class UpdateAdminUserUseCase {
     if (groupIds !== undefined) {
       record.groupId = groupIds[0] ?? null;
       record.groupIds = groupIds;
+    }
+
+    if (command.isVip !== undefined) {
+      record.isVip = Boolean(command.isVip);
+    }
+
+    if (
+      command.role === UserRole.DEMANDEUR ||
+      command.role === UserRole.ADMIN ||
+      command.role === UserRole.SUPER_ADMIN
+    ) {
+      record.canManageAssets = false;
+      record.canManageKnowledgeBase = false;
+      record.canValidateKnowledgeBase = false;
+    } else {
+      if (command.canManageAssets !== undefined) {
+        record.canManageAssets = Boolean(command.canManageAssets);
+      }
+
+      if (command.canManageKnowledgeBase !== undefined) {
+        record.canManageKnowledgeBase = Boolean(command.canManageKnowledgeBase);
+        record.canValidateKnowledgeBase = Boolean(
+          command.canManageKnowledgeBase,
+        );
+      }
+
+      if (
+        command.canManageKnowledgeBase === undefined &&
+        command.canValidateKnowledgeBase !== undefined
+      ) {
+        record.canManageKnowledgeBase = Boolean(
+          command.canValidateKnowledgeBase,
+        );
+        record.canValidateKnowledgeBase = Boolean(
+          command.canValidateKnowledgeBase,
+        );
+      }
     }
 
     return this.adminUserWriteRepository.updateUser(userId, record);

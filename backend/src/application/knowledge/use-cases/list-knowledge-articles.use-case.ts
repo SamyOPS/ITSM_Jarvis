@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  isSupportManagerRole,
-  isSupportRole,
-  UserRole,
-} from '../../../domain/auth/user-role';
+import { isSupportRole, UserRole } from '../../../domain/auth/user-role';
 import { KnowledgeArticle } from '../../../domain/knowledge/knowledge-article';
 import { KnowledgeArticleRepository } from '../repositories/knowledge-article.repository';
 
@@ -14,8 +10,9 @@ export class ListKnowledgeArticlesUseCase {
   async execute(
     userRole: UserRole,
     currentUserId: string,
+    canReviewArticles = false,
   ): Promise<KnowledgeArticle[]> {
-    if (isSupportManagerRole(userRole)) {
+    if (canReviewArticles) {
       return this.repository.listArticles(currentUserId);
     }
 

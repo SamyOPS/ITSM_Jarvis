@@ -2,21 +2,29 @@ import { type AdminUserSummary } from '../../../domain/auth/admin-user-summary';
 import { UserRole } from '../../../domain/auth/user-role';
 
 export type CreateAdminUserRecord = {
+  canManageAssets: boolean;
+  canManageKnowledgeBase: boolean;
+  canValidateKnowledgeBase: boolean;
   email: string;
   emailConfirmed?: boolean;
   firstName: string | null;
   groupId: string | null;
   groupIds: string[];
+  isVip: boolean;
   lastName: string | null;
   password: string;
   role: UserRole;
 };
 
 export type UpdateAdminUserRecord = {
+  canManageAssets?: boolean;
+  canManageKnowledgeBase?: boolean;
+  canValidateKnowledgeBase?: boolean;
   email: string;
   firstName: string | null;
   groupId?: string | null;
   groupIds?: string[];
+  isVip?: boolean;
   lastName: string | null;
   role: UserRole;
 };

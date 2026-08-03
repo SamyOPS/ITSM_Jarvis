@@ -16,6 +16,7 @@ export class ListKnowledgeArticleAttachmentsUseCase {
     articleId: string,
     userId: string,
     userRole: UserRole,
+    canReviewArticles = false,
   ): Promise<KnowledgeArticleAttachment[]> {
     const normalizedArticleId = articleId.trim();
     const normalizedUserId = userId.trim();
@@ -32,6 +33,7 @@ export class ListKnowledgeArticleAttachmentsUseCase {
       normalizedArticleId,
       userRole,
       normalizedUserId,
+      canReviewArticles,
     );
 
     return this.knowledgeArticleAttachmentReadRepository.listKnowledgeArticleAttachments(

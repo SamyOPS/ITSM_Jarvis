@@ -1,4 +1,5 @@
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
+import { canManageAssets } from '../../domain/auth/user-capabilities';
 import type { UserRole } from '../../domain/auth/user-role';
 import type { RoutePath } from '../../domain/navigation/route';
 
@@ -55,6 +56,10 @@ export function canAccessRoute(
 
   if (!session) {
     return false;
+  }
+
+  if (pathname === '/parc/cis/new') {
+    return canManageAssets(session.user);
   }
 
   return allowedRoles.includes(session.user.role);

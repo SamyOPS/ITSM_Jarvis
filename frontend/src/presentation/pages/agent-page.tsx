@@ -117,6 +117,7 @@ import {
   getTicketListTitle,
   getUserSupportGroupIds,
   isTicketCommentHistoryEntry,
+  isTicketRequesterVip,
   isUserInSupportGroup,
   normalizeOptionalId,
   normalizeOptionalText,
@@ -1205,6 +1206,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     [catalog.priorities],
   );
 
+  const vipRequesterIds = useMemo(
+    () =>
+      new Set(
+        userDirectory.filter((user) => user.isVip).map((user) => user.id),
+      ),
+    [userDirectory],
+  );
+
   const sortedTickets = useMemo(() => {
     if (searchFilters.sortBy === 'CREATED_AT_DESC') {
       return sortTicketsByCreatedAtDesc(searchedTickets);
@@ -1214,8 +1223,12 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       return sortTicketsByCreatedAtAsc(searchedTickets);
     }
 
-    return sortTicketsByOperationalPriority(searchedTickets, prioritiesById);
-  }, [prioritiesById, searchFilters.sortBy, searchedTickets]);
+    return sortTicketsByOperationalPriority(
+      searchedTickets,
+      prioritiesById,
+      vipRequesterIds,
+    );
+  }, [prioritiesById, searchFilters.sortBy, searchedTickets, vipRequesterIds]);
 
   const paginatedTickets = useMemo(() => {
     const startIndex = (ticketPage - 1) * TICKETS_PER_PAGE;
@@ -4958,84 +4971,106 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             </tr>
                           </thead>
                           <tbody>
-                            {paginatedTickets.map((ticket) => (
-                              <tr
-                                className="ticket-table-row"
-                                key={ticket.id}
-                                onClick={() =>
-                                  navigateTo(
-                                    isArchiveListPage
-                                      ? withReturnPageQuery(
-                                          `/agent/archives/${ticket.id}`,
-                                          ticketPage,
-                                        )
-                                      : withReturnPageQuery(
-                                          isMyTicketsPage
-                                            ? `/agent/tickets/${ticket.id}?from=my-tickets`
-                                            : `/agent/tickets/${ticket.id}`,
-                                          ticketPage,
-                                        ),
-                                  )
-                                }
-                              >
-                                <td>
-                                  <div className="ticket-table-primary">
-                                    {renderTicketDisplayNumber(ticket)}
-                                  </div>
-                                </td>
-                                <td>
-                                  <div className="ticket-table-primary">
-                                    <div className="ticket-table-title-row">
-                                      <strong>{ticket.title}</strong>
+                            {paginatedTickets.map((ticket) => {
+                              const isVipTicket = isTicketRequesterVip(
+                                ticket,
+                                vipRequesterIds,
+                              );
+
+                              return (
+                                <tr
+                                  className={
+                                    isVipTicket
+                                      ? 'ticket-table-row is-vip'
+                                      : 'ticket-table-row'
+                                  }
+                                  key={ticket.id}
+                                  onClick={() =>
+                                    navigateTo(
+                                      isArchiveListPage
+                                        ? withReturnPageQuery(
+                                            `/agent/archives/${ticket.id}`,
+                                            ticketPage,
+                                          )
+                                        : withReturnPageQuery(
+                                            isMyTicketsPage
+                                              ? `/agent/tickets/${ticket.id}?from=my-tickets`
+                                              : `/agent/tickets/${ticket.id}`,
+                                            ticketPage,
+                                          ),
+                                    )
+                                  }
+                                >
+                                  <td>
+                                    <div className="ticket-table-primary">
+                                      {renderTicketDisplayNumber(ticket)}
                                     </div>
-                                  </div>
-                                </td>
-                                <td>{renderStatusBadge(ticket.status)}</td>
-                                <td>{formatTicketDate(ticket.createdAt)}</td>
-                                <td>
-                                  {renderPriorityBadge(ticket, prioritiesById)}
-                                </td>
-                                <td>
-                                  {formatKnownUserName(
-                                    usersById.get(
+                                  </td>
+                                  <td>
+                                    <div className="ticket-table-primary">
+                                      <div className="ticket-table-title-row">
+                                        <strong>{ticket.title}</strong>
+                                        {isVipTicket ? (
+                                          <span className="ticket-vip-badge">
+                                            VIP
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td>{renderStatusBadge(ticket.status)}</td>
+                                  <td>{formatTicketDate(ticket.createdAt)}</td>
+                                  <td>
+                                    {renderPriorityBadge(
+                                      ticket,
+                                      prioritiesById,
+                                    )}
+                                  </td>
+                                  <td>
+                                    {formatKnownUserName(
+                                      usersById.get(
+                                        ticket.requestedForUserId ??
+                                          ticket.createdByUserId,
+                                      ),
                                       ticket.requestedForUserId ??
                                         ticket.createdByUserId,
-                                    ),
-                                    ticket.requestedForUserId ??
-                                      ticket.createdByUserId,
-                                  )}
-                                </td>
-                                <td>
-                                  {ticket.assignedToUserId
-                                    ? formatKnownUserName(
-                                        usersById.get(ticket.assignedToUserId),
-                                        ticket.assignedToUserId,
-                                      )
-                                    : 'aucun'}
-                                </td>
-                                <td>
-                                  {categoriesById.get(ticket.categoryId)
-                                    ?.name ?? 'Non définie'}
-                                </td>
-                                <td>
-                                  {ticket.assignmentGroupId
-                                    ? (groupsById.get(ticket.assignmentGroupId)
-                                        ?.name ?? ticket.assignmentGroupId)
-                                    : 'aucun'}
-                                </td>
-                                <td>
-                                  <div className="ticket-resolution-cell">
-                                    <span className="ticket-resolution-value">
-                                      {formatTicketResolutionDueAt(
-                                        ticket,
-                                        prioritiesById,
-                                      )}
-                                    </span>
-                                    {renderOverdueMarker(ticket)}
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
+                                    )}
+                                  </td>
+                                  <td>
+                                    {ticket.assignedToUserId
+                                      ? formatKnownUserName(
+                                          usersById.get(
+                                            ticket.assignedToUserId,
+                                          ),
+                                          ticket.assignedToUserId,
+                                        )
+                                      : 'aucun'}
+                                  </td>
+                                  <td>
+                                    {categoriesById.get(ticket.categoryId)
+                                      ?.name ?? 'Non définie'}
+                                  </td>
+                                  <td>
+                                    {ticket.assignmentGroupId
+                                      ? (groupsById.get(
+                                          ticket.assignmentGroupId,
+                                        )?.name ?? ticket.assignmentGroupId)
+                                      : 'aucun'}
+                                  </td>
+                                  <td>
+                                    <div className="ticket-resolution-cell">
+                                      <span className="ticket-resolution-value">
+                                        {formatTicketResolutionDueAt(
+                                          ticket,
+                                          prioritiesById,
+                                        )}
+                                      </span>
+                                      {renderOverdueMarker(ticket)}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>

@@ -1420,6 +1420,11 @@ p.ticket-form-helper {
   min-width: 140px;
 }
 
+.admin-users-table th:last-child,
+.admin-users-table td:last-child {
+  min-width: 285px;
+}
+
 .ticket-table tbody tr:last-child td {
   border-bottom: 0;
 }
@@ -1431,6 +1436,14 @@ p.ticket-form-helper {
 
 .ticket-table-row:hover {
   background: #f7f8f9;
+}
+
+.ticket-table-row.is-vip {
+  background: #fff9e8;
+}
+
+.ticket-table-row.is-vip:hover {
+  background: #fff4d6;
 }
 
 .ticket-table-primary {
@@ -1510,6 +1523,126 @@ p.ticket-form-helper {
   letter-spacing: 0;
   text-transform: none;
   white-space: nowrap;
+}
+
+.ticket-vip-badge,
+.admin-user-capability-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  border-radius: 999px;
+  background: #fff2c2;
+  color: #8a5b00;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ticket-vip-badge {
+  margin-left: 8px;
+  padding: 3px 7px;
+}
+
+.admin-user-capability-badges {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 5px;
+  align-items: center;
+  max-width: none;
+  white-space: nowrap;
+}
+
+.admin-user-capability-badge {
+  padding: 4px 7px;
+  border: 1px solid transparent;
+  font-size: 0.64rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.admin-user-capability-badge--vip {
+  border-color: #f7d56a;
+  background: #fff4c7;
+  color: #7c5300;
+}
+
+.admin-user-capability-badge--assets {
+  border-color: #bdd7ff;
+  background: #eef5ff;
+  color: #174c96;
+}
+
+.admin-user-capability-badge--kb {
+  border-color: #bdd7ff;
+  background: #eef5ff;
+  color: #174c96;
+}
+
+.admin-user-capability-empty {
+  color: #6f7f99;
+  font-size: 0.86rem;
+  font-style: italic;
+}
+
+.admin-user-capabilities {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #d9e6f8;
+  border-radius: 18px;
+  background: #f8fbff;
+}
+
+.admin-user-capabilities-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-user-capabilities-heading strong {
+  color: #062a63;
+}
+
+.admin-user-capabilities-heading span {
+  color: #607292;
+  font-size: 0.88rem;
+}
+
+.admin-user-capability-option {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid #dbe7f7;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.admin-user-capability-option.is-disabled {
+  opacity: 0.62;
+  background: #f5f7fb;
+}
+
+.admin-user-capability-option input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #1956b3;
+}
+
+.admin-user-capability-option span {
+  display: grid;
+  gap: 3px;
+}
+
+.admin-user-capability-option strong {
+  color: #0a2a5a;
+}
+
+.admin-user-capability-option small {
+  color: #627392;
 }
 
 .ticket-pagination {

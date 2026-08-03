@@ -9,7 +9,11 @@ export type AdminUserSummary = {
   groupId: string | null;
   groupIds: string[];
   id: string;
+  isVip?: boolean;
   isActive: boolean;
+  canManageAssets?: boolean;
+  canManageKnowledgeBase?: boolean;
+  canValidateKnowledgeBase?: boolean;
   lastName: string | null;
   role: UserRole;
 };

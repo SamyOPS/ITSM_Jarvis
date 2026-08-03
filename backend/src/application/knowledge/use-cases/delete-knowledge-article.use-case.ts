@@ -14,6 +14,7 @@ export class DeleteKnowledgeArticleUseCase {
     id: string,
     currentUserId: string,
     userRole: UserRole,
+    canManageArticles = false,
   ): Promise<void> {
     const existing = await this.repository.getArticleById(id, currentUserId);
 
@@ -23,6 +24,7 @@ export class DeleteKnowledgeArticleUseCase {
 
     if (
       !isAdminRole(userRole) &&
+      !canManageArticles &&
       (existing.createdByUserId !== currentUserId ||
         existing.status === 'PUBLISHED')
     ) {

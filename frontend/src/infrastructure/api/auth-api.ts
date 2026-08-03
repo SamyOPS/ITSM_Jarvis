@@ -166,10 +166,14 @@ export async function fetchAdminUsers(
 }
 
 export type CreateAdminUserPayload = {
+  canManageAssets?: boolean | null;
+  canManageKnowledgeBase?: boolean | null;
+  canValidateKnowledgeBase?: boolean | null;
   email: string;
   firstName: string | null;
   groupId?: string | null;
   groupIds?: string[] | null;
+  isVip?: boolean | null;
   lastName: string | null;
   password: string;
   role: UserRole;
@@ -183,10 +187,14 @@ export type RegisterRequesterPayload = {
 };
 
 export type UpdateAdminUserPayload = {
+  canManageAssets?: boolean | null;
+  canManageKnowledgeBase?: boolean | null;
+  canValidateKnowledgeBase?: boolean | null;
   email: string;
   firstName: string | null;
   groupId?: string | null;
   groupIds?: string[] | null;
+  isVip?: boolean | null;
   lastName: string | null;
   role: UserRole;
 };

@@ -200,7 +200,7 @@ export class SuggestTicketDraftUseCase {
       "- si l'utilisateur a deja repondu a une question de precision de maniere comprehensible, ne repose pas la meme question; passe a l'etape suivante du cadrage ou prepare le ticket;",
       '- pour une demande materielle trop generale, pose 1 petite question simple avant le brouillon si cela aide vraiment a fournir le bon materiel;',
       '- pour une demande ou un incident lie a du materiel physique ou a un accessoire, choisis la categorie Materiel/Matériel depuis la liste fournie: chargeur, cable, adaptateur, souris, clavier, ecran, telephone, imprimante, PC, moniteur, dock, batterie, casque, webcam, peripherique;',
-      "- ne classe jamais une demande de chargeur, cable ou accessoire en Acces/Accès; Acces/Accès sert aux comptes, mots de passe, connexions, droits, sessions, VPN ou acces applicatif;",
+      '- ne classe jamais une demande de chargeur, cable ou accessoire en Acces/Accès; Acces/Accès sert aux comptes, mots de passe, connexions, droits, sessions, VPN ou acces applicatif;',
       "- exemple demande de chargeur sans appareil precise: demander pour quel appareil (PC, telephone, tablette ou autre); si c'est un chargeur de telephone/portable, demander si l'utilisateur sait si c'est USB-C, Lightning, micro-USB, autre, ou peu importe; si c'est un chargeur de PC, ne demande pas le type exact;",
       "- si le type de chargeur ou le connecteur est deja donne (Lightning, USB-C, micro-USB, chargeur PC, etc.) ou si l'utilisateur dit peu importe, ne demande pas l'appareil, le modele, la puissance, ni la compatibilite: cette precision ne change pas le ticket; avance vers le demandeur/canal ou prepare le brouillon;",
       "- si l'utilisateur demande un cable reseau, un cable Wi-Fi, ou un cable pour avoir le Wi-Fi, considere que le besoin est assez clair: ne demande pas de confirmer Ethernet/RJ45 et ne demande pas pour quel materiel;",
@@ -616,11 +616,11 @@ export class SuggestTicketDraftUseCase {
     return {
       action: 'SUGGEST_TICKET',
       question: null,
-    suggestion: {
-      categoryName: this.normalizeSuggestedCategoryName(
-        parsed.categoryName,
-        suggestionContext,
-      ),
+      suggestion: {
+        categoryName: this.normalizeSuggestedCategoryName(
+          parsed.categoryName,
+          suggestionContext,
+        ),
         channelName,
         confidence: Math.min(Math.max(Number(parsed.confidence) || 0, 0), 1),
         description: this.normalizeTicketDescription(
@@ -884,8 +884,10 @@ export class SuggestTicketDraftUseCase {
         question: null,
         suggestion: {
           categoryName:
-            this.normalizeSuggestedCategoryName(parsed.categoryName, conversation) ??
-            'Accès',
+            this.normalizeSuggestedCategoryName(
+              parsed.categoryName,
+              conversation,
+            ) ?? 'Accès',
           channelName,
           confidence: Math.min(
             Math.max(Number(parsed.confidence) || 0.65, 0),
@@ -1164,9 +1166,7 @@ export class SuggestTicketDraftUseCase {
       /(ticket|demande).*(pour vous|pour moi|autre utilisateur)/u.test(
         question,
       ) ||
-      /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(
-        question,
-      )
+      /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(question)
     );
   }
 
@@ -1228,8 +1228,9 @@ export class SuggestTicketDraftUseCase {
       return 'SELF';
     }
 
-    const assistantAskedRequesterScope =
-      this.isRequesterScopeQuestion(lastAssistantQuestion);
+    const assistantAskedRequesterScope = this.isRequesterScopeQuestion(
+      lastAssistantQuestion,
+    );
     const requesterScopeAnswerNamesOther =
       assistantAskedRequesterScope &&
       this.isNamedRequesterScopeAnswer(lastUserMessage);

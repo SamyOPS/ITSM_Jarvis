@@ -27,10 +27,10 @@ import type {
   UpdateKnowledgeArticlePayload,
 } from '../../domain/knowledge/knowledge-article';
 import {
-  isAdminRole,
-  isSupportManagerRole,
-  isSupportRole,
-} from '../../domain/auth/user-role';
+  canManageKnowledgeBase,
+  canValidateKnowledgeBase,
+} from '../../domain/auth/user-capabilities';
+import { isSupportRole } from '../../domain/auth/user-role';
 import type { KnowledgeArticleAttachmentSnapshot } from '../../domain/knowledge/knowledge-article-attachment';
 import { AppPagination } from '../components/app-pagination';
 import {
@@ -119,8 +119,8 @@ export function KnowledgePage({
   const [likingArticleIds, setLikingArticleIds] = useState<string[]>([]);
   const [attachmentInputKey, setAttachmentInputKey] = useState(0);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
-  const isAdmin = isAdminRole(session.user.role);
-  const canValidateArticles = isSupportManagerRole(session.user.role);
+  const canManageArticles = canManageKnowledgeBase(session.user);
+  const canValidateArticles = canValidateKnowledgeBase(session.user);
   const isSupport = isSupportRole(session.user.role);
   const canCreateArticle = isSupport;
   const isArticleFormPage = mode === 'CREATE' || mode === 'EDIT';
@@ -128,12 +128,13 @@ export function KnowledgePage({
   const canEditSelectedArticle =
     selectedArticle !== null &&
     (canValidateArticles ||
+      canManageArticles ||
       (isSupport &&
         selectedArticle.createdByUserId === session.user.id &&
         selectedArticle.status !== 'PUBLISHED'));
   const canDeleteSelectedArticle =
     selectedArticle !== null &&
-    (isAdmin ||
+    (canManageArticles ||
       (isSupport &&
         selectedArticle.createdByUserId === session.user.id &&
         selectedArticle.status !== 'PUBLISHED'));
@@ -1232,7 +1233,7 @@ export function KnowledgePage({
                       </div>
 
                       <div className="kb-attachment-item-actions">
-                        {canValidateArticles ? (
+                        {canManageArticles || canValidateArticles ? (
                           <button
                             aria-label={`Supprimer ${attachment.fileName}`}
                             className="tdp-attachment-remove-btn"

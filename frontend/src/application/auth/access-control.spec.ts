@@ -8,6 +8,7 @@ import {
 
 function buildSession(
   role: AuthSessionSnapshot['user']['role'],
+  userOverrides: Partial<AuthSessionSnapshot['user']> = {},
 ): AuthSessionSnapshot {
   return {
     accessToken: 'access-token',
@@ -19,6 +20,7 @@ function buildSession(
       id: `user-${role.toLowerCase()}`,
       lastName: 'User',
       role,
+      ...userOverrides,
     },
   };
 }
@@ -45,6 +47,12 @@ describe('access-control', () => {
     expect(canAccessRoute('/reports', session)).toBe(true);
     expect(canAccessRoute('/parc/cis', session)).toBe(true);
     expect(canAccessRoute('/parc/cis/new', session)).toBe(false);
+  });
+
+  it('lets agent with asset management permission create equipment', () => {
+    const session = buildSession('AGENT', { canManageAssets: true });
+
+    expect(canAccessRoute('/parc/cis/new', session)).toBe(true);
   });
 
   it('lets manager access admin-like routes except license', () => {

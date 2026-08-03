@@ -48,9 +48,13 @@ describe('SupabaseTokenValidatorService', () => {
 
     await expect(service.validate('token')).resolves.toEqual({
       accessToken: 'token',
+      canManageAssets: false,
+      canManageKnowledgeBase: false,
+      canValidateKnowledgeBase: false,
       email: 'admin@example.com',
       firstName: 'Alice',
       id: 'user-1',
+      isVip: false,
       lastName: 'Martin',
       role: UserRole.ADMIN,
     });
@@ -79,9 +83,13 @@ describe('SupabaseTokenValidatorService', () => {
 
     await expect(service.validate('token')).resolves.toEqual({
       accessToken: 'token',
+      canManageAssets: false,
+      canManageKnowledgeBase: false,
+      canValidateKnowledgeBase: false,
       email: 'agent@example.com',
       firstName: null,
       id: 'user-2',
+      isVip: false,
       lastName: null,
       role: UserRole.AGENT,
     });

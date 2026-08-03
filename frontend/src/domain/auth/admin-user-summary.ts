@@ -9,8 +9,12 @@ export type AdminUserSummary = {
   firstName: string | null;
   groupId: string | null;
   groupIds?: string[];
+  canManageAssets?: boolean;
+  canManageKnowledgeBase?: boolean;
+  canValidateKnowledgeBase?: boolean;
   id: string;
   isActive: boolean;
+  isVip?: boolean;
   lastName: string | null;
   role: UserRole;
   updatedAt?: string | null;
