@@ -1,5 +1,5 @@
 :root {
-  --workspace-sidebar-compact-width: 64px;
+  --workspace-sidebar-compact-width: 68px;
   --workspace-sidebar-expanded-width: 276px;
   --workspace-sidebar-nav-size: 38px;
 }
@@ -93,9 +93,8 @@
   width: var(--workspace-sidebar-nav-size);
   height: var(--workspace-sidebar-nav-size);
   margin: 0 auto;
-  border: 1px solid rgba(226, 233, 246, 0.18);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.07);
+  border: 0;
+  background: transparent;
   color: #f8fbff;
   font-size: 0.98rem;
   font-weight: 800;
@@ -207,6 +206,7 @@
   grid-template-columns: var(--workspace-sidebar-nav-size) minmax(0, 1fr);
   align-items: center;
   justify-items: start;
+  justify-self: center;
   width: var(--workspace-sidebar-nav-size);
   min-width: 0;
   min-height: var(--workspace-sidebar-nav-size);
@@ -227,17 +227,20 @@
 
 .workspace-sidebar:hover .workspace-nav-link,
 .workspace-sidebar:focus-within .workspace-nav-link {
+  justify-self: stretch;
   width: 100%;
 }
 
 .workspace-nav-link:hover {
   border-color: rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
   background: rgba(226, 233, 246, 0.12);
   color: #ffffff;
 }
 
 .workspace-nav-link.is-active {
   border-color: rgba(226, 233, 246, 0.22);
+  border-radius: 8px;
   background: rgba(226, 233, 246, 0.2);
   color: #ffffff;
 }
@@ -255,6 +258,10 @@
 .workspace-sidebar.is-collapsed .workspace-nav-link-icon svg {
   width: 18px;
   height: 18px;
+}
+
+.workspace-sidebar:not(:hover):not(:focus-within) .workspace-nav-link-icon svg {
+  transform: translateX(-1px);
 }
 
 .workspace-nav-link-label,
