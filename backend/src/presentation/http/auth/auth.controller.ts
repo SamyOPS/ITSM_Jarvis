@@ -55,6 +55,18 @@ import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
 
 class CreateAdminUserDto {
+  @IsOptional()
+  @IsBoolean()
+  canManageAssets?: boolean | null;
+
+  @IsOptional()
+  @IsBoolean()
+  canManageKnowledgeBase?: boolean | null;
+
+  @IsOptional()
+  @IsBoolean()
+  canValidateKnowledgeBase?: boolean | null;
+
   @IsEmail()
   email!: string;
 
@@ -83,9 +95,25 @@ class CreateAdminUserDto {
 
   @IsEnum(UserRole)
   role!: UserRole;
+
+  @IsOptional()
+  @IsBoolean()
+  isVip?: boolean | null;
 }
 
 class UpdateAdminUserDto {
+  @IsOptional()
+  @IsBoolean()
+  canManageAssets?: boolean | null;
+
+  @IsOptional()
+  @IsBoolean()
+  canManageKnowledgeBase?: boolean | null;
+
+  @IsOptional()
+  @IsBoolean()
+  canValidateKnowledgeBase?: boolean | null;
+
   @IsEmail()
   email!: string;
 
@@ -108,6 +136,10 @@ class UpdateAdminUserDto {
 
   @IsEnum(UserRole)
   role!: UserRole;
+
+  @IsOptional()
+  @IsBoolean()
+  isVip?: boolean | null;
 }
 
 class UpdateAdminUserStatusDto {
@@ -263,11 +295,27 @@ export class AuthController {
       );
     }
 
+    if (!isAdminRole(user.role) && hasCapabilityChange(body)) {
+      throw new BadRequestException(
+        'Only admins can update user characteristics.',
+      );
+    }
+
     return this.createAdminUserUseCase.execute({
+      canManageAssets: isAdminRole(user.role)
+        ? body.canManageAssets
+        : undefined,
+      canManageKnowledgeBase: isAdminRole(user.role)
+        ? body.canManageKnowledgeBase
+        : undefined,
+      canValidateKnowledgeBase: isAdminRole(user.role)
+        ? body.canValidateKnowledgeBase
+        : undefined,
       email: body.email,
       firstName: body.firstName ?? null,
       groupId: body.groupId,
       groupIds: body.groupIds,
+      isVip: isAdminRole(user.role) ? body.isVip : undefined,
       lastName: body.lastName ?? null,
       password: body.password,
       role: body.role,
@@ -311,6 +359,12 @@ export class AuthController {
       );
     }
 
+    if (!isAdminRole(user.role) && hasCapabilityChange(body)) {
+      throw new BadRequestException(
+        'Only admins can update user characteristics.',
+      );
+    }
+
     if (
       targetUser.isActive &&
       targetUser.role === UserRole.SUPER_ADMIN &&
@@ -320,10 +374,20 @@ export class AuthController {
     }
 
     return this.updateAdminUserUseCase.execute({
+      canManageAssets: isAdminRole(user.role)
+        ? body.canManageAssets
+        : undefined,
+      canManageKnowledgeBase: isAdminRole(user.role)
+        ? body.canManageKnowledgeBase
+        : undefined,
+      canValidateKnowledgeBase: isAdminRole(user.role)
+        ? body.canValidateKnowledgeBase
+        : undefined,
       email: body.email,
       firstName: body.firstName ?? null,
       groupId: body.groupId,
       groupIds: body.groupIds,
+      isVip: isAdminRole(user.role) ? body.isVip : undefined,
       lastName: body.lastName ?? null,
       role: body.role,
       userId,
@@ -505,4 +569,21 @@ export class AuthController {
       (listedUser) => listedUser.role !== UserRole.SUPER_ADMIN,
     );
   }
+}
+
+function hasCapabilityChange(
+  body: Pick<
+    CreateAdminUserDto,
+    | 'canManageAssets'
+    | 'canManageKnowledgeBase'
+    | 'canValidateKnowledgeBase'
+    | 'isVip'
+  >,
+): boolean {
+  return (
+    body.canManageAssets !== undefined ||
+    body.canManageKnowledgeBase !== undefined ||
+    body.canValidateKnowledgeBase !== undefined ||
+    body.isVip !== undefined
+  );
 }

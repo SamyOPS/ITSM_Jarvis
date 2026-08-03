@@ -20,7 +20,7 @@ import {
 } from 'react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
-import { isAdminRole } from '../../domain/auth/user-role';
+import { canManageAssets } from '../../domain/auth/user-capabilities';
 import { AppPagination } from '../components/app-pagination';
 import {
   type ReferentialCatalogSnapshot,
@@ -495,7 +495,7 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
 
   const isCreateMode = mode === 'CREATE';
   const isDetailMode = mode === 'DETAIL';
-  const canManageEquipment = isAdminRole(session.user.role);
+  const canManageEquipment = canManageAssets(session.user);
   const detailBackPath = withPageQuery(
     '/parc/cis',
     getPageQueryParam('fromPage'),

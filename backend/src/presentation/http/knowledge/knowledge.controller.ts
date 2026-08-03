@@ -28,6 +28,10 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { AddKnowledgeArticleAttachmentDto } from './add-knowledge-article-attachment.dto';
+import {
+  canManageKnowledgeBase,
+  canValidateKnowledgeBase,
+} from '../../../domain/auth/user-capabilities';
 
 type KnowledgeArticleBodyDto = {
   category?: unknown;
@@ -56,7 +60,11 @@ export class KnowledgeController {
   listArticles(
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<KnowledgeArticle[]> {
-    return this.listKnowledgeArticlesUseCase.execute(user.role, user.id);
+    return this.listKnowledgeArticlesUseCase.execute(
+      user.role,
+      user.id,
+      canManageKnowledgeBase(user) || canValidateKnowledgeBase(user),
+    );
   }
 
   @Get(':id')
@@ -64,7 +72,12 @@ export class KnowledgeController {
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<KnowledgeArticle> {
-    return this.getKnowledgeArticleUseCase.execute(id, user.role, user.id);
+    return this.getKnowledgeArticleUseCase.execute(
+      id,
+      user.role,
+      user.id,
+      canManageKnowledgeBase(user) || canValidateKnowledgeBase(user),
+    );
   }
 
   @Get(':id/attachments')
@@ -76,6 +89,7 @@ export class KnowledgeController {
       id,
       user.id,
       user.role,
+      canManageKnowledgeBase(user) || canValidateKnowledgeBase(user),
     );
   }
 
@@ -97,7 +111,11 @@ export class KnowledgeController {
     @Body() body: KnowledgeArticleBodyDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<KnowledgeArticle> {
-    return this.createKnowledgeArticleUseCase.execute(body, user.id, user.role);
+    return this.createKnowledgeArticleUseCase.execute(
+      body,
+      user.id,
+      canValidateKnowledgeBase(user),
+    );
   }
 
   @Post(':id/attachments')
@@ -129,8 +147,9 @@ export class KnowledgeController {
     return this.updateKnowledgeArticleUseCase.execute(
       id,
       user.id,
-      user.role,
       body,
+      canManageKnowledgeBase(user),
+      canValidateKnowledgeBase(user),
     );
   }
 
@@ -141,12 +160,17 @@ export class KnowledgeController {
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
-    return this.deleteKnowledgeArticleUseCase.execute(id, user.id, user.role);
+    return this.deleteKnowledgeArticleUseCase.execute(
+      id,
+      user.id,
+      user.role,
+      canManageKnowledgeBase(user),
+    );
   }
 
   @Delete(':articleId/attachments/:attachmentId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(UserRole.MANAGER, UserRole.ADMIN)
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
   deleteAttachment(
     @Param('articleId') articleId: string,
     @Param('attachmentId') attachmentId: string,
@@ -156,6 +180,8 @@ export class KnowledgeController {
       actorRole: user.role,
       actorUserId: user.id,
       articleId,
+      canReviewArticles:
+        canManageKnowledgeBase(user) || canValidateKnowledgeBase(user),
       attachmentId,
     });
   }

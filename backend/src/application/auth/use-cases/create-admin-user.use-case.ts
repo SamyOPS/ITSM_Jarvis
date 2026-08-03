@@ -14,10 +14,14 @@ import {
 } from '../user-license-policy';
 
 export type CreateAdminUserCommand = {
+  canManageAssets?: boolean | null;
+  canManageKnowledgeBase?: boolean | null;
+  canValidateKnowledgeBase?: boolean | null;
   email: string;
   firstName?: string | null;
   groupId?: string | null;
   groupIds?: string[] | null;
+  isVip?: boolean | null;
   lastName?: string | null;
   password: string;
   role: UserRole;
@@ -62,12 +66,25 @@ export class CreateAdminUserUseCase {
     }
 
     const groupIds = normalizeGroupIds(command.groupIds, command.groupId) ?? [];
+    const canReceiveTechnicalCapabilities =
+      command.role !== UserRole.DEMANDEUR &&
+      command.role !== UserRole.ADMIN &&
+      command.role !== UserRole.SUPER_ADMIN;
+    const canManageKnowledgeBase =
+      canReceiveTechnicalCapabilities &&
+      (Boolean(command.canManageKnowledgeBase) ||
+        Boolean(command.canValidateKnowledgeBase));
 
     const record: CreateAdminUserRecord = {
+      canManageAssets:
+        canReceiveTechnicalCapabilities && Boolean(command.canManageAssets),
+      canManageKnowledgeBase,
+      canValidateKnowledgeBase: canManageKnowledgeBase,
       email,
       firstName: normalizeOptionalText(command.firstName),
       groupId: groupIds[0] ?? null,
       groupIds,
+      isVip: Boolean(command.isVip),
       lastName: normalizeOptionalText(command.lastName),
       password,
       role: command.role,

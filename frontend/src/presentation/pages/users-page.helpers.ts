@@ -32,8 +32,12 @@ export const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
 };
 
 export const EMPTY_USER_FORM: UserFormState = {
+  canManageAssets: false,
+  canManageKnowledgeBase: false,
+  canValidateKnowledgeBase: false,
   email: '',
   firstName: '',
+  isVip: false,
   lastName: '',
   password: '',
   role: 'DEMANDEUR',

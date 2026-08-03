@@ -3,7 +3,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { isSupportManagerRole, UserRole } from '../../../domain/auth/user-role';
 import { KnowledgeArticle } from '../../../domain/knowledge/knowledge-article';
 import {
   type KnowledgeArticleInput,
@@ -18,8 +17,9 @@ export class UpdateKnowledgeArticleUseCase {
   async execute(
     id: string,
     currentUserId: string,
-    userRole: UserRole,
     input: KnowledgeArticleInput,
+    canManageArticles = false,
+    canValidateArticles = false,
   ): Promise<KnowledgeArticle> {
     const existing = await this.repository.getArticleById(id, currentUserId);
 
@@ -27,7 +27,7 @@ export class UpdateKnowledgeArticleUseCase {
       throw new NotFoundException('Knowledge article not found.');
     }
 
-    if (!isSupportManagerRole(userRole)) {
+    if (!canManageArticles && !canValidateArticles) {
       if (
         existing.createdByUserId !== currentUserId ||
         existing.status === 'PUBLISHED'
@@ -42,7 +42,7 @@ export class UpdateKnowledgeArticleUseCase {
     return this.repository.updateArticle(id, currentUserId, {
       category,
       content,
-      status: isSupportManagerRole(userRole) ? status : 'DRAFT',
+      status: canValidateArticles ? status : 'DRAFT',
       title,
     });
   }

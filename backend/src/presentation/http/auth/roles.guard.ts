@@ -9,6 +9,11 @@ import { type Request } from 'express';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
 import { AuthPolicy } from '../../../domain/auth/auth-policy';
 import {
+  canManageAssets,
+  canManageKnowledgeBase,
+  canValidateKnowledgeBase,
+} from '../../../domain/auth/user-capabilities';
+import {
   isSupportManagerRole,
   isSupportRole,
   UserRole,
@@ -75,6 +80,12 @@ export class RolesGuard implements CanActivate {
       case AuthPolicy.ACCESS_ADMIN_AREA:
       case AuthPolicy.MANAGE_REFERENTIALS:
         return isSupportManagerRole(user.role);
+      case AuthPolicy.MANAGE_ASSETS:
+        return canManageAssets(user);
+      case AuthPolicy.MANAGE_KNOWLEDGE_BASE:
+        return canManageKnowledgeBase(user);
+      case AuthPolicy.VALIDATE_KNOWLEDGE_BASE:
+        return canValidateKnowledgeBase(user);
       case AuthPolicy.ACCESS_AGENT_AREA:
         return isSupportRole(user.role);
       default:

@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import { canManageUserCapabilities } from '../../domain/auth/user-capabilities';
 import {
   PASSWORD_MIN_LENGTH,
   validatePasswordPolicy,
@@ -200,6 +201,12 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
       selectedUser !== null &&
       isManagerRole(selectedUser.role)
     );
+  const canChangeUserCapabilities =
+    canManageUserCapabilities(session.user) && canManageSelectedUser;
+  const canAssignTechnicalCapabilities =
+    formState.role !== 'DEMANDEUR' &&
+    formState.role !== 'ADMIN' &&
+    formState.role !== 'SUPER_ADMIN';
   const userRoleOptions = useMemo(() => {
     if (selectedUser?.role === 'SUPER_ADMIN') {
       return ['SUPER_ADMIN'] satisfies UserRole[];
@@ -364,11 +371,29 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
     }
   }, [groupLookupPage, totalGroupLookupPages]);
 
-  function handleFieldChange(field: keyof UserFormState, value: string): void {
-    setFormState((currentState) => ({
-      ...currentState,
-      [field]: value,
-    }));
+  function handleFieldChange<K extends keyof UserFormState>(
+    field: K,
+    value: UserFormState[K],
+  ): void {
+    setFormState((currentState) => {
+      if (
+        field === 'role' &&
+        (value === 'DEMANDEUR' || value === 'ADMIN' || value === 'SUPER_ADMIN')
+      ) {
+        return {
+          ...currentState,
+          canManageAssets: false,
+          canManageKnowledgeBase: false,
+          canValidateKnowledgeBase: false,
+          [field]: value,
+        };
+      }
+
+      return {
+        ...currentState,
+        [field]: value,
+      };
+    });
     setFormMessage(null);
   }
 
@@ -382,8 +407,26 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
     setGroupLookupPage(1);
     setGroupLookupSearch('');
     setFormState({
+      canManageAssets:
+        user.role !== 'DEMANDEUR' &&
+        user.role !== 'ADMIN' &&
+        user.role !== 'SUPER_ADMIN' &&
+        Boolean(user.canManageAssets),
+      canManageKnowledgeBase:
+        user.role !== 'DEMANDEUR' &&
+        user.role !== 'ADMIN' &&
+        user.role !== 'SUPER_ADMIN' &&
+        (Boolean(user.canManageKnowledgeBase) ||
+          Boolean(user.canValidateKnowledgeBase)),
+      canValidateKnowledgeBase:
+        user.role !== 'DEMANDEUR' &&
+        user.role !== 'ADMIN' &&
+        user.role !== 'SUPER_ADMIN' &&
+        (Boolean(user.canManageKnowledgeBase) ||
+          Boolean(user.canValidateKnowledgeBase)),
       email: user.email ?? '',
       firstName: inferredName.firstName,
+      isVip: Boolean(user.isVip),
       lastName: inferredName.lastName,
       password: '',
       role: user.role,
@@ -427,9 +470,19 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
 
     try {
       await createAdminUser(session.accessToken, {
+        canManageAssets: canChangeUserCapabilities
+          ? canAssignTechnicalCapabilities && formState.canManageAssets
+          : undefined,
+        canManageKnowledgeBase: canChangeUserCapabilities
+          ? canAssignTechnicalCapabilities && formState.canManageKnowledgeBase
+          : undefined,
+        canValidateKnowledgeBase: canChangeUserCapabilities
+          ? canAssignTechnicalCapabilities && formState.canManageKnowledgeBase
+          : undefined,
         email: formState.email.trim(),
         firstName: normalizeOptionalText(formState.firstName),
         groupId: null,
+        isVip: canChangeUserCapabilities ? formState.isVip : undefined,
         lastName: normalizeOptionalText(formState.lastName),
         password: formState.password,
         role: formState.role,
@@ -477,9 +530,19 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
 
     try {
       await updateAdminUser(session.accessToken, selectedUserId, {
+        canManageAssets: canChangeUserCapabilities
+          ? canAssignTechnicalCapabilities && formState.canManageAssets
+          : undefined,
+        canManageKnowledgeBase: canChangeUserCapabilities
+          ? canAssignTechnicalCapabilities && formState.canManageKnowledgeBase
+          : undefined,
+        canValidateKnowledgeBase: canChangeUserCapabilities
+          ? canAssignTechnicalCapabilities && formState.canManageKnowledgeBase
+          : undefined,
         email: formState.email.trim(),
         firstName: normalizeOptionalText(formState.firstName),
         groupId: selectedUser?.groupId ?? null,
+        isVip: canChangeUserCapabilities ? formState.isVip : undefined,
         lastName: normalizeOptionalText(formState.lastName),
         role: formState.role,
       });
@@ -934,6 +997,93 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
                     Seul un super administrateur peut modifier ce compte.
                   </p>
                 ) : null}
+
+                <section className="admin-user-capabilities">
+                  <div className="admin-user-capabilities-heading">
+                    <strong>Caracteristiques</strong>
+                    <span>
+                      Droits additionnels cumulables sans changer le role.
+                    </span>
+                  </div>
+
+                  {[
+                    {
+                      field: 'isVip' as const,
+                      label: 'Utilisateur VIP',
+                      description:
+                        'Ses tickets sont mis en avant et priorises visuellement.',
+                    },
+                    {
+                      field: 'canManageAssets' as const,
+                      label: 'Gestionnaire du parc',
+                      description:
+                        'Peut ajouter et modifier les equipements du parc.',
+                      technical: true,
+                    },
+                    {
+                      field: 'canManageKnowledgeBase' as const,
+                      label: 'Gestionnaire base de connaissances',
+                      description:
+                        'Peut gerer, publier et valider les articles.',
+                      technical: true,
+                    },
+                  ].map((capability) => {
+                    const isTechnicalCapability =
+                      'technical' in capability && capability.technical;
+                    const isDisabled =
+                      !canChangeUserCapabilities ||
+                      (!canAssignTechnicalCapabilities &&
+                        isTechnicalCapability);
+
+                    return (
+                      <label
+                        className={
+                          isDisabled
+                            ? 'admin-user-capability-option is-disabled'
+                            : 'admin-user-capability-option'
+                        }
+                        key={capability.field}
+                      >
+                        <input
+                          checked={formState[capability.field]}
+                          disabled={isDisabled}
+                          onChange={(event) =>
+                            handleFieldChange(
+                              capability.field,
+                              event.target.checked,
+                            )
+                          }
+                          type="checkbox"
+                        />
+                        <span>
+                          <strong>{capability.label}</strong>
+                          <small>{capability.description}</small>
+                        </span>
+                      </label>
+                    );
+                  })}
+
+                  {!canChangeUserCapabilities ? (
+                    <p className="ticket-form-helper">
+                      Seuls les administrateurs peuvent modifier ces
+                      caracteristiques.
+                    </p>
+                  ) : null}
+                  {formState.role === 'DEMANDEUR' ? (
+                    <p className="ticket-form-helper">
+                      Un demandeur peut seulement etre marque VIP. Les droits
+                      techniques sont reserves aux agents, managers et
+                      administrateurs.
+                    </p>
+                  ) : null}
+                  {formState.role === 'ADMIN' ||
+                  formState.role === 'SUPER_ADMIN' ? (
+                    <p className="ticket-form-helper">
+                      Les administrateurs ont deja les droits techniques par
+                      leur role. Seul le statut VIP reste utile ici.
+                    </p>
+                  ) : null}
+                </section>
               </form>
 
               {formMessage ? (
@@ -1344,6 +1494,7 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
                         <th>Nom</th>
                         <th>Email</th>
                         <th>Role</th>
+                        <th>Caracteristiques</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1366,6 +1517,43 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
                           <td>{user.lastName ?? 'Non defini'}</td>
                           <td>{user.email ?? 'Email indisponible'}</td>
                           <td>{translateUserRole(user.role)}</td>
+                          <td>
+                            <div className="admin-user-capability-badges">
+                              {user.isVip ? (
+                                <span className="admin-user-capability-badge admin-user-capability-badge--vip">
+                                  VIP
+                                </span>
+                              ) : null}
+                              {user.role !== 'DEMANDEUR' &&
+                              user.role !== 'ADMIN' &&
+                              user.role !== 'SUPER_ADMIN' &&
+                              user.canManageAssets ? (
+                                <span className="admin-user-capability-badge admin-user-capability-badge--assets">
+                                  Parc
+                                </span>
+                              ) : null}
+                              {user.role !== 'DEMANDEUR' &&
+                              user.role !== 'ADMIN' &&
+                              user.role !== 'SUPER_ADMIN' &&
+                              (user.canManageKnowledgeBase ||
+                                user.canValidateKnowledgeBase) ? (
+                                <span className="admin-user-capability-badge admin-user-capability-badge--kb">
+                                  Base co.
+                                </span>
+                              ) : null}
+                              {!user.isVip &&
+                              (user.role === 'DEMANDEUR' ||
+                                user.role === 'ADMIN' ||
+                                user.role === 'SUPER_ADMIN' ||
+                                (!user.canManageAssets &&
+                                  !user.canManageKnowledgeBase &&
+                                  !user.canValidateKnowledgeBase)) ? (
+                                <small className="admin-user-capability-empty">
+                                  Aucune
+                                </small>
+                              ) : null}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>

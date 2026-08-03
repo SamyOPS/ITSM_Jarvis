@@ -683,12 +683,16 @@ export function normalizeSearchText(value: string): string {
 export function sortTicketsByOperationalPriority(
   tickets: TicketSummarySnapshot[],
   prioritiesById: Map<string, { level: number; name: string }>,
+  vipRequesterIds: ReadonlySet<string> = new Set(),
 ): TicketSummarySnapshot[] {
   return [...tickets].sort((left, right) => {
+    const leftIsVip = isTicketRequesterVip(left, vipRequesterIds);
+    const rightIsVip = isTicketRequesterVip(right, vipRequesterIds);
     const leftScore = getTicketOperationalScore(left, prioritiesById);
     const rightScore = getTicketOperationalScore(right, prioritiesById);
 
     return (
+      Number(rightIsVip) - Number(leftIsVip) ||
       leftScore.statusRank - rightScore.statusRank ||
       leftScore.slaRank - rightScore.slaRank ||
       leftScore.nextDueAt - rightScore.nextDueAt ||
@@ -696,6 +700,15 @@ export function sortTicketsByOperationalPriority(
       leftScore.createdAt - rightScore.createdAt
     );
   });
+}
+
+export function isTicketRequesterVip(
+  ticket: TicketSummarySnapshot,
+  vipRequesterIds: ReadonlySet<string>,
+): boolean {
+  return vipRequesterIds.has(
+    ticket.requestedForUserId ?? ticket.createdByUserId,
+  );
 }
 
 export function sortTicketsByCreatedAtDesc(

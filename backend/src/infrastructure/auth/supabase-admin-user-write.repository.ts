@@ -16,6 +16,8 @@ import {
   type UserAccountStatus,
 } from '../../domain/auth/user-account-status';
 import { UserRole } from '../../domain/auth/user-role';
+import { TicketHistoryEventType } from '../../domain/ticketing/ticket-history-event-type';
+import { TicketStatus } from '../../domain/ticketing/ticket-status';
 import { getBackendRuntimeConfig } from '../config/app-config';
 
 type SupabaseCreatedAuthUser = {
@@ -27,12 +29,16 @@ type SupabaseCreatedAuthUser = {
 
 type SupabaseUserRow = {
   account_status: string | null;
+  can_manage_assets: boolean | null;
+  can_manage_knowledge_base: boolean | null;
+  can_validate_knowledge_base: boolean | null;
   display_name: string | null;
   email: string | null;
   first_name: string | null;
   group_id: string | null;
   id: string;
   is_active: boolean;
+  is_vip: boolean | null;
   last_name: string | null;
   role: string;
 };
@@ -41,6 +47,11 @@ type SupabaseUserGroupRow = {
   group_id: string;
   id: string;
   is_primary: boolean;
+};
+
+type SupabaseTicketCleanupRow = {
+  id: string;
+  status: TicketStatus;
 };
 
 @Injectable()
@@ -87,7 +98,11 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
       groupIds: record.role === UserRole.DEMANDEUR ? [] : record.groupIds,
       id: authUserId,
       accountStatus: 'ACTIVE',
+      canManageAssets: record.canManageAssets,
+      canManageKnowledgeBase: record.canManageKnowledgeBase,
+      canValidateKnowledgeBase: record.canValidateKnowledgeBase,
       isActive: true,
+      isVip: record.isVip,
       lastName: record.lastName,
       role: record.role,
     });
@@ -124,7 +139,11 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
         groupIds: record.role === UserRole.DEMANDEUR ? [] : record.groupIds,
         id: userId,
         accountStatus: 'ACTIVE',
+        canManageAssets: record.canManageAssets,
+        canManageKnowledgeBase: record.canManageKnowledgeBase,
+        canValidateKnowledgeBase: record.canValidateKnowledgeBase,
         isActive: true,
+        isVip: record.isVip,
         lastName: record.lastName,
         role: record.role,
       },
@@ -526,7 +545,11 @@ async function upsertPublicUser(
     groupId?: string | null;
     groupIds?: string[];
     id: string;
+    canManageAssets?: boolean;
+    canManageKnowledgeBase?: boolean;
+    canValidateKnowledgeBase?: boolean;
     isActive: boolean;
+    isVip?: boolean;
     lastName: string | null;
     role: UserRole;
   },
@@ -542,6 +565,22 @@ async function upsertPublicUser(
     last_name: record.lastName,
     role: record.role,
   };
+
+  if (record.isVip !== undefined) {
+    body.is_vip = record.isVip;
+  }
+
+  if (record.canManageAssets !== undefined) {
+    body.can_manage_assets = record.canManageAssets;
+  }
+
+  if (record.canManageKnowledgeBase !== undefined) {
+    body.can_manage_knowledge_base = record.canManageKnowledgeBase;
+  }
+
+  if (record.canValidateKnowledgeBase !== undefined) {
+    body.can_validate_knowledge_base = record.canValidateKnowledgeBase;
+  }
 
   if (record.groupId !== undefined && record.groupIds === undefined) {
     body.group_id = record.groupId;
@@ -599,7 +638,7 @@ async function getPublicUserById(
     id: `eq.${userId}`,
     limit: '1',
     select:
-      'id,email,display_name,first_name,last_name,role,group_id,is_active,account_status',
+      'id,email,display_name,first_name,last_name,role,group_id,is_active,account_status,is_vip,can_manage_assets,can_manage_knowledge_base,can_validate_knowledge_base',
   });
 
   let response: Response;
@@ -1065,10 +1104,21 @@ async function closeOpenOrResolvedRequestedTicketsForUser(
   userId: string,
 ): Promise<void> {
   let response: Response;
+  const tickets = await listOpenOrResolvedRequestedTicketsForUser(
+    supabaseUrl,
+    supabaseApiKey,
+    userId,
+  );
+
+  if (tickets.length === 0) {
+    return;
+  }
+
+  const closedAt = new Date().toISOString();
   const query = new URLSearchParams({
     archived_at: 'is.null',
     requested_for_user_id: `eq.${userId}`,
-    status: 'in.(OPEN,IN_PROGRESS,PENDING,RESOLVED)',
+    id: `in.(${tickets.map((ticket) => ticket.id).join(',')})`,
   });
 
   try {
@@ -1083,8 +1133,8 @@ async function closeOpenOrResolvedRequestedTicketsForUser(
           Prefer: 'return=minimal',
         },
         body: JSON.stringify({
-          closed_at: new Date().toISOString(),
-          status: 'CLOSED',
+          closed_at: closedAt,
+          status: TicketStatus.CLOSED,
         }),
       },
     );
@@ -1100,6 +1150,170 @@ async function closeOpenOrResolvedRequestedTicketsForUser(
     throw new BadRequestException(
       message ||
         `Supabase deleted requester ticket cleanup returned status ${response.status}.`,
+    );
+  }
+
+  await addDeletedRequesterTicketClosureTraces(
+    supabaseUrl,
+    supabaseApiKey,
+    userId,
+    tickets,
+  );
+}
+
+async function listOpenOrResolvedRequestedTicketsForUser(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+): Promise<SupabaseTicketCleanupRow[]> {
+  let response: Response;
+  const query = new URLSearchParams({
+    archived_at: 'is.null',
+    requested_for_user_id: `eq.${userId}`,
+    select: 'id,status',
+    status: `in.(${[
+      TicketStatus.OPEN,
+      TicketStatus.IN_PROGRESS,
+      TicketStatus.PENDING,
+      TicketStatus.RESOLVED,
+    ].join(',')})`,
+  });
+
+  try {
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/tickets?${query.toString()}`,
+      {
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          Accept: 'application/json',
+        },
+      },
+    );
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase deleted requester ticket lookup is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase deleted requester ticket lookup returned status ${response.status}.`,
+    );
+  }
+
+  const rows = (await response.json()) as SupabaseTicketCleanupRow[] | null;
+
+  return Array.isArray(rows) ? rows : [];
+}
+
+async function addDeletedRequesterTicketClosureTraces(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+  tickets: SupabaseTicketCleanupRow[],
+): Promise<void> {
+  await insertDeletedRequesterClosureComments(
+    supabaseUrl,
+    supabaseApiKey,
+    userId,
+    tickets,
+  );
+  await insertDeletedRequesterClosureHistory(
+    supabaseUrl,
+    supabaseApiKey,
+    userId,
+    tickets,
+  );
+}
+
+async function insertDeletedRequesterClosureComments(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+  tickets: SupabaseTicketCleanupRow[],
+): Promise<void> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${supabaseUrl}/rest/v1/ticket_comments`, {
+      method: 'POST',
+      headers: {
+        apikey: supabaseApiKey,
+        Authorization: `Bearer ${supabaseApiKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(
+        tickets.map((ticket) => ({
+          author_user_id: userId,
+          body: 'Ticket cloture automatiquement car le demandeur associe a ete supprime.',
+          is_internal: true,
+          ticket_id: ticket.id,
+        })),
+      ),
+    });
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase deleted requester ticket comment trace is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase deleted requester ticket comment trace returned status ${response.status}.`,
+    );
+  }
+}
+
+async function insertDeletedRequesterClosureHistory(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+  tickets: SupabaseTicketCleanupRow[],
+): Promise<void> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${supabaseUrl}/rest/v1/ticket_history`, {
+      method: 'POST',
+      headers: {
+        apikey: supabaseApiKey,
+        Authorization: `Bearer ${supabaseApiKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(
+        tickets.map((ticket) => ({
+          actor_user_id: userId,
+          event_type: TicketHistoryEventType.STATUS_CHANGED,
+          payload: {
+            fromStatus: ticket.status,
+            reason: 'REQUESTER_DELETED',
+            toStatus: TicketStatus.CLOSED,
+          },
+          ticket_id: ticket.id,
+        })),
+      ),
+    });
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase deleted requester ticket history trace is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase deleted requester ticket history trace returned status ${response.status}.`,
     );
   }
 }
@@ -1161,7 +1375,11 @@ function mapUserRow(
     groupId: groupIds ? (groupIds[0] ?? null) : row.group_id,
     groupIds: groupIds ?? (row.group_id ? [row.group_id] : []),
     id: row.id,
+    isVip: Boolean(row.is_vip),
     isActive: accountStatus === 'ACTIVE',
+    canManageAssets: Boolean(row.can_manage_assets),
+    canManageKnowledgeBase: Boolean(row.can_manage_knowledge_base),
+    canValidateKnowledgeBase: Boolean(row.can_validate_knowledge_base),
     lastName: row.last_name,
     role: resolveUserRole(row.role),
   };

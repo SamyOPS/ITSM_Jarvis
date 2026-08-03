@@ -7,11 +7,15 @@ import { getBackendRuntimeConfig } from '../config/app-config';
 
 type SupabaseAdminUserRow = {
   account_status: string | null;
+  can_manage_assets: boolean | null;
+  can_manage_knowledge_base: boolean | null;
+  can_validate_knowledge_base: boolean | null;
   display_name: string | null;
   first_name: string | null;
   group_id: string | null;
   id: string;
   is_active: boolean;
+  is_vip: boolean | null;
   last_name: string | null;
   role: string;
 };
@@ -44,7 +48,7 @@ export class SupabaseAdminUserReadRepository implements AdminUserReadRepository 
     const query = new URLSearchParams({
       order: 'display_name.asc.nullslast,role.asc',
       select:
-        'id,display_name,first_name,last_name,role,group_id,is_active,account_status',
+        'id,display_name,first_name,last_name,role,group_id,is_active,account_status,is_vip,can_manage_assets,can_manage_knowledge_base,can_validate_knowledge_base',
     });
 
     let response: Response;
@@ -94,7 +98,11 @@ export class SupabaseAdminUserReadRepository implements AdminUserReadRepository 
       groupId: row.group_id,
       groupIds: getUserGroupIds(row, groupIdsByUserId),
       id: row.id,
+      isVip: Boolean(row.is_vip),
       isActive: row.is_active,
+      canManageAssets: Boolean(row.can_manage_assets),
+      canManageKnowledgeBase: Boolean(row.can_manage_knowledge_base),
+      canValidateKnowledgeBase: Boolean(row.can_validate_knowledge_base),
       lastName: row.last_name,
       role: resolveUserRole(row.role),
     }));

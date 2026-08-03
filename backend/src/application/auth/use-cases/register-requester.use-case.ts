@@ -49,11 +49,15 @@ export class RegisterRequesterUseCase {
     assertCanAddBillableUser(users, licenseSettings.maxBillableUsers);
 
     const record: CreateAdminUserRecord = {
+      canManageAssets: false,
+      canManageKnowledgeBase: false,
+      canValidateKnowledgeBase: false,
       email,
       emailConfirmed: false,
       firstName: normalizeOptionalText(command.firstName),
       groupId: null,
       groupIds: [],
+      isVip: false,
       lastName: normalizeOptionalText(command.lastName),
       password,
       role: UserRole.DEMANDEUR,

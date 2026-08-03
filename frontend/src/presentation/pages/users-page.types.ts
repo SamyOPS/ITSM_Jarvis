@@ -7,8 +7,12 @@ export type UsersPageProps = {
 };
 
 export type UserFormState = {
+  canManageAssets: boolean;
+  canManageKnowledgeBase: boolean;
+  canValidateKnowledgeBase: boolean;
   email: string;
   firstName: string;
+  isVip: boolean;
   lastName: string;
   password: string;
   role: UserRole;

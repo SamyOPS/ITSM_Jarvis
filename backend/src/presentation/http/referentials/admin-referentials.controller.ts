@@ -184,6 +184,8 @@ export class AdminReferentialsController {
   }
 
   @Post('cis')
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
+  @Policies(AuthPolicy.MANAGE_ASSETS)
   createCi(@Body() body: CiBody) {
     return this.manageCisUseCase.create({
       name: body.name,
@@ -211,6 +213,8 @@ export class AdminReferentialsController {
   }
 
   @Patch('cis/:id')
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
+  @Policies(AuthPolicy.MANAGE_ASSETS)
   updateCi(@Param('id') id: string, @Body() body: CiBody) {
     return this.manageCisUseCase.update({
       id,
@@ -239,6 +243,8 @@ export class AdminReferentialsController {
   }
 
   @Delete('cis/:id')
+  @Roles(UserRole.AGENT, UserRole.MANAGER, UserRole.ADMIN)
+  @Policies(AuthPolicy.MANAGE_ASSETS)
   @HttpCode(204)
   async deleteCi(@Param('id') id: string): Promise<void> {
     await this.manageCisUseCase.delete(id);

@@ -11,15 +11,23 @@ import { getBackendRuntimeConfig } from '../config/app-config';
 
 type SupabaseUserProfileRow = {
   account_status: string | null;
+  can_manage_assets: boolean | null;
+  can_manage_knowledge_base: boolean | null;
+  can_validate_knowledge_base: boolean | null;
   first_name: string | null;
   is_active: boolean;
+  is_vip: boolean | null;
   last_name: string | null;
   role: string;
 };
 
 type SupabaseResolvedProfile = {
+  canManageAssets: boolean;
+  canManageKnowledgeBase: boolean;
+  canValidateKnowledgeBase: boolean;
   firstName: string | null;
   isActive: boolean | null;
+  isVip: boolean;
   lastName: string | null;
   role: UserRole | null;
 };
@@ -70,9 +78,13 @@ export class SupabaseTokenValidatorService {
 
     return {
       accessToken,
+      canManageAssets: profile.canManageAssets,
+      canManageKnowledgeBase: profile.canManageKnowledgeBase,
+      canValidateKnowledgeBase: profile.canValidateKnowledgeBase,
       email: payload.email,
       firstName: profile.firstName,
       id: payload.id,
+      isVip: profile.isVip,
       lastName: profile.lastName,
       role:
         profile.role ?? this.resolveRoleFallback(payload.app_metadata?.role),
@@ -85,8 +97,12 @@ export class SupabaseTokenValidatorService {
   ): Promise<SupabaseResolvedProfile> {
     if (!userId) {
       return {
+        canManageAssets: false,
+        canManageKnowledgeBase: false,
+        canValidateKnowledgeBase: false,
         firstName: null,
         isActive: null,
+        isVip: false,
         lastName: null,
         role: null,
       };
@@ -98,8 +114,12 @@ export class SupabaseTokenValidatorService {
 
     if (!config.supabaseUrl || !supabaseApiKey) {
       return {
+        canManageAssets: false,
+        canManageKnowledgeBase: false,
+        canValidateKnowledgeBase: false,
         firstName: null,
         isActive: null,
+        isVip: false,
         lastName: null,
         role: null,
       };
@@ -108,7 +128,7 @@ export class SupabaseTokenValidatorService {
     const url = new URL(`${config.supabaseUrl}/rest/v1/users`);
     url.searchParams.set(
       'select',
-      'role,first_name,last_name,is_active,account_status',
+      'role,first_name,last_name,is_active,account_status,is_vip,can_manage_assets,can_manage_knowledge_base,can_validate_knowledge_base',
     );
     url.searchParams.set('id', `eq.${userId}`);
     url.searchParams.set('limit', '1');
@@ -140,18 +160,26 @@ export class SupabaseTokenValidatorService {
 
     if (!row) {
       return {
+        canManageAssets: false,
+        canManageKnowledgeBase: false,
+        canValidateKnowledgeBase: false,
         firstName: null,
         isActive: null,
+        isVip: false,
         lastName: null,
         role: null,
       };
     }
 
     return {
+      canManageAssets: Boolean(row.can_manage_assets),
+      canManageKnowledgeBase: Boolean(row.can_manage_knowledge_base),
+      canValidateKnowledgeBase: Boolean(row.can_validate_knowledge_base),
       firstName: row.first_name,
       isActive:
         resolveUserAccountStatus(row.account_status, row.is_active) ===
         'ACTIVE',
+      isVip: Boolean(row.is_vip),
       lastName: row.last_name,
       role: row.role ? this.resolveRoleFallback(row.role) : null,
     };
