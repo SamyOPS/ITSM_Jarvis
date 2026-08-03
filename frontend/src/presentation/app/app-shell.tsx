@@ -1,27 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertTriangle,
   Bell,
-  Boxes,
   ChevronDown,
-  FileText,
   House,
   LogOut,
-  Menu,
   Moon,
   Plus,
   Settings,
-  Shield,
   SlidersHorizontal,
-  Ticket,
   Trash2,
   User,
 } from 'lucide-react';
 import {
+  canAccessRoute,
   getHomeRoute,
-  getVisibleRoutes,
 } from '../../application/auth/access-control';
-import { ROUTES } from '../../domain/navigation/route';
+import {
+  ROUTES,
+  type RouteDefinition,
+  type RoutePath,
+} from '../../domain/navigation/route';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 import {
   deleteAllNotifications,
@@ -32,7 +30,6 @@ import {
   type NotificationSnapshot,
 } from '../../infrastructure/api/notifications-api';
 import {
-  administrationRouteOrder,
   formatNotificationDate,
   getCurrentBreadcrumbRoute,
   getRouteDisplayTitle,
@@ -42,7 +39,19 @@ import {
   navigateToHomeDashboard,
   routeIcons,
 } from './app-shell.helpers';
-import type { AppShellProps, SidebarMenuId } from './app-shell.types';
+import type { AppShellProps } from './app-shell.types';
+
+const sidebarRouteGroups: readonly (readonly RoutePath[])[] = [
+  ['/reports', '/agent/incidents/new', '/agent/requests/new', '/agent/tickets'],
+  ['/parc/cis/new', '/parc/cis', '/knowledge/articles'],
+  ['/admin/users', '/admin/groups', '/agent/archives'],
+];
+
+function isRouteDefinition(
+  route: RouteDefinition | null,
+): route is RouteDefinition {
+  return route !== null;
+}
 
 export function AppShell({
   children,
@@ -51,14 +60,9 @@ export function AppShell({
   pathname,
   session,
 }: AppShellProps) {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [openSidebarMenu, setOpenSidebarMenu] = useState<SidebarMenuId | null>(
-    null,
-  );
   const [isTicketMenuOpen, setIsTicketMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
-  const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationSnapshot[]>(
     [],
   );
@@ -70,10 +74,6 @@ export function AppShell({
   const ticketMenuRef = useRef<HTMLDivElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const notificationMenuRef = useRef<HTMLDivElement | null>(null);
-  const visibleRoutePaths = getVisibleRoutes(session);
-  const visibleRoutes = visibleRoutePaths
-    .map((path) => ROUTES.find((route) => route.path === path) ?? null)
-    .filter((route) => route !== null);
   const isWorkspaceShell = isAuthenticated;
   const isLoginShell = pathname === '/login';
   const isReportsRoute = pathname.startsWith('/reports');
@@ -92,16 +92,14 @@ export function AppShell({
   const unreadNotificationCount = notifications.filter(
     (notification) => !notification.readAt,
   ).length;
-  const administrationRoutes = administrationRouteOrder
-    .map((path) => visibleRoutes.find((route) => route.path === path) ?? null)
-    .filter((route) => route !== null);
-  const isAdministrationMenuOpen = openSidebarMenu === 'administration';
-  const isParcMenuOpen = openSidebarMenu === 'parc';
-  const isTicketCreateMenuOpen = openSidebarMenu === 'create-ticket';
-  const parcRoutes = [
-    visibleRoutes.find((route) => route.path === '/parc/cis/new') ?? null,
-    visibleRoutes.find((route) => route.path === '/parc/cis') ?? null,
-  ].filter((route) => route !== null);
+  const sidebarGroups = sidebarRouteGroups
+    .map((group) =>
+      group
+        .map((path) => ROUTES.find((route) => route.path === path) ?? null)
+        .filter(isRouteDefinition)
+        .filter((route) => canAccessRoute(route.path, session)),
+    )
+    .filter((group) => group.length > 0);
 
   useEffect(() => {
     document.body.classList.toggle('app-body--reports', isReportsRoute);
@@ -174,10 +172,6 @@ export function AppShell({
       window.clearInterval(intervalId);
     };
   }, [session]);
-
-  useEffect(() => {
-    setIsMobileNavigationOpen(false);
-  }, [pathname]);
 
   async function handleNotificationMenuToggle(): Promise<void> {
     const willOpen = !isNotificationMenuOpen;
@@ -306,20 +300,6 @@ export function AppShell({
     navigateTo('/agent/requests/new');
   }
 
-  function handleSidebarToggle(): void {
-    setOpenSidebarMenu(null);
-    setIsSidebarCollapsed((current) => !current);
-  }
-
-  function handleSidebarHeaderToggle(): void {
-    if (isMobileNavigationOpen) {
-      setIsMobileNavigationOpen(false);
-      return;
-    }
-
-    handleSidebarToggle();
-  }
-
   function handleLogoutClick(): void {
     setIsProfileMenuOpen(false);
     onLogout();
@@ -335,458 +315,66 @@ export function AppShell({
 
   return (
     <div className={workspaceShellClassName}>
-      <aside
-        className={
-          isSidebarCollapsed
-            ? isMobileNavigationOpen
-              ? 'workspace-sidebar is-collapsed is-mobile-open'
-              : 'workspace-sidebar is-collapsed'
-            : isMobileNavigationOpen
-              ? 'workspace-sidebar is-mobile-open'
-              : 'workspace-sidebar'
-        }
-      >
+      <aside className="workspace-sidebar">
         <div className="workspace-sidebar-header">
           <div className="workspace-sidebar-brand">
+            <span className="workspace-sidebar-mark" aria-hidden="true">
+              V
+            </span>
             <div className="workspace-sidebar-brand-copy">
               <strong>Vision</strong>
               <span>By JarvisConnect</span>
             </div>
           </div>
-
-          <button
-            aria-label={
-              isMobileNavigationOpen
-                ? 'Fermer la navigation'
-                : isSidebarCollapsed
-                  ? 'Ouvrir la navigation'
-                  : 'Replier la navigation'
-            }
-            className="workspace-sidebar-toggle"
-            onClick={handleSidebarHeaderToggle}
-            type="button"
-          >
-            <Menu size={18} />
-          </button>
         </div>
 
         <div className="workspace-sidebar-divider" />
-
-        <div className="workspace-sidebar-section-label">Navigation</div>
 
         <nav
           aria-label="Navigation principale"
           className="workspace-sidebar-nav"
         >
-          {visibleRoutes.map((route) => {
-            if (route.path !== '/reports') {
-              return null;
-            }
+          {sidebarGroups.map((group, groupIndex) => (
+            <div className="workspace-sidebar-group" key={groupIndex}>
+              {groupIndex > 0 ? (
+                <div className="workspace-sidebar-separator" />
+              ) : null}
 
-            const Icon = routeIcons[route.path] ?? Ticket;
-            const isActive = isRouteActive(route.path, pathname);
-            const routeTitle = getRouteDisplayTitle(
-              route.path,
-              route.title,
-              session,
-            );
-
-            return (
-              <button
-                className={
-                  isActive
-                    ? 'workspace-nav-link is-active'
-                    : 'workspace-nav-link'
-                }
-                key={route.path}
-                onClick={() => navigateTo(route.path)}
-                title={routeTitle}
-                type="button"
-              >
-                <span className="workspace-nav-link-icon" aria-hidden="true">
-                  <Icon size={18} strokeWidth={2} />
-                </span>
-                <strong className="workspace-nav-link-label">
-                  {routeTitle}
-                </strong>
-              </button>
-            );
-          })}
-
-          {session?.user.role === 'DEMANDEUR' ? (
-            <button
-              className={
-                pathname === '/'
-                  ? 'workspace-nav-link is-active'
-                  : 'workspace-nav-link'
-              }
-              onClick={() => navigateTo('/')}
-              title="Accueil"
-              type="button"
-            >
-              <span className="workspace-nav-link-icon" aria-hidden="true">
-                <House size={18} strokeWidth={2} />
-              </span>
-              <strong className="workspace-nav-link-label">Accueil</strong>
-            </button>
-          ) : null}
-
-          <div
-            className={
-              isTicketCreateMenuOpen
-                ? 'workspace-nav-dropdown is-open'
-                : 'workspace-nav-dropdown'
-            }
-          >
-            <button
-              aria-expanded={!isSidebarCollapsed && isTicketCreateMenuOpen}
-              className="workspace-nav-link"
-              onClick={() => {
-                if (isSidebarCollapsed) {
-                  return;
-                }
-
-                setOpenSidebarMenu((current) =>
-                  current === 'create-ticket' ? null : 'create-ticket',
+              {group.map((route) => {
+                const Icon = routeIcons[route.path] ?? House;
+                const isActive = isRouteActive(route.path, pathname);
+                const routeTitle = getRouteDisplayTitle(
+                  route.path,
+                  route.title,
+                  session,
                 );
-              }}
-              title="Créer un ticket"
-              type="button"
-            >
-              <span className="workspace-nav-link-icon" aria-hidden="true">
-                <Plus size={18} strokeWidth={2} />
-              </span>
-              <strong className="workspace-nav-link-label">
-                Créer un ticket
-              </strong>
-              <ChevronDown
-                className="workspace-nav-dropdown-chevron"
-                size={16}
-                strokeWidth={2}
-              />
-            </button>
 
-            {isTicketCreateMenuOpen ? (
-              <div className="workspace-nav-dropdown-list">
-                <button
-                  className={
-                    pathname === '/agent/incidents/new'
-                      ? 'workspace-nav-dropdown-item is-active'
-                      : 'workspace-nav-dropdown-item'
-                  }
-                  onClick={() => navigateTo('/agent/incidents/new')}
-                  type="button"
-                >
-                  <AlertTriangle size={15} strokeWidth={2} />
-                  Créer un incident
-                </button>
-                <button
-                  className={
-                    pathname === '/agent/requests/new'
-                      ? 'workspace-nav-dropdown-item is-active'
-                      : 'workspace-nav-dropdown-item'
-                  }
-                  onClick={() => navigateTo('/agent/requests/new')}
-                  type="button"
-                >
-                  <FileText size={15} strokeWidth={2} />
-                  Créer une demande
-                </button>
-              </div>
-            ) : null}
-
-            <div className="workspace-nav-flyout">
-              <div className="workspace-nav-flyout-title">Créer un ticket</div>
-              <div className="workspace-nav-flyout-list">
-                <button
-                  className={
-                    pathname === '/agent/incidents/new'
-                      ? 'workspace-nav-dropdown-item is-active'
-                      : 'workspace-nav-dropdown-item'
-                  }
-                  onClick={() => navigateTo('/agent/incidents/new')}
-                  type="button"
-                >
-                  <AlertTriangle size={15} strokeWidth={2} />
-                  Créer un incident
-                </button>
-                <button
-                  className={
-                    pathname === '/agent/requests/new'
-                      ? 'workspace-nav-dropdown-item is-active'
-                      : 'workspace-nav-dropdown-item'
-                  }
-                  onClick={() => navigateTo('/agent/requests/new')}
-                  type="button"
-                >
-                  <FileText size={15} strokeWidth={2} />
-                  Créer une demande
-                </button>
-              </div>
+                return (
+                  <button
+                    className={
+                      isActive
+                        ? 'workspace-nav-link is-active'
+                        : 'workspace-nav-link'
+                    }
+                    key={route.path}
+                    onClick={() => navigateTo(route.path)}
+                    title={routeTitle}
+                    type="button"
+                  >
+                    <span
+                      className="workspace-nav-link-icon"
+                      aria-hidden="true"
+                    >
+                      <Icon size={18} strokeWidth={2} />
+                    </span>
+                    <strong className="workspace-nav-link-label">
+                      {routeTitle}
+                    </strong>
+                  </button>
+                );
+              })}
             </div>
-          </div>
-
-          {session?.user.role === 'DEMANDEUR' ? (
-            <>
-              <button
-                className={
-                  pathname === '/agent/my-tickets'
-                    ? 'workspace-nav-link is-active'
-                    : 'workspace-nav-link'
-                }
-                onClick={() => navigateTo('/agent/my-tickets')}
-                title="Mes tickets demandés"
-                type="button"
-              >
-                <span className="workspace-nav-link-icon" aria-hidden="true">
-                  <Ticket size={18} strokeWidth={2} />
-                </span>
-                <strong className="workspace-nav-link-label">
-                  Mes tickets demandés
-                </strong>
-              </button>
-            </>
-          ) : null}
-
-          {visibleRoutes.map((route) => {
-            if (route.path === '/reports') {
-              return null;
-            }
-
-            if (route.path === '/agent/my-tickets') {
-              return null;
-            }
-
-            if (
-              route.path === '/admin/groups' ||
-              route.path === '/admin/license' ||
-              route.path === '/admin/trash' ||
-              route.path === '/admin/users' ||
-              route.path === '/parc/cis/new' ||
-              route.path === '/parc/cis' ||
-              route.path === '/agent/archives'
-            ) {
-              return null;
-            }
-
-            if (
-              route.path === '/agent/tickets' &&
-              session?.user.role === 'DEMANDEUR'
-            ) {
-              return null;
-            }
-
-            const Icon = routeIcons[route.path] ?? Ticket;
-            const isActive = isRouteActive(route.path, pathname);
-            const routeTitle = getRouteDisplayTitle(
-              route.path,
-              route.title,
-              session,
-            );
-
-            return (
-              <button
-                className={
-                  isActive
-                    ? 'workspace-nav-link is-active'
-                    : 'workspace-nav-link'
-                }
-                key={route.path}
-                onClick={() => navigateTo(route.path)}
-                title={routeTitle}
-                type="button"
-              >
-                <span className="workspace-nav-link-icon" aria-hidden="true">
-                  <Icon size={18} strokeWidth={2} />
-                </span>
-                <strong className="workspace-nav-link-label">
-                  {routeTitle}
-                </strong>
-              </button>
-            );
-          })}
-
-          {parcRoutes.length > 0 ? (
-            <div
-              className={
-                isParcMenuOpen
-                  ? 'workspace-nav-dropdown is-open'
-                  : 'workspace-nav-dropdown'
-              }
-            >
-              <button
-                aria-expanded={!isSidebarCollapsed && isParcMenuOpen}
-                className="workspace-nav-link"
-                onClick={() => {
-                  if (isSidebarCollapsed) {
-                    return;
-                  }
-
-                  setOpenSidebarMenu((current) =>
-                    current === 'parc' ? null : 'parc',
-                  );
-                }}
-                title="Parc"
-                type="button"
-              >
-                <span className="workspace-nav-link-icon" aria-hidden="true">
-                  <Boxes size={18} strokeWidth={2} />
-                </span>
-                <strong className="workspace-nav-link-label">Parc</strong>
-                <ChevronDown
-                  className="workspace-nav-dropdown-chevron"
-                  size={16}
-                  strokeWidth={2}
-                />
-              </button>
-
-              {isParcMenuOpen ? (
-                <div className="workspace-nav-dropdown-list">
-                  {parcRoutes.map((route) => {
-                    const Icon = routeIcons[route.path] ?? Boxes;
-
-                    return (
-                      <button
-                        className={
-                          isRouteActive(route.path, pathname)
-                            ? 'workspace-nav-dropdown-item is-active'
-                            : 'workspace-nav-dropdown-item'
-                        }
-                        key={route.path}
-                        onClick={() => navigateTo(route.path)}
-                        type="button"
-                      >
-                        <Icon size={15} strokeWidth={2} />
-                        {route.title}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-
-              <div className="workspace-nav-flyout">
-                <div className="workspace-nav-flyout-title">Parc</div>
-                <div className="workspace-nav-flyout-list">
-                  {parcRoutes.map((route) => {
-                    const Icon = routeIcons[route.path] ?? Boxes;
-
-                    return (
-                      <button
-                        className={
-                          isRouteActive(route.path, pathname)
-                            ? 'workspace-nav-dropdown-item is-active'
-                            : 'workspace-nav-dropdown-item'
-                        }
-                        key={route.path}
-                        onClick={() => navigateTo(route.path)}
-                        type="button"
-                      >
-                        <Icon size={15} strokeWidth={2} />
-                        {route.title}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {administrationRoutes.length > 0 ? (
-            <div
-              className={
-                isAdministrationMenuOpen
-                  ? 'workspace-nav-dropdown is-open'
-                  : 'workspace-nav-dropdown'
-              }
-            >
-              <button
-                aria-expanded={!isSidebarCollapsed && isAdministrationMenuOpen}
-                className="workspace-nav-link"
-                onClick={() => {
-                  if (isSidebarCollapsed) {
-                    return;
-                  }
-
-                  setOpenSidebarMenu((current) =>
-                    current === 'administration' ? null : 'administration',
-                  );
-                }}
-                title="Administration"
-                type="button"
-              >
-                <span className="workspace-nav-link-icon" aria-hidden="true">
-                  <Shield size={18} strokeWidth={2} />
-                </span>
-                <strong className="workspace-nav-link-label">
-                  Administration
-                </strong>
-                <ChevronDown
-                  className="workspace-nav-dropdown-chevron"
-                  size={16}
-                  strokeWidth={2}
-                />
-              </button>
-
-              {isAdministrationMenuOpen ? (
-                <div className="workspace-nav-dropdown-list">
-                  {administrationRoutes.map((route) => {
-                    const Icon = routeIcons[route.path] ?? Ticket;
-                    const routeTitle = getRouteDisplayTitle(
-                      route.path,
-                      route.title,
-                      session,
-                    );
-
-                    return (
-                      <button
-                        className={
-                          isRouteActive(route.path, pathname)
-                            ? 'workspace-nav-dropdown-item is-active'
-                            : 'workspace-nav-dropdown-item'
-                        }
-                        key={route.path}
-                        onClick={() => navigateTo(route.path)}
-                        type="button"
-                      >
-                        <Icon size={15} strokeWidth={2} />
-                        {routeTitle}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-
-              <div className="workspace-nav-flyout">
-                <div className="workspace-nav-flyout-title">Administration</div>
-                <div className="workspace-nav-flyout-list">
-                  {administrationRoutes.map((route) => {
-                    const Icon = routeIcons[route.path] ?? Ticket;
-                    const routeTitle = getRouteDisplayTitle(
-                      route.path,
-                      route.title,
-                      session,
-                    );
-
-                    return (
-                      <button
-                        className={
-                          isRouteActive(route.path, pathname)
-                            ? 'workspace-nav-dropdown-item is-active'
-                            : 'workspace-nav-dropdown-item'
-                        }
-                        key={route.path}
-                        onClick={() => navigateTo(route.path)}
-                        type="button"
-                      >
-                        <Icon size={15} strokeWidth={2} />
-                        {routeTitle}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          ) : null}
+          ))}
         </nav>
 
         <div className="workspace-sidebar-footer">
@@ -795,28 +383,9 @@ export function AppShell({
         </div>
       </aside>
 
-      {isMobileNavigationOpen ? (
-        <button
-          aria-label="Fermer la navigation"
-          className="workspace-mobile-nav-backdrop"
-          onClick={() => setIsMobileNavigationOpen(false)}
-          type="button"
-        />
-      ) : null}
-
       <div className="workspace-main">
         <header className="workspace-topbar">
           <div className="workspace-topbar-copy">
-            <button
-              aria-expanded={isMobileNavigationOpen}
-              aria-label="Ouvrir la navigation"
-              className="workspace-mobile-menu-button"
-              onClick={() => setIsMobileNavigationOpen(true)}
-              type="button"
-            >
-              <Menu size={19} strokeWidth={2.2} />
-            </button>
-
             <nav className="workspace-breadcrumb" aria-label="Fil d'ariane">
               <button
                 className={
