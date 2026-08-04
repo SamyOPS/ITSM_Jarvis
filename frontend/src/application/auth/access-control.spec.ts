@@ -97,7 +97,7 @@ describe('access-control', () => {
   });
 
   it('returns the expected home route for each role', () => {
-    expect(getHomeRoute(buildSession('DEMANDEUR'))).toBe('/');
+    expect(getHomeRoute(buildSession('DEMANDEUR'))).toBe('/agent/tickets');
     expect(getHomeRoute(buildSession('AGENT'))).toBe('/reports');
     expect(getHomeRoute(buildSession('MANAGER'))).toBe('/reports');
     expect(getHomeRoute(buildSession('ADMIN'))).toBe('/reports');
@@ -109,9 +109,11 @@ describe('access-control', () => {
     const visibleRoutes = getVisibleRoutes(buildSession('DEMANDEUR'));
 
     expect(visibleRoutes).toEqual([
+      '/agent/tickets',
+      '/agent/incidents/new',
+      '/agent/requests/new',
       '/knowledge/articles',
       '/parc/my-equipment',
-      '/agent/tickets',
     ]);
   });
 

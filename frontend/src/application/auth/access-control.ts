@@ -67,6 +67,10 @@ export function canAccessRoute(
 }
 
 export function getHomeRoute(session: AuthSessionSnapshot | null): RoutePath {
+  if (session?.user.role === 'DEMANDEUR') {
+    return '/agent/tickets';
+  }
+
   if (
     session?.user.role === 'AGENT' ||
     session?.user.role === 'MANAGER' ||
@@ -85,9 +89,11 @@ export function getVisibleRoutes(
   if (session?.user.role === 'DEMANDEUR') {
     return (
       [
+        '/agent/tickets',
+        '/agent/incidents/new',
+        '/agent/requests/new',
         '/knowledge/articles',
         '/parc/my-equipment',
-        '/agent/tickets',
         '/login',
       ] as const
     )

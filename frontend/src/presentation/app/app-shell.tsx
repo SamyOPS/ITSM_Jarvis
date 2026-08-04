@@ -70,6 +70,17 @@ const sidebarRouteGroups: readonly SidebarRouteGroup[] = [
   },
 ];
 
+const requesterSidebarRouteGroups: readonly SidebarRouteGroup[] = [
+  {
+    label: 'Tickets',
+    routes: ['/agent/tickets', '/agent/incidents/new', '/agent/requests/new'],
+  },
+  {
+    label: 'Parc',
+    routes: ['/parc/my-equipment', '/knowledge/articles'],
+  },
+];
+
 function isRouteDefinition(
   route: RouteDefinition | null,
 ): route is RouteDefinition {
@@ -116,7 +127,11 @@ export function AppShell({
   const unreadNotificationCount = notifications.filter(
     (notification) => !notification.readAt,
   ).length;
-  const sidebarGroups = sidebarRouteGroups
+  const effectiveSidebarRouteGroups =
+    session?.user.role === 'DEMANDEUR'
+      ? requesterSidebarRouteGroups
+      : sidebarRouteGroups;
+  const sidebarGroups = effectiveSidebarRouteGroups
     .map((group) => ({
       label: group.label,
       routes: group.routes
