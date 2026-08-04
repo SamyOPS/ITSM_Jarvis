@@ -597,6 +597,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     Math.ceil(searchedTickets.length / TICKETS_PER_PAGE),
   );
   const aiDraftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const ticketCommentTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const aiChatBodyRef = useRef<HTMLDivElement | null>(null);
   const aiChatGenerationRef = useRef(0);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
@@ -625,6 +626,28 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       textarea.scrollHeight > boundedHeight + 1 ? 'auto' : 'hidden';
   }
 
+  function resizeTicketCommentTextarea(
+    textarea: HTMLTextAreaElement | null = ticketCommentTextareaRef.current,
+  ): void {
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = 'auto';
+
+    const maxHeight = Number.parseFloat(
+      window.getComputedStyle(textarea).maxHeight,
+    );
+    const boundedHeight = Math.min(
+      textarea.scrollHeight,
+      Number.isFinite(maxHeight) ? maxHeight : 220,
+    );
+
+    textarea.style.height = `${boundedHeight}px`;
+    textarea.style.overflowY =
+      textarea.scrollHeight > boundedHeight + 1 ? 'auto' : 'hidden';
+  }
+
   useEffect(() => {
     if (showDetailPanel) {
       setSelectedTicketId(ticketId ?? null);
@@ -641,6 +664,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     resizeAiDraftTextarea();
   }, [aiDraftInput, isAiChatOpen]);
+
+  useEffect(() => {
+    if (!showDetailPanel) {
+      return;
+    }
+
+    resizeTicketCommentTextarea();
+  }, [commentDraft.body, showDetailPanel]);
 
   useEffect(() => {
     if (!isAiChatOpen) {
@@ -3287,8 +3318,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
       setDeletingCommentId(null);
 
-      setCommentSuccessMessage('Commentaire ajoute.');
-
       await refreshSelectedTicketHistory(selectedTicketDetail.ticket.id);
     } catch (error) {
       setCommentErrorMessage(
@@ -5275,11 +5304,25 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           className="tdp-chat-composer"
                           onSubmit={handleCommentSubmit}
                         >
-                          <input
-                            onChange={(event) =>
-                              handleCommentBodyChange(event.target.value)
-                            }
+                          <textarea
+                            aria-label="Message sur le ticket"
+                            onChange={(event) => {
+                              handleCommentBodyChange(event.target.value);
+                              resizeTicketCommentTextarea(event.target);
+                            }}
+                            onKeyDown={(event) => {
+                              if (
+                                event.key === 'Enter' &&
+                                !event.shiftKey &&
+                                !isSubmittingComment
+                              ) {
+                                event.preventDefault();
+                                event.currentTarget.form?.requestSubmit();
+                              }
+                            }}
                             placeholder="Ecrire un message sur le ticket..."
+                            ref={ticketCommentTextareaRef}
+                            rows={1}
                             value={commentDraft.body}
                           />
 

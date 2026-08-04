@@ -2541,24 +2541,29 @@ p.ticket-form-helper {
 
 .tdp-chat-composer {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 10px;
   padding: 14px;
   border-top: 1px solid rgba(190, 210, 242, 0.86);
   background: #ffffff;
 }
 
-.tdp-chat-composer input {
+.tdp-chat-composer textarea {
   width: 100%;
+  min-height: 50px;
+  max-height: min(220px, calc(100vh - 420px));
   padding: 12px 14px;
   border: 1px solid rgba(172, 198, 238, 0.95);
-  border-radius: 999px;
+  border-radius: 18px;
   background: #fdfefe;
   color: #17335f;
   font: inherit;
+  line-height: 1.5;
+  overflow-y: hidden;
+  resize: none;
 }
 
-.tdp-chat-composer input:focus {
+.tdp-chat-composer textarea:focus {
   border-color: #7aa7f5;
   box-shadow: 0 0 0 3px rgba(122, 167, 245, 0.18);
   outline: none;
