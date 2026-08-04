@@ -3,6 +3,10 @@ import { TicketType } from '../../../domain/ticketing/ticket-type';
 
 export class SuggestTicketDraftDto {
   @IsOptional()
+  @IsString()
+  payload?: string;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   categories?: string[];
@@ -26,6 +30,7 @@ export class SuggestTicketDraftDto {
   @IsString({ each: true })
   requesters?: string[];
 
+  @IsOptional()
   @IsString()
-  userInput!: string;
+  userInput?: string;
 }

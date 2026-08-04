@@ -1,4 +1,12 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ClipboardEvent,
+  type DragEvent,
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   ArrowDown,
@@ -158,9 +166,16 @@ function RequiredMark() {
 }
 
 type AiChatMessage = {
+  attachments?: AiChatAttachmentSummary[];
   body: string;
   id: string;
   role: 'assistant' | 'user';
+};
+
+type AiChatAttachmentSummary = {
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
 };
 
 const INITIAL_AI_CHAT_MESSAGES: AiChatMessage[] = [
@@ -278,6 +293,8 @@ const INITIAL_ATTACHMENT_DRAFT: AttachmentDraftState = {
 };
 
 const TICKET_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
+const AI_DRAFT_MAX_ATTACHMENT_COUNT = 10;
+const AI_DRAFT_MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
 const INCIDENT_LOOKUP_PAGE_SIZE = 10;
 const TICKETS_PER_PAGE = 15;
 const TICKET_SORT_OPTIONS = [
@@ -451,11 +468,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     null,
   );
   const [aiDraftInput, setAiDraftInput] = useState('');
+  const [aiConversationFiles, setAiConversationFiles] = useState<File[]>([]);
+  const [aiDraftFiles, setAiDraftFiles] = useState<File[]>([]);
   const [aiDraftSuggestion, setAiDraftSuggestion] =
     useState<TicketDraftSuggestion | null>(null);
   const [aiDraftErrorMessage, setAiDraftErrorMessage] = useState<string | null>(
     null,
   );
+  const [isAiDraftFileDragOver, setIsAiDraftFileDragOver] = useState(false);
   const [isSuggestingDraft, setIsSuggestingDraft] = useState(false);
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
   const [aiChatMessages, setAiChatMessages] = useState<AiChatMessage[]>(
@@ -490,6 +510,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   const [creationAttachmentInputKey, setCreationAttachmentInputKey] =
     useState(0);
+  const [aiDraftFileInputKey, setAiDraftFileInputKey] = useState(0);
 
   const [isEditingInfo, setIsEditingInfo] = useState(false);
 
@@ -1960,15 +1981,25 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   async function handleSendAiChatMessage(): Promise<void> {
     const userInput = aiDraftInput.trim();
+    const selectedAiDraftFiles = aiDraftFiles;
+    const nextAiConversationFiles = [
+      ...aiConversationFiles,
+      ...selectedAiDraftFiles,
+    ];
 
     setAiDraftErrorMessage(null);
 
-    if (!userInput) {
+    if (!userInput && selectedAiDraftFiles.length === 0) {
       return;
     }
 
     const userMessage: AiChatMessage = {
-      body: userInput,
+      attachments: selectedAiDraftFiles.map((file) => ({
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type || 'application/octet-stream',
+      })),
+      body: userInput || 'Piece jointe envoyee',
       id: `user-${Date.now()}`,
       role: 'user',
     };
@@ -1976,6 +2007,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     const chatGeneration = aiChatGenerationRef.current;
 
     setAiDraftInput('');
+    setAiConversationFiles(nextAiConversationFiles);
+    setAiDraftFiles([]);
+    setAiDraftFileInputKey((currentKey) => currentKey + 1);
     setAiChatMessages(nextMessages);
     setAiDraftSuggestion(null);
 
@@ -1988,12 +2022,25 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         currentMode: mode,
         priorities: catalog.priorities.map((priority) => priority.name),
         requesters: aiRequesterNames,
+        attachments: nextAiConversationFiles,
         userInput: [
           nextMessages
             .map((message) =>
               message.role === 'assistant'
                 ? `Assistant: ${message.body}`
-                : `Utilisateur: ${message.body}`,
+                : [
+                    `Utilisateur: ${message.body}`,
+                    message.attachments?.length
+                      ? `Pieces jointes: ${message.attachments
+                          .map(
+                            (attachment) =>
+                              `${attachment.fileName} (${attachment.mimeType}, ${formatFileSize(attachment.fileSize)})`,
+                          )
+                          .join(', ')}`
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join('\n'),
             )
             .join('\n'),
           aiDraftSuggestion
@@ -2080,6 +2127,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   function resetAiChat(): void {
     aiChatGenerationRef.current += 1;
     setAiDraftInput('');
+    setAiConversationFiles([]);
+    setAiDraftFiles([]);
+    setAiDraftFileInputKey((currentKey) => currentKey + 1);
     setAiDraftSuggestion(null);
     setAiDraftErrorMessage(null);
     setAiChatMessages(INITIAL_AI_CHAT_MESSAGES);
@@ -2094,6 +2144,22 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         chatBody.scrollTop = 0;
       }
     });
+  }
+
+  function mergeFilesByLocalKey(currentFiles: File[], incomingFiles: File[]) {
+    const knownFileKeys = new Set(currentFiles.map(getLocalFileKey));
+    const nextFiles = [...currentFiles];
+
+    for (const file of incomingFiles) {
+      const fileKey = getLocalFileKey(file);
+
+      if (!knownFileKeys.has(fileKey)) {
+        knownFileKeys.add(fileKey);
+        nextFiles.push(file);
+      }
+    }
+
+    return nextFiles;
   }
 
   function handleApplyTicketDraftSuggestion(): void {
@@ -2149,6 +2215,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         title: aiDraftSuggestion.title || currentDraft.title,
         urgency: aiDraftSuggestion.urgency ?? currentDraft.urgency,
       }));
+      setIncidentCreationAttachmentFiles((currentFiles) =>
+        mergeFilesByLocalKey(currentFiles, aiConversationFiles),
+      );
       setIncidentValidationErrors({});
     } else {
       setRequestDraft((currentDraft) => ({
@@ -2162,6 +2231,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         requestType: aiDraftSuggestion.requestType ?? currentDraft.requestType,
         title: aiDraftSuggestion.title || currentDraft.title,
       }));
+      setRequestCreationAttachmentFiles((currentFiles) =>
+        mergeFilesByLocalKey(currentFiles, aiConversationFiles),
+      );
       setRequestValidationErrors({});
     }
 
@@ -3133,6 +3205,134 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setCommentErrorMessage(null);
 
     setCommentSuccessMessage(null);
+  }
+
+  function handleAiDraftFileSelection(fileList: FileList | null): void {
+    const incomingFiles = Array.from(fileList ?? []);
+
+    if (incomingFiles.length === 0) {
+      return;
+    }
+
+    setAiDraftFiles((currentFiles) => {
+      const knownFileKeys = new Set([
+        ...aiConversationFiles.map(getLocalFileKey),
+        ...currentFiles.map(getLocalFileKey),
+      ]);
+      const nextFiles = [...currentFiles];
+
+      for (const file of incomingFiles) {
+        if (file.size > AI_DRAFT_MAX_ATTACHMENT_SIZE_BYTES) {
+          setAiDraftErrorMessage(
+            `Le fichier ${file.name} depasse la limite de 10 Mo.`,
+          );
+          continue;
+        }
+
+        if (
+          aiConversationFiles.length + nextFiles.length >=
+          AI_DRAFT_MAX_ATTACHMENT_COUNT
+        ) {
+          setAiDraftErrorMessage('10 pieces jointes maximum pour l IA.');
+          break;
+        }
+
+        const fileKey = getLocalFileKey(file);
+
+        if (!knownFileKeys.has(fileKey)) {
+          knownFileKeys.add(fileKey);
+          nextFiles.push(file);
+        }
+      }
+
+      return nextFiles;
+    });
+
+    setAiDraftFileInputKey((currentKey) => currentKey + 1);
+  }
+
+  function buildPastedScreenshotName(mimeType: string): string {
+    const extension = mimeType.includes('jpeg')
+      ? 'jpg'
+      : mimeType.includes('webp')
+        ? 'webp'
+        : 'png';
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, '-')
+      .replace('T', '-')
+      .slice(0, 19);
+
+    return `capture-${timestamp}.${extension}`;
+  }
+
+  function handleAiDraftPaste(
+    event: ClipboardEvent<HTMLTextAreaElement>,
+  ): void {
+    const pastedFiles = Array.from(event.clipboardData.items)
+      .filter((item) => item.kind === 'file')
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => Boolean(file))
+      .map((file) => {
+        if (file.name.trim()) {
+          return file;
+        }
+
+        return new File([file], buildPastedScreenshotName(file.type), {
+          lastModified: Date.now(),
+          type: file.type,
+        });
+      });
+
+    if (pastedFiles.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const dataTransfer = new DataTransfer();
+
+    for (const file of pastedFiles) {
+      dataTransfer.items.add(file);
+    }
+
+    handleAiDraftFileSelection(dataTransfer.files);
+  }
+
+  function handleAiDraftFileDragOver(event: DragEvent<HTMLElement>): void {
+    if (!event.dataTransfer.types.includes('Files')) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    setIsAiDraftFileDragOver(true);
+  }
+
+  function handleAiDraftFileDragLeave(event: DragEvent<HTMLElement>): void {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      return;
+    }
+
+    setIsAiDraftFileDragOver(false);
+  }
+
+  function handleAiDraftFileDrop(event: DragEvent<HTMLElement>): void {
+    if (!event.dataTransfer.files.length) {
+      return;
+    }
+
+    event.preventDefault();
+    setIsAiDraftFileDragOver(false);
+    handleAiDraftFileSelection(event.dataTransfer.files);
+  }
+
+  function handleRemoveAiDraftFile(fileKey: string): void {
+    setAiDraftFiles((currentFiles) =>
+      currentFiles.filter((file) => getLocalFileKey(file) !== fileKey),
+    );
+    setAiDraftErrorMessage(null);
+    setAiDraftFileInputKey((currentKey) => currentKey + 1);
   }
 
   function handleAttachmentSelection(fileList: FileList | null): void {
@@ -4275,7 +4475,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     className="ticket-ai-chat-overlay"
                     role="dialog"
                   >
-                    <section className="ticket-ai-chat">
+                    <section
+                      className={
+                        isAiDraftFileDragOver
+                          ? 'ticket-ai-chat is-file-drag-over'
+                          : 'ticket-ai-chat'
+                      }
+                      onDragLeave={handleAiDraftFileDragLeave}
+                      onDragOver={handleAiDraftFileDragOver}
+                      onDrop={handleAiDraftFileDrop}
+                    >
                       <header className="ticket-ai-chat-header">
                         <div>
                           <h3>Assistant IA Vision</h3>
@@ -4311,7 +4520,19 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                             }
                             key={message.id}
                           >
-                            {message.body}
+                            {message.attachments?.length ? (
+                              <div className="ticket-ai-message-attachments">
+                                {message.attachments.map((attachment) => (
+                                  <span
+                                    className="ticket-ai-file-chip"
+                                    key={`${message.id}-${attachment.fileName}-${attachment.fileSize}`}
+                                  >
+                                    {attachment.fileName}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                            <p>{message.body}</p>
                           </div>
                         ))}
 
@@ -4395,12 +4616,48 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       </div>
 
                       <footer className="ticket-ai-chat-footer">
-                        <button
+                        {aiDraftFiles.length > 0 ? (
+                          <div className="ticket-ai-selected-files">
+                            {aiDraftFiles.map((file) => {
+                              const fileKey = getLocalFileKey(file);
+
+                              return (
+                                <span
+                                  className="ticket-ai-file-chip"
+                                  key={fileKey}
+                                >
+                                  <span>
+                                    {file.name} ({formatFileSize(file.size)})
+                                  </span>
+                                  <button
+                                    aria-label={`Retirer ${file.name}`}
+                                    onClick={() =>
+                                      handleRemoveAiDraftFile(fileKey)
+                                    }
+                                    type="button"
+                                  >
+                                    <X size={13} />
+                                  </button>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+
+                        <label
                           aria-label="Ajouter une piece jointe"
-                          type="button"
+                          className="ticket-ai-attachment-button"
                         >
                           <Paperclip size={17} />
-                        </button>
+                          <input
+                            key={aiDraftFileInputKey}
+                            multiple
+                            onChange={(event) =>
+                              handleAiDraftFileSelection(event.target.files)
+                            }
+                            type="file"
+                          />
+                        </label>
                         <textarea
                           aria-label="Message pour l assistant IA"
                           onChange={(event) => {
@@ -4418,6 +4675,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               void handleSendAiChatMessage();
                             }
                           }}
+                          onPaste={handleAiDraftPaste}
                           placeholder="Decrivez votre besoin..."
                           ref={aiDraftTextareaRef}
                           rows={1}

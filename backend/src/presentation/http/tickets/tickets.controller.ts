@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,7 +9,10 @@ import {
   Post,
   Query,
   UseGuards,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { AddTicketAttachmentUseCase } from '../../../application/ticketing/use-cases/add-ticket-attachment.use-case';
 import { AddTicketCommentUseCase } from '../../../application/ticketing/use-cases/add-ticket-comment.use-case';
 import {
@@ -57,6 +61,13 @@ import { CreateIncidentDto } from './create-incident.dto';
 import { CreateRequestDto } from './create-request.dto';
 import { SuggestTicketDraftDto } from './suggest-ticket-draft.dto';
 import { UpdateTicketDto } from './update-ticket.dto';
+
+type AiDraftUploadedFile = {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+  size: number;
+};
 
 type SearchTicketsQueryDto = {
   assignedToUserId?: string;
@@ -134,17 +145,50 @@ export class TicketsController {
 
   @Post('assist-draft')
   @UseGuards(BearerAuthGuard)
+  @UseInterceptors(
+    FilesInterceptor('attachments', 10, {
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+        files: 10,
+      },
+    }),
+  )
   suggestTicketDraft(
     @Body() body: SuggestTicketDraftDto,
+    @UploadedFiles() files: AiDraftUploadedFile[] = [],
   ): Promise<TicketDraftAssistantResponse> {
+    const payload = this.parseSuggestTicketDraftPayload(body);
+
     return this.suggestTicketDraftUseCase.execute({
-      categories: body.categories,
-      channels: body.channels,
-      currentMode: body.currentMode ?? null,
-      priorities: body.priorities,
-      requesters: body.requesters,
-      userInput: body.userInput,
+      attachments: files.map((file) => ({
+        data: file.buffer,
+        fileName: file.originalname,
+        mimeType: file.mimetype,
+        sizeBytes: file.size,
+      })),
+      categories: payload.categories,
+      channels: payload.channels,
+      currentMode: payload.currentMode ?? null,
+      priorities: payload.priorities,
+      requesters: payload.requesters,
+      userInput: payload.userInput ?? '',
     });
+  }
+
+  private parseSuggestTicketDraftPayload(
+    body: SuggestTicketDraftDto,
+  ): SuggestTicketDraftDto {
+    if (!body.payload) {
+      return body;
+    }
+
+    try {
+      const parsed = JSON.parse(body.payload) as SuggestTicketDraftDto;
+
+      return parsed;
+    } catch {
+      throw new BadRequestException('Payload IA invalide.');
+    }
   }
 
   @Delete(':id')

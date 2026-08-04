@@ -9,6 +9,7 @@ import { getFrontendSupabaseConfig } from '../config/supabase-env';
 import {
   encodeStoragePath,
   ticketingJsonRequest,
+  ticketingMultipartRequest,
   ticketingVoidRequest,
 } from './ticketing-api.helpers';
 export type {
@@ -72,13 +73,32 @@ export async function suggestTicketDraft(
   accessToken: string,
   payload: SuggestTicketDraftPayload,
 ): Promise<TicketDraftAssistantResponse> {
+  const { attachments = [], ...jsonPayload } = payload;
+
+  if (attachments.length > 0) {
+    const formData = new FormData();
+
+    formData.append('payload', JSON.stringify(jsonPayload));
+
+    for (const attachment of attachments) {
+      formData.append('attachments', attachment, attachment.name);
+    }
+
+    return ticketingMultipartRequest<TicketDraftAssistantResponse>(
+      accessToken,
+      '/tickets/assist-draft',
+      'La suggestion IA du ticket a echoue',
+      formData,
+    );
+  }
+
   return ticketingJsonRequest<TicketDraftAssistantResponse>(
     accessToken,
     '/tickets/assist-draft',
     'La suggestion IA du ticket a echoue',
     {
       method: 'POST',
-      body: payload,
+      body: jsonPayload,
     },
   );
 }
