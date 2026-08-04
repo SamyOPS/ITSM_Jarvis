@@ -41,6 +41,13 @@ describe('access-control', () => {
     expect(canAccessRoute('/parc/cis', session)).toBe(false);
   });
 
+  it('blocks demandeur from creating equipment even with asset permission flag', () => {
+    const session = buildSession('DEMANDEUR', { canManageAssets: true });
+
+    expect(canAccessRoute('/parc/cis/new', session)).toBe(false);
+    expect(getVisibleRoutes(session)).not.toContain('/parc/cis/new');
+  });
+
   it('lets agent access reports but not admin', () => {
     const session = buildSession('AGENT');
 

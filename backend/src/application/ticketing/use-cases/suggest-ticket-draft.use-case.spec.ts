@@ -83,6 +83,43 @@ describe('SuggestTicketDraftUseCase', () => {
     expect(response.suggestion?.title).toBe(longTitle.slice(0, 50));
   });
 
+  it('removes useless neuf wording from new PC request titles', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'SUGGEST_TICKET',
+        categoryName: 'Materiel',
+        channelName: 'Portail',
+        confidence: 0.82,
+        description:
+          'Besoin d un PC tour avec Windows preinstalle pour l utilisateur.',
+        priorityName: PriorityName.MEDIUM,
+        requesterScope: 'SELF',
+        requestType: RequestType.HARDWARE,
+        title: 'Demande d un PC tour neuf avec Windows preinstalle',
+        type: TicketType.REQUEST,
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    const response = await useCase.execute({
+      userInput: [
+        'Assistant: Bonjour, quel est votre probleme ?',
+        'Utilisateur: il me faut un nouveau pc',
+        'Assistant: Le PC est destine a quel utilisateur ?',
+        'Utilisateur: moi',
+        "Assistant: S'agit-il d'un PC portable ou d'une tour ?",
+        'Utilisateur: tour',
+        "Assistant: Avez-vous besoin d'un systeme d'exploitation Windows preinstalle ?",
+        'Utilisateur: oui',
+      ].join('\n'),
+    });
+
+    expect(response.suggestion?.title).toBe(
+      'Demande d un PC tour avec Windows preinstalle',
+    );
+  });
+
   it('asks for requester scope instead of asking useless HDMI usage once cable length is known', async () => {
     mockAssistantResponse(
       baseAssistantPayload({
@@ -507,6 +544,122 @@ describe('SuggestTicketDraftUseCase', () => {
           "Utilisateur: mon tel ne s'allume pas",
           'Assistant: Est-ce que le telephone affiche un voyant/indication de charge quand il est branche ?',
           'Utilisateur: non',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'ASK_QUESTION',
+      question:
+        'Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+      suggestion: null,
+    });
+  });
+
+  it('asks whether a dead PC is a laptop or a tower before suggesting a ticket', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'SUGGEST_TICKET',
+        categoryName: 'Materiel',
+        channelName: 'Portail',
+        confidence: 0.83,
+        description:
+          "Le PC ne demarre plus et aucun voyant ne s'affiche apres verification secteur.",
+        impact: 'MEDIUM',
+        priorityName: PriorityName.HIGH,
+        requesterScope: 'SELF',
+        title: 'PC ne demarre plus',
+        type: TicketType.INCIDENT,
+        urgency: 'HIGH',
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          'Utilisateur: mon pc ne demarre plus',
+          "Assistant: Est-ce que le PC affiche un voyant ou un message d'erreur quand vous appuyez sur le bouton d'alimentation ?",
+          'Utilisateur: non rien',
+          "Assistant: Est-ce que vous pouvez verifier s'il y a un voyant quand le PC est branche au secteur ?",
+          'Utilisateur: non rien',
+          'Assistant: Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+          'Utilisateur: moi',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'ASK_QUESTION',
+      question: "Est-ce qu'il s'agit d'un PC portable ou d'une tour ?",
+      suggestion: null,
+    });
+  });
+
+  it('does not ask the laptop or tower question again once answered', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'SUGGEST_TICKET',
+        categoryName: 'Materiel',
+        channelName: 'Portail',
+        confidence: 0.83,
+        description:
+          "La tour ne demarre plus et aucun voyant ne s'affiche apres verification secteur.",
+        impact: 'MEDIUM',
+        priorityName: PriorityName.HIGH,
+        requesterScope: 'SELF',
+        title: 'Tour ne demarre plus',
+        type: TicketType.INCIDENT,
+        urgency: 'HIGH',
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          'Utilisateur: mon pc ne demarre plus',
+          "Assistant: Est-ce que vous pouvez verifier s'il y a un voyant quand le PC est branche au secteur ?",
+          'Utilisateur: non rien',
+          "Assistant: Est-ce qu'il s'agit d'un PC portable ou d'une tour ?",
+          "Utilisateur: c'est une tour",
+          'Assistant: Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+          'Utilisateur: moi',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'SUGGEST_TICKET',
+      suggestion: {
+        title: 'Tour ne demarre plus',
+      },
+    });
+  });
+
+  it('does not repeat frozen PC diagnostic questions once already answered', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        question:
+          'Est-ce que le curseur bouge encore ou le PC est completement fige ?',
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          'Utilisateur: mon pc bug',
+          'Assistant: Quand vous dites bug, que se passe-t-il exactement ?',
+          'Utilisateur: ecran fige',
+          'Assistant: Est-ce que le PC repond encore ou est-il completement bloque ?',
+          'Utilisateur: bloque completement',
+          "Assistant: Est-ce que c'est un PC portable ou une tour ?",
+          'Utilisateur: une tour',
+          "Assistant: Quel message d'erreur s'affiche, ou y a-t-il aucun message ?",
+          'Utilisateur: aucun',
+          'Assistant: Depuis quand le PC reste bloque ?',
+          'Utilisateur: 1h environ',
         ].join('\n'),
       }),
     ).resolves.toMatchObject({
