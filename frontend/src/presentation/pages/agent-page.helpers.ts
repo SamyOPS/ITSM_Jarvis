@@ -682,7 +682,10 @@ export function normalizeSearchText(value: string): string {
 
 export function sortTicketsByOperationalPriority(
   tickets: TicketSummarySnapshot[],
-  prioritiesById: Map<string, { level: number; name: string }>,
+  prioritiesById: Map<
+    string,
+    { level: number; name: string; resolutionHours?: number | null }
+  >,
   vipRequesterIds: ReadonlySet<string> = new Set(),
 ): TicketSummarySnapshot[] {
   return [...tickets].sort((left, right) => {
@@ -692,11 +695,12 @@ export function sortTicketsByOperationalPriority(
     const rightScore = getTicketOperationalScore(right, prioritiesById);
 
     return (
+      leftScore.completionRank - rightScore.completionRank ||
+      rightScore.priorityLevel - leftScore.priorityLevel ||
+      leftScore.slaRank - rightScore.slaRank ||
       Number(rightIsVip) - Number(leftIsVip) ||
       leftScore.statusRank - rightScore.statusRank ||
-      leftScore.slaRank - rightScore.slaRank ||
       leftScore.nextDueAt - rightScore.nextDueAt ||
-      rightScore.priorityLevel - leftScore.priorityLevel ||
       leftScore.createdAt - rightScore.createdAt
     );
   });
@@ -729,33 +733,52 @@ export function sortTicketsByCreatedAtAsc(
 
 function getTicketOperationalScore(
   ticket: TicketSummarySnapshot,
-  prioritiesById: Map<string, { level: number; name: string }>,
+  prioritiesById: Map<
+    string,
+    { level: number; name: string; resolutionHours?: number | null }
+  >,
 ): {
+  completionRank: number;
   createdAt: number;
   nextDueAt: number;
   priorityLevel: number;
   slaRank: number;
   statusRank: number;
 } {
+  const nextDueAt = getNextDueTimestamp(ticket, prioritiesById);
+
   return {
+    completionRank: getCompletionRank(ticket.status),
     createdAt: toTimestamp(ticket.createdAt),
-    nextDueAt: getNextDueTimestamp(ticket),
+    nextDueAt,
     priorityLevel: prioritiesById.get(ticket.priorityId)?.level ?? 0,
-    slaRank: getSlaRank(ticket),
+    slaRank: getSlaRank(ticket, nextDueAt),
     statusRank: getStatusRank(ticket.status),
   };
 }
 
-function getStatusRank(status: string): number {
-  if (status === 'IN_PROGRESS') {
-    return 0;
-  }
-
-  if (status === 'PENDING') {
+function getCompletionRank(status: string): number {
+  if (status === 'RESOLVED') {
     return 1;
   }
 
+  if (status === 'CLOSED') {
+    return 2;
+  }
+
+  return 0;
+}
+
+function getStatusRank(status: string): number {
   if (status === 'OPEN') {
+    return 0;
+  }
+
+  if (status === 'IN_PROGRESS') {
+    return 1;
+  }
+
+  if (status === 'PENDING') {
     return 2;
   }
 
@@ -770,17 +793,25 @@ function getStatusRank(status: string): number {
   return 5;
 }
 
-function getSlaRank(ticket: TicketSummarySnapshot): number {
-  if (
-    ticket.responseSlaStatus === 'OVERDUE' ||
-    ticket.resolutionSlaStatus === 'OVERDUE'
-  ) {
+function getSlaRank(ticket: TicketSummarySnapshot, ttrDueAt: number): number {
+  if (!Number.isFinite(ttrDueAt)) {
+    return 2;
+  }
+
+  const now = Date.now();
+
+  if (ttrDueAt <= now) {
     return 0;
   }
 
+  const createdAt = toTimestamp(ticket.createdAt);
+  const initialDuration = ttrDueAt - createdAt;
+  const remainingDuration = ttrDueAt - now;
+
   if (
-    ticket.responseSlaStatus === 'AT_RISK' ||
-    ticket.resolutionSlaStatus === 'AT_RISK'
+    Number.isFinite(createdAt) &&
+    initialDuration > 0 &&
+    remainingDuration <= initialDuration * 0.25
   ) {
     return 1;
   }
@@ -788,12 +819,29 @@ function getSlaRank(ticket: TicketSummarySnapshot): number {
   return 2;
 }
 
-function getNextDueTimestamp(ticket: TicketSummarySnapshot): number {
-  const timestamps = [ticket.responseDueAt, ticket.resolutionDueAt]
-    .map((value) => (value ? toTimestamp(value) : Number.POSITIVE_INFINITY))
-    .filter((value) => Number.isFinite(value));
+function getNextDueTimestamp(
+  ticket: TicketSummarySnapshot,
+  prioritiesById: Map<string, { resolutionHours?: number | null }>,
+): number {
+  const resolutionHours = prioritiesById.get(
+    ticket.priorityId,
+  )?.resolutionHours;
 
-  return Math.min(...timestamps, Number.POSITIVE_INFINITY);
+  if (resolutionHours !== null && resolutionHours !== undefined) {
+    const createdAt = toTimestamp(ticket.createdAt);
+
+    return Number.isFinite(createdAt)
+      ? createdAt + resolutionHours * 60 * 60 * 1000
+      : Number.POSITIVE_INFINITY;
+  }
+
+  if (ticket.resolutionDueAt) {
+    return toTimestamp(ticket.resolutionDueAt);
+  }
+
+  return ticket.responseDueAt
+    ? toTimestamp(ticket.responseDueAt)
+    : Number.POSITIVE_INFINITY;
 }
 
 function toTimestamp(value: string): number {
