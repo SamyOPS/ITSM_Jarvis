@@ -634,8 +634,15 @@ export function AppShell({
                       {userInitials}
                     </span>
                     <div>
-                      <strong>{userDisplayName}</strong>
-                      <span>
+                      <span className="workspace-profile-menu-identity">
+                        <strong>{userDisplayName}</strong>
+                        {session?.user.isVip ? (
+                          <span className="workspace-profile-vip-badge">
+                            VIP
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="workspace-profile-menu-email">
                         {session?.user.email ?? 'vision@jarvis.local'}
                       </span>
                     </div>

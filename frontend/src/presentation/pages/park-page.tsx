@@ -1336,6 +1336,8 @@ function EquipmentRow({
   user: AdminUserSummary | null;
 }) {
   const detailPath = withReturnPageQuery(`/parc/cis/${ci.id}`, page);
+  const displayIdentifier = formatEquipmentIdentifier(ci);
+  const [identifierPrefix, identifierSuffix] = displayIdentifier.split('-');
 
   return (
     <tr
@@ -1359,7 +1361,14 @@ function EquipmentRow({
     >
       <td>
         <strong className="ticket-table-number">
-          <span>{formatEquipmentIdentifier(ci)}</span>
+          {identifierPrefix && identifierSuffix ? (
+            <>
+              <span>{identifierPrefix}-</span>
+              <span>{identifierSuffix}</span>
+            </>
+          ) : (
+            <span>{displayIdentifier}</span>
+          )}
         </strong>
       </td>
       <td>{ci.name}</td>
