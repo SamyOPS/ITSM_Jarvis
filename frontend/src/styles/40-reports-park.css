@@ -1284,6 +1284,11 @@
   min-width: 120px;
 }
 
+.park-equipment-table td:first-child .ticket-table-number span {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 .park-equipment-table th:nth-child(2),
 .park-equipment-table td:nth-child(2) {
   width: 190px;

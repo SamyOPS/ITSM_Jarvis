@@ -34,6 +34,7 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
     pathname === '/agent/requests/new' ||
     pathname === '/agent/tickets' ||
     pathname === '/knowledge/articles' ||
+    pathname === '/parc/my-equipment' ||
     pathname === '/parc/cis/new' ||
     pathname === '/parc/cis' ||
     pathname === '/reports' ||

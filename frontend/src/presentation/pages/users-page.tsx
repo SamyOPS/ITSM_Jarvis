@@ -1001,9 +1001,6 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
                 <section className="admin-user-capabilities">
                   <div className="admin-user-capabilities-heading">
                     <strong>Caracteristiques</strong>
-                    <span>
-                      Droits additionnels cumulables sans changer le role.
-                    </span>
                   </div>
 
                   {[

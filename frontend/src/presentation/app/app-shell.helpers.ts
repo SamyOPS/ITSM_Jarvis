@@ -41,6 +41,7 @@ export const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/agent/requests/new': FileText,
   '/agent/tickets': ListChecks,
   '/knowledge/articles': BookOpen,
+  '/parc/my-equipment': Monitor,
   '/parc/cis/new': Plus,
   '/parc/cis': Monitor,
   '/reports': BarChart3,

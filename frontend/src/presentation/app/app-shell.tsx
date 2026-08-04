@@ -57,11 +57,27 @@ const sidebarRouteGroups: readonly SidebarRouteGroup[] = [
   },
   {
     label: 'Parc',
-    routes: ['/parc/cis/new', '/parc/cis', '/knowledge/articles'],
+    routes: [
+      '/parc/my-equipment',
+      '/parc/cis/new',
+      '/parc/cis',
+      '/knowledge/articles',
+    ],
   },
   {
     label: 'Administration',
     routes: ['/admin/users', '/admin/groups', '/agent/archives'],
+  },
+];
+
+const requesterSidebarRouteGroups: readonly SidebarRouteGroup[] = [
+  {
+    label: 'Tickets',
+    routes: ['/agent/tickets', '/agent/incidents/new', '/agent/requests/new'],
+  },
+  {
+    label: 'Parc',
+    routes: ['/parc/my-equipment', '/knowledge/articles'],
   },
 ];
 
@@ -111,7 +127,11 @@ export function AppShell({
   const unreadNotificationCount = notifications.filter(
     (notification) => !notification.readAt,
   ).length;
-  const sidebarGroups = sidebarRouteGroups
+  const effectiveSidebarRouteGroups =
+    session?.user.role === 'DEMANDEUR'
+      ? requesterSidebarRouteGroups
+      : sidebarRouteGroups;
+  const sidebarGroups = effectiveSidebarRouteGroups
     .map((group) => ({
       label: group.label,
       routes: group.routes
@@ -634,8 +654,15 @@ export function AppShell({
                       {userInitials}
                     </span>
                     <div>
-                      <strong>{userDisplayName}</strong>
-                      <span>
+                      <span className="workspace-profile-menu-identity">
+                        <strong>{userDisplayName}</strong>
+                        {session?.user.isVip ? (
+                          <span className="workspace-profile-vip-badge">
+                            VIP
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="workspace-profile-menu-email">
                         {session?.user.email ?? 'vision@jarvis.local'}
                       </span>
                     </div>

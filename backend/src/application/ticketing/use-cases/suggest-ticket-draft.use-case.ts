@@ -201,6 +201,7 @@ export class SuggestTicketDraftUseCase {
       '- pour une demande materielle trop generale, pose 1 petite question simple avant le brouillon si cela aide vraiment a fournir le bon materiel;',
       '- pour une demande ou un incident lie a du materiel physique ou a un accessoire, choisis la categorie Materiel/Matériel depuis la liste fournie: chargeur, cable, adaptateur, souris, clavier, ecran, telephone, imprimante, PC, moniteur, dock, batterie, casque, webcam, peripherique;',
       '- ne classe jamais une demande de chargeur, cable ou accessoire en Acces/Accès; Acces/Accès sert aux comptes, mots de passe, connexions, droits, sessions, VPN ou acces applicatif;',
+      "- pour une demande de nouveau PC, n'ecris pas PC neuf dans le titre; prefere PC, PC portable, PC tour ou PC fixe selon la precision donnee;",
       "- exemple demande de chargeur sans appareil precise: demander pour quel appareil (PC, telephone, tablette ou autre); si c'est un chargeur de telephone/portable, demander si l'utilisateur sait si c'est USB-C, Lightning, micro-USB, autre, ou peu importe; si c'est un chargeur de PC, ne demande pas le type exact;",
       "- si le type de chargeur ou le connecteur est deja donne (Lightning, USB-C, micro-USB, chargeur PC, etc.) ou si l'utilisateur dit peu importe, ne demande pas l'appareil, le modele, la puissance, ni la compatibilite: cette precision ne change pas le ticket; avance vers le demandeur/canal ou prepare le brouillon;",
       "- si l'utilisateur demande un cable reseau, un cable Wi-Fi, ou un cable pour avoir le Wi-Fi, considere que le besoin est assez clair: ne demande pas de confirmer Ethernet/RJ45 et ne demande pas pour quel materiel;",
@@ -212,6 +213,7 @@ export class SuggestTicketDraftUseCase {
       "- adapte le nombre de questions/actions a la situation: 0 si le probleme est complexe, urgent, risque, ou clairement a traiter par le support; 1 a 3 si c'est simple et utile;",
       "- pour les problemes simples et frequents comme PC qui ne s'allume pas, Wi-Fi/Internet, application bloquee, imprimante ou accessoire, fais au moins une aide simple avant le brouillon si aucune tentative de resolution n'est deja mentionnee;",
       "- exemple PC qui ne s'allume pas: avant le brouillon, proposer de brancher le chargeur/secteur, tester une autre prise ou un autre cable, patienter quelques minutes si batterie vide, puis demander ce que cela donne;",
+      "- pour un PC/ordinateur qui ne demarre pas ou ne s'allume pas, si l'utilisateur n'a pas deja precise PC portable, ordinateur portable, tour, PC fixe ou unite centrale, demande exactement: Est-ce qu'il s'agit d'un PC portable ou d'une tour ?",
       "- pour un telephone qui ne s'allume pas, si tu dois verifier la charge, demande exactement: Est-ce que le telephone affiche un voyant/indication de charge quand il est branche ?",
       "- si l'utilisateur repond non, aucun voyant, rien, ou equivalent a cette question de charge telephone, comprends la reponse et avance; ne repose pas la meme question;",
       "- si l'utilisateur repond que le telephone etait deja charge, comprends que la batterie n'est probablement pas la cause; ne demande pas s'il s'est charge un moment sur le chargeur et avance vers le cadrage du ticket;",
@@ -363,6 +365,17 @@ export class SuggestTicketDraftUseCase {
         };
       }
 
+      const computerFormFactorQuestion =
+        this.getMissingComputerFormFactorQuestion(userInput);
+
+      if (computerFormFactorQuestion) {
+        return {
+          action: 'ASK_QUESTION',
+          question: computerFormFactorQuestion,
+          suggestion: null,
+        };
+      }
+
       const networkScopeQuestion =
         this.getMissingNetworkScopeQuestion(userInput);
 
@@ -487,6 +500,8 @@ export class SuggestTicketDraftUseCase {
       this.getMissingStorageSimpleHelpQuestion(userInput);
     const screenPrecisionQuestion =
       this.getMissingScreenPrecisionQuestion(userInput);
+    const computerFormFactorQuestion =
+      this.getMissingComputerFormFactorQuestion(userInput);
     const networkScopeQuestion = this.getMissingNetworkScopeQuestion(userInput);
     const genericRequestQuestion =
       this.getMissingGenericRequestPrecisionQuestion(userInput);
@@ -537,6 +552,14 @@ export class SuggestTicketDraftUseCase {
       return {
         action: 'ASK_QUESTION',
         question: screenPrecisionQuestion,
+        suggestion: null,
+      };
+    }
+
+    if (computerFormFactorQuestion) {
+      return {
+        action: 'ASK_QUESTION',
+        question: computerFormFactorQuestion,
         suggestion: null,
       };
     }
@@ -1000,6 +1023,7 @@ export class SuggestTicketDraftUseCase {
         /\s*(?:\(|\[)[^)\]]*(?:\d+\s*(?:go|gb|mo|mb|%)|dispo|disponible|restant|reste)[^)\]]*(?:\)|\])/giu,
         ' ',
       )
+      .replace(/\b(PC(?:\s+(?:tour|portable|fixe))?)\s+neuf\b/giu, '$1')
       .replace(/\s{2,}/g, ' ')
       .replace(/\s*[-:;,.]\s*$/u, '')
       .trim();
@@ -2091,9 +2115,19 @@ export class SuggestTicketDraftUseCase {
     const questionAsksUselessStorageDetail =
       this.hasStorageAlmostFullIssue(normalizedUserConversation) &&
       this.questionAsksUselessStorageDetail(normalizedQuestion);
+    const questionAsksFrozenComputerDetail =
+      this.hasFrozenComputerIssue(normalizedUserConversation) &&
+      this.questionAsksAlreadyAnsweredFrozenComputerDetail(normalizedQuestion);
 
     if (storageTargetQuestion) {
       return storageTargetQuestion;
+    }
+
+    if (questionAsksFrozenComputerDetail) {
+      return (
+        this.getNextRequesterContextQuestion(conversation) ??
+        'Je prepare une proposition de ticket avec les informations deja donnees.'
+      );
     }
 
     if (questionAsksUselessStorageDetail) {
@@ -2326,6 +2360,40 @@ export class SuggestTicketDraftUseCase {
     return "De quel type d'ecran s'agit-il : PC portable, ecran externe, telephone, tablette ou autre ?";
   }
 
+  private getMissingComputerFormFactorQuestion(
+    conversation: string,
+  ): string | null {
+    const normalizedConversation = this.normalizeForMatching(conversation);
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+    const hasComputerPowerIssue =
+      /\b(pc|ordinateur|poste|machine)\b.*\b(s[' ]?allume pas|ne s[' ]?allume pas|demarre pas|ne demarre pas|demarre plus|ne demarre plus|aucun signe de vie|pas de signe de vie|aucun voyant|pas de voyant)\b/u.test(
+        normalizedUserConversation,
+      ) ||
+      /\b(s[' ]?allume pas|ne s[' ]?allume pas|demarre pas|ne demarre pas|demarre plus|ne demarre plus|aucun signe de vie|pas de signe de vie|aucun voyant|pas de voyant)\b.*\b(pc|ordinateur|poste|machine)\b/u.test(
+        normalizedUserConversation,
+      );
+    const hasComputerFormFactor =
+      /\b(pc portable|ordinateur portable|laptop|portable pro|portable travail|portable professionnel|tour|pc fixe|ordinateur fixe|poste fixe|fixe|unite centrale|bureau)\b/u.test(
+        normalizedUserConversation,
+      );
+    const alreadyAskedComputerFormFactor =
+      /(pc portable|ordinateur portable|portable ou une tour|portable ou tour|tour ou portable|tour ou un portable|pc fixe|ordinateur fixe|poste fixe|unite centrale)/u.test(
+        normalizedConversation,
+      );
+
+    if (
+      !hasComputerPowerIssue ||
+      hasComputerFormFactor ||
+      alreadyAskedComputerFormFactor
+    ) {
+      return null;
+    }
+
+    return "Est-ce qu'il s'agit d'un PC portable ou d'une tour ?";
+  }
+
   private getMissingNetworkScopeQuestion(conversation: string): string | null {
     const normalizedConversation = this.normalizeForMatching(conversation);
     const normalizedUserConversation = this.normalizeForMatching(
@@ -2551,10 +2619,10 @@ export class SuggestTicketDraftUseCase {
     }
 
     const mentionsComputerPowerIssue =
-      /(pc|ordinateur|portable|poste|ecran).*(s[' ]?allume pas|demarre pas|ne demarre pas|aucun voyant|pas de voyant|ventilateur)/u.test(
+      /(pc|ordinateur|portable|poste|ecran).*(s[' ]?allume pas|demarre pas|ne demarre pas|demarre plus|ne demarre plus|aucun voyant|pas de voyant|ventilateur)/u.test(
         normalizedConversation,
       ) ||
-      /(s[' ]?allume pas|demarre pas|ne demarre pas|aucun voyant|pas de voyant|ventilateur).*(pc|ordinateur|portable|poste|ecran)/u.test(
+      /(s[' ]?allume pas|demarre pas|ne demarre pas|demarre plus|ne demarre plus|aucun voyant|pas de voyant|ventilateur).*(pc|ordinateur|portable|poste|ecran)/u.test(
         normalizedConversation,
       );
 
@@ -2751,6 +2819,37 @@ export class SuggestTicketDraftUseCase {
   private userWantsTicketNow(normalizedUserConversation: string): boolean {
     return /(ticket|demande au support|support|technicien|cree le ticket|creer le ticket|fait le ticket|fais le ticket|prepare le ticket|ouvrir un ticket)/u.test(
       normalizedUserConversation,
+    );
+  }
+
+  private hasFrozenComputerIssue(normalizedUserConversation: string): boolean {
+    const mentionsComputer = /\b(pc|ordinateur|poste|machine|tour)\b/u.test(
+      normalizedUserConversation,
+    );
+    const mentionsFrozen =
+      /(ecran fige|ecran bloque|fige|figee|freeze|bloque completement|completement bloque|aucune reponse|ne repond plus|curseur bouge pas|curseur ne bouge pas)/u.test(
+        normalizedUserConversation,
+      );
+
+    return mentionsComputer && mentionsFrozen;
+  }
+
+  private questionAsksAlreadyAnsweredFrozenComputerDetail(
+    normalizedQuestion: string,
+  ): boolean {
+    return (
+      /(curseur|souris).*(bouge|repond|bloque|fige)/u.test(
+        normalizedQuestion,
+      ) ||
+      /(bouge|repond|bloque|fige).*(curseur|souris)/u.test(
+        normalizedQuestion,
+      ) ||
+      /(message d erreur|erreur|aucun message|affiche)/u.test(
+        normalizedQuestion,
+      ) ||
+      /(depuis quand|combien de temps|duree|reste bloque)/u.test(
+        normalizedQuestion,
+      )
     );
   }
 

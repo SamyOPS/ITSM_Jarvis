@@ -1541,8 +1541,12 @@ p.ticket-form-helper {
 }
 
 .ticket-vip-badge {
+  flex: none;
+  min-width: max-content;
   margin-left: 8px;
   padding: 3px 7px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .admin-user-capability-badges {
@@ -4378,15 +4382,39 @@ p.ticket-form-helper {
   min-width: 0;
 }
 
+.workspace-profile-menu-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .workspace-profile-menu-header strong {
   color: #17335f;
   font-size: 0.96rem;
 }
 
-.workspace-profile-menu-header span:last-child {
+.workspace-profile-menu-email {
   color: var(--text-muted);
   font-size: 0.8rem;
   word-break: break-word;
+}
+
+.workspace-profile-vip-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  padding: 3px 7px;
+  border: 1px solid #f7d56a;
+  border-radius: 999px;
+  background: #fff4c7;
+  color: #7c5300;
+  font-size: 0.64rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .workspace-profile-menu-list {

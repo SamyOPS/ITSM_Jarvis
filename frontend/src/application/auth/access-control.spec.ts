@@ -37,8 +37,16 @@ describe('access-control', () => {
 
     expect(canAccessRoute('/agent/tickets', session)).toBe(true);
     expect(canAccessRoute('/knowledge/articles', session)).toBe(true);
+    expect(canAccessRoute('/parc/my-equipment', session)).toBe(true);
     expect(canAccessRoute('/reports', session)).toBe(false);
     expect(canAccessRoute('/parc/cis', session)).toBe(false);
+  });
+
+  it('blocks demandeur from creating equipment even with asset permission flag', () => {
+    const session = buildSession('DEMANDEUR', { canManageAssets: true });
+
+    expect(canAccessRoute('/parc/cis/new', session)).toBe(false);
+    expect(getVisibleRoutes(session)).not.toContain('/parc/cis/new');
   });
 
   it('lets agent access reports but not admin', () => {
@@ -89,7 +97,7 @@ describe('access-control', () => {
   });
 
   it('returns the expected home route for each role', () => {
-    expect(getHomeRoute(buildSession('DEMANDEUR'))).toBe('/');
+    expect(getHomeRoute(buildSession('DEMANDEUR'))).toBe('/agent/tickets');
     expect(getHomeRoute(buildSession('AGENT'))).toBe('/reports');
     expect(getHomeRoute(buildSession('MANAGER'))).toBe('/reports');
     expect(getHomeRoute(buildSession('ADMIN'))).toBe('/reports');
@@ -100,7 +108,13 @@ describe('access-control', () => {
   it('shows the reduced visible route set for demandeur', () => {
     const visibleRoutes = getVisibleRoutes(buildSession('DEMANDEUR'));
 
-    expect(visibleRoutes).toEqual(['/knowledge/articles', '/agent/tickets']);
+    expect(visibleRoutes).toEqual([
+      '/agent/tickets',
+      '/agent/incidents/new',
+      '/agent/requests/new',
+      '/knowledge/articles',
+      '/parc/my-equipment',
+    ]);
   });
 
   it('shows reports and admin routes for admin', () => {
