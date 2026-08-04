@@ -39,6 +39,7 @@ const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
     'ADMIN',
     'SUPER_ADMIN',
   ],
+  '/parc/my-equipment': ['DEMANDEUR'],
   '/parc/cis/new': ['ADMIN', 'SUPER_ADMIN'],
   '/parc/cis': ['AGENT', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'],
   '/reports': ['AGENT', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'],
@@ -82,7 +83,14 @@ export function getVisibleRoutes(
   session: AuthSessionSnapshot | null,
 ): readonly RoutePath[] {
   if (session?.user.role === 'DEMANDEUR') {
-    return (['/knowledge/articles', '/agent/tickets', '/login'] as const)
+    return (
+      [
+        '/knowledge/articles',
+        '/parc/my-equipment',
+        '/agent/tickets',
+        '/login',
+      ] as const
+    )
       .filter((pathname) => pathname !== '/login' || !session)
       .filter((pathname) => canAccessRoute(pathname, session));
   }

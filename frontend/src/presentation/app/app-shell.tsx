@@ -57,7 +57,12 @@ const sidebarRouteGroups: readonly SidebarRouteGroup[] = [
   },
   {
     label: 'Parc',
-    routes: ['/parc/cis/new', '/parc/cis', '/knowledge/articles'],
+    routes: [
+      '/parc/my-equipment',
+      '/parc/cis/new',
+      '/parc/cis',
+      '/knowledge/articles',
+    ],
   },
   {
     label: 'Administration',

@@ -11,6 +11,7 @@ export type RoutePath =
   | '/agent/my-tickets'
   | '/agent/tickets'
   | '/knowledge/articles'
+  | '/parc/my-equipment'
   | '/parc/cis/new'
   | '/parc/cis'
   | '/reports'
@@ -71,6 +72,11 @@ export const ROUTES: RouteDefinition[] = [
       'Articles d aide et procedures pour resoudre les demandes courantes.',
     path: '/knowledge/articles',
     title: 'Base de connaissances',
+  },
+  {
+    description: 'Liste des equipements assignes a l utilisateur connecte.',
+    path: '/parc/my-equipment',
+    title: 'Mon equipement',
   },
   {
     description: 'Gestion des elements du parc informatique.',

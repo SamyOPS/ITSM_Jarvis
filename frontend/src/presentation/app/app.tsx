@@ -31,6 +31,7 @@ import { LoginPage } from '../pages/login-page';
 import { NotFoundPage } from '../pages/not-found-page';
 import { KnowledgePage } from '../pages/knowledge-page';
 import { LicensePage } from '../pages/license-page';
+import { MyEquipmentPage } from '../pages/my-equipment-page';
 import { ParkPage } from '../pages/park-page';
 import { ReportsPage } from '../pages/reports-page';
 import { RegisterPage } from '../pages/register-page';
@@ -103,6 +104,8 @@ function renderPage({
       ) : (
         <NotFoundPage />
       );
+    case '/parc/my-equipment':
+      return session ? <MyEquipmentPage session={session} /> : <NotFoundPage />;
     case '/parc/cis':
       if (pathname.startsWith('/parc/cis/')) {
         const ciId = pathname.replace('/parc/cis/', '').trim();
