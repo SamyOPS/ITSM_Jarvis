@@ -223,7 +223,10 @@ export function buildPersonalTicketPreview(
 export function sortPersonalTickets(
   tickets: TicketSummarySnapshot[],
   sortBy: PersonalTicketSort,
-  prioritiesById: Map<string, { level: number; name: string }>,
+  prioritiesById: Map<
+    string,
+    { level: number; name: string; resolutionHours?: number | null }
+  >,
 ): TicketSummarySnapshot[] {
   const matchingTickets = [...tickets];
 
@@ -248,10 +251,11 @@ export function sortPersonalTickets(
     const rightScore = getPersonalTicketOperationalScore(right, prioritiesById);
 
     return (
-      leftScore.statusRank - rightScore.statusRank ||
-      leftScore.slaRank - rightScore.slaRank ||
-      leftScore.nextDueAt - rightScore.nextDueAt ||
+      leftScore.completionRank - rightScore.completionRank ||
       rightScore.priorityLevel - leftScore.priorityLevel ||
+      leftScore.slaRank - rightScore.slaRank ||
+      leftScore.statusRank - rightScore.statusRank ||
+      leftScore.nextDueAt - rightScore.nextDueAt ||
       leftScore.createdAt - rightScore.createdAt
     );
   });
@@ -275,28 +279,47 @@ export function formatTicketDisplayNumber(
 
 function getPersonalTicketOperationalScore(
   ticket: TicketSummarySnapshot,
-  prioritiesById: Map<string, { level: number; name: string }>,
+  prioritiesById: Map<
+    string,
+    { level: number; name: string; resolutionHours?: number | null }
+  >,
 ): {
+  completionRank: number;
   createdAt: number;
   nextDueAt: number;
   priorityLevel: number;
   slaRank: number;
   statusRank: number;
 } {
+  const nextDueAt = getPersonalNextDueTimestamp(ticket, prioritiesById);
+
   return {
+    completionRank: getPersonalCompletionRank(ticket.status),
     createdAt: personalToTimestamp(ticket.createdAt),
-    nextDueAt: getPersonalNextDueTimestamp(ticket),
+    nextDueAt,
     priorityLevel: prioritiesById.get(ticket.priorityId)?.level ?? 0,
-    slaRank: getPersonalSlaRank(ticket),
+    slaRank: getPersonalSlaRank(ticket, nextDueAt),
     statusRank: getPersonalStatusRank(ticket.status),
   };
 }
 
+function getPersonalCompletionRank(status: string): number {
+  if (status === 'RESOLVED') {
+    return 1;
+  }
+
+  if (status === 'CLOSED') {
+    return 2;
+  }
+
+  return 0;
+}
+
 function getPersonalStatusRank(status: string): number {
   const ranks: Record<string, number> = {
-    IN_PROGRESS: 0,
-    PENDING: 1,
-    OPEN: 2,
+    OPEN: 0,
+    IN_PROGRESS: 1,
+    PENDING: 2,
     RESOLVED: 3,
     CLOSED: 4,
   };
@@ -304,17 +327,28 @@ function getPersonalStatusRank(status: string): number {
   return ranks[status] ?? 5;
 }
 
-function getPersonalSlaRank(ticket: TicketSummarySnapshot): number {
-  if (
-    ticket.responseSlaStatus === 'OVERDUE' ||
-    ticket.resolutionSlaStatus === 'OVERDUE'
-  ) {
+function getPersonalSlaRank(
+  ticket: TicketSummarySnapshot,
+  ttrDueAt: number,
+): number {
+  if (!Number.isFinite(ttrDueAt)) {
+    return 2;
+  }
+
+  const now = Date.now();
+
+  if (ttrDueAt <= now) {
     return 0;
   }
 
+  const createdAt = personalToTimestamp(ticket.createdAt);
+  const initialDuration = ttrDueAt - createdAt;
+  const remainingDuration = ttrDueAt - now;
+
   if (
-    ticket.responseSlaStatus === 'AT_RISK' ||
-    ticket.resolutionSlaStatus === 'AT_RISK'
+    Number.isFinite(createdAt) &&
+    initialDuration > 0 &&
+    remainingDuration <= initialDuration * 0.25
   ) {
     return 1;
   }
@@ -322,14 +356,29 @@ function getPersonalSlaRank(ticket: TicketSummarySnapshot): number {
   return 2;
 }
 
-function getPersonalNextDueTimestamp(ticket: TicketSummarySnapshot): number {
-  const timestamps = [ticket.responseDueAt, ticket.resolutionDueAt]
-    .map((value) =>
-      value ? personalToTimestamp(value) : Number.POSITIVE_INFINITY,
-    )
-    .filter((value) => Number.isFinite(value));
+function getPersonalNextDueTimestamp(
+  ticket: TicketSummarySnapshot,
+  prioritiesById: Map<string, { resolutionHours?: number | null }>,
+): number {
+  const resolutionHours = prioritiesById.get(
+    ticket.priorityId,
+  )?.resolutionHours;
 
-  return Math.min(...timestamps, Number.POSITIVE_INFINITY);
+  if (resolutionHours !== null && resolutionHours !== undefined) {
+    const createdAt = personalToTimestamp(ticket.createdAt);
+
+    return Number.isFinite(createdAt)
+      ? createdAt + resolutionHours * 60 * 60 * 1000
+      : Number.POSITIVE_INFINITY;
+  }
+
+  if (ticket.resolutionDueAt) {
+    return personalToTimestamp(ticket.resolutionDueAt);
+  }
+
+  return ticket.responseDueAt
+    ? personalToTimestamp(ticket.responseDueAt)
+    : Number.POSITIVE_INFINITY;
 }
 
 function personalToTimestamp(value: string): number {
