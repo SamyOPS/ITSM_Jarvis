@@ -8,5 +8,3 @@ export interface AppShellProps {
   pathname: string;
   session: AuthSessionSnapshot | null;
 }
-
-export type SidebarMenuId = 'administration' | 'create-ticket' | 'parc';
