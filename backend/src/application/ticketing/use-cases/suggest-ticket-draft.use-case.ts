@@ -11,12 +11,20 @@ import { TicketType } from '../../../domain/ticketing/ticket-type';
 import { resolveIncidentPriorityName } from '../incident-priority';
 
 export type SuggestTicketDraftCommand = {
+  attachments?: TicketDraftAttachmentInput[];
   categories?: string[];
   channels?: string[];
   currentMode?: TicketType | null;
   priorities?: string[];
   requesters?: string[];
   userInput: string;
+};
+
+export type TicketDraftAttachmentInput = {
+  data: Buffer | string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
 };
 
 export type TicketDraftAssistantResponse = {
@@ -50,15 +58,38 @@ type OpenAiResponse = {
   }>;
 };
 
+type OpenAiInputContentPart =
+  | {
+      text: string;
+      type: 'input_text';
+    }
+  | {
+      detail: 'auto';
+      image_url: string;
+      type: 'input_image';
+    }
+  | {
+      file_data: string;
+      filename: string;
+      type: 'input_file';
+    };
+
+const AI_DRAFT_MAX_ATTACHMENT_COUNT = 10;
+const AI_DRAFT_MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
+const AI_DRAFT_MAX_TOTAL_ATTACHMENT_SIZE_BYTES = 40 * 1024 * 1024;
+
 @Injectable()
 export class SuggestTicketDraftUseCase {
   async execute(
     command: SuggestTicketDraftCommand,
   ): Promise<TicketDraftAssistantResponse> {
     const userInput = command.userInput.trim();
+    const attachments = this.normalizeAttachments(command.attachments ?? []);
 
-    if (!userInput) {
-      throw new BadRequestException('Le message ne peut pas etre vide.');
+    if (!userInput && attachments.length === 0) {
+      throw new BadRequestException(
+        'Le message ou une piece jointe est obligatoire.',
+      );
     }
 
     const config = getBackendRuntimeConfig();
@@ -85,7 +116,7 @@ export class SuggestTicketDraftUseCase {
           },
           {
             role: 'user',
-            content: this.buildPrompt(command, userInput),
+            content: this.buildUserContent(command, userInput, attachments),
           },
         ],
         text: {
@@ -162,14 +193,52 @@ export class SuggestTicketDraftUseCase {
     return this.normalizeAssistantResponse(this.extractText(body), userInput);
   }
 
+  private buildUserContent(
+    command: SuggestTicketDraftCommand,
+    userInput: string,
+    attachments: TicketDraftAttachmentInput[],
+  ): OpenAiInputContentPart[] {
+    return [
+      {
+        type: 'input_text',
+        text: this.buildPrompt(command, userInput, attachments),
+      },
+      ...attachments.map((attachment) => {
+        const base64Data =
+          typeof attachment.data === 'string'
+            ? attachment.data
+            : attachment.data.toString('base64');
+
+        if (this.isImageMimeType(attachment.mimeType)) {
+          return {
+            type: 'input_image' as const,
+            detail: 'auto' as const,
+            image_url: `data:${attachment.mimeType};base64,${base64Data}`,
+          };
+        }
+
+        return {
+          type: 'input_file' as const,
+          file_data: base64Data,
+          filename: attachment.fileName,
+        };
+      }),
+    ];
+  }
+
   private buildPrompt(
     command: SuggestTicketDraftCommand,
     userInput: string,
+    attachments: TicketDraftAttachmentInput[] = [],
   ): string {
     const categories = command.categories?.filter(Boolean).slice(0, 80) ?? [];
     const channels = command.channels?.filter(Boolean).slice(0, 20) ?? [];
     const priorities = command.priorities?.filter(Boolean).slice(0, 20) ?? [];
     const requesters = command.requesters?.filter(Boolean).slice(0, 120) ?? [];
+    const attachmentSummary = attachments.map(
+      (attachment, index) =>
+        `${index + 1}. ${attachment.fileName} (${attachment.mimeType || 'type inconnu'}, ${attachment.sizeBytes} octets)`,
+    );
 
     return [
       `Mode actuellement affiche: ${command.currentMode ?? 'non precise'}.`,
@@ -180,6 +249,14 @@ export class SuggestTicketDraftUseCase {
       '',
       'Objectif:',
 
+      '- tu peux recevoir du texte, des pieces jointes, ou les deux dans le meme message;',
+      "- exploite les pieces jointes visibles pour comprendre le probleme ou le besoin: photo d'un cable/connecteur, screenshot d'un message d'erreur, etat visible d'un equipement, document fourni, etc.;",
+      "- si une image montre clairement un objet ou une erreur, utilise cette information comme donnee utilisateur; par exemple un cable USB-C visible doit etre compris comme USB-C meme si l'utilisateur ne connait pas le nom;",
+      "- pour les photos de cables/adaptateurs, analyse chaque extremite separement: ne suppose jamais que les deux connecteurs sont identiques; si un cote est HDMI et l'autre DisplayPort, nomme le besoin cable HDMI vers DisplayPort ou adaptateur HDMI vers DisplayPort selon l'objet visible;",
+      '- indices visuels utiles: HDMI a une forme aplatie/trapezoidale; DisplayPort est plus rectangulaire avec un coin biseaute; USB-C est petit, ovale et reversible; RJ45 est transparent/rectangulaire avec clip; VGA est bleu ou noir avec 15 broches; DVI est large avec grille de broches;',
+      '- si deux connecteurs video differents sont visibles, le titre et la description doivent citer les deux connecteurs, par exemple Demande de cable HDMI vers DisplayPort, pas seulement cable HDMI ni seulement cable DisplayPort;',
+      "- si la piece jointe contient un message d'erreur lisible, reprends le message utile dans la description du ticket sans inventer de details;",
+      "- si la piece jointe n'est pas exploitable ou pas assez lisible, pose une seule question courte pour obtenir la precision manquante;",
       '- si les informations sont suffisantes, action=SUGGEST_TICKET et tu prepares le ticket;',
       "- s'il manque une information importante, action=ASK_QUESTION et tu poses une seule question courte, adaptee au contexte;",
       '- ne repose jamais une question dont la reponse est deja evidente dans la conversation;',
@@ -206,6 +283,7 @@ export class SuggestTicketDraftUseCase {
       "- si le type de chargeur ou le connecteur est deja donne (Lightning, USB-C, micro-USB, chargeur PC, etc.) ou si l'utilisateur dit peu importe, ne demande pas l'appareil, le modele, la puissance, ni la compatibilite: cette precision ne change pas le ticket; avance vers le demandeur/canal ou prepare le brouillon;",
       "- si l'utilisateur demande un cable reseau, un cable Wi-Fi, ou un cable pour avoir le Wi-Fi, considere que le besoin est assez clair: ne demande pas de confirmer Ethernet/RJ45 et ne demande pas pour quel materiel;",
       '- pour un cable deja clairement identifie comme HDMI, DisplayPort, Ethernet/RJ45, USB-C, VGA ou DVI, ne demande pas pour quel appareil il est destine, pour quel usage, quel type de connexion, TV/ecran, PC/moniteur; ces questions sont inutiles. Si la longueur manque vraiment, demande exactement: Quelle longueur de câble souhaitez-vous ?',
+      '- pour un cable ou adaptateur HDMI vers DisplayPort, DisplayPort vers HDMI, USB-C vers HDMI, USB-C vers DisplayPort ou autre combinaison visible/nommee, garde explicitement les deux connecteurs dans le titre et la description;',
       '- pour une longueur de cable, ne demande jamais une mesure en metres: accepte une reponse approximative comme court, petit, moyen, normal, grand, long, standard ou peu importe;',
       "- pour un cable USB-C destine a charger un PC, ne demande jamais si c'est pour synchronisation de donnees, alimentation, Power Delivery, ou type de port; prepare le ticket avec une description simple;",
       '- exemple demande de cle USB sans capacite: demander si une capacite precise est souhaitee ou si peu importe;',
@@ -271,8 +349,60 @@ export class SuggestTicketDraftUseCase {
       '- si des informations manquent, ne les invente pas et ne les liste pas dans la description; garde une description simple du besoin connu;',
       '- si une categorie semble evidente, reprendre exactement son nom depuis la liste fournie.',
       '',
-      `Description utilisateur: ${userInput}`,
+      `Pieces jointes recues: ${attachmentSummary.length ? attachmentSummary.join('; ') : 'aucune'}.`,
+      `Description utilisateur: ${userInput || '(aucun texte fourni)'}`,
     ].join('\n');
+  }
+
+  private normalizeAttachments(
+    attachments: TicketDraftAttachmentInput[],
+  ): TicketDraftAttachmentInput[] {
+    if (attachments.length > AI_DRAFT_MAX_ATTACHMENT_COUNT) {
+      throw new BadRequestException('10 pieces jointes maximum.');
+    }
+
+    let totalSize = 0;
+
+    return attachments.map((attachment) => {
+      const fileName = attachment.fileName.trim();
+      const mimeType = attachment.mimeType.trim() || 'application/octet-stream';
+      const sizeBytes = Number.isFinite(attachment.sizeBytes)
+        ? attachment.sizeBytes
+        : 0;
+
+      if (!fileName) {
+        throw new BadRequestException('Nom de piece jointe obligatoire.');
+      }
+
+      if (sizeBytes <= 0) {
+        throw new BadRequestException('Piece jointe vide ou invalide.');
+      }
+
+      if (sizeBytes > AI_DRAFT_MAX_ATTACHMENT_SIZE_BYTES) {
+        throw new BadRequestException(
+          'Chaque piece jointe IA doit faire 10 Mo maximum.',
+        );
+      }
+
+      totalSize += sizeBytes;
+
+      if (totalSize > AI_DRAFT_MAX_TOTAL_ATTACHMENT_SIZE_BYTES) {
+        throw new BadRequestException(
+          'Les pieces jointes IA depassent la limite totale de 40 Mo.',
+        );
+      }
+
+      return {
+        data: attachment.data,
+        fileName,
+        mimeType,
+        sizeBytes,
+      };
+    });
+  }
+
+  private isImageMimeType(mimeType: string): boolean {
+    return mimeType.toLowerCase().startsWith('image/');
   }
 
   private extractText(response: OpenAiResponse): string {

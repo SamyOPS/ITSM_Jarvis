@@ -120,6 +120,136 @@ describe('SuggestTicketDraftUseCase', () => {
     );
   });
 
+  it('accepts an image attachment without text and sends it as multimodal input', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'SUGGEST_TICKET',
+        categoryName: 'Materiel',
+        channelName: 'Portail',
+        confidence: 0.84,
+        description: 'Besoin d un cable USB-C identifie sur la photo.',
+        priorityName: PriorityName.MEDIUM,
+        requesterScope: 'SELF',
+        requestType: RequestType.HARDWARE,
+        title: 'Demande de cable USB-C',
+        type: TicketType.REQUEST,
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await useCase.execute({
+      attachments: [
+        {
+          data: Buffer.from('fake-image'),
+          fileName: 'cable-usb-c.png',
+          mimeType: 'image/png',
+          sizeBytes: 10,
+        },
+      ],
+      userInput: '',
+    });
+
+    const [, fetchOptions] = fetchMock.mock.calls[0] as [
+      string,
+      { body: string },
+    ];
+    const requestBody = JSON.parse(fetchOptions.body) as {
+      input: Array<{
+        content: unknown;
+      }>;
+    };
+    const userContent = requestBody.input[1].content as Array<{
+      image_url?: string;
+      text?: string;
+      type: string;
+    }>;
+
+    expect(
+      userContent.some(
+        (content) =>
+          content.type === 'input_text' &&
+          content.text?.includes('cable-usb-c.png'),
+      ),
+    ).toBe(true);
+    expect(
+      userContent.some(
+        (content) =>
+          content.type === 'input_image' &&
+          content.image_url?.startsWith('data:image/png;base64,'),
+      ),
+    ).toBe(true);
+  });
+
+  it('instructs the model to distinguish mixed HDMI and DisplayPort connectors', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'SUGGEST_TICKET',
+        categoryName: 'Materiel',
+        channelName: 'Portail',
+        confidence: 0.84,
+        description:
+          'Besoin d un cable HDMI vers DisplayPort identifie sur la photo.',
+        priorityName: PriorityName.MEDIUM,
+        requesterScope: 'SELF',
+        requestType: RequestType.HARDWARE,
+        title: 'Demande de cable HDMI vers DisplayPort',
+        type: TicketType.REQUEST,
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await useCase.execute({
+      attachments: [
+        {
+          data: Buffer.from('fake-image'),
+          fileName: 'cable-video.png',
+          mimeType: 'image/png',
+          sizeBytes: 10,
+        },
+      ],
+      userInput: 'je veux ce cable',
+    });
+
+    const [, fetchOptions] = fetchMock.mock.calls[0] as [
+      string,
+      { body: string },
+    ];
+    const requestBody = JSON.parse(fetchOptions.body) as {
+      input: Array<{
+        content: unknown;
+      }>;
+    };
+    const userContent = requestBody.input[1].content as Array<{
+      text?: string;
+      type: string;
+    }>;
+    const prompt = userContent.find(
+      (content) => content.type === 'input_text',
+    )?.text;
+
+    expect(prompt).toContain('analyse chaque extremite separement');
+    expect(prompt).toContain('HDMI vers DisplayPort');
+  });
+
+  it('rejects more than 10 AI attachments', async () => {
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        attachments: Array.from({ length: 11 }, (_, index) => ({
+          data: Buffer.from(`file-${index}`),
+          fileName: `screen-${index}.png`,
+          mimeType: 'image/png',
+          sizeBytes: 12,
+        })),
+        userInput: 'voici les captures',
+      }),
+    ).rejects.toThrow('10 pieces jointes maximum.');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('asks for requester scope instead of asking useless HDMI usage once cable length is known', async () => {
     mockAssistantResponse(
       baseAssistantPayload({

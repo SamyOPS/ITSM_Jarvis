@@ -1,4 +1,12 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ClipboardEvent,
+  type DragEvent,
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   ArrowDown,
@@ -158,9 +166,17 @@ function RequiredMark() {
 }
 
 type AiChatMessage = {
+  attachments?: AiChatAttachmentSummary[];
   body: string;
   id: string;
   role: 'assistant' | 'user';
+};
+
+type AiChatAttachmentSummary = {
+  fileKey: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
 };
 
 const INITIAL_AI_CHAT_MESSAGES: AiChatMessage[] = [
@@ -278,6 +294,8 @@ const INITIAL_ATTACHMENT_DRAFT: AttachmentDraftState = {
 };
 
 const TICKET_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
+const AI_DRAFT_MAX_ATTACHMENT_COUNT = 10;
+const AI_DRAFT_MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
 const INCIDENT_LOOKUP_PAGE_SIZE = 10;
 const TICKETS_PER_PAGE = 15;
 const TICKET_SORT_OPTIONS = [
@@ -451,11 +469,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     null,
   );
   const [aiDraftInput, setAiDraftInput] = useState('');
+  const [aiConversationFiles, setAiConversationFiles] = useState<File[]>([]);
+  const [aiDraftFiles, setAiDraftFiles] = useState<File[]>([]);
   const [aiDraftSuggestion, setAiDraftSuggestion] =
     useState<TicketDraftSuggestion | null>(null);
   const [aiDraftErrorMessage, setAiDraftErrorMessage] = useState<string | null>(
     null,
   );
+  const [isAiDraftFileDragOver, setIsAiDraftFileDragOver] = useState(false);
   const [isSuggestingDraft, setIsSuggestingDraft] = useState(false);
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
   const [aiChatMessages, setAiChatMessages] = useState<AiChatMessage[]>(
@@ -490,6 +511,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   const [creationAttachmentInputKey, setCreationAttachmentInputKey] =
     useState(0);
+  const [aiDraftFileInputKey, setAiDraftFileInputKey] = useState(0);
 
   const [isEditingInfo, setIsEditingInfo] = useState(false);
 
@@ -597,6 +619,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     Math.ceil(searchedTickets.length / TICKETS_PER_PAGE),
   );
   const aiDraftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const ticketCommentTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const aiChatBodyRef = useRef<HTMLDivElement | null>(null);
   const aiChatGenerationRef = useRef(0);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
@@ -625,6 +648,28 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       textarea.scrollHeight > boundedHeight + 1 ? 'auto' : 'hidden';
   }
 
+  function resizeTicketCommentTextarea(
+    textarea: HTMLTextAreaElement | null = ticketCommentTextareaRef.current,
+  ): void {
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = 'auto';
+
+    const maxHeight = Number.parseFloat(
+      window.getComputedStyle(textarea).maxHeight,
+    );
+    const boundedHeight = Math.min(
+      textarea.scrollHeight,
+      Number.isFinite(maxHeight) ? maxHeight : 220,
+    );
+
+    textarea.style.height = `${boundedHeight}px`;
+    textarea.style.overflowY =
+      textarea.scrollHeight > boundedHeight + 1 ? 'auto' : 'hidden';
+  }
+
   useEffect(() => {
     if (showDetailPanel) {
       setSelectedTicketId(ticketId ?? null);
@@ -641,6 +686,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     resizeAiDraftTextarea();
   }, [aiDraftInput, isAiChatOpen]);
+
+  useEffect(() => {
+    if (!showDetailPanel) {
+      return;
+    }
+
+    resizeTicketCommentTextarea();
+  }, [commentDraft.body, showDetailPanel]);
 
   useEffect(() => {
     if (!isAiChatOpen) {
@@ -1929,15 +1982,26 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   async function handleSendAiChatMessage(): Promise<void> {
     const userInput = aiDraftInput.trim();
+    const selectedAiDraftFiles = aiDraftFiles;
+    const nextAiConversationFiles = [
+      ...aiConversationFiles,
+      ...selectedAiDraftFiles,
+    ];
 
     setAiDraftErrorMessage(null);
 
-    if (!userInput) {
+    if (!userInput && selectedAiDraftFiles.length === 0) {
       return;
     }
 
     const userMessage: AiChatMessage = {
-      body: userInput,
+      attachments: selectedAiDraftFiles.map((file) => ({
+        fileKey: getLocalFileKey(file),
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type || 'application/octet-stream',
+      })),
+      body: userInput || 'Piece jointe envoyee',
       id: `user-${Date.now()}`,
       role: 'user',
     };
@@ -1945,6 +2009,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     const chatGeneration = aiChatGenerationRef.current;
 
     setAiDraftInput('');
+    setAiConversationFiles(nextAiConversationFiles);
+    setAiDraftFiles([]);
+    setAiDraftFileInputKey((currentKey) => currentKey + 1);
     setAiChatMessages(nextMessages);
     setAiDraftSuggestion(null);
 
@@ -1957,12 +2024,25 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         currentMode: mode,
         priorities: catalog.priorities.map((priority) => priority.name),
         requesters: aiRequesterNames,
+        attachments: nextAiConversationFiles,
         userInput: [
           nextMessages
             .map((message) =>
               message.role === 'assistant'
                 ? `Assistant: ${message.body}`
-                : `Utilisateur: ${message.body}`,
+                : [
+                    `Utilisateur: ${message.body}`,
+                    message.attachments?.length
+                      ? `Pieces jointes: ${message.attachments
+                          .map(
+                            (attachment) =>
+                              `${attachment.fileName} (${attachment.mimeType}, ${formatFileSize(attachment.fileSize)})`,
+                          )
+                          .join(', ')}`
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join('\n'),
             )
             .join('\n'),
           aiDraftSuggestion
@@ -2049,6 +2129,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   function resetAiChat(): void {
     aiChatGenerationRef.current += 1;
     setAiDraftInput('');
+    setAiConversationFiles([]);
+    setAiDraftFiles([]);
+    setAiDraftFileInputKey((currentKey) => currentKey + 1);
     setAiDraftSuggestion(null);
     setAiDraftErrorMessage(null);
     setAiChatMessages(INITIAL_AI_CHAT_MESSAGES);
@@ -2063,6 +2146,22 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         chatBody.scrollTop = 0;
       }
     });
+  }
+
+  function mergeFilesByLocalKey(currentFiles: File[], incomingFiles: File[]) {
+    const knownFileKeys = new Set(currentFiles.map(getLocalFileKey));
+    const nextFiles = [...currentFiles];
+
+    for (const file of incomingFiles) {
+      const fileKey = getLocalFileKey(file);
+
+      if (!knownFileKeys.has(fileKey)) {
+        knownFileKeys.add(fileKey);
+        nextFiles.push(file);
+      }
+    }
+
+    return nextFiles;
   }
 
   function handleApplyTicketDraftSuggestion(): void {
@@ -2118,6 +2217,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         title: aiDraftSuggestion.title || currentDraft.title,
         urgency: aiDraftSuggestion.urgency ?? currentDraft.urgency,
       }));
+      setIncidentCreationAttachmentFiles((currentFiles) =>
+        mergeFilesByLocalKey(currentFiles, aiConversationFiles),
+      );
       setIncidentValidationErrors({});
     } else {
       setRequestDraft((currentDraft) => ({
@@ -2131,6 +2233,9 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         requestType: aiDraftSuggestion.requestType ?? currentDraft.requestType,
         title: aiDraftSuggestion.title || currentDraft.title,
       }));
+      setRequestCreationAttachmentFiles((currentFiles) =>
+        mergeFilesByLocalKey(currentFiles, aiConversationFiles),
+      );
       setRequestValidationErrors({});
     }
 
@@ -3104,6 +3209,134 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setCommentSuccessMessage(null);
   }
 
+  function handleAiDraftFileSelection(fileList: FileList | null): void {
+    const incomingFiles = Array.from(fileList ?? []);
+
+    if (incomingFiles.length === 0) {
+      return;
+    }
+
+    setAiDraftFiles((currentFiles) => {
+      const knownFileKeys = new Set([
+        ...aiConversationFiles.map(getLocalFileKey),
+        ...currentFiles.map(getLocalFileKey),
+      ]);
+      const nextFiles = [...currentFiles];
+
+      for (const file of incomingFiles) {
+        if (file.size > AI_DRAFT_MAX_ATTACHMENT_SIZE_BYTES) {
+          setAiDraftErrorMessage(
+            `Le fichier ${file.name} depasse la limite de 10 Mo.`,
+          );
+          continue;
+        }
+
+        if (
+          aiConversationFiles.length + nextFiles.length >=
+          AI_DRAFT_MAX_ATTACHMENT_COUNT
+        ) {
+          setAiDraftErrorMessage('10 pieces jointes maximum pour l IA.');
+          break;
+        }
+
+        const fileKey = getLocalFileKey(file);
+
+        if (!knownFileKeys.has(fileKey)) {
+          knownFileKeys.add(fileKey);
+          nextFiles.push(file);
+        }
+      }
+
+      return nextFiles;
+    });
+
+    setAiDraftFileInputKey((currentKey) => currentKey + 1);
+  }
+
+  function buildPastedScreenshotName(mimeType: string): string {
+    const extension = mimeType.includes('jpeg')
+      ? 'jpg'
+      : mimeType.includes('webp')
+        ? 'webp'
+        : 'png';
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, '-')
+      .replace('T', '-')
+      .slice(0, 19);
+
+    return `capture-${timestamp}.${extension}`;
+  }
+
+  function handleAiDraftPaste(
+    event: ClipboardEvent<HTMLTextAreaElement>,
+  ): void {
+    const pastedFiles = Array.from(event.clipboardData.items)
+      .filter((item) => item.kind === 'file')
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => Boolean(file))
+      .map((file) => {
+        if (file.name.trim()) {
+          return file;
+        }
+
+        return new File([file], buildPastedScreenshotName(file.type), {
+          lastModified: Date.now(),
+          type: file.type,
+        });
+      });
+
+    if (pastedFiles.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const dataTransfer = new DataTransfer();
+
+    for (const file of pastedFiles) {
+      dataTransfer.items.add(file);
+    }
+
+    handleAiDraftFileSelection(dataTransfer.files);
+  }
+
+  function handleAiDraftFileDragOver(event: DragEvent<HTMLElement>): void {
+    if (!event.dataTransfer.types.includes('Files')) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    setIsAiDraftFileDragOver(true);
+  }
+
+  function handleAiDraftFileDragLeave(event: DragEvent<HTMLElement>): void {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      return;
+    }
+
+    setIsAiDraftFileDragOver(false);
+  }
+
+  function handleAiDraftFileDrop(event: DragEvent<HTMLElement>): void {
+    if (!event.dataTransfer.files.length) {
+      return;
+    }
+
+    event.preventDefault();
+    setIsAiDraftFileDragOver(false);
+    handleAiDraftFileSelection(event.dataTransfer.files);
+  }
+
+  function handleRemoveAiDraftFile(fileKey: string): void {
+    setAiDraftFiles((currentFiles) =>
+      currentFiles.filter((file) => getLocalFileKey(file) !== fileKey),
+    );
+    setAiDraftErrorMessage(null);
+    setAiDraftFileInputKey((currentKey) => currentKey + 1);
+  }
+
   function handleAttachmentSelection(fileList: FileList | null): void {
     const incomingFiles = Array.from(fileList ?? []);
 
@@ -3183,6 +3416,24 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     );
 
     setCreationAttachmentInputKey((currentKey) => currentKey + 1);
+  }
+
+  function handleOpenLocalFile(file: File): void {
+    const fileUrl = URL.createObjectURL(file);
+    const openedWindow = window.open(fileUrl, '_blank', 'noopener,noreferrer');
+
+    if (!openedWindow) {
+      const anchor = document.createElement('a');
+
+      anchor.href = fileUrl;
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+    }
+
+    window.setTimeout(() => URL.revokeObjectURL(fileUrl), 60_000);
   }
 
   function resetCreationAttachmentSelection(targetMode: TicketMode): void {
@@ -3286,8 +3537,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
       setCommentDraft(INITIAL_COMMENT_DRAFT);
 
       setDeletingCommentId(null);
-
-      setCommentSuccessMessage('Commentaire ajoute.');
 
       await refreshSelectedTicketHistory(selectedTicketDetail.ticket.id);
     } catch (error) {
@@ -3453,22 +3702,32 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   async function handleDownloadAttachment(
     attachment: TicketAttachmentSnapshot,
   ): Promise<void> {
+    const previewWindow = window.open('', '_blank', 'noopener,noreferrer');
+
     try {
       const blob = await downloadTicketAttachmentBinary(
         session.accessToken,
         attachment.bucketId,
         attachment.storagePath,
       );
-      const downloadUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
+      const attachmentUrl = URL.createObjectURL(blob);
 
-      anchor.href = downloadUrl;
-      anchor.download = attachment.fileName;
-      document.body.append(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(downloadUrl);
+      if (previewWindow) {
+        previewWindow.location.href = attachmentUrl;
+      } else {
+        const anchor = document.createElement('a');
+
+        anchor.href = attachmentUrl;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+        document.body.append(anchor);
+        anchor.click();
+        anchor.remove();
+      }
+
+      window.setTimeout(() => URL.revokeObjectURL(attachmentUrl), 60_000);
     } catch (error) {
+      previewWindow?.close();
       setAttachmentErrorMessage(
         error instanceof Error
           ? error.message
@@ -4194,7 +4453,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                             return (
                               <span className="ticket-file-chip" key={fileKey}>
-                                <span>{file.name}</span>
+                                <button
+                                  className="ticket-file-link"
+                                  onClick={() => handleOpenLocalFile(file)}
+                                  type="button"
+                                >
+                                  {file.name}
+                                </button>
                                 <button
                                   aria-label={`Retirer ${file.name}`}
                                   onClick={() =>
@@ -4246,7 +4511,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                     className="ticket-ai-chat-overlay"
                     role="dialog"
                   >
-                    <section className="ticket-ai-chat">
+                    <section
+                      className={
+                        isAiDraftFileDragOver
+                          ? 'ticket-ai-chat is-file-drag-over'
+                          : 'ticket-ai-chat'
+                      }
+                      onDragLeave={handleAiDraftFileDragLeave}
+                      onDragOver={handleAiDraftFileDragOver}
+                      onDrop={handleAiDraftFileDrop}
+                    >
                       <header className="ticket-ai-chat-header">
                         <div>
                           <h3>Assistant IA Vision</h3>
@@ -4277,12 +4551,52 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           <div
                             className={
                               message.role === 'assistant'
-                                ? 'ticket-ai-message ticket-ai-message--assistant'
-                                : 'ticket-ai-message ticket-ai-message--user'
+                                ? 'ticket-ai-message-group ticket-ai-message-group--assistant'
+                                : 'ticket-ai-message-group ticket-ai-message-group--user'
                             }
                             key={message.id}
                           >
-                            {message.body}
+                            {message.attachments?.length ? (
+                              <div className="ticket-ai-message-attachments">
+                                {message.attachments.map((attachment) => {
+                                  const sourceFile = aiConversationFiles.find(
+                                    (file) =>
+                                      getLocalFileKey(file) ===
+                                      attachment.fileKey,
+                                  );
+
+                                  return (
+                                    <span
+                                      className="ticket-ai-file-chip"
+                                      key={`${message.id}-${attachment.fileKey}`}
+                                    >
+                                      <button
+                                        className="ticket-ai-file-link"
+                                        disabled={!sourceFile}
+                                        onClick={() => {
+                                          if (sourceFile) {
+                                            handleOpenLocalFile(sourceFile);
+                                          }
+                                        }}
+                                        type="button"
+                                      >
+                                        {attachment.fileName} (
+                                        {formatFileSize(attachment.fileSize)})
+                                      </button>
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                            <div
+                              className={
+                                message.role === 'assistant'
+                                  ? 'ticket-ai-message ticket-ai-message--assistant'
+                                  : 'ticket-ai-message ticket-ai-message--user'
+                              }
+                            >
+                              <p>{message.body}</p>
+                            </div>
                           </div>
                         ))}
 
@@ -4366,12 +4680,52 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       </div>
 
                       <footer className="ticket-ai-chat-footer">
-                        <button
+                        {aiDraftFiles.length > 0 ? (
+                          <div className="ticket-ai-selected-files">
+                            {aiDraftFiles.map((file) => {
+                              const fileKey = getLocalFileKey(file);
+
+                              return (
+                                <span
+                                  className="ticket-ai-file-chip"
+                                  key={fileKey}
+                                >
+                                  <button
+                                    className="ticket-ai-file-link"
+                                    onClick={() => handleOpenLocalFile(file)}
+                                    type="button"
+                                  >
+                                    {file.name} ({formatFileSize(file.size)})
+                                  </button>
+                                  <button
+                                    aria-label={`Retirer ${file.name}`}
+                                    onClick={() =>
+                                      handleRemoveAiDraftFile(fileKey)
+                                    }
+                                    type="button"
+                                  >
+                                    <X size={13} />
+                                  </button>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+
+                        <label
                           aria-label="Ajouter une piece jointe"
-                          type="button"
+                          className="ticket-ai-attachment-button"
                         >
                           <Paperclip size={17} />
-                        </button>
+                          <input
+                            key={aiDraftFileInputKey}
+                            multiple
+                            onChange={(event) =>
+                              handleAiDraftFileSelection(event.target.files)
+                            }
+                            type="file"
+                          />
+                        </label>
                         <textarea
                           aria-label="Message pour l assistant IA"
                           onChange={(event) => {
@@ -4389,6 +4743,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               void handleSendAiChatMessage();
                             }
                           }}
+                          onPaste={handleAiDraftPaste}
                           placeholder="Decrivez votre besoin..."
                           ref={aiDraftTextareaRef}
                           rows={1}
@@ -5275,11 +5630,25 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           className="tdp-chat-composer"
                           onSubmit={handleCommentSubmit}
                         >
-                          <input
-                            onChange={(event) =>
-                              handleCommentBodyChange(event.target.value)
-                            }
+                          <textarea
+                            aria-label="Message sur le ticket"
+                            onChange={(event) => {
+                              handleCommentBodyChange(event.target.value);
+                              resizeTicketCommentTextarea(event.target);
+                            }}
+                            onKeyDown={(event) => {
+                              if (
+                                event.key === 'Enter' &&
+                                !event.shiftKey &&
+                                !isSubmittingComment
+                              ) {
+                                event.preventDefault();
+                                event.currentTarget.form?.requestSubmit();
+                              }
+                            }}
                             placeholder="Ecrire un message sur le ticket..."
+                            ref={ticketCommentTextareaRef}
+                            rows={1}
                             value={commentDraft.body}
                           />
 
@@ -5840,10 +6209,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                         className="ticket-file-chip"
                                         key={fileKey}
                                       >
-                                        <span>
+                                        <button
+                                          className="ticket-file-link"
+                                          onClick={() =>
+                                            handleOpenLocalFile(file)
+                                          }
+                                          type="button"
+                                        >
                                           {file.name} (
                                           {formatFileSize(file.size)})
-                                        </span>
+                                        </button>
                                         <button
                                           aria-label={`Retirer ${file.name}`}
                                           onClick={() =>
@@ -7029,10 +7404,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                           className="ticket-file-chip"
                                           key={fileKey}
                                         >
-                                          <span>
+                                          <button
+                                            className="ticket-file-link"
+                                            onClick={() =>
+                                              handleOpenLocalFile(file)
+                                            }
+                                            type="button"
+                                          >
                                             {file.name} (
                                             {formatFileSize(file.size)})
-                                          </span>
+                                          </button>
                                           <button
                                             aria-label={`Retirer ${file.name}`}
                                             onClick={() =>

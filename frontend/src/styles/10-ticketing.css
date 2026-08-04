@@ -363,6 +363,7 @@
 }
 
 .ticket-ai-chat {
+  position: relative;
   display: grid;
   grid-template-rows: auto minmax(260px, 1fr) auto;
   width: min(760px, calc(100vw - 32px));
@@ -372,6 +373,25 @@
   border-radius: 18px;
   background: #fff;
   box-shadow: 0 30px 80px rgba(15, 23, 42, 0.28);
+}
+
+.ticket-ai-chat::after {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  z-index: 2;
+  pointer-events: none;
+  border: 2px dashed transparent;
+  border-radius: 14px;
+  background: transparent;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.ticket-ai-chat.is-file-drag-over::after {
+  border-color: rgba(27, 99, 200, 0.55);
+  background: rgba(231, 240, 255, 0.5);
 }
 
 .ticket-ai-chat-header {
@@ -407,7 +427,7 @@
 }
 
 .ticket-ai-chat-header button,
-.ticket-ai-chat-footer > button:first-child {
+.ticket-ai-attachment-button {
   display: inline-grid;
   place-items: center;
   width: 38px;
@@ -416,6 +436,23 @@
   border-radius: 12px;
   background: #fff;
   color: #174174;
+}
+
+.ticket-ai-attachment-button {
+  min-height: var(--ticket-ai-composer-height);
+  width: var(--ticket-ai-composer-height);
+  height: var(--ticket-ai-composer-height);
+  align-self: end;
+  cursor: pointer;
+}
+
+.ticket-ai-attachment-button:hover {
+  background: #f3f7ff;
+  border-color: #9ebcf0;
+}
+
+.ticket-ai-attachment-button input {
+  display: none;
 }
 
 .ticket-ai-chat-header .ticket-ai-chat-reset {
@@ -452,6 +489,25 @@
   background: #fbfdff;
 }
 
+.ticket-ai-message-group {
+  display: grid;
+  gap: 6px;
+  max-width: min(82%, 520px);
+}
+
+.ticket-ai-message-group--assistant {
+  align-self: flex-start;
+}
+
+.ticket-ai-message-group--user {
+  align-self: flex-end;
+  justify-items: end;
+}
+
+.ticket-ai-message-group .ticket-ai-message {
+  max-width: 100%;
+}
+
 .ticket-ai-message {
   max-width: min(82%, 520px);
   padding: 12px 14px;
@@ -459,6 +515,11 @@
   border-radius: 14px;
   color: #17335f;
   line-height: 1.45;
+}
+
+.ticket-ai-message p {
+  margin: 0;
+  white-space: pre-wrap;
 }
 
 .ticket-ai-message--assistant {
@@ -494,6 +555,90 @@
 
 .ticket-ai-message--suggestion p {
   margin: 0;
+}
+
+.ticket-ai-message-attachments,
+.ticket-ai-selected-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.ticket-ai-message-attachments {
+  max-width: 100%;
+}
+
+.ticket-ai-message-group--user .ticket-ai-message-attachments {
+  justify-content: flex-end;
+}
+
+.ticket-ai-selected-files {
+  grid-column: 1 / -1;
+}
+
+.ticket-ai-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 8px;
+  border: 1px solid rgba(181, 197, 224, 0.88);
+  border-radius: 999px;
+  background: #f8fbff;
+  color: #174174;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ticket-ai-file-link {
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0f5bd7;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ticket-ai-file-link:hover {
+  color: #174ea6;
+  text-decoration: underline;
+}
+
+.ticket-ai-file-link:disabled {
+  color: #64748b;
+  cursor: default;
+  text-decoration: none;
+}
+
+.ticket-ai-file-chip span,
+.ticket-ai-file-chip .ticket-ai-file-link {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.ticket-ai-file-chip button:not(.ticket-ai-file-link) {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #174174;
+}
+
+.ticket-ai-file-chip button:not(.ticket-ai-file-link):hover {
+  background: rgba(23, 65, 116, 0.1);
 }
 
 .ticket-ai-suggestion-details {
@@ -547,10 +692,6 @@
   min-height: var(--ticket-ai-composer-height);
   height: var(--ticket-ai-composer-height);
   align-self: end;
-}
-
-.ticket-ai-chat-footer > button:first-child {
-  width: var(--ticket-ai-composer-height);
 }
 
 .ticket-ai-chat-footer textarea {
@@ -1055,7 +1196,8 @@ p.ticket-form-helper {
   line-height: 1.2;
 }
 
-.ticket-file-chip span {
+.ticket-file-chip span,
+.ticket-file-link {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1065,7 +1207,23 @@ p.ticket-form-helper {
   letter-spacing: 0;
 }
 
-.ticket-file-chip button {
+.ticket-file-link {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0f5bd7;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ticket-file-link:hover {
+  color: #174ea6;
+  text-decoration: underline;
+}
+
+.ticket-file-chip button:not(.ticket-file-link) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1082,7 +1240,7 @@ p.ticket-form-helper {
   line-height: 1;
 }
 
-.ticket-file-chip button:hover {
+.ticket-file-chip button:not(.ticket-file-link):hover {
   color: #b91c1c;
 }
 
@@ -2541,24 +2699,29 @@ p.ticket-form-helper {
 
 .tdp-chat-composer {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 10px;
   padding: 14px;
   border-top: 1px solid rgba(190, 210, 242, 0.86);
   background: #ffffff;
 }
 
-.tdp-chat-composer input {
+.tdp-chat-composer textarea {
   width: 100%;
+  min-height: 50px;
+  max-height: min(220px, calc(100vh - 420px));
   padding: 12px 14px;
   border: 1px solid rgba(172, 198, 238, 0.95);
-  border-radius: 999px;
+  border-radius: 18px;
   background: #fdfefe;
   color: #17335f;
   font: inherit;
+  line-height: 1.5;
+  overflow-y: hidden;
+  resize: none;
 }
 
-.tdp-chat-composer input:focus {
+.tdp-chat-composer textarea:focus {
   border-color: #7aa7f5;
   box-shadow: 0 0 0 3px rgba(122, 167, 245, 0.18);
   outline: none;

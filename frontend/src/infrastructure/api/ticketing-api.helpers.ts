@@ -70,6 +70,32 @@ export async function ticketingVoidRequest(
   }
 }
 
+export async function ticketingMultipartRequest<TResponse>(
+  accessToken: string,
+  path: string,
+  errorMessage: string,
+  body: FormData,
+): Promise<TResponse> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}${path}`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body,
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      message || `${errorMessage} avec le statut ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as TResponse;
+}
+
 export function encodeStoragePath(storagePath: string): string {
   return storagePath
     .split('/')

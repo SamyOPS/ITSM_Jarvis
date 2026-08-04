@@ -24,6 +24,7 @@ export type CreateRequestPayload = {
 };
 
 export type SuggestTicketDraftPayload = {
+  attachments?: File[];
   categories?: string[];
   channels?: string[];
   currentMode?: 'INCIDENT' | 'REQUEST' | null;
