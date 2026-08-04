@@ -173,6 +173,7 @@ type AiChatMessage = {
 };
 
 type AiChatAttachmentSummary = {
+  fileKey: string;
   fileName: string;
   fileSize: number;
   mimeType: string;
@@ -1995,6 +1996,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
     const userMessage: AiChatMessage = {
       attachments: selectedAiDraftFiles.map((file) => ({
+        fileKey: getLocalFileKey(file),
         fileName: file.name,
         fileSize: file.size,
         mimeType: file.type || 'application/octet-stream',
@@ -3416,6 +3418,24 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setCreationAttachmentInputKey((currentKey) => currentKey + 1);
   }
 
+  function handleOpenLocalFile(file: File): void {
+    const fileUrl = URL.createObjectURL(file);
+    const openedWindow = window.open(fileUrl, '_blank', 'noopener,noreferrer');
+
+    if (!openedWindow) {
+      const anchor = document.createElement('a');
+
+      anchor.href = fileUrl;
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+    }
+
+    window.setTimeout(() => URL.revokeObjectURL(fileUrl), 60_000);
+  }
+
   function resetCreationAttachmentSelection(targetMode: TicketMode): void {
     const setFiles =
       targetMode === 'INCIDENT'
@@ -3682,22 +3702,32 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   async function handleDownloadAttachment(
     attachment: TicketAttachmentSnapshot,
   ): Promise<void> {
+    const previewWindow = window.open('', '_blank', 'noopener,noreferrer');
+
     try {
       const blob = await downloadTicketAttachmentBinary(
         session.accessToken,
         attachment.bucketId,
         attachment.storagePath,
       );
-      const downloadUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
+      const attachmentUrl = URL.createObjectURL(blob);
 
-      anchor.href = downloadUrl;
-      anchor.download = attachment.fileName;
-      document.body.append(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(downloadUrl);
+      if (previewWindow) {
+        previewWindow.location.href = attachmentUrl;
+      } else {
+        const anchor = document.createElement('a');
+
+        anchor.href = attachmentUrl;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+        document.body.append(anchor);
+        anchor.click();
+        anchor.remove();
+      }
+
+      window.setTimeout(() => URL.revokeObjectURL(attachmentUrl), 60_000);
     } catch (error) {
+      previewWindow?.close();
       setAttachmentErrorMessage(
         error instanceof Error
           ? error.message
@@ -4423,7 +4453,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                             return (
                               <span className="ticket-file-chip" key={fileKey}>
-                                <span>{file.name}</span>
+                                <button
+                                  className="ticket-file-link"
+                                  onClick={() => handleOpenLocalFile(file)}
+                                  type="button"
+                                >
+                                  {file.name}
+                                </button>
                                 <button
                                   aria-label={`Retirer ${file.name}`}
                                   onClick={() =>
@@ -4515,24 +4551,52 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                           <div
                             className={
                               message.role === 'assistant'
-                                ? 'ticket-ai-message ticket-ai-message--assistant'
-                                : 'ticket-ai-message ticket-ai-message--user'
+                                ? 'ticket-ai-message-group ticket-ai-message-group--assistant'
+                                : 'ticket-ai-message-group ticket-ai-message-group--user'
                             }
                             key={message.id}
                           >
                             {message.attachments?.length ? (
                               <div className="ticket-ai-message-attachments">
-                                {message.attachments.map((attachment) => (
-                                  <span
-                                    className="ticket-ai-file-chip"
-                                    key={`${message.id}-${attachment.fileName}-${attachment.fileSize}`}
-                                  >
-                                    {attachment.fileName}
-                                  </span>
-                                ))}
+                                {message.attachments.map((attachment) => {
+                                  const sourceFile = aiConversationFiles.find(
+                                    (file) =>
+                                      getLocalFileKey(file) ===
+                                      attachment.fileKey,
+                                  );
+
+                                  return (
+                                    <span
+                                      className="ticket-ai-file-chip"
+                                      key={`${message.id}-${attachment.fileKey}`}
+                                    >
+                                      <button
+                                        className="ticket-ai-file-link"
+                                        disabled={!sourceFile}
+                                        onClick={() => {
+                                          if (sourceFile) {
+                                            handleOpenLocalFile(sourceFile);
+                                          }
+                                        }}
+                                        type="button"
+                                      >
+                                        {attachment.fileName} (
+                                        {formatFileSize(attachment.fileSize)})
+                                      </button>
+                                    </span>
+                                  );
+                                })}
                               </div>
                             ) : null}
-                            <p>{message.body}</p>
+                            <div
+                              className={
+                                message.role === 'assistant'
+                                  ? 'ticket-ai-message ticket-ai-message--assistant'
+                                  : 'ticket-ai-message ticket-ai-message--user'
+                              }
+                            >
+                              <p>{message.body}</p>
+                            </div>
                           </div>
                         ))}
 
@@ -4626,9 +4690,13 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   className="ticket-ai-file-chip"
                                   key={fileKey}
                                 >
-                                  <span>
+                                  <button
+                                    className="ticket-ai-file-link"
+                                    onClick={() => handleOpenLocalFile(file)}
+                                    type="button"
+                                  >
                                     {file.name} ({formatFileSize(file.size)})
-                                  </span>
+                                  </button>
                                   <button
                                     aria-label={`Retirer ${file.name}`}
                                     onClick={() =>
@@ -6141,10 +6209,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                         className="ticket-file-chip"
                                         key={fileKey}
                                       >
-                                        <span>
+                                        <button
+                                          className="ticket-file-link"
+                                          onClick={() =>
+                                            handleOpenLocalFile(file)
+                                          }
+                                          type="button"
+                                        >
                                           {file.name} (
                                           {formatFileSize(file.size)})
-                                        </span>
+                                        </button>
                                         <button
                                           aria-label={`Retirer ${file.name}`}
                                           onClick={() =>
@@ -7330,10 +7404,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                           className="ticket-file-chip"
                                           key={fileKey}
                                         >
-                                          <span>
+                                          <button
+                                            className="ticket-file-link"
+                                            onClick={() =>
+                                              handleOpenLocalFile(file)
+                                            }
+                                            type="button"
+                                          >
                                             {file.name} (
                                             {formatFileSize(file.size)})
-                                          </span>
+                                          </button>
                                           <button
                                             aria-label={`Retirer ${file.name}`}
                                             onClick={() =>

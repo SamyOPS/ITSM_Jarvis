@@ -489,6 +489,25 @@
   background: #fbfdff;
 }
 
+.ticket-ai-message-group {
+  display: grid;
+  gap: 6px;
+  max-width: min(82%, 520px);
+}
+
+.ticket-ai-message-group--assistant {
+  align-self: flex-start;
+}
+
+.ticket-ai-message-group--user {
+  align-self: flex-end;
+  justify-items: end;
+}
+
+.ticket-ai-message-group .ticket-ai-message {
+  max-width: 100%;
+}
+
 .ticket-ai-message {
   max-width: min(82%, 520px);
   padding: 12px 14px;
@@ -546,7 +565,11 @@
 }
 
 .ticket-ai-message-attachments {
-  margin-bottom: 8px;
+  max-width: 100%;
+}
+
+.ticket-ai-message-group--user .ticket-ai-message-attachments {
+  justify-content: flex-end;
 }
 
 .ticket-ai-selected-files {
@@ -567,14 +590,42 @@
   font-weight: 700;
 }
 
-.ticket-ai-file-chip span {
+.ticket-ai-file-link {
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0f5bd7;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ticket-ai-file-link:hover {
+  color: #174ea6;
+  text-decoration: underline;
+}
+
+.ticket-ai-file-link:disabled {
+  color: #64748b;
+  cursor: default;
+  text-decoration: none;
+}
+
+.ticket-ai-file-chip span,
+.ticket-ai-file-chip .ticket-ai-file-link {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: inherit;
+  line-height: inherit;
 }
 
-.ticket-ai-file-chip button {
+.ticket-ai-file-chip button:not(.ticket-ai-file-link) {
   display: inline-grid;
   place-items: center;
   width: 18px;
@@ -586,7 +637,7 @@
   color: #174174;
 }
 
-.ticket-ai-file-chip button:hover {
+.ticket-ai-file-chip button:not(.ticket-ai-file-link):hover {
   background: rgba(23, 65, 116, 0.1);
 }
 
@@ -1145,7 +1196,8 @@ p.ticket-form-helper {
   line-height: 1.2;
 }
 
-.ticket-file-chip span {
+.ticket-file-chip span,
+.ticket-file-link {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1155,7 +1207,23 @@ p.ticket-form-helper {
   letter-spacing: 0;
 }
 
-.ticket-file-chip button {
+.ticket-file-link {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0f5bd7;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ticket-file-link:hover {
+  color: #174ea6;
+  text-decoration: underline;
+}
+
+.ticket-file-chip button:not(.ticket-file-link) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1172,7 +1240,7 @@ p.ticket-form-helper {
   line-height: 1;
 }
 
-.ticket-file-chip button:hover {
+.ticket-file-chip button:not(.ticket-file-link):hover {
   color: #b91c1c;
 }
 
