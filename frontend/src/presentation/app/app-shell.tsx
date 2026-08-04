@@ -394,7 +394,6 @@ export function AppShell({
                     }
                     key={route.path}
                     onClick={() => navigateTo(route.path)}
-                    title={routeTitle}
                     type="button"
                   >
                     <span
