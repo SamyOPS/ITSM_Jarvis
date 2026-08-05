@@ -110,7 +110,6 @@ export class DeleteTicketCommentUseCase {
       payload: {
         authorUserId: comment.authorUserId,
         commentId: comment.id,
-        isInternal: comment.isInternal,
       },
       ticketId: normalizedTicketId,
     });

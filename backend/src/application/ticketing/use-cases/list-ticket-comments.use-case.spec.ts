@@ -38,7 +38,7 @@ describe('ListTicketCommentsUseCase', () => {
     null,
   );
 
-  it('hides internal comments for demandeur users', async () => {
+  it('lists comments for demandeur users when the ticket is accessible', async () => {
     const listTicketComments = jest
       .fn()
       .mockResolvedValue([
@@ -75,12 +75,11 @@ describe('ListTicketCommentsUseCase', () => {
     ]);
 
     expect(listTicketComments).toHaveBeenCalledWith({
-      includeInternal: false,
       ticketId: 'ticket-1',
     });
   });
 
-  it('includes internal comments for agent users', async () => {
+  it('lists comments for agent users when the ticket is accessible', async () => {
     const listTicketComments = jest.fn().mockResolvedValue([]);
     const useCase = new ListTicketCommentsUseCase(
       {
@@ -104,7 +103,6 @@ describe('ListTicketCommentsUseCase', () => {
     await useCase.execute('ticket-1', 'agent-1', UserRole.AGENT);
 
     expect(listTicketComments).toHaveBeenCalledWith({
-      includeInternal: true,
       ticketId: 'ticket-1',
     });
   });

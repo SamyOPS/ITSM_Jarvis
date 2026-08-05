@@ -68,6 +68,8 @@ type SupabaseTicketRow = {
   resolution_due_at: string | null;
   response_due_at: string | null;
   requested_for_user_id: string | null;
+  sla_paused_at?: string | null;
+  sla_paused_duration_ms?: number | string | null;
   status: TicketStatus;
   title: string;
   type: TicketType;
@@ -228,15 +230,37 @@ export class SupabaseTicketWriteRepository
     );
   }
 
-  async updateStatus(ticketId: string, status: TicketStatus): Promise<void> {
+  async updateStatus(
+    ticketId: string,
+    record: {
+      resolutionDueAt?: string | null;
+      slaPausedAt?: string | null;
+      slaPausedDurationMs?: number;
+      status: TicketStatus;
+    },
+  ): Promise<void> {
+    const payload: Record<string, string | number | null> = {
+      closed_at:
+        record.status === TicketStatus.CLOSED ? new Date().toISOString() : null,
+      status: record.status,
+    };
+
+    if (record.resolutionDueAt !== undefined) {
+      payload.resolution_due_at = record.resolutionDueAt;
+    }
+
+    if (record.slaPausedAt !== undefined) {
+      payload.sla_paused_at = record.slaPausedAt;
+    }
+
+    if (record.slaPausedDurationMs !== undefined) {
+      payload.sla_paused_duration_ms = record.slaPausedDurationMs;
+    }
+
     await this.send(
       `tickets?id=eq.${ticketId}`,
       'PATCH',
-      {
-        closed_at:
-          status === TicketStatus.CLOSED ? new Date().toISOString() : null,
-        status,
-      },
+      payload,
       false,
     );
   }
@@ -352,7 +376,7 @@ export class SupabaseTicketWriteRepository
     const query = new URLSearchParams({
       order: 'created_at.desc',
       select:
-        'id,number,type,status,title,priority_id,category_id,created_by_user_id,requested_for_user_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,closed_at,response_due_at,resolution_due_at,archived_at',
+        'id,number,type,status,title,priority_id,category_id,created_by_user_id,requested_for_user_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,closed_at,response_due_at,resolution_due_at,archived_at,sla_paused_at,sla_paused_duration_ms',
     });
 
     applyOptionalFilter(query, 'assigned_to_user_id', filters.assignedToUserId);
@@ -411,6 +435,8 @@ export class SupabaseTicketWriteRepository
         null,
         null,
         ticket.archived_at,
+        ticket.sla_paused_at,
+        normalizeNumber(ticket.sla_paused_duration_ms),
       );
       const slaStatus = calculateTicketSlaStatus(mappedTicket);
 
@@ -435,6 +461,8 @@ export class SupabaseTicketWriteRepository
         slaStatus.responseSlaStatus,
         slaStatus.resolutionSlaStatus,
         ticket.archived_at,
+        ticket.sla_paused_at,
+        normalizeNumber(ticket.sla_paused_duration_ms),
       );
     });
   }
@@ -442,7 +470,7 @@ export class SupabaseTicketWriteRepository
   async getTicketById(ticketId: string): Promise<TicketDetail | null> {
     const query = new URLSearchParams({
       select:
-        'id,number,type,status,title,description,priority_id,category_id,created_by_user_id,requested_for_user_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,closed_at,response_due_at,resolution_due_at,archived_at,incidents(*),requests(*)',
+        'id,number,type,status,title,description,priority_id,category_id,created_by_user_id,requested_for_user_id,channel_id,assignment_group_id,assigned_to_user_id,ci_id,created_at,closed_at,response_due_at,resolution_due_at,archived_at,sla_paused_at,sla_paused_duration_ms,incidents(*),requests(*)',
       id: `eq.${ticketId}`,
       limit: '1',
     });
@@ -482,6 +510,8 @@ export class SupabaseTicketWriteRepository
       null,
       null,
       ticket.archived_at,
+      ticket.sla_paused_at,
+      normalizeNumber(ticket.sla_paused_duration_ms),
     );
     const slaStatus = calculateTicketSlaStatus(mappedTicket);
 
@@ -507,6 +537,8 @@ export class SupabaseTicketWriteRepository
         slaStatus.responseSlaStatus,
         slaStatus.resolutionSlaStatus,
         mappedTicket.archivedAt,
+        mappedTicket.slaPausedAt,
+        mappedTicket.slaPausedDurationMs,
       ),
       priorityNames.get(ticket.priority_id) ?? null,
       incidentRow
@@ -537,10 +569,6 @@ export class SupabaseTicketWriteRepository
       select: 'id,ticket_id,author_user_id,body,is_internal,created_at',
       ticket_id: `eq.${filters.ticketId}`,
     });
-
-    if (!filters.includeInternal) {
-      query.set('is_internal', 'eq.false');
-    }
 
     const response = await this.send(
       `ticket_comments?${query.toString()}`,
@@ -573,7 +601,7 @@ export class SupabaseTicketWriteRepository
       {
         author_user_id: record.authorUserId,
         body: record.body,
-        is_internal: record.isInternal,
+        is_internal: false,
         ticket_id: record.ticketId,
       },
       true,
@@ -797,6 +825,8 @@ export class SupabaseTicketWriteRepository
           null,
           null,
           ticket.archived_at,
+          ticket.sla_paused_at ?? null,
+          normalizeNumber(ticket.sla_paused_duration_ms),
         ),
         new Incident(
           incident.ticket_id,
@@ -854,6 +884,8 @@ export class SupabaseTicketWriteRepository
           null,
           null,
           ticket.archived_at,
+          ticket.sla_paused_at ?? null,
+          normalizeNumber(ticket.sla_paused_duration_ms),
         ),
         new RequestTicket(
           request.ticket_id,
@@ -1093,4 +1125,18 @@ function normalizeRows<T>(payload: T[] | T | null | undefined): T[] {
 
 function extractSingleRow<T>(payload: T[] | T | null | undefined): T | null {
   return normalizeRows(payload)[0] ?? null;
+}
+
+function normalizeNumber(value: number | string | null | undefined): number {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
 }

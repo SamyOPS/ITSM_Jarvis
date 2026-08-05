@@ -1,7 +1,6 @@
 import { TicketComment } from '../../../domain/ticketing/ticket-comment';
 
 export type ListTicketCommentsFilters = {
-  includeInternal: boolean;
   ticketId: string;
 };
 

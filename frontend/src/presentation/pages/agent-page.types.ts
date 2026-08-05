@@ -106,7 +106,6 @@ export type TicketEditDraftState = {
 
 export type CommentDraftState = {
   body: string;
-  isInternal: boolean;
 };
 
 export type TicketChatMessage = TicketCommentSnapshot & {

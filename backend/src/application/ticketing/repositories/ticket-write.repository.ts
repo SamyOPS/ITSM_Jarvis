@@ -51,6 +51,13 @@ export type UpdateTicketPriorityRecord = {
   responseDueAt: string | null;
 };
 
+export type UpdateTicketStatusRecord = {
+  resolutionDueAt?: string | null;
+  slaPausedAt?: string | null;
+  slaPausedDurationMs?: number;
+  status: TicketStatus;
+};
+
 export type UpdateTicketRecord = {
   categoryId: string;
   channelId: string | null;
@@ -88,7 +95,10 @@ export abstract class TicketWriteRepository {
     record: UpdateTicketAssignmentRecord,
   ): Promise<void>;
 
-  abstract updateStatus(ticketId: string, status: TicketStatus): Promise<void>;
+  abstract updateStatus(
+    ticketId: string,
+    record: UpdateTicketStatusRecord,
+  ): Promise<void>;
 
   abstract updatePriority(
     ticketId: string,

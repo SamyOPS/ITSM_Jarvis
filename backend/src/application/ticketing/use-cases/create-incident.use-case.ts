@@ -5,6 +5,7 @@ import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
 import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history-event-type';
 import { ReferentialChannelReadRepository } from '../../referentials/repositories/referential-channel-read.repository';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
+import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { TicketAuditService } from '../ticket-audit.service';
 import { resolveCreationChannelId } from '../creation-channel';
 import { resolveIncidentPriorityName } from '../incident-priority';
@@ -13,6 +14,7 @@ import {
   TicketWriteRepository,
 } from '../repositories/ticket-write.repository';
 import { calculateSlaTargets } from '../sla-targets';
+import { isTicketRequesterVip } from '../ticket-requester-vip';
 
 export type CreateIncidentCommand = {
   categoryId: string;
@@ -39,6 +41,8 @@ export class CreateIncidentUseCase {
     @Inject(ReferentialPriorityReadRepository)
     private readonly priorityRepository: ReferentialPriorityReadRepository,
     private readonly ticketAuditService: TicketAuditService,
+    @Inject(UserAssignmentProfileRepository)
+    private readonly userAssignmentProfileRepository?: UserAssignmentProfileRepository,
   ) {}
 
   async execute(command: CreateIncidentCommand): Promise<CreatedIncident> {
@@ -78,7 +82,15 @@ export class CreateIncidentUseCase {
       );
     }
 
-    const slaTargets = calculateSlaTargets(resolvedPriority);
+    const requestedForUserId = normalizeOptionalId(command.requestedForUserId);
+    const isRequesterVip = await isTicketRequesterVip(
+      this.userAssignmentProfileRepository,
+      createdByUserId,
+      requestedForUserId,
+    );
+    const slaTargets = calculateSlaTargets(resolvedPriority, new Date(), {
+      isRequesterVip,
+    });
     const channelId = await resolveCreationChannelId({
       channelId: command.channelId,
       channelRepository: this.channelRepository,
@@ -96,7 +108,7 @@ export class CreateIncidentUseCase {
       priorityName,
       resolutionDueAt: slaTargets.resolutionDueAt,
       responseDueAt: slaTargets.responseDueAt,
-      requestedForUserId: normalizeOptionalId(command.requestedForUserId),
+      requestedForUserId,
       rootCause: normalizeOptionalText(command.rootCause),
       title,
       urgency: command.urgency,

@@ -49,7 +49,6 @@ export class ListTicketCommentsUseCase {
     });
 
     return this.ticketCommentReadRepository.listTicketComments({
-      includeInternal: userRole !== UserRole.DEMANDEUR,
       ticketId: normalizedTicketId,
     });
   }

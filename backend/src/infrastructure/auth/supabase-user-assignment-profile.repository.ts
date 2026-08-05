@@ -8,6 +8,7 @@ type SupabaseUserAssignmentRow = {
   group_id: string | null;
   id: string;
   is_active: boolean;
+  is_vip: boolean | null;
   role: string;
 };
 
@@ -31,7 +32,7 @@ export class SupabaseUserAssignmentProfileRepository implements UserAssignmentPr
     const query = new URLSearchParams({
       id: `eq.${userId}`,
       limit: '1',
-      select: 'id,role,group_id,is_active',
+      select: 'id,role,group_id,is_active,is_vip',
     });
 
     let response: Response;
@@ -78,6 +79,7 @@ export class SupabaseUserAssignmentProfileRepository implements UserAssignmentPr
       groupIds,
       id: row.id,
       isActive: row.is_active,
+      isVip: Boolean(row.is_vip),
       role: resolveUserRole(row.role),
     };
   }

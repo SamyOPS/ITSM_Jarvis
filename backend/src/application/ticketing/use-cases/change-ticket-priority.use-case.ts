@@ -14,6 +14,7 @@ import { TicketWriteRepository } from '../repositories/ticket-write.repository';
 import { resolveAccessibleTicket } from '../ticket-access-resolver';
 import { TicketAuditService } from '../ticket-audit.service';
 import { calculateSlaTargets } from '../sla-targets';
+import { isTicketRequesterVip } from '../ticket-requester-vip';
 import { assertTicketCanBeModifiedByRole } from '../ticketing-rules';
 import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 
@@ -90,7 +91,14 @@ export class ChangeTicketPriorityUseCase {
       );
     }
 
-    const slaTargets = calculateSlaTargets(resolvedPriority);
+    const isRequesterVip = await isTicketRequesterVip(
+      this.userAssignmentProfileRepository,
+      existingTicket.ticket.createdByUserId,
+      existingTicket.ticket.requestedForUserId,
+    );
+    const slaTargets = calculateSlaTargets(resolvedPriority, new Date(), {
+      isRequesterVip,
+    });
 
     await this.ticketWriteRepository.updatePriority(ticketId, {
       priorityId,

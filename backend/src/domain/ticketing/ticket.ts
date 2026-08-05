@@ -24,5 +24,7 @@ export class Ticket {
     public readonly responseSlaStatus: SlaIndicator | null = null,
     public readonly resolutionSlaStatus: SlaIndicator | null = null,
     public readonly archivedAt: string | null = null,
+    public readonly slaPausedAt: string | null = null,
+    public readonly slaPausedDurationMs: number = 0,
   ) {}
 }

@@ -4454,7 +4454,14 @@ function DashboardBarWidget({
           ))}
         </div>
 
-        <div className="reports-vertical-bar-list">
+        <div
+          className="reports-vertical-bar-list"
+          style={
+            {
+              '--reports-bar-item-count': topItems.length,
+            } as CSSProperties
+          }
+        >
           {topItems.map((item, index) => {
             const percent = (item.count / axis.max) * 100;
 

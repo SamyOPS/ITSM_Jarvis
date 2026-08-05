@@ -17,6 +17,7 @@ import {
   CreateIncidentRecord,
   TicketWriteRepository,
   UpdateTicketAssignmentRecord,
+  UpdateTicketStatusRecord,
 } from '../repositories/ticket-write.repository';
 import { AssignTicketUseCase } from './assign-ticket.use-case';
 import { ChangeTicketPriorityUseCase } from './change-ticket-priority.use-case';
@@ -269,13 +270,18 @@ class InMemoryTicketRepository
         current.ticket.createdAt,
         current.ticket.responseDueAt,
         current.ticket.resolutionDueAt,
+        current.ticket.slaPausedAt,
+        current.ticket.slaPausedDurationMs,
       ),
     });
 
     return Promise.resolve();
   }
 
-  updateStatus(ticketId: string, status: TicketStatus): Promise<void> {
+  updateStatus(
+    ticketId: string,
+    record: UpdateTicketStatusRecord,
+  ): Promise<void> {
     const current = this.tickets.get(ticketId);
 
     if (!current) {
@@ -288,7 +294,7 @@ class InMemoryTicketRepository
         current.ticket.id,
         current.ticket.number,
         current.ticket.type,
-        status,
+        record.status,
         current.ticket.title,
         current.ticket.description,
         current.ticket.priorityId,
@@ -301,7 +307,11 @@ class InMemoryTicketRepository
         current.ticket.ciId,
         current.ticket.createdAt,
         current.ticket.responseDueAt,
-        current.ticket.resolutionDueAt,
+        record.resolutionDueAt ?? current.ticket.resolutionDueAt,
+        record.slaPausedAt === undefined
+          ? current.ticket.slaPausedAt
+          : record.slaPausedAt,
+        record.slaPausedDurationMs ?? current.ticket.slaPausedDurationMs,
       ),
     });
 

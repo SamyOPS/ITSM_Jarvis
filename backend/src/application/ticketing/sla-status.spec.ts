@@ -149,4 +149,70 @@ describe('calculateTicketSlaStatus', () => {
       responseSlaStatus: SlaIndicator.OK,
     });
   });
+
+  it('keeps a paused ticket overdue when it was already late at pause time', () => {
+    const ticket = new Ticket(
+      'ticket-1',
+      'TICK-000001',
+      TicketType.INCIDENT,
+      TicketStatus.PENDING,
+      'VPN KO',
+      'VPN inaccessible',
+      'priority-1',
+      'category-1',
+      'user-1',
+      null,
+      null,
+      null,
+      null,
+      null,
+      '2026-04-13T10:00:00.000Z',
+      '2026-04-13T14:00:00.000Z',
+      '2026-04-13T18:00:00.000Z',
+      null,
+      null,
+      null,
+      '2026-04-13T18:30:00.000Z',
+    );
+
+    expect(
+      calculateTicketSlaStatus(ticket, new Date('2026-04-14T12:00:00.000Z')),
+    ).toEqual({
+      resolutionSlaStatus: SlaIndicator.OVERDUE,
+      responseSlaStatus: SlaIndicator.OK,
+    });
+  });
+
+  it('does not mark a paused ticket overdue while it was still before its due date at pause time', () => {
+    const ticket = new Ticket(
+      'ticket-1',
+      'TICK-000001',
+      TicketType.INCIDENT,
+      TicketStatus.PENDING,
+      'VPN KO',
+      'VPN inaccessible',
+      'priority-1',
+      'category-1',
+      'user-1',
+      null,
+      null,
+      null,
+      null,
+      null,
+      '2026-04-13T10:00:00.000Z',
+      '2026-04-13T14:00:00.000Z',
+      '2026-04-13T18:00:00.000Z',
+      null,
+      null,
+      null,
+      '2026-04-13T16:00:00.000Z',
+    );
+
+    expect(
+      calculateTicketSlaStatus(ticket, new Date('2026-04-14T12:00:00.000Z')),
+    ).toEqual({
+      resolutionSlaStatus: SlaIndicator.AT_RISK,
+      responseSlaStatus: SlaIndicator.OK,
+    });
+  });
 });

@@ -33,6 +33,8 @@ export type TicketDetailSnapshot = {
     resolutionSlaStatus: string | null;
     responseDueAt: string | null;
     responseSlaStatus: string | null;
+    slaPausedAt?: string | null;
+    slaPausedDurationMs?: number;
     status: string;
     title: string;
     type: string;

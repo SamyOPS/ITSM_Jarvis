@@ -79,7 +79,7 @@ describe('ChangeTicketStatusUseCase', () => {
 
     expect(updateStatus).toHaveBeenCalledWith(
       'ticket-1',
-      TicketStatus.IN_PROGRESS,
+      { status: TicketStatus.IN_PROGRESS },
     );
     expect(write).toHaveBeenCalledWith({
       actorUserId: 'agent-1',
@@ -369,6 +369,89 @@ describe('ChangeTicketStatusUseCase', () => {
         status: TicketStatus.PENDING,
       },
     });
+    expect(updateStatus).toHaveBeenCalledWith('ticket-2', {
+      slaPausedAt: expect.any(String) as unknown as string,
+      slaPausedDurationMs: 0,
+      status: TicketStatus.PENDING,
+    });
+  });
+
+  it('extends the resolution due date when a paused ticket resumes', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-04-01T12:30:00.000Z'));
+
+    const detail = new TicketDetail(
+      new Ticket(
+        'ticket-4',
+        'TICK-000004',
+        TicketType.INCIDENT,
+        TicketStatus.PENDING,
+        'VPN KO',
+        'Impossible de se connecter',
+        'priority-1',
+        'category-1',
+        'creator-1',
+        null,
+        null,
+        null,
+        null,
+        null,
+        '2026-04-01T08:00:00.000Z',
+        null,
+        '2026-04-01T16:00:00.000Z',
+        null,
+        null,
+        null,
+        '2026-04-01T10:00:00.000Z',
+        900000,
+      ),
+      null,
+      null,
+      null,
+    );
+    const getTicketById = jest
+      .fn()
+      .mockResolvedValueOnce(detail)
+      .mockResolvedValueOnce({
+        ...detail,
+        ticket: {
+          ...detail.ticket,
+          status: TicketStatus.IN_PROGRESS,
+        },
+      });
+    const updateStatus = jest.fn().mockResolvedValue(undefined);
+    const useCase = new ChangeTicketStatusUseCase(
+      {
+        getTicketById,
+      } as unknown as TicketReadRepository,
+      {
+        updateStatus,
+      } as unknown as TicketWriteRepository,
+      createUserAssignmentProfileRepository(),
+      {
+        write: jest.fn(),
+      } as unknown as TicketAuditService,
+    );
+
+    await expect(
+      useCase.execute({
+        actorUserId: 'agent-1',
+        status: TicketStatus.IN_PROGRESS,
+        ticketId: 'ticket-4',
+      }),
+    ).resolves.toMatchObject({
+      ticket: {
+        status: TicketStatus.IN_PROGRESS,
+      },
+    });
+
+    expect(updateStatus).toHaveBeenCalledWith('ticket-4', {
+      resolutionDueAt: '2026-04-01T18:30:00.000Z',
+      slaPausedAt: null,
+      slaPausedDurationMs: 9900000,
+      status: TicketStatus.IN_PROGRESS,
+    });
+
+    jest.useRealTimers();
   });
 
   it('rejects an agent outside the assignment group', async () => {

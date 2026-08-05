@@ -39,7 +39,7 @@ describe('AddTicketCommentUseCase', () => {
     null,
   );
 
-  it('creates a public comment for a demandeur and writes audit', async () => {
+  it('creates a comment for a demandeur and writes audit', async () => {
     const addTicketComment = jest
       .fn()
       .mockResolvedValue(
@@ -87,7 +87,6 @@ describe('AddTicketCommentUseCase', () => {
     expect(addTicketComment).toHaveBeenCalledWith({
       authorUserId: 'creator-1',
       body: 'Commentaire public',
-      isInternal: false,
       ticketId: 'ticket-1',
     });
     expect(write).toHaveBeenCalledWith({
@@ -95,35 +94,9 @@ describe('AddTicketCommentUseCase', () => {
       eventType: TicketHistoryEventType.COMMENT_ADDED,
       payload: {
         commentId: 'comment-1',
-        isInternal: false,
       },
       ticketId: 'ticket-1',
     });
-  });
-
-  it('rejects internal comments for demandeur users', async () => {
-    const useCase = new AddTicketCommentUseCase(
-      {
-        addTicketComment: jest.fn(),
-      } as TicketCommentWriteRepository,
-      {
-        getTicketById: jest.fn(),
-        searchTickets: jest.fn(),
-      } as TicketReadRepository,
-      {
-        write: jest.fn(),
-      } as unknown as TicketAuditService,
-    );
-
-    await expect(
-      useCase.execute({
-        authorRole: UserRole.DEMANDEUR,
-        authorUserId: 'creator-1',
-        body: 'Interne',
-        isInternal: true,
-        ticketId: 'ticket-1',
-      }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rejects an empty body', async () => {

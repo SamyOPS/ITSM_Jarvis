@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Inject,
   Injectable,
   Optional,
@@ -20,7 +19,6 @@ export type AddTicketCommentCommand = {
   authorRole: UserRole;
   authorUserId: string;
   body: string;
-  isInternal?: boolean | null;
   ticketId: string;
 };
 
@@ -41,7 +39,6 @@ export class AddTicketCommentUseCase {
     const normalizedTicketId = command.ticketId.trim();
     const normalizedAuthorUserId = command.authorUserId.trim();
     const normalizedBody = command.body.trim();
-    const isInternal = command.isInternal ?? false;
 
     if (!normalizedTicketId) {
       throw new BadRequestException('ticketId is required.');
@@ -53,12 +50,6 @@ export class AddTicketCommentUseCase {
 
     if (!normalizedBody) {
       throw new BadRequestException('body is required.');
-    }
-
-    if (command.authorRole === UserRole.DEMANDEUR && isInternal) {
-      throw new ForbiddenException(
-        'Demandeur users cannot create internal comments.',
-      );
     }
 
     const ticket = await resolveAccessibleTicket({
@@ -87,7 +78,6 @@ export class AddTicketCommentUseCase {
     const comment = await this.ticketCommentWriteRepository.addTicketComment({
       authorUserId: normalizedAuthorUserId,
       body: normalizedBody,
-      isInternal,
       ticketId: normalizedTicketId,
     });
 
@@ -96,7 +86,6 @@ export class AddTicketCommentUseCase {
       eventType: TicketHistoryEventType.COMMENT_ADDED,
       payload: {
         commentId: comment.id,
-        isInternal: comment.isInternal,
       },
       ticketId: normalizedTicketId,
     });
