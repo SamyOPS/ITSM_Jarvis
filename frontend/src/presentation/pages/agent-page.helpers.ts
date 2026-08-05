@@ -761,11 +761,7 @@ function getTicketOperationalScore(
 } {
   const priorityLevel = prioritiesById.get(ticket.priorityId)?.level ?? 0;
   const priorityName = prioritiesById.get(ticket.priorityId)?.name ?? '';
-  const nextDueAt = getNextDueTimestamp(
-    ticket,
-    prioritiesById,
-    isRequesterVip,
-  );
+  const nextDueAt = getNextDueTimestamp(ticket, prioritiesById, isRequesterVip);
 
   return {
     completionRank: getCompletionRank(ticket.status),
@@ -890,7 +886,9 @@ function getVipAwareResolutionHours(
     return null;
   }
 
-  return isRequesterVip ? resolutionHours * VIP_TTR_MULTIPLIER : resolutionHours;
+  return isRequesterVip
+    ? resolutionHours * VIP_TTR_MULTIPLIER
+    : resolutionHours;
 }
 
 function toTimestamp(value: string): number {
