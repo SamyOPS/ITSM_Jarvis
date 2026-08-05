@@ -727,7 +727,9 @@ export function sortTicketsByCreatedAtDesc(
   tickets: TicketSummarySnapshot[],
 ): TicketSummarySnapshot[] {
   return [...tickets].sort(
-    (left, right) => toTimestamp(right.createdAt) - toTimestamp(left.createdAt),
+    (left, right) =>
+      getCompletionRank(left.status) - getCompletionRank(right.status) ||
+      toTimestamp(right.createdAt) - toTimestamp(left.createdAt),
   );
 }
 
@@ -735,7 +737,9 @@ export function sortTicketsByCreatedAtAsc(
   tickets: TicketSummarySnapshot[],
 ): TicketSummarySnapshot[] {
   return [...tickets].sort(
-    (left, right) => toTimestamp(left.createdAt) - toTimestamp(right.createdAt),
+    (left, right) =>
+      getCompletionRank(left.status) - getCompletionRank(right.status) ||
+      toTimestamp(left.createdAt) - toTimestamp(right.createdAt),
   );
 }
 
@@ -822,6 +826,10 @@ function getStatusRank(status: string): number {
 }
 
 function getSlaRank(ticket: TicketSummarySnapshot, ttrDueAt: number): number {
+  if (ticket.status === 'PENDING') {
+    return 2;
+  }
+
   if (!Number.isFinite(ttrDueAt)) {
     return 2;
   }
@@ -953,12 +961,21 @@ export function renderOverdueMarker(
   prioritiesById?: Map<string, { resolutionHours?: number | null }>,
   isRequesterVip = false,
 ) {
+  if (ticket.status === 'RESOLVED' || ticket.status === 'CLOSED') {
+    return null;
+  }
+
   const displayedResolutionDueAt = prioritiesById
     ? getNextDueTimestamp(ticket, prioritiesById, isRequesterVip)
     : Number.POSITIVE_INFINITY;
+  const comparisonTimestamp =
+    ticket.status === 'PENDING' && ticket.slaPausedAt
+      ? toTimestamp(ticket.slaPausedAt)
+      : Date.now();
   const isDisplayedTtrOverdue =
     Number.isFinite(displayedResolutionDueAt) &&
-    displayedResolutionDueAt <= Date.now();
+    Number.isFinite(comparisonTimestamp) &&
+    displayedResolutionDueAt <= comparisonTimestamp;
 
   if (!isDisplayedTtrOverdue && ticket.resolutionSlaStatus !== 'OVERDUE') {
     return null;

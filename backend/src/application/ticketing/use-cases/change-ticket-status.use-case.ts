@@ -78,7 +78,12 @@ export class ChangeTicketStatusUseCase {
       throw error;
     }
 
-    await this.ticketWriteRepository.updateStatus(ticketId, command.status);
+    const statusRecord = buildStatusUpdateRecord(
+      existingTicket.ticket,
+      command.status,
+    );
+
+    await this.ticketWriteRepository.updateStatus(ticketId, statusRecord);
 
     const updatedTicket =
       await this.ticketReadRepository.getTicketById(ticketId);
@@ -101,6 +106,64 @@ export class ChangeTicketStatusUseCase {
 
     return updatedTicket;
   }
+}
+
+function buildStatusUpdateRecord(
+  ticket: TicketDetail['ticket'],
+  status: TicketStatus,
+) {
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const wasPending = ticket.status === TicketStatus.PENDING;
+  const becomesPending = status === TicketStatus.PENDING;
+
+  if (!wasPending && becomesPending) {
+    return {
+      slaPausedAt: ticket.slaPausedAt ?? nowIso,
+      slaPausedDurationMs: ticket.slaPausedDurationMs,
+      status,
+    };
+  }
+
+  if (wasPending && !becomesPending) {
+    const pauseStartedAt = ticket.slaPausedAt
+      ? new Date(ticket.slaPausedAt)
+      : null;
+    const pauseDurationMs =
+      pauseStartedAt && !Number.isNaN(pauseStartedAt.getTime())
+        ? Math.max(0, now.getTime() - pauseStartedAt.getTime())
+        : 0;
+    const resolutionDueAt = addMillisecondsToIso(
+      ticket.resolutionDueAt,
+      pauseDurationMs,
+    );
+
+    return {
+      resolutionDueAt,
+      slaPausedAt: null,
+      slaPausedDurationMs: ticket.slaPausedDurationMs + pauseDurationMs,
+      status,
+    };
+  }
+
+  return { status };
+}
+
+function addMillisecondsToIso(
+  value: string | null,
+  milliseconds: number,
+): string | null {
+  if (!value || milliseconds <= 0) {
+    return value;
+  }
+
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Date(parsed.getTime() + milliseconds).toISOString();
 }
 
 function assertRequesterCanChangeTicketStatus(
