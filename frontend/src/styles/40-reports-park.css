@@ -1717,13 +1717,6 @@
   height: 14px;
 }
 
-@media (max-width: 1300px) {
-  .reports-filter-band--dashboard .reports-filters,
-  .reports-dashboard-graph-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 900px) {
   .reports-dashboard-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2954,7 +2947,36 @@
 }
 
 @media (max-width: 1300px) {
-  .reports-filter-band--dashboard .reports-filters,
+  .reports-filter-band--dashboard .reports-filters {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .reports-dashboard-kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .reports-dashboard-kpi {
+    min-height: 106px;
+    padding: 16px 18px;
+  }
+
+  .reports-dashboard-kpi strong {
+    font-size: clamp(1.9rem, 2.4vw, 2.45rem);
+  }
+
+  .reports-dashboard-graph-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+}
+
+@media (max-width: 1040px) {
+  .reports-filter-band--dashboard .reports-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .reports-dashboard-graph-grid {
     grid-template-columns: 1fr;
   }

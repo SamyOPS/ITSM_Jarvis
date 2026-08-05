@@ -517,6 +517,13 @@ export class SuggestTicketDraftUseCase {
         };
       }
 
+      const computerEquipmentRequestProgression =
+        this.getComputerEquipmentRequestProgression(userInput, parsed);
+
+      if (computerEquipmentRequestProgression) {
+        return computerEquipmentRequestProgression;
+      }
+
       const genericRequestQuestion =
         this.getMissingGenericRequestPrecisionQuestion(userInput);
 
@@ -700,6 +707,13 @@ export class SuggestTicketDraftUseCase {
         question: networkScopeQuestion,
         suggestion: null,
       };
+    }
+
+    const computerEquipmentRequestProgression =
+      this.getComputerEquipmentRequestProgression(userInput, parsed);
+
+    if (computerEquipmentRequestProgression) {
+      return computerEquipmentRequestProgression;
     }
 
     if (
@@ -1141,6 +1155,176 @@ export class SuggestTicketDraftUseCase {
     };
   }
 
+  private getComputerEquipmentRequestProgression(
+    conversation: string,
+    parsed: TicketDraftAssistantResponse & TicketDraftSuggestion,
+  ): TicketDraftAssistantResponse | null {
+    if (!this.hasConfirmedComputerEquipmentRequest(conversation)) {
+      return null;
+    }
+
+    const requesterScope = this.inferRequesterScope(conversation);
+    const requesterName =
+      requesterScope === 'OTHER'
+        ? (this.inferPartialRequesterName(conversation) ??
+          this.normalizeRequesterName(parsed.requesterName))
+        : null;
+    const channelName =
+      requesterScope === 'SELF'
+        ? 'Portail'
+        : this.inferChannelName(conversation);
+    const requesterContextQuestion = this.getMissingRequesterContextQuestion(
+      requesterScope,
+      requesterName,
+      channelName,
+    );
+
+    if (requesterContextQuestion) {
+      return {
+        action: 'ASK_QUESTION',
+        question: requesterContextQuestion,
+        suggestion: null,
+      };
+    }
+
+    const computerName = this.inferComputerRequestName(conversation);
+    const normalizedDescription = this.normalizeTicketDescription(
+      parsed.description,
+      requesterName,
+      conversation,
+    );
+
+    return {
+      action: 'SUGGEST_TICKET',
+      question: null,
+      suggestion: {
+        categoryName: 'Materiel',
+        channelName,
+        confidence: Math.max(Number(parsed.confidence) || 0, 0.78),
+        description: normalizedDescription || `Demande d'un ${computerName}.`,
+        impact: null,
+        priorityName:
+          this.normalizeEnum(parsed.priorityName, PriorityName) ??
+          PriorityName.MEDIUM,
+        requesterName: requesterScope === 'OTHER' ? requesterName : null,
+        requesterScope,
+        requestType:
+          this.normalizeEnum(parsed.requestType, RequestType) ??
+          RequestType.HARDWARE,
+        title: this.normalizeTicketTitle(
+          parsed.title || `Demande de ${computerName}`,
+          requesterName,
+        ),
+        type: TicketType.REQUEST,
+        urgency: null,
+      },
+    };
+  }
+
+  private hasConfirmedComputerEquipmentRequest(conversation: string): boolean {
+    const normalizedConversation = this.normalizeForMatching(conversation);
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+
+    if (!this.hasComputerRequestFormFactor(normalizedUserConversation)) {
+      return false;
+    }
+
+    const hasUserIssueIntent =
+      /\b(reparer|reparation|probleme|panne|bug|incident|marche pas|fonctionne pas|fonctionne plus|demarre pas|ne demarre pas|allume pas|ne s allume pas|casse|hs|ecran fige|bloque)\b/u.test(
+        normalizedUserConversation,
+      );
+
+    if (hasUserIssueIntent) {
+      return false;
+    }
+
+    const hasDirectRequestIntent =
+      /\b(je veux|je veut|j aimerais|j'aimerais|je souhaite|besoin|il me faut|demande|nouveau|nouvel equipement|nouvel ordinateur|nouveau pc)\b/u.test(
+        normalizedUserConversation,
+      );
+    const lines = normalizedConversation
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const lastUserMessage =
+      [...lines]
+        .reverse()
+        .find((line) => line.startsWith('utilisateur:'))
+        ?.replace(/^utilisateur:\s*/u, '')
+        .trim() ?? '';
+    const previousAssistantQuestion =
+      [...lines]
+        .slice(0, Math.max(lines.length - 1, 0))
+        .reverse()
+        .find((line) => line.startsWith('assistant:'))
+        ?.replace(/^assistant:\s*/u, '')
+        .trim() ?? '';
+    const answeredRequestVsIssue =
+      /^(demande|une demande|nouveau|nouvelle demande|nouvel equipement|nouveau materiel)$/u.test(
+        lastUserMessage,
+      ) &&
+      /(demande|nouvel equipement|nouveau pc|pc portable|pc tour|pc fixe)/u.test(
+        previousAssistantQuestion,
+      ) &&
+      /(probleme|incident|reparer|reparation|existant|panne)/u.test(
+        previousAssistantQuestion,
+      );
+
+    return hasDirectRequestIntent || answeredRequestVsIssue;
+  }
+
+  private hasComputerRequestFormFactor(
+    normalizedUserConversation: string,
+  ): boolean {
+    return (
+      /\b(pc portable|ordinateur portable|laptop|pc tour|tour|pc fixe|ordinateur fixe|poste fixe|unite centrale)\b/u.test(
+        normalizedUserConversation,
+      ) ||
+      (/\b(pc|ordinateur|poste)\b/u.test(normalizedUserConversation) &&
+        /\b(portable|tour|fixe|unite centrale)\b/u.test(
+          normalizedUserConversation,
+        ))
+    );
+  }
+
+  private inferComputerRequestName(conversation: string): string {
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+
+    if (
+      /\b(pc portable|ordinateur portable|laptop)\b/u.test(
+        normalizedUserConversation,
+      ) ||
+      (/\b(pc|ordinateur|poste)\b/u.test(normalizedUserConversation) &&
+        /\bportable\b/u.test(normalizedUserConversation))
+    ) {
+      return 'PC portable';
+    }
+
+    if (
+      /\b(pc tour|tour|unite centrale)\b/u.test(normalizedUserConversation) ||
+      (/\b(pc|ordinateur|poste)\b/u.test(normalizedUserConversation) &&
+        /\btour\b/u.test(normalizedUserConversation))
+    ) {
+      return 'PC tour';
+    }
+
+    if (
+      /\b(pc fixe|ordinateur fixe|poste fixe)\b/u.test(
+        normalizedUserConversation,
+      ) ||
+      (/\b(pc|ordinateur|poste)\b/u.test(normalizedUserConversation) &&
+        /\bfixe\b/u.test(normalizedUserConversation))
+    ) {
+      return 'PC fixe';
+    }
+
+    return 'PC';
+  }
+
   private normalizeTicketTitle(
     value: string | null | undefined,
     requesterName: string | null,
@@ -1320,7 +1504,15 @@ export class SuggestTicketDraftUseCase {
       /(ticket|demande).*(pour vous|pour moi|autre utilisateur)/u.test(
         question,
       ) ||
-      /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(question)
+      /(pour vous|pour moi|autre utilisateur).*(ticket|demande)/u.test(
+        question,
+      ) ||
+      /(est[- ]?ce|est ce).*(pour vous|pour moi|autre utilisateur)/u.test(
+        question,
+      ) ||
+      /(pour vous|pour moi|autre utilisateur).*(utilisateur|quelqu un d autre)/u.test(
+        question,
+      )
     );
   }
 
