@@ -5,6 +5,7 @@ import { TicketHistoryEventType } from '../../../domain/ticketing/ticket-history
 import { RequestType } from '../../../domain/ticketing/request-type';
 import { ReferentialChannelReadRepository } from '../../referentials/repositories/referential-channel-read.repository';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
+import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { TicketAuditService } from '../ticket-audit.service';
 import { resolveCreationChannelId } from '../creation-channel';
 import {
@@ -12,6 +13,7 @@ import {
   TicketWriteRepository,
 } from '../repositories/ticket-write.repository';
 import { calculateSlaTargets } from '../sla-targets';
+import { isTicketRequesterVip } from '../ticket-requester-vip';
 
 export type CreateRequestCommand = {
   categoryId: string;
@@ -36,6 +38,8 @@ export class CreateRequestUseCase {
     @Inject(ReferentialPriorityReadRepository)
     private readonly priorityRepository: ReferentialPriorityReadRepository,
     private readonly ticketAuditService: TicketAuditService,
+    @Inject(UserAssignmentProfileRepository)
+    private readonly userAssignmentProfileRepository?: UserAssignmentProfileRepository,
   ) {}
 
   async execute(command: CreateRequestCommand): Promise<CreatedRequest> {
@@ -76,7 +80,15 @@ export class CreateRequestUseCase {
       );
     }
 
-    const slaTargets = calculateSlaTargets(resolvedPriority);
+    const requestedForUserId = normalizeOptionalId(command.requestedForUserId);
+    const isRequesterVip = await isTicketRequesterVip(
+      this.userAssignmentProfileRepository,
+      createdByUserId,
+      requestedForUserId,
+    );
+    const slaTargets = calculateSlaTargets(resolvedPriority, new Date(), {
+      isRequesterVip,
+    });
     const channelId = await resolveCreationChannelId({
       channelId: command.channelId,
       channelRepository: this.channelRepository,
@@ -94,7 +106,7 @@ export class CreateRequestUseCase {
       priorityName: resolvedPriority.name,
       resolutionDueAt: slaTargets.resolutionDueAt,
       responseDueAt: slaTargets.responseDueAt,
-      requestedForUserId: normalizeOptionalId(command.requestedForUserId),
+      requestedForUserId,
       requestType: command.requestType ?? RequestType.OTHER,
       title,
     };

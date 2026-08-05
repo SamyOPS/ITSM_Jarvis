@@ -30,6 +30,7 @@ import type {
 } from './agent-page.types';
 
 export const TICKET_TITLE_MAX_LENGTH = 50;
+const VIP_TTR_MULTIPLIER = 0.75;
 
 export function isTicketCommentHistoryEntry(
   entry: TicketHistoryEntrySnapshot,
@@ -126,10 +127,12 @@ export function formatTicketDate(value: string): string {
 export function formatTicketResolutionDueAt(
   ticket: TicketSummarySnapshot,
   prioritiesById: Map<string, { resolutionHours: number | null }>,
+  isRequesterVip = false,
 ): string {
-  const resolutionHours = prioritiesById.get(
-    ticket.priorityId,
-  )?.resolutionHours;
+  const resolutionHours = getVipAwareResolutionHours(
+    prioritiesById.get(ticket.priorityId)?.resolutionHours,
+    isRequesterVip,
+  );
 
   if (resolutionHours === null || resolutionHours === undefined) {
     return '?';
@@ -687,8 +690,16 @@ export function sortTicketsByOperationalPriority(
   return [...tickets].sort((left, right) => {
     const leftIsVip = isTicketRequesterVip(left, vipRequesterIds);
     const rightIsVip = isTicketRequesterVip(right, vipRequesterIds);
-    const leftScore = getTicketOperationalScore(left, prioritiesById);
-    const rightScore = getTicketOperationalScore(right, prioritiesById);
+    const leftScore = getTicketOperationalScore(
+      left,
+      prioritiesById,
+      leftIsVip,
+    );
+    const rightScore = getTicketOperationalScore(
+      right,
+      prioritiesById,
+      rightIsVip,
+    );
 
     return (
       leftScore.completionRank - rightScore.completionRank ||
@@ -734,6 +745,7 @@ function getTicketOperationalScore(
     string,
     { level: number; name: string; resolutionHours?: number | null }
   >,
+  isRequesterVip: boolean,
 ): {
   completionRank: number;
   createdAt: number;
@@ -745,7 +757,11 @@ function getTicketOperationalScore(
 } {
   const priorityLevel = prioritiesById.get(ticket.priorityId)?.level ?? 0;
   const priorityName = prioritiesById.get(ticket.priorityId)?.name ?? '';
-  const nextDueAt = getNextDueTimestamp(ticket, prioritiesById);
+  const nextDueAt = getNextDueTimestamp(
+    ticket,
+    prioritiesById,
+    isRequesterVip,
+  );
 
   return {
     completionRank: getCompletionRank(ticket.status),
@@ -834,10 +850,12 @@ function getSlaRank(ticket: TicketSummarySnapshot, ttrDueAt: number): number {
 function getNextDueTimestamp(
   ticket: TicketSummarySnapshot,
   prioritiesById: Map<string, { resolutionHours?: number | null }>,
+  isRequesterVip = false,
 ): number {
-  const resolutionHours = prioritiesById.get(
-    ticket.priorityId,
-  )?.resolutionHours;
+  const resolutionHours = getVipAwareResolutionHours(
+    prioritiesById.get(ticket.priorityId)?.resolutionHours,
+    isRequesterVip,
+  );
 
   if (resolutionHours !== null && resolutionHours !== undefined) {
     const createdAt = toTimestamp(ticket.createdAt);
@@ -854,6 +872,17 @@ function getNextDueTimestamp(
   return ticket.responseDueAt
     ? toTimestamp(ticket.responseDueAt)
     : Number.POSITIVE_INFINITY;
+}
+
+function getVipAwareResolutionHours(
+  resolutionHours: number | null | undefined,
+  isRequesterVip: boolean,
+): number | null {
+  if (resolutionHours === null || resolutionHours === undefined) {
+    return null;
+  }
+
+  return isRequesterVip ? resolutionHours * VIP_TTR_MULTIPLIER : resolutionHours;
 }
 
 function toTimestamp(value: string): number {
@@ -919,11 +948,19 @@ export function renderPriorityBadge(
   );
 }
 
-export function renderOverdueMarker(ticket: TicketSummarySnapshot) {
-  if (
-    ticket.responseSlaStatus !== 'OVERDUE' &&
-    ticket.resolutionSlaStatus !== 'OVERDUE'
-  ) {
+export function renderOverdueMarker(
+  ticket: TicketSummarySnapshot,
+  prioritiesById?: Map<string, { resolutionHours?: number | null }>,
+  isRequesterVip = false,
+) {
+  const displayedResolutionDueAt = prioritiesById
+    ? getNextDueTimestamp(ticket, prioritiesById, isRequesterVip)
+    : Number.POSITIVE_INFINITY;
+  const isDisplayedTtrOverdue =
+    Number.isFinite(displayedResolutionDueAt) &&
+    displayedResolutionDueAt <= Date.now();
+
+  if (!isDisplayedTtrOverdue && ticket.resolutionSlaStatus !== 'OVERDUE') {
     return null;
   }
 

@@ -3,7 +3,9 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { UserAssignmentProfileRepository } from '../../auth/repositories/user-assignment-profile.repository';
 import { ReferentialPriorityReadRepository } from '../../referentials/repositories/referential-priority-read.repository';
 import { isSupportManagerRole, UserRole } from '../../../domain/auth/user-role';
 import { IncidentSeverity } from '../../../domain/ticketing/incident-severity';
@@ -12,6 +14,7 @@ import { TicketType } from '../../../domain/ticketing/ticket-type';
 import { TicketRuleError } from '../../../domain/ticketing/ticket-rule.error';
 import { calculateSlaTargets } from '../sla-targets';
 import { resolveIncidentPriorityName } from '../incident-priority';
+import { isTicketRequesterVip } from '../ticket-requester-vip';
 import { TicketReadRepository } from '../repositories/ticket-read.repository';
 import {
   TicketWriteRepository,
@@ -44,6 +47,9 @@ export class UpdateTicketUseCase {
     private readonly ticketWriteRepository: TicketWriteRepository,
     @Inject(ReferentialPriorityReadRepository)
     private readonly priorityRepository: ReferentialPriorityReadRepository,
+    @Optional()
+    @Inject(UserAssignmentProfileRepository)
+    private readonly userAssignmentProfileRepository?: UserAssignmentProfileRepository,
   ) {}
 
   async execute(command: UpdateTicketCommand): Promise<TicketDetail> {
@@ -110,6 +116,7 @@ export class UpdateTicketUseCase {
     let priorityId: string | null = existingTicket.ticket.priorityId;
     let responseDueAt: string | null = existingTicket.ticket.responseDueAt;
     let resolutionDueAt: string | null = existingTicket.ticket.resolutionDueAt;
+    const requestedForUserId = normalizeOptionalId(command.requestedForUserId);
 
     if (existingTicket.ticket.type === TicketType.INCIDENT) {
       if (!existingTicket.incident) {
@@ -149,7 +156,14 @@ export class UpdateTicketUseCase {
       }
 
       priorityId = resolvedPriority.id;
-      const slaTargets = calculateSlaTargets(resolvedPriority);
+      const isRequesterVip = await isTicketRequesterVip(
+        this.userAssignmentProfileRepository,
+        existingTicket.ticket.createdByUserId,
+        requestedForUserId,
+      );
+      const slaTargets = calculateSlaTargets(resolvedPriority, new Date(), {
+        isRequesterVip,
+      });
       responseDueAt = slaTargets.responseDueAt;
       resolutionDueAt = slaTargets.resolutionDueAt;
     }
@@ -161,7 +175,7 @@ export class UpdateTicketUseCase {
       description,
       incident: incidentRecord,
       priorityId,
-      requestedForUserId: normalizeOptionalId(command.requestedForUserId),
+      requestedForUserId,
       resolutionDueAt,
       responseDueAt,
       title,

@@ -5414,9 +5414,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                         {formatTicketResolutionDueAt(
                                           ticket,
                                           prioritiesById,
+                                          isVipTicket,
                                         )}
                                       </span>
-                                      {renderOverdueMarker(ticket)}
+                                      {renderOverdueMarker(
+                                        ticket,
+                                        prioritiesById,
+                                        isVipTicket,
+                                      )}
                                     </div>
                                   </td>
                                 </tr>

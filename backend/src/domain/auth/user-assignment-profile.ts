@@ -5,5 +5,6 @@ export interface UserAssignmentProfile {
   groupIds: string[];
   id: string;
   isActive: boolean;
+  isVip?: boolean;
   role: UserRole;
 }
