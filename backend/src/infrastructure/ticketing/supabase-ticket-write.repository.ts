@@ -538,10 +538,6 @@ export class SupabaseTicketWriteRepository
       ticket_id: `eq.${filters.ticketId}`,
     });
 
-    if (!filters.includeInternal) {
-      query.set('is_internal', 'eq.false');
-    }
-
     const response = await this.send(
       `ticket_comments?${query.toString()}`,
       'GET',
@@ -573,7 +569,7 @@ export class SupabaseTicketWriteRepository
       {
         author_user_id: record.authorUserId,
         body: record.body,
-        is_internal: record.isInternal,
+        is_internal: false,
         ticket_id: record.ticketId,
       },
       true,

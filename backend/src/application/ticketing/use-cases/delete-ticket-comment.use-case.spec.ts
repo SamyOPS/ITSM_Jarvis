@@ -88,7 +88,6 @@ describe('DeleteTicketCommentUseCase', () => {
       payload: {
         authorUserId: 'creator-1',
         commentId: 'comment-1',
-        isInternal: false,
       },
       ticketId: 'ticket-1',
     });
@@ -141,7 +140,6 @@ describe('DeleteTicketCommentUseCase', () => {
       payload: {
         authorUserId: 'creator-1',
         commentId: 'comment-1',
-        isInternal: false,
       },
       ticketId: 'ticket-1',
     });

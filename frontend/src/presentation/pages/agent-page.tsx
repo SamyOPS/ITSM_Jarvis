@@ -285,8 +285,6 @@ const INITIAL_TICKET_EDIT_DRAFT: TicketEditDraftState = {
 
 const INITIAL_COMMENT_DRAFT: CommentDraftState = {
   body: '',
-
-  isInternal: false,
 };
 
 const INITIAL_ATTACHMENT_DRAFT: AttachmentDraftState = {
@@ -373,7 +371,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         body: description,
         createdAt: selectedTicketDetail.ticket.createdAt,
         id: seedCommentId,
-        isInternal: false,
         isSeedDescription: true,
         ticketId: selectedTicketDetail.ticket.id,
       },
@@ -3530,7 +3527,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
         selectedTicketDetail.ticket.id,
         {
           body,
-          isInternal: false,
         },
       );
 
@@ -7174,14 +7170,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   .toUpperCase() || '?';
 
                               return (
-                                <div
-                                  className={
-                                    comment.isInternal
-                                      ? 'tdp-comment tdp-comment--internal'
-                                      : 'tdp-comment'
-                                  }
-                                  key={comment.id}
-                                >
+                                <div className="tdp-comment" key={comment.id}>
                                   <div className="tdp-comment-avatar">
                                     {initial}
                                   </div>
@@ -7197,18 +7186,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
                                       <span>
                                         {formatTicketDate(comment.createdAt)}
-                                      </span>
-
-                                      <span
-                                        className={
-                                          comment.isInternal
-                                            ? 'tdp-comment-badge tdp-comment-badge--internal'
-                                            : 'tdp-comment-badge'
-                                        }
-                                      >
-                                        {comment.isInternal
-                                          ? 'Interne'
-                                          : 'Public'}
                                       </span>
 
                                       {canDeleteComment ? (

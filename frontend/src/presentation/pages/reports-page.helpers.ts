@@ -252,8 +252,9 @@ export function sortPersonalTickets(
 
     return (
       leftScore.completionRank - rightScore.completionRank ||
-      rightScore.priorityLevel - leftScore.priorityLevel ||
+      rightScore.criticalRank - leftScore.criticalRank ||
       leftScore.slaRank - rightScore.slaRank ||
+      rightScore.priorityLevel - leftScore.priorityLevel ||
       leftScore.statusRank - rightScore.statusRank ||
       leftScore.nextDueAt - rightScore.nextDueAt ||
       leftScore.createdAt - rightScore.createdAt
@@ -286,21 +287,43 @@ function getPersonalTicketOperationalScore(
 ): {
   completionRank: number;
   createdAt: number;
+  criticalRank: number;
   nextDueAt: number;
   priorityLevel: number;
   slaRank: number;
   statusRank: number;
 } {
   const nextDueAt = getPersonalNextDueTimestamp(ticket, prioritiesById);
+  const priority = prioritiesById.get(ticket.priorityId);
+  const priorityLevel = priority?.level ?? 0;
 
   return {
     completionRank: getPersonalCompletionRank(ticket.status),
     createdAt: personalToTimestamp(ticket.createdAt),
+    criticalRank: isPersonalCriticalPriority(
+      priority?.name ?? '',
+      priorityLevel,
+    )
+      ? 1
+      : 0,
     nextDueAt,
-    priorityLevel: prioritiesById.get(ticket.priorityId)?.level ?? 0,
+    priorityLevel,
     slaRank: getPersonalSlaRank(ticket, nextDueAt),
     statusRank: getPersonalStatusRank(ticket.status),
   };
+}
+
+function isPersonalCriticalPriority(
+  priorityName: string,
+  priorityLevel: number,
+): boolean {
+  const normalizedName = priorityName.trim().toLocaleLowerCase('fr-FR');
+
+  return (
+    priorityLevel >= 4 ||
+    normalizedName.includes('critique') ||
+    normalizedName.includes('critical')
+  );
 }
 
 function getPersonalCompletionRank(status: string): number {

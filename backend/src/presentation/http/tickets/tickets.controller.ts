@@ -250,7 +250,6 @@ export class TicketsController {
       authorRole: user.role,
       authorUserId: user.id,
       body: body.body,
-      isInternal: body.isInternal,
       ticketId: id,
     });
   }

@@ -42,7 +42,7 @@ describe('TicketNotificationService', () => {
     buildUser('admin-1', UserRole.ADMIN, ['group-1']),
   ];
 
-  it('notifies ticket stakeholders about a public comment except the actor', async () => {
+  it('notifies ticket stakeholders about a comment except the actor', async () => {
     let createdRecords: CreateNotificationRecord[] = [];
     const createMany = jest.fn(
       (records: CreateNotificationRecord[]): Promise<void> => {
@@ -56,7 +56,6 @@ describe('TicketNotificationService', () => {
     await service.notify({
       actorUserId: 'agent-1',
       eventType: TicketHistoryEventType.COMMENT_ADDED,
-      payload: { isInternal: false },
       ticketId: 'ticket-1',
     });
 
@@ -70,9 +69,34 @@ describe('TicketNotificationService', () => {
       ]),
     );
     expect(createdRecords).toHaveLength(2);
+    expect(
+      createdRecords.every((record) => record.message.includes('INC-000001')),
+    ).toBe(true);
   });
 
-  it('ignores internal comment notifications', async () => {
+  it('notifies support users when they are requesters on a commented ticket', async () => {
+    const supportRequesterTicket = new TicketDetail(
+      new Ticket(
+        'ticket-5',
+        'TICK-000005',
+        TicketType.INCIDENT,
+        TicketStatus.IN_PROGRESS,
+        'Demande support',
+        'Un agent est aussi demandeur.',
+        'priority-1',
+        'category-1',
+        'agent-1',
+        'admin-1',
+        null,
+        null,
+        'agent-2',
+        null,
+        '2026-06-23T14:00:00.000Z',
+      ),
+      null,
+      null,
+      null,
+    );
     let createdRecords: CreateNotificationRecord[] = [];
     const createMany = jest.fn(
       (records: CreateNotificationRecord[]): Promise<void> => {
@@ -81,16 +105,17 @@ describe('TicketNotificationService', () => {
         return Promise.resolve();
       },
     );
-    const service = buildService(createMany);
+    const service = buildService(createMany, supportRequesterTicket);
 
     await service.notify({
-      actorUserId: 'agent-1',
+      actorUserId: 'requester-1',
       eventType: TicketHistoryEventType.COMMENT_ADDED,
-      payload: { isInternal: true },
-      ticketId: 'ticket-1',
+      ticketId: 'ticket-5',
     });
 
-    expect(createdRecords).toEqual([]);
+    expect(
+      createdRecords.map((record) => record.recipientUserId).sort(),
+    ).toEqual(['admin-1', 'agent-1', 'agent-2']);
   });
 
   it('notifies only the assigned agent about an assignment', async () => {
@@ -113,6 +138,7 @@ describe('TicketNotificationService', () => {
     expect(createdRecords.map((record) => record.recipientUserId)).toEqual([
       'agent-2',
     ]);
+    expect(createdRecords[0]?.message).toContain('INC-000001');
     expect(createdRecords[0]?.type).toBe(NotificationType.TICKET_ASSIGNED);
   });
 
@@ -202,6 +228,7 @@ describe('TicketNotificationService', () => {
     expect(
       createdRecords.map((record) => record.recipientUserId).sort(),
     ).toEqual(['admin-1']);
+    expect(createdRecords[0]?.message).toContain('DEM-000002');
     expect(createdRecords[0]?.type).toBe(NotificationType.TICKET_CREATED);
   });
 
@@ -244,6 +271,9 @@ describe('TicketNotificationService', () => {
       ticketId: 'ticket-4',
     });
 
+    expect(
+      createdRecords.every((record) => record.message.includes('INC-000004')),
+    ).toBe(true);
     expect(createdRecords).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

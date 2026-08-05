@@ -3,6 +3,7 @@ import { isAdminRole, isSupportRole } from '../../domain/auth/user-role';
 import { NotificationType } from '../../domain/notifications/notification-type';
 import { TicketHistoryEventType } from '../../domain/ticketing/ticket-history-event-type';
 import { TicketStatus } from '../../domain/ticketing/ticket-status';
+import { TicketType } from '../../domain/ticketing/ticket-type';
 import { TicketReadRepository } from '../ticketing/repositories/ticket-read.repository';
 import { type CreateTicketHistoryRecord } from '../ticketing/repositories/ticket-history-write.repository';
 import {
@@ -34,6 +35,10 @@ export class TicketNotificationService {
 
     const users = await this.notificationRepository.listActiveRecipients();
     const ticket = ticketDetail.ticket;
+    const ticketDisplayNumber = formatTicketDisplayNumber(
+      ticket.type,
+      ticket.number,
+    );
     const activeUserIds = new Set(users.map((user) => user.id));
     const requesterIds = new Set(
       [ticket.createdByUserId, ticket.requestedForUserId]
@@ -87,7 +92,7 @@ export class TicketNotificationService {
           createdSupportIds,
           requestedForUserId: ticket.requestedForUserId,
           ticketId: ticket.id,
-          ticketNumber: ticket.number,
+          ticketNumber: ticketDisplayNumber,
         }),
       );
 
@@ -103,7 +108,7 @@ export class TicketNotificationService {
     );
     recipientIds.delete(record.actorUserId);
 
-    const content = buildNotificationContent(record, ticket.number);
+    const content = buildNotificationContent(record, ticketDisplayNumber);
 
     await this.notificationRepository.createMany(
       [...recipientIds].map((recipientUserId) => ({
@@ -213,10 +218,6 @@ function resolveRecipientIds(
   }
 
   if (record.eventType === TicketHistoryEventType.COMMENT_ADDED) {
-    if (record.payload?.isInternal === true) {
-      return new Set();
-    }
-
     return new Set([...requesterIds, ...assignedSupportIds]);
   }
 
@@ -271,4 +272,18 @@ function formatStatus(status: string): string {
   };
 
   return labels[status] ?? status.toLowerCase();
+}
+
+function formatTicketDisplayNumber(type: TicketType, number: string): string {
+  const numberSuffix = number.split('-').at(-1) ?? number;
+
+  if (type === TicketType.INCIDENT) {
+    return `INC-${numberSuffix}`;
+  }
+
+  if (type === TicketType.REQUEST) {
+    return `DEM-${numberSuffix}`;
+  }
+
+  return number;
 }

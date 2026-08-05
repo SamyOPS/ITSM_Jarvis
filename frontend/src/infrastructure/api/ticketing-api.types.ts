@@ -92,7 +92,6 @@ export type UpdateTicketPayload = {
 
 export type AddTicketCommentPayload = {
   body: string;
-  isInternal?: boolean;
 };
 
 export type AddTicketAttachmentPayload = {

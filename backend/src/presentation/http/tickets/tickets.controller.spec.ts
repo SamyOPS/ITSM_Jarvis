@@ -495,7 +495,6 @@ describe('TicketsController', () => {
         },
         {
           body: 'Commentaire public',
-          isInternal: true,
         },
       ),
     ).resolves.toEqual({
@@ -511,7 +510,6 @@ describe('TicketsController', () => {
       authorRole: UserRole.AGENT,
       authorUserId: 'user-1',
       body: 'Commentaire public',
-      isInternal: true,
       ticketId: 'ticket-1',
     });
   });

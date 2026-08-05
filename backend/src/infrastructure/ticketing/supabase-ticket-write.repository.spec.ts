@@ -83,7 +83,7 @@ describe('SupabaseTicketWriteRepository', () => {
     });
   });
 
-  it('filters internal comments out when requested', async () => {
+  it('lists ticket comments without internal visibility filters', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: jest.fn().mockResolvedValue([
@@ -100,13 +100,12 @@ describe('SupabaseTicketWriteRepository', () => {
 
     const repository = new SupabaseTicketWriteRepository();
     const comments = await repository.listTicketComments({
-      includeInternal: false,
       ticketId: 'ticket-1',
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining(
-        '/rest/v1/ticket_comments?order=created_at.asc&select=id%2Cticket_id%2Cauthor_user_id%2Cbody%2Cis_internal%2Ccreated_at&ticket_id=eq.ticket-1&is_internal=eq.false',
+        '/rest/v1/ticket_comments?order=created_at.asc&select=id%2Cticket_id%2Cauthor_user_id%2Cbody%2Cis_internal%2Ccreated_at&ticket_id=eq.ticket-1',
       ),
       expect.any(Object),
     );
@@ -126,10 +125,10 @@ describe('SupabaseTicketWriteRepository', () => {
       json: jest.fn().mockResolvedValue([
         {
           author_user_id: 'user-1',
-          body: 'Note interne',
+          body: 'Commentaire',
           created_at: '2026-04-02T08:12:00.000Z',
           id: 'comment-1',
-          is_internal: true,
+          is_internal: false,
           ticket_id: 'ticket-1',
         },
       ]),
@@ -140,16 +139,15 @@ describe('SupabaseTicketWriteRepository', () => {
     await expect(
       repository.addTicketComment({
         authorUserId: 'user-1',
-        body: 'Note interne',
-        isInternal: true,
+        body: 'Commentaire',
         ticketId: 'ticket-1',
       }),
     ).resolves.toEqual(
       expect.objectContaining({
         authorUserId: 'user-1',
-        body: 'Note interne',
+        body: 'Commentaire',
         id: 'comment-1',
-        isInternal: true,
+        isInternal: false,
         ticketId: 'ticket-1',
       }),
     );
@@ -284,7 +282,6 @@ describe('SupabaseTicketWriteRepository', () => {
 
     await expect(
       repository.listTicketComments({
-        includeInternal: true,
         ticketId: 'ticket-1',
       }),
     ).rejects.toThrow(ServiceUnavailableException);

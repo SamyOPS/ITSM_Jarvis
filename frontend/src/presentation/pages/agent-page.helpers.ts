@@ -441,15 +441,11 @@ export function formatTicketHistoryPayload(
   }
 
   if (entry.eventType === 'COMMENT_ADDED') {
-    return payload.isInternal
-      ? 'Une note interne a ete ajoutee.'
-      : 'Un commentaire public a ete ajoute.';
+    return 'Un commentaire a ete ajoute.';
   }
 
   if (entry.eventType === 'COMMENT_DELETED') {
-    return payload.isInternal
-      ? 'Une note interne a ete supprimee.'
-      : 'Un commentaire public a ete supprime.';
+    return 'Un commentaire a ete supprime.';
   }
 
   if (entry.eventType === 'ATTACHMENT_ADDED') {
@@ -696,8 +692,9 @@ export function sortTicketsByOperationalPriority(
 
     return (
       leftScore.completionRank - rightScore.completionRank ||
-      rightScore.priorityLevel - leftScore.priorityLevel ||
+      rightScore.criticalRank - leftScore.criticalRank ||
       leftScore.slaRank - rightScore.slaRank ||
+      rightScore.priorityLevel - leftScore.priorityLevel ||
       Number(rightIsVip) - Number(leftIsVip) ||
       leftScore.statusRank - rightScore.statusRank ||
       leftScore.nextDueAt - rightScore.nextDueAt ||
@@ -741,20 +738,35 @@ function getTicketOperationalScore(
   completionRank: number;
   createdAt: number;
   nextDueAt: number;
+  criticalRank: number;
   priorityLevel: number;
   slaRank: number;
   statusRank: number;
 } {
+  const priorityLevel = prioritiesById.get(ticket.priorityId)?.level ?? 0;
+  const priorityName = prioritiesById.get(ticket.priorityId)?.name ?? '';
   const nextDueAt = getNextDueTimestamp(ticket, prioritiesById);
 
   return {
     completionRank: getCompletionRank(ticket.status),
     createdAt: toTimestamp(ticket.createdAt),
     nextDueAt,
-    priorityLevel: prioritiesById.get(ticket.priorityId)?.level ?? 0,
+    criticalRank: isCriticalPriority(priorityName, priorityLevel) ? 1 : 0,
+    priorityLevel,
     slaRank: getSlaRank(ticket, nextDueAt),
     statusRank: getStatusRank(ticket.status),
   };
+}
+
+function isCriticalPriority(
+  priorityName: string,
+  priorityLevel: number,
+): boolean {
+  return (
+    priorityLevel >= 4 ||
+    normalizeSearchText(priorityName).includes('critique') ||
+    normalizeSearchText(priorityName).includes('critical')
+  );
 }
 
 function getCompletionRank(status: string): number {
