@@ -120,6 +120,143 @@ describe('SuggestTicketDraftUseCase', () => {
     );
   });
 
+  it('treats demande as a new computer request after laptop intent clarification', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'ASK_QUESTION',
+        question:
+          "S'agit-il de demander un nouveau PC portable ou de reparer un PC portable existant ?",
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          'Utilisateur: je veut pc portable',
+          "Assistant: S'agit-il d'une demande de PC portable (nouvel equipement) ou d'un probleme sur votre PC portable ?",
+          'Utilisateur: demande',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'ASK_QUESTION',
+      question:
+        'Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+      suggestion: null,
+    });
+  });
+
+  it('suggests a hardware request after laptop request and requester are known', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'ASK_QUESTION',
+        question:
+          "S'agit-il de demander un nouveau PC portable ou de reparer un PC portable existant ?",
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          'Utilisateur: je veut pc portable',
+          "Assistant: S'agit-il d'une demande de PC portable (nouvel equipement) ou d'un probleme sur votre PC portable ?",
+          'Utilisateur: demande',
+          'Assistant: Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+          'Utilisateur: moi',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'SUGGEST_TICKET',
+      suggestion: {
+        categoryName: 'Materiel',
+        channelName: 'Portail',
+        requestType: RequestType.HARDWARE,
+        requesterScope: 'SELF',
+        title: 'Demande de PC portable',
+        type: TicketType.REQUEST,
+      },
+    });
+  });
+
+  it('does not ask optional new-or-replacement comfort questions for laptop requests', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'ASK_QUESTION',
+        question:
+          'Souhaitez-vous un nouveau PC portable ou un remplacement de PC portable existant ?',
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          'Utilisateur: je veux un pc portable',
+          'Assistant: Est-ce pour vous ou pour un autre utilisateur ?',
+          'Utilisateur: moi',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'SUGGEST_TICKET',
+      question: null,
+      suggestion: {
+        categoryName: 'Materiel',
+        channelName: 'Portail',
+        description: "Demande d'un PC portable.",
+        requestType: RequestType.HARDWARE,
+        requesterScope: 'SELF',
+        title: 'Demande de PC portable',
+        type: TicketType.REQUEST,
+      },
+    });
+  });
+
+  it('does not ask optional model or configuration questions after laptop usage is known', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'ASK_QUESTION',
+        question:
+          'Quel est le modele ou la configuration souhaites pour le PC portable (ou bien peu importe) ?',
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          'Utilisateur: il me faut un pc',
+          "Assistant: Est-ce que c'est un PC portable ou une tour ?",
+          'Utilisateur: portable',
+          'Assistant: Quel type de PC portable souhaitez-vous (usage : bureautique, developpement, metier, etc.) ?',
+          'Utilisateur: bureautique',
+          'Assistant: Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+          'Utilisateur: moi',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'SUGGEST_TICKET',
+      question: null,
+      suggestion: {
+        categoryName: 'Materiel',
+        channelName: 'Portail',
+        description: "Demande d'un PC portable.",
+        requestType: RequestType.HARDWARE,
+        requesterScope: 'SELF',
+        title: 'Demande de PC portable',
+        type: TicketType.REQUEST,
+      },
+    });
+  });
+
   it('accepts an image attachment without text and sends it as multimodal input', async () => {
     mockAssistantResponse(
       baseAssistantPayload({

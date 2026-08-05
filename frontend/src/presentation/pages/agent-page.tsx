@@ -566,6 +566,10 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
 
   const canDeleteTickets = isAdminRole(session.user.role);
   const canEditTicket = isSupportManagerRole(session.user.role);
+  const canSaveTicketDetail = Boolean(
+    selectedTicketDetail &&
+    (canEditTicket || canManageTicket || canChangeSelectedTicketStatus),
+  );
 
   const isIncidentCreatePage = section === 'INCIDENT_CREATE';
   const isArchiveListPage = section === 'ARCHIVES';
@@ -893,6 +897,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
           categoryId: normalizeOptionalId(searchFilters.categoryId),
 
           includeArchived: isArchiveListPage,
+          includeClosed: isListPage && isSupportRole(session.user.role),
 
           priorityId: normalizeOptionalId(searchFilters.priorityId),
 
@@ -2888,7 +2893,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   }
 
   async function handleSaveInfoEdits(): Promise<void> {
-    if (!selectedTicketDetail || (!canEditTicket && !canManageTicket)) {
+    if (!selectedTicketDetail || !canSaveTicketDetail) {
       return;
     }
 
@@ -5485,8 +5490,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                         </select>
                       </div>
                     ) : null}
-                    {selectedTicketDetail &&
-                    (canEditTicket || canManageTicket) ? (
+                    {selectedTicketDetail && canSaveTicketDetail ? (
                       <button
                         className="primary-button admin-user-save-button"
                         disabled={isSavingInfo}
