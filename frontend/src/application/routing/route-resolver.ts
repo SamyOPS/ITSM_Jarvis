@@ -40,6 +40,7 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
     pathname === '/preferences' ||
     pathname === '/profile' ||
     pathname === '/reports' ||
+    pathname === '/settings' ||
     pathname === '/login' ||
     pathname === '/register' ||
     pathname === '/auth/reset-password'

@@ -689,6 +689,20 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   }, [aiDraftInput, isAiChatOpen]);
 
   useEffect(() => {
+    if (!isAiChatOpen) {
+      return;
+    }
+
+    document.documentElement.classList.add('vision-overlay-scroll-locked');
+    document.body.classList.add('vision-overlay-scroll-locked');
+
+    return () => {
+      document.documentElement.classList.remove('vision-overlay-scroll-locked');
+      document.body.classList.remove('vision-overlay-scroll-locked');
+    };
+  }, [isAiChatOpen]);
+
+  useEffect(() => {
     if (!showDetailPanel) {
       return;
     }

@@ -17,6 +17,7 @@ export type RoutePath =
   | '/preferences'
   | '/profile'
   | '/reports'
+  | '/settings'
   | '/login'
   | '/register'
   | '/auth/reset-password';
@@ -78,6 +79,11 @@ export const ROUTES: RouteDefinition[] = [
     description: 'Informations du profil utilisateur connecte.',
     path: '/profile',
     title: 'Profil',
+  },
+  {
+    description: 'Parametres de securite et de compte utilisateur.',
+    path: '/settings',
+    title: 'Parametres',
   },
   {
     description:

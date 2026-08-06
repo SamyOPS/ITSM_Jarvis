@@ -99,6 +99,7 @@
   font-weight: 800;
 }
 
+.preferences-row strong,
 .preferences-field > span:first-child,
 .preferences-row--compact strong {
   display: inline-flex;
@@ -251,6 +252,193 @@
   color: #7183a1;
 }
 
+.settings-field {
+  align-items: center;
+}
+
+.settings-input {
+  flex: 0 1 360px;
+  width: min(360px, 100%);
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid #d8e0eb;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #17335f;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  opacity: 1;
+}
+
+.settings-input:disabled {
+  color: #17335f;
+  opacity: 1;
+}
+
+.settings-readonly-value {
+  color: #17335f;
+  font-size: 0.94rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.settings-status-badge {
+  min-width: 74px;
+}
+
+.settings-ghost-button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid #d8e0eb;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #17335f;
+  font-size: 0.86rem;
+  font-weight: 800;
+  cursor: default;
+  opacity: 1;
+}
+
+.vision-overlay-scroll-locked {
+  overflow: hidden;
+}
+
+.account-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  padding: clamp(12px, 2vw, 28px);
+  background: rgba(8, 18, 34, 0.46);
+  backdrop-filter: blur(5px);
+}
+
+.account-modal-panel {
+  position: relative;
+  display: grid;
+  grid-template-columns: 246px minmax(0, 1fr);
+  width: min(1320px, calc(100vw - 96px));
+  height: min(780px, calc(100vh - 84px));
+  overflow: hidden;
+  border: 1px solid rgba(181, 197, 224, 0.95);
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: 0 32px 90px rgba(8, 18, 34, 0.34);
+}
+
+.account-modal-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding: 28px 18px;
+  border-right: 1px solid #e7edf5;
+  background: #f8fafc;
+}
+
+.account-modal-sidebar-title {
+  color: #667896;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.account-modal-nav {
+  display: grid;
+  gap: 6px;
+}
+
+.account-modal-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #52657f;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.account-modal-nav-item svg {
+  flex: none;
+  color: #7e91ad;
+}
+
+.account-modal-nav-item:hover {
+  background: #edf2f8;
+  color: #12315c;
+}
+
+.account-modal-nav-item.is-active {
+  background: #e7edf5;
+  color: #071f45;
+}
+
+.account-modal-nav-item.is-active svg {
+  color: #12315c;
+}
+
+.account-modal-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #d8e0eb;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #52657f;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease;
+}
+
+.account-modal-close:hover {
+  border-color: #c7d3e4;
+  background: #f5f7fb;
+  color: #12315c;
+}
+
+.account-modal-content {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.account-modal-content .preferences-page {
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.account-modal-content .preferences-page-header,
+.account-modal-content .preferences-page-grid {
+  width: min(1180px, 100%);
+}
+
 @media (max-width: 760px) {
   .preferences-page {
     padding: 18px;
@@ -273,5 +461,43 @@
 
   .preferences-field > strong {
     text-align: left;
+  }
+
+  .settings-input {
+    flex-basis: auto;
+    width: 100%;
+  }
+
+  .settings-readonly-value {
+    text-align: left;
+  }
+
+  .account-modal-overlay {
+    padding: 12px;
+  }
+
+  .account-modal-panel {
+    grid-template-columns: 190px minmax(0, 1fr);
+    width: calc(100vw - 24px);
+    height: calc(100vh - 24px);
+    border-radius: 0;
+  }
+
+  .account-modal-sidebar {
+    padding: 18px 12px;
+  }
+
+  .account-modal-nav-item {
+    padding: 0 10px;
+    font-size: 0.84rem;
+  }
+
+  .account-modal-content .preferences-page {
+    padding-top: 58px;
+  }
+
+  .account-modal-close {
+    top: 12px;
+    right: 12px;
   }
 }

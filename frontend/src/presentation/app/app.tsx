@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Settings, SlidersHorizontal, User, X } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import {
   fetchCurrentUser,
@@ -38,9 +40,38 @@ import { ProfilePage } from '../pages/profile-page';
 import { ReportsPage } from '../pages/reports-page';
 import { RegisterPage } from '../pages/register-page';
 import { ResetPasswordPage } from '../pages/reset-password-page';
+import { SettingsPage } from '../pages/settings-page';
 import { UsersPage } from '../pages/users-page';
 
 type SessionState = 'anonymous' | 'authenticated' | 'loading' | 'restoring';
+
+const accountModalPaths = new Set<string>([
+  '/preferences',
+  '/profile',
+  '/settings',
+]);
+
+const accountModalItems: readonly {
+  icon: LucideIcon;
+  label: string;
+  path: RoutePath;
+}[] = [
+  {
+    icon: User,
+    label: 'Profil',
+    path: '/profile',
+  },
+  {
+    icon: SlidersHorizontal,
+    label: 'Preferences',
+    path: '/preferences',
+  },
+  {
+    icon: Settings,
+    label: 'Parametres',
+    path: '/settings',
+  },
+];
 
 type RenderPageParams = {
   authErrorMessage: string | null;
@@ -247,6 +278,8 @@ function renderPage({
       return session ? <PreferencesPage session={session} /> : <NotFoundPage />;
     case '/profile':
       return session ? <ProfilePage session={session} /> : <NotFoundPage />;
+    case '/settings':
+      return session ? <SettingsPage session={session} /> : <NotFoundPage />;
     case '/login':
       return (
         <LoginPage
@@ -263,6 +296,86 @@ function renderPage({
     default:
       return <NotFoundPage />;
   }
+}
+
+function renderAccountModalContent(
+  pathname: string,
+  session: AuthSessionSnapshot,
+): ReactNode {
+  switch (pathname) {
+    case '/preferences':
+      return <PreferencesPage session={session} />;
+    case '/profile':
+      return <ProfilePage session={session} />;
+    case '/settings':
+      return <SettingsPage session={session} />;
+    default:
+      return null;
+  }
+}
+
+interface AccountModalProps {
+  children: ReactNode;
+  currentPath: string;
+  onClose: () => void;
+}
+
+function AccountModal({ children, currentPath, onClose }: AccountModalProps) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
+  return (
+    <div className="account-modal-overlay" role="presentation">
+      <section aria-modal="true" className="account-modal-panel" role="dialog">
+        <aside className="account-modal-sidebar">
+          <span className="account-modal-sidebar-title">Compte</span>
+          <nav aria-label="Navigation compte" className="account-modal-nav">
+            {accountModalItems.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <button
+                  className={
+                    currentPath === item.path
+                      ? 'account-modal-nav-item is-active'
+                      : 'account-modal-nav-item'
+                  }
+                  key={item.path}
+                  onClick={() => navigateTo(item.path)}
+                  type="button"
+                >
+                  <Icon size={16} strokeWidth={2} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+
+        <button
+          aria-label="Fermer"
+          className="account-modal-close"
+          onClick={onClose}
+          type="button"
+        >
+          <X size={20} strokeWidth={2} />
+        </button>
+
+        <div className="account-modal-content">{children}</div>
+      </section>
+    </div>
+  );
 }
 
 async function restoreOrRefreshSession(
@@ -286,6 +399,9 @@ export function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [session, setSession] = useState<AuthSessionSnapshot | null>(null);
   const [sessionState, setSessionState] = useState<SessionState>('loading');
+  const [lastWorkspacePath, setLastWorkspacePath] =
+    useState<RoutePath>('/reports');
+  const isAccountModalRoute = accountModalPaths.has(pathname);
 
   useEffect(() => {
     let cancelled = false;
@@ -363,6 +479,22 @@ export function App() {
       getHomeRoute(session) !== '/'
     ) {
       navigateTo(getHomeRoute(session));
+    }
+  }, [pathname, session, sessionState]);
+
+  useEffect(() => {
+    if (
+      sessionState !== 'authenticated' ||
+      !session ||
+      accountModalPaths.has(pathname)
+    ) {
+      return;
+    }
+
+    const route = resolveRoute(pathname);
+
+    if (route && canAccessRoute(route.path as RoutePath, session)) {
+      setLastWorkspacePath(route.path as RoutePath);
     }
   }, [pathname, session, sessionState]);
 
@@ -498,11 +630,37 @@ export function App() {
     navigateTo('/login');
   }
 
+  const workspaceFallbackPath = session ? getHomeRoute(session) : '/reports';
+  const safeLastWorkspacePath =
+    session && canAccessRoute(lastWorkspacePath, session)
+      ? lastWorkspacePath
+      : workspaceFallbackPath;
+  const backgroundPath =
+    isAccountModalRoute && session ? safeLastWorkspacePath : pathname;
+
+  useEffect(() => {
+    if (!isAccountModalRoute || !session) {
+      return;
+    }
+
+    document.documentElement.classList.add('vision-overlay-scroll-locked');
+    document.body.classList.add('vision-overlay-scroll-locked');
+
+    return () => {
+      document.documentElement.classList.remove('vision-overlay-scroll-locked');
+      document.body.classList.remove('vision-overlay-scroll-locked');
+    };
+  }, [isAccountModalRoute, session]);
+
+  function handleCloseAccountModal(): void {
+    navigateTo(backgroundPath);
+  }
+
   return (
     <AppShell
       isAuthenticated={sessionState === 'authenticated'}
       onLogout={handleLogout}
-      pathname={pathname}
+      pathname={backgroundPath}
       session={session}
     >
       {renderPage({
@@ -511,10 +669,15 @@ export function App() {
         onLogin: handleLogin,
         onPasswordResetRequest: handlePasswordResetRequest,
         onPasswordUpdated: handlePasswordUpdated,
-        pathname,
+        pathname: backgroundPath,
         session,
         sessionState,
       })}
+      {isAccountModalRoute && session ? (
+        <AccountModal currentPath={pathname} onClose={handleCloseAccountModal}>
+          {renderAccountModalContent(pathname, session)}
+        </AccountModal>
+      ) : null}
     </AppShell>
   );
 }

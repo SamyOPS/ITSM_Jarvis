@@ -681,8 +681,11 @@ export function AppShell({
                     </button>
 
                     <button
-                      className="workspace-profile-menu-item is-disabled"
-                      disabled
+                      className="workspace-profile-menu-item"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        navigateTo('/settings');
+                      }}
                       type="button"
                     >
                       <Settings size={16} strokeWidth={2} />
