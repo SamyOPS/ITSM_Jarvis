@@ -33,6 +33,7 @@ import { KnowledgePage } from '../pages/knowledge-page';
 import { LicensePage } from '../pages/license-page';
 import { MyEquipmentPage } from '../pages/my-equipment-page';
 import { ParkPage } from '../pages/park-page';
+import { PreferencesPage } from '../pages/preferences-page';
 import { ReportsPage } from '../pages/reports-page';
 import { RegisterPage } from '../pages/register-page';
 import { ResetPasswordPage } from '../pages/reset-password-page';
@@ -241,6 +242,8 @@ function renderPage({
       );
     case '/reports':
       return session ? <ReportsPage session={session} /> : <NotFoundPage />;
+    case '/preferences':
+      return session ? <PreferencesPage session={session} /> : <NotFoundPage />;
     case '/login':
       return (
         <LoginPage

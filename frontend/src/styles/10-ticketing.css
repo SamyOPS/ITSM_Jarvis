@@ -4667,6 +4667,17 @@ p.ticket-form-helper {
   color: currentColor;
 }
 
+.workspace-profile-menu-item.is-disabled,
+.workspace-profile-menu-item.is-disabled:hover,
+.workspace-profile-menu-item.is-disabled:hover span,
+.workspace-profile-menu-item.is-disabled:hover svg {
+  color: #8a99ae;
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+  opacity: 1;
+}
+
 .workspace-profile-menu-item--switch {
   justify-content: space-between;
 }

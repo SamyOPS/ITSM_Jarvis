@@ -9,6 +9,7 @@ import {
   ListChecks,
   Monitor,
   Plus,
+  SlidersHorizontal,
   Ticket,
   Trash2,
   User,
@@ -44,6 +45,7 @@ export const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/parc/my-equipment': Monitor,
   '/parc/cis/new': Plus,
   '/parc/cis': Monitor,
+  '/preferences': SlidersHorizontal,
   '/reports': BarChart3,
 };
 
