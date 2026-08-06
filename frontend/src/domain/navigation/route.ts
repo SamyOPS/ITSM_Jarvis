@@ -15,6 +15,7 @@ export type RoutePath =
   | '/parc/cis/new'
   | '/parc/cis'
   | '/preferences'
+  | '/profile'
   | '/reports'
   | '/login'
   | '/register'
@@ -72,6 +73,11 @@ export const ROUTES: RouteDefinition[] = [
     description: 'Preferences visuelles et notifications du compte.',
     path: '/preferences',
     title: 'Preferences',
+  },
+  {
+    description: 'Informations du profil utilisateur connecte.',
+    path: '/profile',
+    title: 'Profil',
   },
   {
     description:

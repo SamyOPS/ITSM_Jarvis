@@ -46,6 +46,7 @@ export const routeIcons: Partial<Record<RoutePath, LucideIcon>> = {
   '/parc/cis/new': Plus,
   '/parc/cis': Monitor,
   '/preferences': SlidersHorizontal,
+  '/profile': User,
   '/reports': BarChart3,
 };
 

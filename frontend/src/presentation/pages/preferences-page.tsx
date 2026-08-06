@@ -95,7 +95,6 @@ export function PreferencesPage({ session }: PreferencesPageProps) {
   return (
     <section className="preferences-page">
       <header className="preferences-page-header">
-        <span>Compte</span>
         <h1>Preferences</h1>
       </header>
 

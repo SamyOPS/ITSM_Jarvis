@@ -34,6 +34,7 @@ import { LicensePage } from '../pages/license-page';
 import { MyEquipmentPage } from '../pages/my-equipment-page';
 import { ParkPage } from '../pages/park-page';
 import { PreferencesPage } from '../pages/preferences-page';
+import { ProfilePage } from '../pages/profile-page';
 import { ReportsPage } from '../pages/reports-page';
 import { RegisterPage } from '../pages/register-page';
 import { ResetPasswordPage } from '../pages/reset-password-page';
@@ -244,6 +245,8 @@ function renderPage({
       return session ? <ReportsPage session={session} /> : <NotFoundPage />;
     case '/preferences':
       return session ? <PreferencesPage session={session} /> : <NotFoundPage />;
+    case '/profile':
+      return session ? <ProfilePage session={session} /> : <NotFoundPage />;
     case '/login':
       return (
         <LoginPage

@@ -669,8 +669,11 @@ export function AppShell({
 
                   <div className="workspace-profile-menu-list">
                     <button
-                      className="workspace-profile-menu-item is-disabled"
-                      disabled
+                      className="workspace-profile-menu-item"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        navigateTo('/profile');
+                      }}
                       type="button"
                     >
                       <User size={16} strokeWidth={2} />
