@@ -336,8 +336,17 @@ function AccountModal({ children, currentPath, onClose }: AccountModalProps) {
   }, [onClose]);
 
   return (
-    <div className="account-modal-overlay" role="presentation">
-      <section aria-modal="true" className="account-modal-panel" role="dialog">
+    <div
+      className="account-modal-overlay"
+      onClick={onClose}
+      role="presentation"
+    >
+      <section
+        aria-modal="true"
+        className="account-modal-panel"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+      >
         <aside className="account-modal-sidebar">
           <span className="account-modal-sidebar-title">Compte</span>
           <nav aria-label="Navigation compte" className="account-modal-nav">
