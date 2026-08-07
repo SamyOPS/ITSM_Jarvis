@@ -333,8 +333,33 @@
   border-radius: 18px;
   background: linear-gradient(135deg, #eef5ff 0%, #fff8ed 100%);
   color: #17335f;
+  cursor: pointer;
   text-align: left;
-  box-shadow: 0 14px 34px rgba(46, 91, 168, 0.12);
+  box-shadow: none;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.ticket-ai-launcher:hover {
+  border-color: rgba(43, 109, 233, 0.72);
+  background: linear-gradient(135deg, #e7f0ff 0%, #fff4e3 100%);
+  box-shadow: none;
+  transform: translateY(-1px);
+}
+
+.ticket-ai-stars-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: #0b3a75;
+  fill: currentColor;
+}
+
+.ticket-ai-launcher:hover .ticket-ai-stars-icon {
+  color: #062b5f;
 }
 
 .ticket-ai-launcher strong,
@@ -4665,6 +4690,17 @@ p.ticket-form-helper {
 .workspace-profile-menu-item svg,
 .workspace-profile-menu-item span {
   color: currentColor;
+}
+
+.workspace-profile-menu-item.is-disabled,
+.workspace-profile-menu-item.is-disabled:hover,
+.workspace-profile-menu-item.is-disabled:hover span,
+.workspace-profile-menu-item.is-disabled:hover svg {
+  color: #8a99ae;
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+  opacity: 1;
 }
 
 .workspace-profile-menu-item--switch {

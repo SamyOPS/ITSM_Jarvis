@@ -4,7 +4,6 @@ import {
   ChevronDown,
   House,
   LogOut,
-  Moon,
   Plus,
   Settings,
   SlidersHorizontal,
@@ -671,6 +670,10 @@ export function AppShell({
                   <div className="workspace-profile-menu-list">
                     <button
                       className="workspace-profile-menu-item"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        navigateTo('/profile');
+                      }}
                       type="button"
                     >
                       <User size={16} strokeWidth={2} />
@@ -679,6 +682,10 @@ export function AppShell({
 
                     <button
                       className="workspace-profile-menu-item"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        navigateTo('/settings');
+                      }}
                       type="button"
                     >
                       <Settings size={16} strokeWidth={2} />
@@ -687,26 +694,14 @@ export function AppShell({
 
                     <button
                       className="workspace-profile-menu-item"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        navigateTo('/preferences');
+                      }}
                       type="button"
                     >
                       <SlidersHorizontal size={16} strokeWidth={2} />
                       <span>Preferences</span>
-                    </button>
-
-                    <button
-                      className="workspace-profile-menu-item workspace-profile-menu-item--switch"
-                      type="button"
-                    >
-                      <span className="workspace-profile-menu-item-copy">
-                        <Moon size={16} strokeWidth={2} />
-                        <span>Mode nuit</span>
-                      </span>
-                      <span
-                        className="workspace-profile-switch"
-                        aria-hidden="true"
-                      >
-                        <span className="workspace-profile-switch-thumb" />
-                      </span>
                     </button>
 
                     <div className="workspace-profile-menu-divider" />

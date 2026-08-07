@@ -37,7 +37,10 @@ export function resolveRoute(pathname: string): RouteDefinition | null {
     pathname === '/parc/my-equipment' ||
     pathname === '/parc/cis/new' ||
     pathname === '/parc/cis' ||
+    pathname === '/preferences' ||
+    pathname === '/profile' ||
     pathname === '/reports' ||
+    pathname === '/settings' ||
     pathname === '/login' ||
     pathname === '/register' ||
     pathname === '/auth/reset-password'

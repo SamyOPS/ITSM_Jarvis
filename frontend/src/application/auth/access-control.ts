@@ -42,7 +42,10 @@ const routeRoleRequirements: Partial<Record<RoutePath, readonly UserRole[]>> = {
   '/parc/my-equipment': ['DEMANDEUR'],
   '/parc/cis/new': ['ADMIN', 'SUPER_ADMIN'],
   '/parc/cis': ['AGENT', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'],
+  '/preferences': ['DEMANDEUR', 'AGENT', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'],
+  '/profile': ['DEMANDEUR', 'AGENT', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'],
   '/reports': ['AGENT', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'],
+  '/settings': ['DEMANDEUR', 'AGENT', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'],
 };
 
 export function canAccessRoute(

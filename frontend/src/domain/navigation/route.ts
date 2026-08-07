@@ -14,7 +14,10 @@ export type RoutePath =
   | '/parc/my-equipment'
   | '/parc/cis/new'
   | '/parc/cis'
+  | '/preferences'
+  | '/profile'
   | '/reports'
+  | '/settings'
   | '/login'
   | '/register'
   | '/auth/reset-password';
@@ -66,6 +69,21 @@ export const ROUTES: RouteDefinition[] = [
     description: 'Tableau de bord de suivi des tickets et KPI SLA.',
     path: '/reports',
     title: 'Tableau de bord',
+  },
+  {
+    description: 'Preferences visuelles et notifications du compte.',
+    path: '/preferences',
+    title: 'Preferences',
+  },
+  {
+    description: 'Informations du profil utilisateur connecte.',
+    path: '/profile',
+    title: 'Profil',
+  },
+  {
+    description: 'Parametres de securite et de compte utilisateur.',
+    path: '/settings',
+    title: 'Parametres',
   },
   {
     description:
