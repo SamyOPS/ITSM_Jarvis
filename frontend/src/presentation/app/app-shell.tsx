@@ -65,7 +65,13 @@ const sidebarRouteGroups: readonly SidebarRouteGroup[] = [
   },
   {
     label: 'Administration',
-    routes: ['/admin/users', '/admin/groups', '/agent/archives'],
+    routes: [
+      '/admin/users',
+      '/admin/groups',
+      '/admin/license',
+      '/admin/trash',
+      '/agent/archives',
+    ],
   },
 ];
 
