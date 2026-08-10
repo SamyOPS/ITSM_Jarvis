@@ -70,6 +70,65 @@ export function filterEquipment(
   });
 }
 
+export function toTimestamp(value: string | null): number {
+  if (!value) {
+    return 0;
+  }
+
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+export function buildCiPayload(
+  form: EquipmentFormState,
+): Record<string, unknown> {
+  return {
+    name: form.name.trim(),
+    ciTypeId: form.ciTypeId,
+    status: form.status,
+    assignedUserId: normalizeOptionalText(form.assignedUserId),
+    serialNumber: normalizeOptionalText(form.serialNumber),
+    brand: normalizeOptionalText(form.brand),
+    model: normalizeOptionalText(form.model),
+    operatingSystem: normalizeOptionalText(form.operatingSystem),
+    location: normalizeOptionalText(form.location),
+    purchaseDate: normalizeOptionalText(form.purchaseDate),
+    warrantyEndDate: normalizeOptionalText(form.warrantyEndDate),
+    cpuName: normalizeOptionalText(form.cpuName),
+    diskSpaceGb: normalizeOptionalNumber(form.diskSpaceGb),
+    ramMb: normalizeOptionalNumber(form.ramMb),
+    keyboardLayout: normalizeOptionalText(form.keyboardLayout),
+    osVersion: normalizeOptionalText(form.osVersion),
+    price: normalizeOptionalNumber(form.price),
+    comment: normalizeOptionalText(form.comment),
+    archivedAt: normalizeOptionalText(form.archivedAt),
+  };
+}
+
+export function mapEquipmentToForm(ci: ReferentialCi): EquipmentFormState {
+  return {
+    archivedAt: ci.archivedAt ?? '',
+    assignedUserId: ci.assignedUserId ?? '',
+    brand: ci.brand ?? '',
+    comment: ci.comment ?? '',
+    ciTypeId: ci.ciTypeId,
+    cpuName: ci.cpuName ?? '',
+    diskSpaceGb: ci.diskSpaceGb === null ? '' : String(ci.diskSpaceGb),
+    keyboardLayout: ci.keyboardLayout ?? '',
+    location: ci.location ?? '',
+    model: ci.model ?? '',
+    name: ci.name,
+    operatingSystem: ci.operatingSystem ?? '',
+    osVersion: ci.osVersion ?? '',
+    price: ci.price === null ? '' : String(ci.price),
+    purchaseDate: ci.purchaseDate ?? '',
+    ramMb: ci.ramMb === null ? '' : String(ci.ramMb),
+    serialNumber: ci.serialNumber ?? '',
+    status: ci.status,
+    warrantyEndDate: ci.warrantyEndDate ?? '',
+  };
+}
+
 export function buildEquipmentSubtitle(ci: ReferentialCi): string {
   const parts = [ci.brand, ci.model].filter(Boolean);
   return parts.length > 0 ? parts.join(' ') : 'Equipement non detaille';

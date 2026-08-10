@@ -1,5 +1,6 @@
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { UserRole } from '../../domain/auth/user-role';
+import { ArrowUpDown, History, type LucideIcon } from 'lucide-react';
 import type {
   ReferentialCatalogSnapshot,
   ReferentialGroup,
@@ -11,6 +12,38 @@ import type {
   UserSearchField,
   UserSortOption,
 } from './users-page.types';
+
+export const USER_SORT_OPTIONS: Array<{
+  description: string;
+  icon: LucideIcon;
+  label: string;
+  value: UserSortOption;
+}> = [
+  {
+    description: 'Appliquer ce tri',
+    icon: History,
+    label: "Plus recents d'abord",
+    value: 'CREATED_AT_DESC',
+  },
+  {
+    description: 'Appliquer ce tri',
+    icon: History,
+    label: "Plus anciens d'abord",
+    value: 'CREATED_AT_ASC',
+  },
+  {
+    description: 'Appliquer ce tri',
+    icon: ArrowUpDown,
+    label: 'Par ordre croissant',
+    value: 'IDENTIFIER_ASC',
+  },
+  {
+    description: 'Appliquer ce tri',
+    icon: ArrowUpDown,
+    label: 'Par ordre decroissant',
+    value: 'IDENTIFIER_DESC',
+  },
+];
 
 export const USER_ROLES: UserRole[] = [
   'DEMANDEUR',
@@ -70,6 +103,38 @@ export function filterUsers(
       return false;
     }
 
+    if (roleFilter !== 'ALL' && user.role !== roleFilter) {
+      return false;
+    }
+
+    if (!normalizedSearch) {
+      return true;
+    }
+
+    const value =
+      searchField === 'IDENTIFIER'
+        ? formatUserIdentifier(user)
+        : searchField === 'FIRST_NAME'
+          ? (user.firstName ?? '')
+          : (user.lastName ?? '');
+
+    return normalizeSearchText(value).includes(normalizedSearch);
+  });
+}
+
+export function isProtectedTrashUser(user: AdminUserSummary): boolean {
+  return user.accountStatus === 'DELETED';
+}
+
+export function filterUsersBySearchAndRole(
+  users: AdminUserSummary[],
+  searchText: string,
+  searchField: UserSearchField,
+  roleFilter: UserRoleFilter,
+): AdminUserSummary[] {
+  const normalizedSearch = normalizeSearchText(searchText);
+
+  return users.filter((user) => {
     if (roleFilter !== 'ALL' && user.role !== roleFilter) {
       return false;
     }

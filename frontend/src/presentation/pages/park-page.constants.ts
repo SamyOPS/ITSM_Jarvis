@@ -1,5 +1,31 @@
+import { ArrowDown, ArrowUp, type LucideIcon } from 'lucide-react';
 import type { ReferentialCatalogSnapshot } from '../../domain/referentials/referential-catalog';
-import type { EquipmentFilters, EquipmentFormState } from './park-page.types';
+import type {
+  EquipmentFilters,
+  EquipmentFormState,
+  EquipmentSortOption,
+} from './park-page.types';
+
+export const EQUIPMENT_PER_PAGE = 15;
+export const EQUIPMENT_FORM_ID = 'park-equipment-form';
+export const USER_LOOKUP_PER_PAGE = 10;
+
+export const EQUIPMENT_SORT_OPTIONS: Array<{
+  icon: LucideIcon;
+  label: string;
+  value: EquipmentSortOption;
+}> = [
+  {
+    icon: ArrowDown,
+    label: "Plus recents d'abord",
+    value: 'CREATED_AT_DESC',
+  },
+  {
+    icon: ArrowUp,
+    label: "Plus anciens d'abord",
+    value: 'CREATED_AT_ASC',
+  },
+];
 
 export const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],

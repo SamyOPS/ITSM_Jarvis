@@ -8,9 +8,6 @@ import {
 } from 'react';
 import {
   ArrowLeft,
-  ArrowUpDown,
-  History,
-  type LucideIcon,
   Plus,
   RotateCcw,
   SlidersHorizontal,
@@ -44,16 +41,18 @@ import {
   EMPTY_USER_FORM,
   filterUserLookupGroups,
   filterUsers,
+  filterUsersBySearchAndRole,
   formatUserIdentifier,
   getUserGroupIds,
   inferUserNameParts,
+  isProtectedTrashUser,
   mapCreateUserErrorMessage,
   normalizeOptionalText,
-  normalizeSearchText,
   normalizeUserGroupIds,
   sortUsers,
   USER_GROUPS_PER_PAGE,
   USER_ROLES,
+  USER_SORT_OPTIONS,
   USERS_PER_PAGE,
 } from './users-page.helpers';
 import type {
@@ -65,70 +64,6 @@ import type {
   UsersPageProps,
   UserSearchField,
 } from './users-page.types';
-
-const USER_SORT_OPTIONS: Array<{
-  description: string;
-  icon: LucideIcon;
-  label: string;
-  value: UserSortOption;
-}> = [
-  {
-    description: 'Appliquer ce tri',
-    icon: History,
-    label: "Plus recents d'abord",
-    value: 'CREATED_AT_DESC',
-  },
-  {
-    description: 'Appliquer ce tri',
-    icon: History,
-    label: "Plus anciens d'abord",
-    value: 'CREATED_AT_ASC',
-  },
-  {
-    description: 'Appliquer ce tri',
-    icon: ArrowUpDown,
-    label: 'Par ordre croissant',
-    value: 'IDENTIFIER_ASC',
-  },
-  {
-    description: 'Appliquer ce tri',
-    icon: ArrowUpDown,
-    label: 'Par ordre decroissant',
-    value: 'IDENTIFIER_DESC',
-  },
-];
-
-function isProtectedTrashUser(user: AdminUserSummary): boolean {
-  return user.accountStatus === 'DELETED';
-}
-
-function filterUsersBySearchAndRole(
-  users: AdminUserSummary[],
-  searchText: string,
-  searchField: UserSearchField,
-  roleFilter: UserRoleFilter,
-): AdminUserSummary[] {
-  const normalizedSearch = normalizeSearchText(searchText);
-
-  return users.filter((user) => {
-    if (roleFilter !== 'ALL' && user.role !== roleFilter) {
-      return false;
-    }
-
-    if (!normalizedSearch) {
-      return true;
-    }
-
-    const value =
-      searchField === 'IDENTIFIER'
-        ? formatUserIdentifier(user)
-        : searchField === 'FIRST_NAME'
-          ? (user.firstName ?? '')
-          : (user.lastName ?? '');
-
-    return normalizeSearchText(value).includes(normalizedSearch);
-  });
-}
 
 export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
   const isProtectedTrashMode = mode === 'PROTECTED_TRASH';
