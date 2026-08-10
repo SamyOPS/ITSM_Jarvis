@@ -2198,15 +2198,17 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     }
 
     const nextMode = aiDraftSuggestion.type;
+    const suggestedCategoryOptions =
+      nextMode === 'REQUEST' ? catalog.categories : incidentCategoryOptions;
     const normalizedSuggestedCategory = normalizeSearchText(
       aiDraftSuggestion.categoryName ?? '',
     );
     const suggestedCategory =
-      incidentCategoryOptions.find(
+      suggestedCategoryOptions.find(
         (category) =>
           normalizeSearchText(category.name) === normalizedSuggestedCategory,
       ) ??
-      incidentCategoryOptions.find((category) => {
+      suggestedCategoryOptions.find((category) => {
         const normalizedCategory = normalizeSearchText(category.name);
 
         return (

@@ -77,10 +77,9 @@ describe('ChangeTicketStatusUseCase', () => {
       },
     });
 
-    expect(updateStatus).toHaveBeenCalledWith(
-      'ticket-1',
-      { status: TicketStatus.IN_PROGRESS },
-    );
+    expect(updateStatus).toHaveBeenCalledWith('ticket-1', {
+      status: TicketStatus.IN_PROGRESS,
+    });
     expect(write).toHaveBeenCalledWith({
       actorUserId: 'agent-1',
       eventType: TicketHistoryEventType.STATUS_CHANGED,

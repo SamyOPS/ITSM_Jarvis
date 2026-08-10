@@ -257,12 +257,7 @@ export class SupabaseTicketWriteRepository
       payload.sla_paused_duration_ms = record.slaPausedDurationMs;
     }
 
-    await this.send(
-      `tickets?id=eq.${ticketId}`,
-      'PATCH',
-      payload,
-      false,
-    );
+    await this.send(`tickets?id=eq.${ticketId}`, 'PATCH', payload, false);
   }
 
   async updatePriority(

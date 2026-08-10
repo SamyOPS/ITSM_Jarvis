@@ -29,7 +29,9 @@ export function getResolutionHours(
     return null;
   }
 
-  return isRequesterVip ? resolutionHours * VIP_TTR_MULTIPLIER : resolutionHours;
+  return isRequesterVip
+    ? resolutionHours * VIP_TTR_MULTIPLIER
+    : resolutionHours;
 }
 
 function addHours(baseDate: Date, hours: number | null): string | null {

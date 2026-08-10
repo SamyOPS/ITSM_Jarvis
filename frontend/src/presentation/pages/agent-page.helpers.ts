@@ -676,7 +676,11 @@ export function filterTicketsByListSearch(
 }
 
 export function normalizeSearchText(value: string): string {
-  return value.trim().toLocaleLowerCase('fr-FR');
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLocaleLowerCase('fr-FR');
 }
 
 export function sortTicketsByOperationalPriority(
