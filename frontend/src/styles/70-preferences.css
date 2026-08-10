@@ -9,6 +9,8 @@
   border-radius: 22px;
   background: #ffffff;
   box-shadow: 0 18px 42px rgba(26, 44, 78, 0.06);
+  color: #12315c;
+  font-family: inherit;
 }
 
 .preferences-page-header {
@@ -20,8 +22,9 @@
 .preferences-page-header h1 {
   margin: 0;
   color: #071f45;
-  font-size: clamp(1.65rem, 2vw, 2.1rem);
-  font-weight: 800;
+  font-size: clamp(1.2rem, 1.35vw, 1.45rem);
+  font-weight: 600;
+  line-height: 1.25;
   letter-spacing: 0;
 }
 
@@ -51,9 +54,9 @@
   align-items: center;
   gap: 8px;
   color: #667896;
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -96,7 +99,7 @@
 .preferences-field > span:first-child {
   color: #12315c;
   font-size: 0.92rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .preferences-row strong,
@@ -110,7 +113,7 @@
 .preferences-field > strong {
   color: #17335f;
   font-size: 0.94rem;
-  font-weight: 800;
+  font-weight: 600;
   text-align: right;
 }
 
@@ -173,7 +176,7 @@
   color: #17335f;
   font: inherit;
   font-size: 0.92rem;
-  font-weight: 700;
+  font-weight: 500;
   opacity: 1;
 }
 
@@ -203,7 +206,7 @@
 .profile-page-header > div > span {
   color: #7183a1;
   font-size: 0.9rem;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .profile-page-avatar {
@@ -216,9 +219,9 @@
   background: linear-gradient(180deg, #2da3d8 0%, #1e83c0 100%);
   color: #ffffff;
   font-size: 1rem;
-  font-weight: 900;
+  font-weight: 600;
   letter-spacing: 0.02em;
-  box-shadow: 0 14px 28px rgba(30, 131, 192, 0.18);
+  box-shadow: 0 10px 22px rgba(30, 131, 192, 0.14);
 }
 
 .profile-fields-grid {
@@ -235,8 +238,8 @@
   padding: 8px 14px;
   border-radius: 999px;
   font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
 }
 
@@ -267,7 +270,7 @@
   color: #17335f;
   font: inherit;
   font-size: 0.92rem;
-  font-weight: 800;
+  font-weight: 500;
   opacity: 1;
 }
 
@@ -279,7 +282,7 @@
 .settings-readonly-value {
   color: #17335f;
   font-size: 0.94rem;
-  font-weight: 800;
+  font-weight: 600;
   text-align: right;
 }
 
@@ -295,7 +298,7 @@
   background: #f8fafc;
   color: #17335f;
   font-size: 0.86rem;
-  font-weight: 800;
+  font-weight: 600;
   cursor: default;
   opacity: 1;
 }
@@ -340,8 +343,8 @@
 .account-modal-sidebar-title {
   color: #667896;
   font-size: 0.76rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -363,7 +366,7 @@
   color: #52657f;
   font: inherit;
   font-size: 0.9rem;
-  font-weight: 800;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
   transition:
@@ -384,6 +387,7 @@
 .account-modal-nav-item.is-active {
   background: #e7edf5;
   color: #071f45;
+  font-weight: 600;
 }
 
 .account-modal-nav-item.is-active svg {
