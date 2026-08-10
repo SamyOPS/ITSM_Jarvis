@@ -16,7 +16,6 @@ import {
   History,
   Paperclip,
   Plus,
-  RotateCcw,
   Search,
   SlidersHorizontal,
   Ticket as TicketIcon,
@@ -140,6 +139,12 @@ import {
   validateIncidentDraft,
   validateRequestDraft,
 } from './agent-page.helpers';
+import { AiChatModal, AiStarsIcon } from './agent-page.ai-chat';
+import { IncidentLookupDialog } from './agent-page.incident-lookup-dialog';
+import {
+  INITIAL_AI_CHAT_MESSAGES,
+  type AiChatMessage,
+} from './agent-page.ai-chat.types';
 import type {
   AgentPageProps,
   AssignmentDraftState,
@@ -163,41 +168,6 @@ import type {
 function RequiredMark() {
   return <span className="park-required-mark">*</span>;
 }
-
-function AiStarsIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="ticket-ai-stars-icon"
-      focusable="false"
-      viewBox="0 0 16 16"
-    >
-      <path d="M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.828 1.828l1.937.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.828l-.645 1.937a.361.361 0 0 1-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645a.361.361 0 0 1 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.828zm-3.863-5.1a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387A1.73 1.73 0 0 0 4.593 5.69l-.387 1.162a.217.217 0 0 1-.412 0L3.407 5.69A1.73 1.73 0 0 0 2.31 4.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387A1.73 1.73 0 0 0 3.407 2.31zM10.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.16 1.16 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.16 1.16 0 0 0-.732-.732L9.1 2.137a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732z" />
-    </svg>
-  );
-}
-
-type AiChatMessage = {
-  attachments?: AiChatAttachmentSummary[];
-  body: string;
-  id: string;
-  role: 'assistant' | 'user';
-};
-
-type AiChatAttachmentSummary = {
-  fileKey: string;
-  fileName: string;
-  fileSize: number;
-  mimeType: string;
-};
-
-const INITIAL_AI_CHAT_MESSAGES: AiChatMessage[] = [
-  {
-    body: 'Bonjour, quel est votre probleme ?',
-    id: 'assistant-welcome',
-    role: 'assistant',
-  },
-];
 
 const EMPTY_CATALOG: ReferentialCatalogSnapshot = {
   categories: [],
@@ -4613,521 +4583,64 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                 </form>
 
                 {isAiChatOpen ? (
-                  <div
-                    aria-modal="true"
-                    className="ticket-ai-chat-overlay"
-                    role="dialog"
-                  >
-                    <section
-                      className={
-                        isAiDraftFileDragOver
-                          ? 'ticket-ai-chat is-file-drag-over'
-                          : 'ticket-ai-chat'
-                      }
-                      onDragLeave={handleAiDraftFileDragLeave}
-                      onDragOver={handleAiDraftFileDragOver}
-                      onDrop={handleAiDraftFileDrop}
-                    >
-                      <header className="ticket-ai-chat-header">
-                        <div>
-                          <h3>Assistant IA Vision</h3>
-                          <p>Pre-remplissage intelligent du ticket</p>
-                        </div>
-                        <div className="ticket-ai-chat-header-actions">
-                          <button
-                            className="ticket-ai-chat-reset"
-                            onClick={resetAiChat}
-                            type="button"
-                          >
-                            <RotateCcw size={15} />
-                            Nouveau chat
-                          </button>
-                          <button
-                            aria-label="Fermer l assistant IA"
-                            className="ticket-ai-chat-close"
-                            onClick={closeAiChat}
-                            type="button"
-                          >
-                            <X size={18} />
-                          </button>
-                        </div>
-                      </header>
-
-                      <div className="ticket-ai-chat-body" ref={aiChatBodyRef}>
-                        {aiChatMessages.map((message) => (
-                          <div
-                            className={
-                              message.role === 'assistant'
-                                ? 'ticket-ai-message-group ticket-ai-message-group--assistant'
-                                : 'ticket-ai-message-group ticket-ai-message-group--user'
-                            }
-                            key={message.id}
-                          >
-                            {message.attachments?.length ? (
-                              <div className="ticket-ai-message-attachments">
-                                {message.attachments.map((attachment) => {
-                                  const sourceFile = aiConversationFiles.find(
-                                    (file) =>
-                                      getLocalFileKey(file) ===
-                                      attachment.fileKey,
-                                  );
-
-                                  return (
-                                    <span
-                                      className="ticket-ai-file-chip"
-                                      key={`${message.id}-${attachment.fileKey}`}
-                                    >
-                                      <button
-                                        className="ticket-ai-file-link"
-                                        disabled={!sourceFile}
-                                        onClick={() => {
-                                          if (sourceFile) {
-                                            handleOpenLocalFile(sourceFile);
-                                          }
-                                        }}
-                                        type="button"
-                                      >
-                                        {attachment.fileName} (
-                                        {formatFileSize(attachment.fileSize)})
-                                      </button>
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            ) : null}
-                            <div
-                              className={
-                                message.role === 'assistant'
-                                  ? 'ticket-ai-message ticket-ai-message--assistant'
-                                  : 'ticket-ai-message ticket-ai-message--user'
-                              }
-                            >
-                              <p>{message.body}</p>
-                            </div>
-                          </div>
-                        ))}
-
-                        {isSuggestingDraft ? (
-                          <div className="ticket-ai-message ticket-ai-message--assistant is-loading">
-                            Chargement...
-                          </div>
-                        ) : null}
-
-                        {aiDraftErrorMessage ? (
-                          <div className="ticket-ai-message ticket-ai-message--assistant is-error">
-                            {aiDraftErrorMessage}
-                          </div>
-                        ) : null}
-
-                        {aiDraftSuggestion ? (
-                          <div className="ticket-ai-message ticket-ai-message--assistant ticket-ai-message--suggestion">
-                            <strong>{aiDraftSuggestion.title}</strong>
-                            <div className="ticket-ai-suggestion-details">
-                              <small>
-                                Type :{' '}
-                                {translateTicketType(aiDraftSuggestion.type)}
-                              </small>
-                              {aiDraftSuggestion.categoryName ? (
-                                <small>
-                                  Categorie : {aiDraftSuggestion.categoryName}
-                                </small>
-                              ) : null}
-                              {aiDraftSuggestion.type === 'INCIDENT' ? (
-                                <>
-                                  {aiDraftSuggestion.impact ? (
-                                    <small>
-                                      Impact :{' '}
-                                      {translateIncidentSeverity(
-                                        aiDraftSuggestion.impact,
-                                      )}
-                                    </small>
-                                  ) : null}
-                                  {aiDraftSuggestion.urgency ? (
-                                    <small>
-                                      Urgence :{' '}
-                                      {translateIncidentSeverity(
-                                        aiDraftSuggestion.urgency,
-                                      )}
-                                    </small>
-                                  ) : null}
-                                </>
-                              ) : aiDraftSuggestion.priorityName ? (
-                                <small>
-                                  Priorite :{' '}
-                                  {translatePriority(
-                                    aiDraftSuggestion.priorityName,
-                                  )}
-                                </small>
-                              ) : null}
-                              {aiDraftSuggestion.requesterScope ? (
-                                <small>
-                                  Demandeur :{' '}
-                                  {resolveSuggestedRequester(
-                                    aiDraftSuggestion.requesterScope,
-                                    aiDraftSuggestion.requesterName,
-                                  ).requesterLabel ?? 'Non renseigne'}
-                                </small>
-                              ) : null}
-                              {aiDraftSuggestion.channelName ? (
-                                <small>
-                                  Canal : {aiDraftSuggestion.channelName}
-                                </small>
-                              ) : null}
-                            </div>
-                            <p>{aiDraftSuggestion.description}</p>
-                            <button
-                              className="primary-button"
-                              onClick={handleApplyTicketDraftSuggestion}
-                              type="button"
-                            >
-                              Appliquer au formulaire
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <footer className="ticket-ai-chat-footer">
-                        {aiDraftFiles.length > 0 ? (
-                          <div className="ticket-ai-selected-files">
-                            {aiDraftFiles.map((file) => {
-                              const fileKey = getLocalFileKey(file);
-
-                              return (
-                                <span
-                                  className="ticket-ai-file-chip"
-                                  key={fileKey}
-                                >
-                                  <button
-                                    className="ticket-ai-file-link"
-                                    onClick={() => handleOpenLocalFile(file)}
-                                    type="button"
-                                  >
-                                    {file.name} ({formatFileSize(file.size)})
-                                  </button>
-                                  <button
-                                    aria-label={`Retirer ${file.name}`}
-                                    onClick={() =>
-                                      handleRemoveAiDraftFile(fileKey)
-                                    }
-                                    type="button"
-                                  >
-                                    <X size={13} />
-                                  </button>
-                                </span>
-                              );
-                            })}
-                          </div>
-                        ) : null}
-
-                        <label
-                          aria-label="Ajouter une piece jointe"
-                          className="ticket-ai-attachment-button"
-                        >
-                          <Paperclip size={17} />
-                          <input
-                            key={aiDraftFileInputKey}
-                            multiple
-                            onChange={(event) =>
-                              handleAiDraftFileSelection(event.target.files)
-                            }
-                            type="file"
-                          />
-                        </label>
-                        <textarea
-                          aria-label="Message pour l assistant IA"
-                          onChange={(event) => {
-                            setAiDraftInput(event.target.value);
-                            setAiDraftErrorMessage(null);
-                            resizeAiDraftTextarea(event.target);
-                          }}
-                          onKeyDown={(event) => {
-                            if (
-                              event.key === 'Enter' &&
-                              !event.shiftKey &&
-                              !isSuggestingDraft
-                            ) {
-                              event.preventDefault();
-                              void handleSendAiChatMessage();
-                            }
-                          }}
-                          onPaste={handleAiDraftPaste}
-                          placeholder="Decrivez votre besoin..."
-                          ref={aiDraftTextareaRef}
-                          rows={1}
-                          value={aiDraftInput}
-                        />
-                        <button
-                          className="primary-button"
-                          disabled={isSuggestingDraft}
-                          onClick={handleSendAiChatMessage}
-                          type="button"
-                        >
-                          Envoyer
-                        </button>
-                      </footer>
-                    </section>
-                  </div>
+                  <AiChatModal
+                    aiChatBodyRef={aiChatBodyRef}
+                    aiChatMessages={aiChatMessages}
+                    aiConversationFiles={aiConversationFiles}
+                    aiDraftErrorMessage={aiDraftErrorMessage}
+                    aiDraftFileInputKey={aiDraftFileInputKey}
+                    aiDraftFiles={aiDraftFiles}
+                    aiDraftInput={aiDraftInput}
+                    aiDraftSuggestion={aiDraftSuggestion}
+                    formatFileSize={formatFileSize}
+                    getLocalFileKey={getLocalFileKey}
+                    handleApplyTicketDraftSuggestion={
+                      handleApplyTicketDraftSuggestion
+                    }
+                    handleOpenLocalFile={handleOpenLocalFile}
+                    handleRemoveAiDraftFile={handleRemoveAiDraftFile}
+                    isAiDraftFileDragOver={isAiDraftFileDragOver}
+                    isSuggestingDraft={isSuggestingDraft}
+                    onAiDraftFileDragLeave={handleAiDraftFileDragLeave}
+                    onAiDraftFileDragOver={handleAiDraftFileDragOver}
+                    onAiDraftFileDrop={handleAiDraftFileDrop}
+                    onAiDraftFileSelection={handleAiDraftFileSelection}
+                    onAiDraftInputChange={setAiDraftInput}
+                    onAiDraftInputPaste={handleAiDraftPaste}
+                    onCloseAiChat={closeAiChat}
+                    onResetAiChat={resetAiChat}
+                    onResizeAiDraftTextarea={resizeAiDraftTextarea}
+                    onSendAiChatMessage={handleSendAiChatMessage}
+                    resolveSuggestedRequester={resolveSuggestedRequester}
+                    setAiDraftErrorMessage={setAiDraftErrorMessage}
+                    textareaRef={aiDraftTextareaRef}
+                  />
                 ) : null}
 
                 {showCreationRequesterField && incidentLookupKind ? (
-                  <div
-                    aria-modal="true"
-                    className="incident-lookup-overlay"
-                    role="dialog"
-                  >
-                    <section className="incident-lookup-dialog">
-                      <header className="incident-lookup-header">
-                        <div>
-                          <h3>
-                            {incidentLookupKind === 'ASSIGNMENT_GROUP'
-                              ? 'Selectionner un groupe'
-                              : incidentLookupKind === 'INCIDENT_EQUIPMENT'
-                                ? 'Selectionner un equipement'
-                                : incidentLookupKind === 'ASSIGNEE'
-                                  ? 'Selectionner un technicien'
-                                  : 'Selectionner un demandeur'}
-                          </h3>
-                        </div>
-
-                        <button
-                          aria-label="Fermer la selection"
-                          className="incident-lookup-close"
-                          onClick={closeIncidentLookup}
-                          type="button"
-                        >
-                          <X size={18} />
-                        </button>
-                      </header>
-
-                      <label className="incident-lookup-search">
-                        <select
-                          aria-label="Categorie de recherche"
-                          onChange={(event) =>
-                            setIncidentLookupSearchField(
-                              event.target.value as IncidentLookupSearchField,
-                            )
-                          }
-                          value={incidentLookupSearchField}
-                        >
-                          <option value="IDENTIFIER">Identifiant</option>
-                          {incidentLookupKind === 'ASSIGNMENT_GROUP' ? (
-                            <>
-                              <option value="NAME">Nom</option>
-                            </>
-                          ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ? (
-                            <>
-                              <option value="NAME">Nom</option>
-                              <option value="TYPE">Type</option>
-                              <option value="STATUS">Statut</option>
-                              <option value="SERIAL_NUMBER">
-                                Numero de serie
-                              </option>
-                            </>
-                          ) : (
-                            <>
-                              <option value="FIRST_NAME">Prenom</option>
-                              <option value="LAST_NAME">Nom</option>
-                            </>
-                          )}
-                        </select>
-                        <div className="incident-lookup-search-input">
-                          <input
-                            autoFocus
-                            onChange={(event) =>
-                              setIncidentLookupSearch(event.target.value)
-                            }
-                            placeholder="Rechercher"
-                            value={incidentLookupSearch}
-                          />
-                        </div>
-                      </label>
-
-                      <div className="incident-lookup-table-scroll">
-                        <table
-                          className={
-                            incidentLookupKind === 'ASSIGNMENT_GROUP' ||
-                            incidentLookupKind === 'INCIDENT_EQUIPMENT'
-                              ? 'incident-lookup-table'
-                              : incidentLookupKind === 'ASSIGNEE'
-                                ? 'incident-lookup-table incident-lookup-table--assignee'
-                                : 'incident-lookup-table incident-lookup-table--users'
-                          }
-                        >
-                          <thead>
-                            {incidentLookupKind === 'ASSIGNMENT_GROUP' ? (
-                              <tr>
-                                <th>Identifiant</th>
-                                <th>Nom</th>
-                                <th>Description</th>
-                              </tr>
-                            ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ? (
-                              <tr>
-                                <th>Identifiant</th>
-                                <th>Nom</th>
-                                <th>Type</th>
-                                <th>Modele</th>
-                                <th>Statut</th>
-                                <th>Numero de serie</th>
-                              </tr>
-                            ) : (
-                              <tr>
-                                <th>Identifiant</th>
-                                <th>Prenom</th>
-                                <th>Nom</th>
-                                <th>Email</th>
-                              </tr>
-                            )}
-                          </thead>
-
-                          <tbody>
-                            {incidentLookupKind === 'ASSIGNMENT_GROUP' ? (
-                              paginatedIncidentLookupGroups.length === 0 ? (
-                                <tr>
-                                  <td colSpan={3}>
-                                    Aucun groupe ne correspond a la recherche.
-                                  </td>
-                                </tr>
-                              ) : (
-                                paginatedIncidentLookupGroups.map((group) => (
-                                  <tr
-                                    aria-selected={
-                                      group.id === selectedIncidentLookupGroupId
-                                    }
-                                    className={
-                                      group.id === selectedIncidentLookupGroupId
-                                        ? 'incident-lookup-row is-selected'
-                                        : 'incident-lookup-row'
-                                    }
-                                    key={group.id}
-                                    onClick={() =>
-                                      handleIncidentGroupLookupSelect(group)
-                                    }
-                                    tabIndex={0}
-                                    onKeyDown={(event) => {
-                                      if (
-                                        event.key === 'Enter' ||
-                                        event.key === ' '
-                                      ) {
-                                        event.preventDefault();
-                                        handleIncidentGroupLookupSelect(group);
-                                      }
-                                    }}
-                                  >
-                                    <td className="incident-lookup-identity">
-                                      {group.name}
-                                    </td>
-                                    <td>{group.name}</td>
-                                    <td>{group.description ?? '-'}</td>
-                                  </tr>
-                                ))
-                              )
-                            ) : incidentLookupKind === 'INCIDENT_EQUIPMENT' ? (
-                              paginatedIncidentLookupEquipment.length === 0 ? (
-                                <tr>
-                                  <td colSpan={6}>
-                                    Aucun equipement disponible dans le parc
-                                    informatique pour le moment.
-                                  </td>
-                                </tr>
-                              ) : (
-                                paginatedIncidentLookupEquipment.map((ci) => {
-                                  const ciType = ciTypesById.get(ci.ciTypeId);
-
-                                  return (
-                                    <tr
-                                      aria-selected={
-                                        ci.id ===
-                                        selectedIncidentLookupEquipmentId
-                                      }
-                                      className={
-                                        ci.id ===
-                                        selectedIncidentLookupEquipmentId
-                                          ? 'incident-lookup-row is-selected'
-                                          : 'incident-lookup-row'
-                                      }
-                                      key={ci.id}
-                                      onClick={() =>
-                                        handleIncidentEquipmentLookupSelect(ci)
-                                      }
-                                      tabIndex={0}
-                                      onKeyDown={(event) => {
-                                        if (
-                                          event.key === 'Enter' ||
-                                          event.key === ' '
-                                        ) {
-                                          event.preventDefault();
-                                          handleIncidentEquipmentLookupSelect(
-                                            ci,
-                                          );
-                                        }
-                                      }}
-                                    >
-                                      <td className="incident-lookup-identity">
-                                        {ci.name}
-                                      </td>
-                                      <td>{ci.name}</td>
-                                      <td>{ciType?.name ?? 'Type inconnu'}</td>
-                                      <td>{ci.model ?? '-'}</td>
-                                      <td>{ci.status}</td>
-                                      <td>{ci.serialNumber ?? '-'}</td>
-                                    </tr>
-                                  );
-                                })
-                              )
-                            ) : paginatedIncidentLookupUsers.length === 0 ? (
-                              <tr>
-                                <td colSpan={4}>
-                                  Aucun utilisateur ne correspond a la
-                                  recherche.
-                                </td>
-                              </tr>
-                            ) : (
-                              paginatedIncidentLookupUsers.map((user) => (
-                                <tr
-                                  aria-selected={
-                                    user.id === selectedIncidentLookupUserId
-                                  }
-                                  className={
-                                    user.id === selectedIncidentLookupUserId
-                                      ? 'incident-lookup-row is-selected'
-                                      : 'incident-lookup-row'
-                                  }
-                                  key={user.id}
-                                  onClick={() =>
-                                    handleIncidentLookupSelect(user)
-                                  }
-                                  tabIndex={0}
-                                  onKeyDown={(event) => {
-                                    if (
-                                      event.key === 'Enter' ||
-                                      event.key === ' '
-                                    ) {
-                                      event.preventDefault();
-                                      handleIncidentLookupSelect(user);
-                                    }
-                                  }}
-                                >
-                                  <td className="incident-lookup-identity">
-                                    {formatKnownUserName(user, user.id)}
-                                  </td>
-                                  <td>{user.firstName ?? 'Non renseigne'}</td>
-                                  <td>{user.lastName ?? 'Non renseigne'}</td>
-                                  <td>{user.email ?? '-'}</td>
-                                </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      <AppPagination
-                        onPageChange={setIncidentLookupPage}
-                        page={incidentLookupPage}
-                        summary={`Page ${incidentLookupPage} sur ${incidentLookupTotalPages} - ${incidentLookupResultCount} resultat${incidentLookupResultCount > 1 ? 's' : ''}`}
-                        totalPages={incidentLookupTotalPages}
-                      />
-                    </section>
-                  </div>
+                  <IncidentLookupDialog
+                    ciTypesById={ciTypesById}
+                    formatKnownUserName={formatKnownUserName}
+                    incidentLookupKind={incidentLookupKind}
+                    incidentLookupPage={incidentLookupPage}
+                    incidentLookupResultCount={incidentLookupResultCount}
+                    incidentLookupSearch={incidentLookupSearch}
+                    incidentLookupSearchField={incidentLookupSearchField}
+                    incidentLookupTotalPages={incidentLookupTotalPages}
+                    onClose={closeIncidentLookup}
+                    onEquipmentSelect={handleIncidentEquipmentLookupSelect}
+                    onGroupSelect={handleIncidentGroupLookupSelect}
+                    onPageChange={setIncidentLookupPage}
+                    onSearchChange={setIncidentLookupSearch}
+                    onSearchFieldChange={setIncidentLookupSearchField}
+                    onUserSelect={handleIncidentLookupSelect}
+                    paginatedEquipment={paginatedIncidentLookupEquipment}
+                    paginatedGroups={paginatedIncidentLookupGroups}
+                    paginatedUsers={paginatedIncidentLookupUsers}
+                    selectedEquipmentId={selectedIncidentLookupEquipmentId}
+                    selectedGroupId={selectedIncidentLookupGroupId}
+                    selectedUserId={selectedIncidentLookupUserId}
+                  />
                 ) : null}
 
                 <div className="ticket-created-stack">

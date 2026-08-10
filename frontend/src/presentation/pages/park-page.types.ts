@@ -14,6 +14,8 @@ export type EquipmentFilters = {
   typeId: string;
 };
 
+export type EquipmentSortOption = 'CREATED_AT_ASC' | 'CREATED_AT_DESC';
+
 export type EquipmentFormState = {
   archivedAt: string;
   assignedUserId: string;
@@ -35,6 +37,12 @@ export type EquipmentFormState = {
   status: string;
   warrantyEndDate: string;
 };
+
+export type UserLookupSearchField =
+  | 'EMAIL'
+  | 'FIRST_NAME'
+  | 'IDENTIFIER'
+  | 'LAST_NAME';
 
 export type FilterInputChangeHandler = (
   setFilters: Dispatch<SetStateAction<EquipmentFilters>>,

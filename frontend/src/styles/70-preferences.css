@@ -394,38 +394,64 @@
 }
 
 .settings-discord-nav-group {
+  position: relative;
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .settings-discord-nav-title {
   display: block;
-  padding: 0 10px 5px;
+  padding: 0 10px 6px;
   color: #52657f;
-  font-size: 0.78rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 650;
   letter-spacing: 0;
 }
 
 .settings-discord-nav-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
   min-height: 38px;
-  padding: 0 10px;
+  padding: 0 10px 0 36px;
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #52657f;
+  color: #667896;
   font: inherit;
-  font-size: 0.94rem;
+  font-size: 0.9rem;
   font-weight: 500;
   text-align: left;
   cursor: pointer;
   transition:
     background-color 140ms ease,
     color 140ms ease;
+}
+
+.settings-discord-nav-group::before {
+  position: absolute;
+  top: 35px;
+  bottom: 4px;
+  left: 18px;
+  width: 1px;
+  background: #d8e0eb;
+  content: '';
+}
+
+.settings-discord-nav-item::before {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 18px;
+  width: 2px;
+  border-radius: 999px;
+  background: transparent;
+  content: '';
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .settings-discord-nav-item svg {
@@ -439,38 +465,58 @@
 }
 
 .settings-discord-nav-item.is-active {
-  background: #e3ecf8;
+  background: #eaf2ff;
   color: #071f45;
-  font-weight: 700;
+  font-weight: 650;
+}
+
+.settings-discord-nav-item.is-active::before {
+  background: #2b6de9;
+  box-shadow: 0 0 0 1px rgba(43, 109, 233, 0.08);
 }
 
 .settings-discord-content {
   min-width: 0;
   min-height: 0;
-  padding: 58px clamp(32px, 5vw, 78px);
+  padding: 58px clamp(32px, 5vw, 78px) 140px;
   overflow-y: auto;
   background: #ffffff;
   scrollbar-color: rgba(100, 116, 139, 0.28) transparent;
   scrollbar-width: thin;
+  scroll-behavior: smooth;
+}
+
+.settings-discord-sections {
+  display: grid;
+  gap: 52px;
+  width: min(760px, 100%);
+  padding-bottom: 18vh;
 }
 
 .settings-discord-content-card {
   display: grid;
-  gap: 28px;
+  gap: 24px;
   width: min(760px, 100%);
+  scroll-margin-top: 56px;
+}
+
+.settings-discord-content-card:not(:last-child) {
+  padding-bottom: 46px;
+  border-bottom: 1px solid #e7edf5;
 }
 
 .settings-discord-section-header {
   display: grid;
-  gap: 7px;
+  gap: 6px;
 }
 
 .settings-discord-section-header h1 {
   margin: 0;
   color: #071f45;
-  font-size: clamp(1.35rem, 2vw, 1.75rem);
-  font-weight: 700;
-  line-height: 1.18;
+  font-size: clamp(1.12rem, 1.35vw, 1.32rem);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0;
 }
 
 .settings-discord-section-header p {
@@ -501,8 +547,8 @@
 
 .settings-discord-field span {
   color: #12315c;
-  font-size: 0.86rem;
-  font-weight: 700;
+  font-size: 0.84rem;
+  font-weight: 650;
 }
 
 .settings-discord-field input {
@@ -544,8 +590,8 @@
 
 .settings-discord-row strong {
   color: #12315c;
-  font-size: 0.96rem;
-  font-weight: 700;
+  font-size: 0.92rem;
+  font-weight: 650;
 }
 
 .settings-discord-row span {
@@ -556,15 +602,28 @@
 
 .settings-discord-button {
   min-height: 40px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 6px;
-  background: #5865f2;
-  color: #ffffff;
+  padding: 0 16px;
+  border: 1px solid #bdd4f4;
+  border-radius: 999px;
+  background: #f6f9ff;
+  color: #17335f;
   font: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-size: 0.86rem;
+  font-weight: 600;
   cursor: pointer;
+  box-shadow: none;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
+}
+
+.settings-discord-button:hover {
+  border-color: #8fb7ed;
+  background: #eaf2ff;
+  color: #0f3d8a;
+  transform: translateY(-1px);
 }
 
 .settings-discord-button.is-muted {
@@ -610,32 +669,40 @@
 
 .settings-discord-toggle {
   position: relative;
-  width: 44px;
+  width: 42px;
   height: 24px;
-  border: 0;
+  border: 1px solid #cbd6e5;
   border-radius: 999px;
-  background: #cbd5e1;
+  background: #d8e1ee;
   cursor: default;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
 }
 
 .settings-discord-toggle span {
   position: absolute;
-  top: 3px;
-  left: 3px;
+  top: 2px;
+  left: 2px;
   width: 18px;
   height: 18px;
   border-radius: 999px;
   background: #ffffff;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
-  transition: transform 150ms ease;
+  box-shadow: 0 4px 10px rgba(26, 44, 78, 0.2);
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease;
 }
 
 .settings-discord-toggle.is-on {
-  background: #23a559;
+  border-color: #9ac6ff;
+  background: #cfe4ff;
 }
 
 .settings-discord-toggle.is-on span {
-  transform: translateX(20px);
+  background: #2b6de9;
+  transform: translateX(18px);
 }
 
 .settings-discord-select-row {

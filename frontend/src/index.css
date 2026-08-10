@@ -2,6 +2,7 @@
 @import './styles/00-foundation-admin.css';
 @import './styles/05-workspace-shell.css';
 @import './styles/10-ticketing.css';
+@import './styles/11-ticket-ai.css';
 @import './styles/20-reports-page.css';
 @import './styles/30-group-planning.css';
 @import './styles/40-reports-park.css';

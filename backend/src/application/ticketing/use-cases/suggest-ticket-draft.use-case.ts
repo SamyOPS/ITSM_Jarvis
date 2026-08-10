@@ -9,44 +9,24 @@ import { PriorityName } from '../../../domain/ticketing/priority-name';
 import { RequestType } from '../../../domain/ticketing/request-type';
 import { TicketType } from '../../../domain/ticketing/ticket-type';
 import { resolveIncidentPriorityName } from '../incident-priority';
+import {
+  AI_DRAFT_MAX_ATTACHMENT_COUNT,
+  AI_DRAFT_MAX_ATTACHMENT_SIZE_BYTES,
+  AI_DRAFT_MAX_TOTAL_ATTACHMENT_SIZE_BYTES,
+} from './suggest-ticket-draft.constants';
+import type {
+  SuggestTicketDraftCommand,
+  TicketDraftAssistantResponse,
+  TicketDraftAttachmentInput,
+  TicketDraftSuggestion,
+} from './suggest-ticket-draft.types';
 
-export type SuggestTicketDraftCommand = {
-  attachments?: TicketDraftAttachmentInput[];
-  categories?: string[];
-  channels?: string[];
-  currentMode?: TicketType | null;
-  priorities?: string[];
-  requesters?: string[];
-  userInput: string;
-};
-
-export type TicketDraftAttachmentInput = {
-  data: Buffer | string;
-  fileName: string;
-  mimeType: string;
-  sizeBytes: number;
-};
-
-export type TicketDraftAssistantResponse = {
-  action: 'ASK_QUESTION' | 'SUGGEST_TICKET';
-  question: string | null;
-  suggestion: TicketDraftSuggestion | null;
-};
-
-export type TicketDraftSuggestion = {
-  categoryName: string | null;
-  channelName: string | null;
-  confidence: number;
-  description: string;
-  impact: IncidentSeverity | null;
-  priorityName: PriorityName | null;
-  requesterName: string | null;
-  requesterScope: 'SELF' | 'OTHER' | null;
-  requestType: RequestType | null;
-  title: string;
-  type: TicketType;
-  urgency: IncidentSeverity | null;
-};
+export type {
+  SuggestTicketDraftCommand,
+  TicketDraftAssistantResponse,
+  TicketDraftAttachmentInput,
+  TicketDraftSuggestion,
+} from './suggest-ticket-draft.types';
 
 type OpenAiResponse = {
   output_text?: string;
@@ -73,10 +53,6 @@ type OpenAiInputContentPart =
       filename: string;
       type: 'input_file';
     };
-
-const AI_DRAFT_MAX_ATTACHMENT_COUNT = 10;
-const AI_DRAFT_MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
-const AI_DRAFT_MAX_TOTAL_ATTACHMENT_SIZE_BYTES = 40 * 1024 * 1024;
 
 @Injectable()
 export class SuggestTicketDraftUseCase {
