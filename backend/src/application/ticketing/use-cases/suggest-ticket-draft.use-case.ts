@@ -266,6 +266,8 @@ export class SuggestTicketDraftUseCase {
       '- si le message est seulement une salutation ou ne contient aucun probleme/demande identifiable, action=ASK_QUESTION avec une question naturelle pour connaitre le sujet;',
       '- phase diagnostic: tu peux poser 0 a 3 questions utiles pour mieux qualifier le ticket et enrichir la description, mais uniquement si la reponse change vraiment le type, la categorie, la priorite, le demandeur, le canal ou une information importante de description;',
       "- si le probleme ou la demande est trop generique, demande d'abord l'objet concerne uniquement si cela manque vraiment: appareil, service, application ou materiel;",
+      "- pour une demande de numero/contact d'un service interne deja nomme (RH, ressources humaines, paie, comptabilite, etc.), le besoin est suffisamment compris: ne demande pas de structure, d'entite, de direction ou de departement; avance plutot vers le demandeur/canal ou prepare le ticket;",
+      "- si une precision est vraiment necessaire pour une demande de numero RH, demande seulement: Vous cherchez le numero du service RH general ou celui d'une personne RH en particulier ?",
       '- quand le symptome principal est deja compris, ne pose pas de questions de detail qui ne changent pas le ticket; propose plutot une aide simple si elle est utile, puis cadre le demandeur/canal ou prepare le ticket;',
       '- ne pose jamais une question de curiosite ou de confort si la reponse ne change pas le brouillon de ticket; fais plutot une hypothese raisonnable avec une confidence plus basse;',
       "- interprete les reponses naturelles et approximatives: grand, moyen, court, peu importe, je ne sais pas, pour moi, pour quelqu'un d'autre, oral, mail, message, etc. sont des reponses valables selon la question posee; ne redemande pas une reponse exacte;",
@@ -2316,6 +2318,11 @@ export class SuggestTicketDraftUseCase {
       conversation,
       'utilisateur',
     );
+    const questionAsksAbstractHrContactScope =
+      this.hasHrContactRequest(normalizedUserConversation) &&
+      /(structure|entite|direction|departement|service concerne|service rh|quelle rh|quel rh)/u.test(
+        normalizedQuestion,
+      );
 
     if (
       lastAssistantQuestion &&
@@ -2325,6 +2332,13 @@ export class SuggestTicketDraftUseCase {
       return (
         this.getNextRequesterContextQuestion(conversation) ??
         'Je prepare une proposition de ticket avec les informations deja donnees.'
+      );
+    }
+
+    if (questionAsksAbstractHrContactScope) {
+      return (
+        this.getNextRequesterContextQuestion(conversation) ??
+        "Vous cherchez le numero du service RH general ou celui d'une personne RH en particulier ?"
       );
     }
 
@@ -3335,6 +3349,15 @@ export class SuggestTicketDraftUseCase {
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase();
+  }
+
+  private hasHrContactRequest(normalizedUserConversation: string): boolean {
+    return (
+      /\b(rh|ressources humaines)\b/u.test(normalizedUserConversation) &&
+      /\b(numero|num|telephone|tel|contact|coordonnees|appeler|joindre)\b/u.test(
+        normalizedUserConversation,
+      )
+    );
   }
 
   private getUserConversationText(conversation: string): string {

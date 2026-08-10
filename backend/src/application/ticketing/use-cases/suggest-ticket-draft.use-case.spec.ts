@@ -257,6 +257,32 @@ describe('SuggestTicketDraftUseCase', () => {
     });
   });
 
+  it('does not ask abstract HR scope questions for contact number requests', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'ASK_QUESTION',
+        question:
+          'Pour quelle structure ou entite RH avez-vous besoin du numero ?',
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          "Utilisateur: J'ai besoin du numero de la rh",
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'ASK_QUESTION',
+      question:
+        'Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+      suggestion: null,
+    });
+  });
+
   it('accepts an image attachment without text and sends it as multimodal input', async () => {
     mockAssistantResponse(
       baseAssistantPayload({

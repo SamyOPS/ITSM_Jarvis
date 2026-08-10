@@ -873,9 +873,7 @@ function getNextDueTimestamp(
     return toTimestamp(ticket.resolutionDueAt);
   }
 
-  return ticket.responseDueAt
-    ? toTimestamp(ticket.responseDueAt)
-    : Number.POSITIVE_INFINITY;
+  return Number.POSITIVE_INFINITY;
 }
 
 function getVipAwareResolutionHours(

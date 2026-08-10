@@ -383,10 +383,7 @@ function differenceInMinutes(fromIso: string, toIso: string): number {
 }
 
 function isTicketOverdue(ticket: TicketSummary): boolean {
-  return (
-    ticket.responseSlaStatus === SlaIndicator.OVERDUE ||
-    ticket.resolutionSlaStatus === SlaIndicator.OVERDUE
-  );
+  return ticket.resolutionSlaStatus === SlaIndicator.OVERDUE;
 }
 
 function countByKey(
