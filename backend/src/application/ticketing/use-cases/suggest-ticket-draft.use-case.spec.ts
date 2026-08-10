@@ -257,6 +257,140 @@ describe('SuggestTicketDraftUseCase', () => {
     });
   });
 
+  it('asks the account or service before drafting vague password login issues', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'SUGGEST_TICKET',
+        categoryName: 'Acces',
+        channelName: 'Portail',
+        confidence: 0.82,
+        description:
+          'Connexion impossible au compte avec message mot de passe incorrect.',
+        impact: IncidentSeverity.MEDIUM,
+        requesterScope: 'SELF',
+        title: 'Connexion impossible au compte',
+        type: TicketType.INCIDENT,
+        urgency: IncidentSeverity.MEDIUM,
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          "Utilisateur: Je n'arrive plus a me connecter a mon compte, le message indique mot de passe incorrect",
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'ASK_QUESTION',
+      question:
+        "De quel compte/service s'agit-il (session PC, messagerie, application, VPN, Vision ou autre) ?",
+      suggestion: null,
+    });
+  });
+
+  it('asks the requester before reset advice for password login issues with a known service', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'SUGGEST_TICKET',
+        categoryName: 'Messagerie',
+        channelName: 'Portail',
+        confidence: 0.82,
+        description:
+          'Connexion impossible a la messagerie avec mot de passe incorrect.',
+        impact: IncidentSeverity.MEDIUM,
+        requesterScope: null,
+        title: 'Connexion impossible a la messagerie',
+        type: TicketType.INCIDENT,
+        urgency: IncidentSeverity.MEDIUM,
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          "Utilisateur: Je n'arrive plus a me connecter a mon compte, le message indique mot de passe incorrect",
+          "Assistant: De quel compte/service s'agit-il (session PC, messagerie, application, VPN, Vision ou autre) ?",
+          'Utilisateur: messagerie',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'ASK_QUESTION',
+      question:
+        'Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+      suggestion: null,
+    });
+  });
+
+  it('suggests password recovery before drafting resettable account tickets', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'SUGGEST_TICKET',
+        categoryName: 'Messagerie',
+        channelName: 'Portail',
+        confidence: 0.82,
+        description:
+          'Connexion impossible a la messagerie avec mot de passe incorrect.',
+        impact: IncidentSeverity.MEDIUM,
+        requesterScope: 'SELF',
+        title: 'Connexion impossible a la messagerie',
+        type: TicketType.INCIDENT,
+        urgency: IncidentSeverity.MEDIUM,
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          "Utilisateur: Je n'arrive plus a me connecter a mon compte, le message indique mot de passe incorrect",
+          "Assistant: De quel compte/service s'agit-il (session PC, messagerie, application, VPN, Vision ou autre) ?",
+          'Utilisateur: messagerie',
+          'Assistant: Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+          'Utilisateur: moi',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'ASK_QUESTION',
+      question:
+        "Avant de creer un ticket, essayez le lien Mot de passe oublie ou Recuperer le compte sur le service concerne, puis verifiez l'email ou le telephone de recuperation. Si vous n'y avez pas acces ou si cela ne fonctionne pas, dites-le-moi et je preparerai le ticket.",
+      suggestion: null,
+    });
+  });
+
+  it('does not ask abstract HR scope questions for contact number requests', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'ASK_QUESTION',
+        question:
+          'Pour quelle structure ou entite RH avez-vous besoin du numero ?',
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          "Utilisateur: J'ai besoin du numero de la rh",
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'ASK_QUESTION',
+      question:
+        'Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+      suggestion: null,
+    });
+  });
+
   it('accepts an image attachment without text and sends it as multimodal input', async () => {
     mockAssistantResponse(
       baseAssistantPayload({
@@ -1027,6 +1161,84 @@ describe('SuggestTicketDraftUseCase', () => {
       question:
         'Est-ce que cela touche seulement votre poste, plusieurs personnes, ou tout le site ?',
       suggestion: null,
+    });
+  });
+
+  it('asks the connection type before drafting a local workstation Internet issue', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'SUGGEST_TICKET',
+        categoryName: 'Reseau',
+        confidence: 0.8,
+        description:
+          "Depuis le poste, plus d'acces Internet alors que les collegues autour ont la connexion.",
+        impact: 'MEDIUM',
+        priorityName: 'MEDIUM',
+        requesterScope: 'SELF',
+        title: "Absence d'acces Internet depuis le poste",
+        type: TicketType.INCIDENT,
+        urgency: 'MEDIUM',
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          "Utilisateur: Je n'ai plus acces a Internet depuis mon poste, alors que mes collegues autour de moi ont bien la connexion.",
+          'Assistant: Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+          'Utilisateur: moi',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'ASK_QUESTION',
+      question:
+        'Est-ce que votre poste est connecte en Wi-Fi ou avec un cable Ethernet ?',
+      suggestion: null,
+    });
+  });
+
+  it('keeps a local Wi-Fi Internet issue as a network incident after requester scope', async () => {
+    mockAssistantResponse(
+      baseAssistantPayload({
+        action: 'SUGGEST_TICKET',
+        categoryName: 'Acces',
+        confidence: 0.8,
+        description: 'Mot de passe de session PC professionnelle oublie.',
+        impact: 'MEDIUM',
+        priorityName: 'MEDIUM',
+        requesterScope: 'SELF',
+        title: 'Mot de passe session PC oublie',
+        type: TicketType.INCIDENT,
+        urgency: 'MEDIUM',
+      }),
+    );
+
+    const useCase = new SuggestTicketDraftUseCase();
+
+    await expect(
+      useCase.execute({
+        userInput: [
+          'Assistant: Bonjour, quel est votre probleme ?',
+          "Utilisateur: Je n'ai plus acces a Internet depuis mon poste, alors que mes collegues autour de moi ont bien la connexion.",
+          'Assistant: Est-ce que votre poste est connecte en Wi-Fi ou avec un cable Ethernet ?',
+          'Utilisateur: wifi',
+          'Assistant: Est-ce que le ticket est pour vous ou pour un autre utilisateur ?',
+          'Utilisateur: moi',
+        ].join('\n'),
+      }),
+    ).resolves.toMatchObject({
+      action: 'SUGGEST_TICKET',
+      suggestion: {
+        categoryName: 'Reseau',
+        channelName: 'Portail',
+        priorityName: PriorityName.MEDIUM,
+        requesterScope: 'SELF',
+        title: "Absence d'acces Internet en Wi-Fi depuis le poste",
+        type: TicketType.INCIDENT,
+      },
     });
   });
 

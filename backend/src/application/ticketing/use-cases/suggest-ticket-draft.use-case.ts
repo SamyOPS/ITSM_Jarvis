@@ -266,6 +266,8 @@ export class SuggestTicketDraftUseCase {
       '- si le message est seulement une salutation ou ne contient aucun probleme/demande identifiable, action=ASK_QUESTION avec une question naturelle pour connaitre le sujet;',
       '- phase diagnostic: tu peux poser 0 a 3 questions utiles pour mieux qualifier le ticket et enrichir la description, mais uniquement si la reponse change vraiment le type, la categorie, la priorite, le demandeur, le canal ou une information importante de description;',
       "- si le probleme ou la demande est trop generique, demande d'abord l'objet concerne uniquement si cela manque vraiment: appareil, service, application ou materiel;",
+      "- pour une demande de numero/contact d'un service interne deja nomme (RH, ressources humaines, paie, comptabilite, etc.), le besoin est suffisamment compris: ne demande pas de structure, d'entite, de direction ou de departement; avance plutot vers le demandeur/canal ou prepare le ticket;",
+      "- si une precision est vraiment necessaire pour une demande de numero RH, demande seulement: Vous cherchez le numero du service RH general ou celui d'une personne RH en particulier ?",
       '- quand le symptome principal est deja compris, ne pose pas de questions de detail qui ne changent pas le ticket; propose plutot une aide simple si elle est utile, puis cadre le demandeur/canal ou prepare le ticket;',
       '- ne pose jamais une question de curiosite ou de confort si la reponse ne change pas le brouillon de ticket; fais plutot une hypothese raisonnable avec une confidence plus basse;',
       "- interprete les reponses naturelles et approximatives: grand, moyen, court, peu importe, je ne sais pas, pour moi, pour quelqu'un d'autre, oral, mail, message, etc. sont des reponses valables selon la question posee; ne redemande pas une reponse exacte;",
@@ -299,10 +301,10 @@ export class SuggestTicketDraftUseCase {
       "- pour un ecran casse/fissure trop generique, demande d'abord de quel type d'ecran il s'agit: PC portable, ecran externe, telephone, tablette ou autre;",
       "- Vision est l'application actuelle de ticketing/portail; si l'utilisateur parle de mdp Vision, compte Vision ou mot de passe de cette appli, ne demande pas quelle application est concernee;",
       "- les expressions cette appli, cette application, cette appli de ticket, l'application actuelle, l'appli actuelle, appli de ticketing ou portail actuel designent Vision quand le contexte parle de mot de passe/connexion;",
-      "- si l'utilisateur parle seulement d'un mot de passe oublie sans nommer Vision, ne suppose jamais que c'est Vision; demande d'abord uniquement de quel compte/service il s'agit: session PC, messagerie, application, VPN, Vision ou autre;",
+      "- si l'utilisateur parle d'un probleme de mot de passe, connexion, identifiant ou compte sans nommer Vision ni le compte/service concerne, ne suppose jamais que c'est Vision; demande d'abord exactement: De quel compte/service s'agit-il (session PC, messagerie, application, VPN, Vision ou autre) ?",
       '- pose une seule question de cadrage par message; ne combine jamais le compte/service concerne avec la question pour savoir si le ticket est pour lui ou pour un autre utilisateur;',
       "- si le mot de passe oublie concerne la session PC et que le ticket est pour l'utilisateur lui-meme, ne redemande pas l'identifiant exact ni le poste; ces informations sont utiles mais non bloquantes, prepare le ticket avec ce qui est connu;",
-      "- si le mot de passe oublie concerne une messagerie ou une application avec mecanisme de reinitialisation simple, propose d'abord l'action simple Mot de passe oublie/reinitialisation avant de preparer le ticket;",
+      "- si le probleme de mot de passe ou connexion concerne une messagerie ou une application avec mecanisme de reinitialisation simple, propose d'abord l'action simple Mot de passe oublie/reinitialisation avant de preparer le ticket;",
       "- pour un mot de passe oublie Vision/portail, proposer d'abord d'utiliser le lien Mot de passe oublie sur l'ecran de connexion et de verifier l'email de reinitialisation; si cela ne marche pas, preparer une demande;",
       "- avant action=SUGGEST_TICKET, identifie toujours si le ticket est pour l'utilisateur lui-meme ou pour un autre utilisateur de l'application;",
       "- une fois le probleme ou le compte/service concerne compris, si ce n'est pas clair pour qui est le ticket, action=ASK_QUESTION avec exactement: Est-ce que le ticket est pour vous ou pour un autre utilisateur ?",
@@ -462,6 +464,17 @@ export class SuggestTicketDraftUseCase {
         };
       }
 
+      const passwordAccessTargetQuestion =
+        this.getMissingPasswordAccessTargetQuestion(userInput);
+
+      if (passwordAccessTargetQuestion) {
+        return {
+          action: 'ASK_QUESTION',
+          question: passwordAccessTargetQuestion,
+          suggestion: null,
+        };
+      }
+
       const storageTargetQuestion =
         this.getMissingStorageTargetQuestion(userInput);
 
@@ -513,6 +526,17 @@ export class SuggestTicketDraftUseCase {
         return {
           action: 'ASK_QUESTION',
           question: networkScopeQuestion,
+          suggestion: null,
+        };
+      }
+
+      const networkConnectionQuestion =
+        this.getMissingNetworkConnectionQuestion(userInput);
+
+      if (networkConnectionQuestion) {
+        return {
+          action: 'ASK_QUESTION',
+          question: networkConnectionQuestion,
           suggestion: null,
         };
       }
@@ -629,6 +653,8 @@ export class SuggestTicketDraftUseCase {
     const requesterScopeClarification =
       this.getRequesterScopeClarification(userInput);
     const questionClarification = this.getLastQuestionClarification(userInput);
+    const passwordAccessTargetQuestion =
+      this.getMissingPasswordAccessTargetQuestion(userInput);
     const troubleshootingQuestion =
       this.getMissingSimpleTroubleshootingQuestion(userInput);
     const storageTargetQuestion =
@@ -640,6 +666,8 @@ export class SuggestTicketDraftUseCase {
     const computerFormFactorQuestion =
       this.getMissingComputerFormFactorQuestion(userInput);
     const networkScopeQuestion = this.getMissingNetworkScopeQuestion(userInput);
+    const networkConnectionQuestion =
+      this.getMissingNetworkConnectionQuestion(userInput);
     const genericRequestQuestion =
       this.getMissingGenericRequestPrecisionQuestion(userInput);
 
@@ -665,6 +693,14 @@ export class SuggestTicketDraftUseCase {
       return {
         action: 'ASK_QUESTION',
         question: sideQuestionAnswer,
+        suggestion: null,
+      };
+    }
+
+    if (passwordAccessTargetQuestion) {
+      return {
+        action: 'ASK_QUESTION',
+        question: passwordAccessTargetQuestion,
         suggestion: null,
       };
     }
@@ -716,6 +752,28 @@ export class SuggestTicketDraftUseCase {
       return computerEquipmentRequestProgression;
     }
 
+    const requesterContextQuestion = this.getMissingRequesterContextQuestion(
+      requesterScope,
+      requesterName,
+      channelName,
+    );
+
+    if (passwordAccessIncident && requesterContextQuestion) {
+      return {
+        action: 'ASK_QUESTION',
+        question: requesterContextQuestion,
+        suggestion: null,
+      };
+    }
+
+    if (networkConnectionQuestion && !requesterContextQuestion) {
+      return {
+        action: 'ASK_QUESTION',
+        question: networkConnectionQuestion,
+        suggestion: null,
+      };
+    }
+
     if (
       troubleshootingQuestion &&
       !this.hasCompleteOtherRequesterContext(
@@ -739,12 +797,6 @@ export class SuggestTicketDraftUseCase {
       };
     }
 
-    const requesterContextQuestion = this.getMissingRequesterContextQuestion(
-      requesterScope,
-      requesterName,
-      channelName,
-    );
-
     if (requesterContextQuestion) {
       return {
         action: 'ASK_QUESTION',
@@ -759,9 +811,20 @@ export class SuggestTicketDraftUseCase {
       requesterName,
       channelName,
     );
+    const localNetworkWorkstationSuggestion =
+      this.getLocalNetworkWorkstationSuggestion(
+        userInput,
+        requesterScope,
+        requesterName,
+        channelName,
+      );
 
     if (simpleCableSuggestion) {
       return simpleCableSuggestion;
+    }
+
+    if (localNetworkWorkstationSuggestion) {
+      return localNetworkWorkstationSuggestion;
     }
 
     const suggestionContext = [userInput, parsed.title, parsed.description]
@@ -939,9 +1002,20 @@ export class SuggestTicketDraftUseCase {
       requesterName,
       channelName,
     );
+    const localNetworkWorkstationSuggestion =
+      this.getLocalNetworkWorkstationSuggestion(
+        conversation,
+        requesterScope,
+        requesterName,
+        channelName,
+      );
 
     if (simpleCableSuggestion) {
       return simpleCableSuggestion;
+    }
+
+    if (localNetworkWorkstationSuggestion) {
+      return localNetworkWorkstationSuggestion;
     }
 
     if (
@@ -1151,6 +1225,64 @@ export class SuggestTicketDraftUseCase {
             : this.normalizeTicketTitle(cableName, requesterName),
         type: TicketType.REQUEST,
         urgency: null,
+      },
+    };
+  }
+
+  private getLocalNetworkWorkstationSuggestion(
+    conversation: string,
+    requesterScope: 'SELF' | 'OTHER' | null,
+    requesterName: string | null,
+    channelName: string | null,
+  ): TicketDraftAssistantResponse | null {
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+    const hasLocalInternetIssue =
+      /\b(internet|reseau|connexion)\b/u.test(normalizedUserConversation) &&
+      /(mon poste|mon pc|ma machine|mon ordinateur|poste|pc)\b/u.test(
+        normalizedUserConversation,
+      ) &&
+      /(collegues|autour|autres|les autres|a cote)\b/u.test(
+        normalizedUserConversation,
+      );
+    const connectionType = /\b(wifi|wi-fi|sans fil)\b/u.test(
+      normalizedUserConversation,
+    )
+      ? 'Wi-Fi'
+      : /\b(ethernet|rj45|cable|branche)\b/u.test(normalizedUserConversation)
+        ? 'cable Ethernet'
+        : null;
+
+    if (!hasLocalInternetIssue || !connectionType || !requesterScope) {
+      return null;
+    }
+
+    if (requesterScope === 'OTHER' && (!requesterName || !channelName)) {
+      return null;
+    }
+
+    const requesterLabel =
+      requesterScope === 'OTHER' && requesterName
+        ? requesterName
+        : "l'utilisateur";
+
+    return {
+      action: 'SUGGEST_TICKET',
+      question: null,
+      suggestion: {
+        categoryName: 'Reseau',
+        channelName: requesterScope === 'SELF' ? 'Portail' : channelName,
+        confidence: 0.82,
+        description: `Depuis son poste, ${requesterLabel} n'a plus acces a Internet en ${connectionType}, alors que les collegues autour disposent bien de la connexion.`,
+        impact: IncidentSeverity.MEDIUM,
+        priorityName: PriorityName.MEDIUM,
+        requesterName: requesterScope === 'OTHER' ? requesterName : null,
+        requesterScope,
+        requestType: null,
+        title: `Absence d'acces Internet en ${connectionType} depuis le poste`,
+        type: TicketType.INCIDENT,
+        urgency: IncidentSeverity.MEDIUM,
       },
     };
   }
@@ -2316,6 +2448,11 @@ export class SuggestTicketDraftUseCase {
       conversation,
       'utilisateur',
     );
+    const questionAsksAbstractHrContactScope =
+      this.hasHrContactRequest(normalizedUserConversation) &&
+      /(structure|entite|direction|departement|service concerne|service rh|quelle rh|quel rh)/u.test(
+        normalizedQuestion,
+      );
 
     if (
       lastAssistantQuestion &&
@@ -2325,6 +2462,13 @@ export class SuggestTicketDraftUseCase {
       return (
         this.getNextRequesterContextQuestion(conversation) ??
         'Je prepare une proposition de ticket avec les informations deja donnees.'
+      );
+    }
+
+    if (questionAsksAbstractHrContactScope) {
+      return (
+        this.getNextRequesterContextQuestion(conversation) ??
+        "Vous cherchez le numero du service RH general ou celui d'une personne RH en particulier ?"
       );
     }
 
@@ -2746,6 +2890,41 @@ export class SuggestTicketDraftUseCase {
     return 'Est-ce que cela touche seulement votre poste, plusieurs personnes, ou tout le site ?';
   }
 
+  private getMissingNetworkConnectionQuestion(
+    conversation: string,
+  ): string | null {
+    const normalizedConversation = this.normalizeForMatching(conversation);
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+    const hasLocalInternetIssue =
+      /\b(internet|reseau|connexion)\b/u.test(normalizedUserConversation) &&
+      /(mon poste|mon pc|ma machine|mon ordinateur|poste|pc)\b/u.test(
+        normalizedUserConversation,
+      ) &&
+      /(collegues|autour|autres|les autres|a cote)\b/u.test(
+        normalizedUserConversation,
+      );
+    const hasConnectionType =
+      /\b(wifi|wi-fi|sans fil|ethernet|rj45|cable|branche)\b/u.test(
+        normalizedUserConversation,
+      );
+    const alreadyAskedConnectionType =
+      /(wifi|wi-fi|cable ethernet|ethernet|rj45|sans fil|connecte en cable|connecte en wifi)/u.test(
+        normalizedConversation,
+      );
+
+    if (
+      !hasLocalInternetIssue ||
+      hasConnectionType ||
+      alreadyAskedConnectionType
+    ) {
+      return null;
+    }
+
+    return 'Est-ce que votre poste est connecte en Wi-Fi ou avec un cable Ethernet ?';
+  }
+
   private hasWifiCableRequest(normalizedUserConversation: string): boolean {
     return (
       /\bcable\b/u.test(normalizedUserConversation) &&
@@ -2906,7 +3085,7 @@ export class SuggestTicketDraftUseCase {
       this.getUserConversationText(conversation),
     );
     const mentionsPasswordIssue =
-      /(mdp|mot de passe|password|connexion|connecter|login)/u.test(
+      /(mdp|mot de passe|password|connexion|connecter|login|identifiant|compte)/u.test(
         normalizedUserConversation,
       );
     const mentionsResettableAccount =
@@ -2964,16 +3143,61 @@ export class SuggestTicketDraftUseCase {
     return 'Avant de creer le ticket, pouvez-vous brancher le PC au chargeur/secteur, tester une autre prise si possible, puis attendre quelques minutes si la batterie etait vide ? Dites-moi ensuite ce que cela donne.';
   }
 
+  private getMissingPasswordAccessTargetQuestion(
+    conversation: string,
+  ): string | null {
+    const normalizedConversation = this.normalizeForMatching(conversation);
+    const normalizedUserConversation = this.normalizeForMatching(
+      this.getUserConversationText(conversation),
+    );
+    const mentionsPasswordOrLogin =
+      /(mdp|mot de passe|password|connexion|connecter|login|identifiant|compte)/u.test(
+        normalizedUserConversation,
+      );
+    const mentionsAccessFailure =
+      /(oublie|oublier|perdu|incorrect|invalide|erreur|marche pas|fonctionne pas|impossible|peut pas|n arrive pas|bloque|bloquee|refuse|refusee)/u.test(
+        normalizedUserConversation,
+      );
+
+    if (!mentionsPasswordOrLogin || !mentionsAccessFailure) {
+      return null;
+    }
+
+    if (this.mentionsCurrentVisionApplication(normalizedUserConversation)) {
+      return null;
+    }
+
+    const mentionsKnownTarget =
+      /(session pc|session windows|compte windows|windows|mon pc|mon ordinateur|ordinateur|poste|pc portable|pc du taf|pc travail|pc professionnel|\bpc\b|gmail|google|messagerie|email|mail|boite mail|application|appli|vpn|compte applicatif|office|microsoft|teams|sharepoint|sap|erp|crm)/u.test(
+        normalizedUserConversation,
+      );
+
+    if (mentionsKnownTarget) {
+      return null;
+    }
+
+    const alreadyAskedTarget =
+      /(de quel (?:compte|mot de passe|service)|session pc, messagerie|vpn, vision)/u.test(
+        normalizedConversation,
+      );
+
+    if (alreadyAskedTarget) {
+      return null;
+    }
+
+    return "De quel compte/service s'agit-il (session PC, messagerie, application, VPN, Vision ou autre) ?";
+  }
+
   private isPasswordAccessIncident(conversation: string): boolean {
     const normalizedConversation = this.normalizeForMatching(
       this.getUserConversationText(conversation),
     );
     const mentionsPasswordOrLogin =
-      /(mdp|mot de passe|password|connexion|connecter|login|identifiant)/u.test(
+      /(mdp|mot de passe|password|connexion|connecter|login|identifiant|compte)/u.test(
         normalizedConversation,
       );
     const mentionsAccessFailure =
-      /(oublie|oublier|perdu|marche pas|fonctionne pas|impossible|peut pas|n arrive pas|bloque|bloquee|refuse)/u.test(
+      /(oublie|oublier|perdu|incorrect|invalide|erreur|marche pas|fonctionne pas|impossible|peut pas|n arrive pas|bloque|bloquee|refuse|refusee)/u.test(
         normalizedConversation,
       );
 
@@ -3335,6 +3559,15 @@ export class SuggestTicketDraftUseCase {
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase();
+  }
+
+  private hasHrContactRequest(normalizedUserConversation: string): boolean {
+    return (
+      /\b(rh|ressources humaines)\b/u.test(normalizedUserConversation) &&
+      /\b(numero|num|telephone|tel|contact|coordonnees|appeler|joindre)\b/u.test(
+        normalizedUserConversation,
+      )
+    );
   }
 
   private getUserConversationText(conversation: string): string {

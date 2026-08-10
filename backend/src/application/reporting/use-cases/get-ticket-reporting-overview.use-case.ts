@@ -111,9 +111,7 @@ export class GetTicketReportingOverviewUseCase {
         resolved: countByStatus(scopedTickets, TicketStatus.RESOLVED),
         unassigned: scopedTickets.filter((ticket) => !ticket.assignedToUserId)
           .length,
-        responseOverdue: scopedTickets.filter(
-          (ticket) => ticket.responseSlaStatus === SlaIndicator.OVERDUE,
-        ).length,
+        responseOverdue: 0,
         resolutionOverdue: scopedTickets.filter(
           (ticket) => ticket.resolutionSlaStatus === SlaIndicator.OVERDUE,
         ).length,
@@ -276,20 +274,14 @@ function withoutArchivedTickets(tickets: TicketSummary[]): TicketSummary[] {
 }
 
 function isTicketOverdue(ticket: TicketSummary): boolean {
-  return (
-    ticket.responseSlaStatus === SlaIndicator.OVERDUE ||
-    ticket.resolutionSlaStatus === SlaIndicator.OVERDUE
-  );
+  return ticket.resolutionSlaStatus === SlaIndicator.OVERDUE;
 }
 
 function isSlaTtrOverdue(
   ticket: TicketSummary,
   entriesByTicketId: Map<string, TicketHistoryEntry[]>,
 ): boolean {
-  return (
-    ticket.responseSlaStatus === SlaIndicator.OVERDUE ||
-    isResolutionTtrOverdue(ticket, entriesByTicketId)
-  );
+  return isResolutionTtrOverdue(ticket, entriesByTicketId);
 }
 
 function isResolutionTtrOverdue(

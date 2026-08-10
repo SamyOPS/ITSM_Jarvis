@@ -223,10 +223,7 @@ function isTicketResolved(ticket: TicketSummary): boolean {
 }
 
 function isTicketOverdue(ticket: TicketSummary): boolean {
-  return (
-    ticket.responseSlaStatus === SlaIndicator.OVERDUE ||
-    ticket.resolutionSlaStatus === SlaIndicator.OVERDUE
-  );
+  return ticket.resolutionSlaStatus === SlaIndicator.OVERDUE;
 }
 
 function formatUserName(user: AdminUserSummary): string {

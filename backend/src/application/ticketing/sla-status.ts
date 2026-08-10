@@ -46,7 +46,11 @@ function getResolutionSlaStatus(
 
   if (ticket.status === TicketStatus.PENDING) {
     return ticket.slaPausedAt
-      ? getIndicator(ticket.createdAt, ticket.resolutionDueAt, new Date(ticket.slaPausedAt))
+      ? getIndicator(
+          ticket.createdAt,
+          ticket.resolutionDueAt,
+          new Date(ticket.slaPausedAt),
+        )
       : SlaIndicator.OK;
   }
 

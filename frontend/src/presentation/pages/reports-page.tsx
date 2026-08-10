@@ -3883,10 +3883,7 @@ function buildDashboardTimelineItems(
       current.closed += 1;
     }
 
-    if (
-      ticket.responseSlaStatus === 'OVERDUE' ||
-      ticket.resolutionSlaStatus === 'OVERDUE'
-    ) {
+    if (ticket.resolutionSlaStatus === 'OVERDUE') {
       current.overdue += 1;
     }
 
@@ -4754,9 +4751,7 @@ function buildSlaDistributionItems(
   tickets: TicketSummarySnapshot[],
 ): ReportingBreakdownItem[] {
   const overdueTotal = tickets.filter(
-    (ticket) =>
-      ticket.responseSlaStatus === 'OVERDUE' ||
-      ticket.resolutionSlaStatus === 'OVERDUE',
+    (ticket) => ticket.resolutionSlaStatus === 'OVERDUE',
   ).length;
 
   return buildSlaDistributionItemsFromCounts(

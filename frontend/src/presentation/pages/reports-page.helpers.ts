@@ -399,9 +399,7 @@ function getPersonalNextDueTimestamp(
     return personalToTimestamp(ticket.resolutionDueAt);
   }
 
-  return ticket.responseDueAt
-    ? personalToTimestamp(ticket.responseDueAt)
-    : Number.POSITIVE_INFINITY;
+  return Number.POSITIVE_INFINITY;
 }
 
 function personalToTimestamp(value: string): number {
@@ -529,7 +527,7 @@ export function getOverviewOverdueTotal(
     return totals.overdue;
   }
 
-  return Math.max(totals.responseOverdue ?? 0, totals.resolutionOverdue ?? 0);
+  return totals.resolutionOverdue ?? 0;
 }
 
 export function formatNumber(value: number | null | undefined): string {
