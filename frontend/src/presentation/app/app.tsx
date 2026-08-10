@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Settings, SlidersHorizontal, User, X } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import {
   fetchCurrentUser,
@@ -35,8 +34,6 @@ import { KnowledgePage } from '../pages/knowledge-page';
 import { LicensePage } from '../pages/license-page';
 import { MyEquipmentPage } from '../pages/my-equipment-page';
 import { ParkPage } from '../pages/park-page';
-import { PreferencesPage } from '../pages/preferences-page';
-import { ProfilePage } from '../pages/profile-page';
 import { ReportsPage } from '../pages/reports-page';
 import { RegisterPage } from '../pages/register-page';
 import { ResetPasswordPage } from '../pages/reset-password-page';
@@ -50,28 +47,6 @@ const accountModalPaths = new Set<string>([
   '/profile',
   '/settings',
 ]);
-
-const accountModalItems: readonly {
-  icon: LucideIcon;
-  label: string;
-  path: RoutePath;
-}[] = [
-  {
-    icon: User,
-    label: 'Profil',
-    path: '/profile',
-  },
-  {
-    icon: SlidersHorizontal,
-    label: 'Preferences',
-    path: '/preferences',
-  },
-  {
-    icon: Settings,
-    label: 'Parametres',
-    path: '/settings',
-  },
-];
 
 type RenderPageParams = {
   authErrorMessage: string | null;
@@ -275,9 +250,17 @@ function renderPage({
     case '/reports':
       return session ? <ReportsPage session={session} /> : <NotFoundPage />;
     case '/preferences':
-      return session ? <PreferencesPage session={session} /> : <NotFoundPage />;
+      return session ? (
+        <SettingsPage initialSection="notifications" session={session} />
+      ) : (
+        <NotFoundPage />
+      );
     case '/profile':
-      return session ? <ProfilePage session={session} /> : <NotFoundPage />;
+      return session ? (
+        <SettingsPage initialSection="account-info" session={session} />
+      ) : (
+        <NotFoundPage />
+      );
     case '/settings':
       return session ? <SettingsPage session={session} /> : <NotFoundPage />;
     case '/login':
@@ -304,11 +287,11 @@ function renderAccountModalContent(
 ): ReactNode {
   switch (pathname) {
     case '/preferences':
-      return <PreferencesPage session={session} />;
+      return <SettingsPage initialSection="notifications" session={session} />;
     case '/profile':
-      return <ProfilePage session={session} />;
+      return <SettingsPage initialSection="account-info" session={session} />;
     case '/settings':
-      return <SettingsPage session={session} />;
+      return <SettingsPage initialSection="account-info" session={session} />;
     default:
       return null;
   }
@@ -316,11 +299,10 @@ function renderAccountModalContent(
 
 interface AccountModalProps {
   children: ReactNode;
-  currentPath: string;
   onClose: () => void;
 }
 
-function AccountModal({ children, currentPath, onClose }: AccountModalProps) {
+function AccountModal({ children, onClose }: AccountModalProps) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
@@ -347,31 +329,6 @@ function AccountModal({ children, currentPath, onClose }: AccountModalProps) {
         onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
-        <aside className="account-modal-sidebar">
-          <span className="account-modal-sidebar-title">Compte</span>
-          <nav aria-label="Navigation compte" className="account-modal-nav">
-            {accountModalItems.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <button
-                  className={
-                    currentPath === item.path
-                      ? 'account-modal-nav-item is-active'
-                      : 'account-modal-nav-item'
-                  }
-                  key={item.path}
-                  onClick={() => navigateTo(item.path)}
-                  type="button"
-                >
-                  <Icon size={16} strokeWidth={2} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </aside>
-
         <button
           aria-label="Fermer"
           className="account-modal-close"
@@ -683,7 +640,7 @@ export function App() {
         sessionState,
       })}
       {isAccountModalRoute && session ? (
-        <AccountModal currentPath={pathname} onClose={handleCloseAccountModal}>
+        <AccountModal onClose={handleCloseAccountModal}>
           {renderAccountModalContent(pathname, session)}
         </AccountModal>
       ) : null}

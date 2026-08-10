@@ -6,9 +6,7 @@ import {
   LogOut,
   Plus,
   Settings,
-  SlidersHorizontal,
   Trash2,
-  User,
 } from 'lucide-react';
 import {
   canAccessRoute,
@@ -678,36 +676,12 @@ export function AppShell({
                       className="workspace-profile-menu-item"
                       onClick={() => {
                         setIsProfileMenuOpen(false);
-                        navigateTo('/profile');
-                      }}
-                      type="button"
-                    >
-                      <User size={16} strokeWidth={2} />
-                      <span>Profil</span>
-                    </button>
-
-                    <button
-                      className="workspace-profile-menu-item"
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
                         navigateTo('/settings');
                       }}
                       type="button"
                     >
                       <Settings size={16} strokeWidth={2} />
                       <span>Parametres</span>
-                    </button>
-
-                    <button
-                      className="workspace-profile-menu-item"
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
-                        navigateTo('/preferences');
-                      }}
-                      type="button"
-                    >
-                      <SlidersHorizontal size={16} strokeWidth={2} />
-                      <span>Preferences</span>
                     </button>
 
                     <div className="workspace-profile-menu-divider" />
