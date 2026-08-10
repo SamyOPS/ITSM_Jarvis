@@ -142,9 +142,7 @@ function VisualToggle({ enabled }: { enabled: boolean }) {
     <button
       aria-pressed={enabled}
       className={
-        enabled
-          ? 'settings-discord-toggle is-on'
-          : 'settings-discord-toggle'
+        enabled ? 'settings-discord-toggle is-on' : 'settings-discord-toggle'
       }
       type="button"
     >
@@ -292,7 +290,10 @@ export function SettingsPage({
                 </div>
                 <div className="settings-discord-pill-group">
                   {characteristics.map((characteristic) => (
-                    <span className="settings-discord-pill" key={characteristic}>
+                    <span
+                      className="settings-discord-pill"
+                      key={characteristic}
+                    >
                       {characteristic}
                     </span>
                   ))}
