@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bell,
   ChevronDown,
@@ -65,6 +65,18 @@ function getDisplayName(session: AuthSessionSnapshot): string {
   const parts = [session.user.firstName, session.user.lastName].filter(Boolean);
 
   return parts.length > 0 ? parts.join(' ') : session.user.email;
+}
+
+function getSettingsSectionGroup(sectionKey: SettingsSectionKey) {
+  return (
+    settingsNavGroups.find((group) =>
+      group.items.some((item) => item.key === sectionKey),
+    ) ?? settingsNavGroups[0]
+  );
+}
+
+function getVisibleSectionOrder(sectionKey: SettingsSectionKey) {
+  return getSettingsSectionGroup(sectionKey).items.map((item) => item.key);
 }
 
 function getCharacteristics(session: AuthSessionSnapshot): string[] {
@@ -177,12 +189,110 @@ export function SettingsPage({
   const [activeSection, setActiveSection] =
     useState<SettingsSectionKey>(initialSection);
   const [showPasswordUpdate, setShowPasswordUpdate] = useState(false);
+  const contentRef = useRef<HTMLElement | null>(null);
+  const isProgrammaticScrollRef = useRef(false);
   const displayName = getDisplayName(session);
   const characteristics = useMemo(() => getCharacteristics(session), [session]);
   const notificationItems = useMemo(
     () => buildNotificationItems(session),
     [session],
   );
+
+  useEffect(() => {
+    if (showPasswordUpdate) {
+      return;
+    }
+
+    const contentElement = contentRef.current;
+
+    if (!contentElement) {
+      return;
+    }
+
+    const handleScroll = () => {
+      if (isProgrammaticScrollRef.current) {
+        return;
+      }
+
+      const visibleSectionOrder = getVisibleSectionOrder(activeSection);
+      const scrollBottom =
+        contentElement.scrollTop + contentElement.clientHeight;
+      const isAtScrollEnd =
+        scrollBottom >= contentElement.scrollHeight - 8 &&
+        visibleSectionOrder.length > 0;
+
+      if (isAtScrollEnd) {
+        setActiveSection(visibleSectionOrder[visibleSectionOrder.length - 1]);
+        return;
+      }
+
+      const contentRect = contentElement.getBoundingClientRect();
+      const visibleCenter =
+        contentRect.top + contentElement.clientHeight * 0.42;
+      let nextActiveSection = visibleSectionOrder[0] ?? 'account-info';
+      let closestDistance = Number.POSITIVE_INFINITY;
+
+      for (const sectionKey of visibleSectionOrder) {
+        const sectionElement = contentElement.querySelector(
+          `[data-settings-section="${sectionKey}"]`,
+        );
+
+        if (!(sectionElement instanceof HTMLElement)) {
+          continue;
+        }
+
+        const sectionRect = sectionElement.getBoundingClientRect();
+        const sectionCenter = sectionRect.top + sectionRect.height * 0.38;
+        const distance = Math.abs(sectionCenter - visibleCenter);
+
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          nextActiveSection = sectionKey;
+        }
+      }
+
+      setActiveSection(nextActiveSection);
+    };
+
+    handleScroll();
+    contentElement.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => contentElement.removeEventListener('scroll', handleScroll);
+  }, [activeSection, showPasswordUpdate]);
+
+  function scrollToSection(sectionKey: SettingsSectionKey): void {
+    isProgrammaticScrollRef.current = true;
+    setShowPasswordUpdate(false);
+    setActiveSection(sectionKey);
+
+    window.setTimeout(() => {
+      const contentElement = contentRef.current;
+      const sectionElement = contentElement?.querySelector(
+        `[data-settings-section="${sectionKey}"]`,
+      );
+
+      if (!(contentElement instanceof HTMLElement)) {
+        isProgrammaticScrollRef.current = false;
+        return;
+      }
+
+      if (!(sectionElement instanceof HTMLElement)) {
+        contentElement.scrollTo({ top: 0, behavior: 'smooth' });
+        window.setTimeout(() => {
+          isProgrammaticScrollRef.current = false;
+        }, 360);
+        return;
+      }
+
+      contentElement.scrollTo({
+        top: sectionElement.offsetTop - 56,
+        behavior: 'smooth',
+      });
+      window.setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
+      }, 360);
+    }, 0);
+  }
 
   function renderContent() {
     if (showPasswordUpdate) {
@@ -230,181 +340,191 @@ export function SettingsPage({
       );
     }
 
-    switch (activeSection) {
-      case 'password-security':
-        return (
-          <section className="settings-discord-content-card">
-            <header className="settings-discord-section-header">
-              <h1>Mot de passe et securite</h1>
-              <p>Controle visuel des elements sensibles du compte.</p>
-            </header>
+    return getSettingsSectionGroup(activeSection).label === 'Preferences'
+      ? renderPreferenceSections()
+      : renderProfileSections();
+  }
 
-            <div className="settings-discord-list">
-              <div className="settings-discord-row settings-discord-password-row">
-                <ReadonlyField
-                  label="Mot de passe"
-                  type="password"
-                  value="************"
-                />
-                <button
-                  className="settings-discord-button"
-                  onClick={() => setShowPasswordUpdate(true)}
-                  type="button"
-                >
-                  Modifier
-                </button>
-              </div>
+  function renderProfileSections() {
+    return (
+      <div className="settings-discord-sections">
+        <section
+          className="settings-discord-content-card"
+          data-settings-section="account-info"
+        >
+          <header className="settings-discord-section-header">
+            <h1>Infos du compte</h1>
+            <p>Informations principales affichees dans le front.</p>
+          </header>
 
-              <div className="settings-discord-row">
-                <div>
-                  <strong>Connexion securisee</strong>
-                  <span>Protection active sur le compte utilisateur.</span>
-                </div>
-                <span className="settings-discord-pill is-success">Actif</span>
-              </div>
-            </div>
-          </section>
-        );
+          <div className="settings-discord-fields-grid">
+            <ReadonlyField label="Identifiant" value={displayName} />
+            <ReadonlyField label="Nom" value={session.user.lastName ?? ''} />
+            <ReadonlyField
+              label="Prenom"
+              value={session.user.firstName ?? ''}
+            />
+            <ReadonlyField label="Mail" value={session.user.email} />
+          </div>
+        </section>
 
-      case 'profile-extra':
-        return (
-          <section className="settings-discord-content-card">
-            <header className="settings-discord-section-header">
-              <h1>Infos complementaires</h1>
-              <p>Informations de profil affichees en lecture seule.</p>
-            </header>
+        <section
+          className="settings-discord-content-card"
+          data-settings-section="password-security"
+        >
+          <header className="settings-discord-section-header">
+            <h1>Mot de passe et securite</h1>
+            <p>Controle visuel des elements sensibles du compte.</p>
+          </header>
 
-            <div className="settings-discord-list">
-              <div className="settings-discord-row">
-                <div>
-                  <strong>Role actuel</strong>
-                  <span>{translateUserRole(session.user.role)}</span>
-                </div>
-                <ShieldCheck size={20} strokeWidth={2} />
-              </div>
-
-              <div className="settings-discord-row">
-                <div>
-                  <strong>Caracteristique</strong>
-                  <span>{characteristics.join(', ')}</span>
-                </div>
-                <div className="settings-discord-pill-group">
-                  {characteristics.map((characteristic) => (
-                    <span
-                      className="settings-discord-pill"
-                      key={characteristic}
-                    >
-                      {characteristic}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="settings-discord-row">
-                <div>
-                  <strong>Groupe d affectation</strong>
-                  <span>Non renseigne</span>
-                </div>
-                <Users size={20} strokeWidth={2} />
-              </div>
-            </div>
-          </section>
-        );
-
-      case 'notifications':
-        return (
-          <section className="settings-discord-content-card">
-            <header className="settings-discord-section-header">
-              <h1>Notification</h1>
-              <p>Preferences visuelles adaptees au role actuel.</p>
-            </header>
-
-            <div className="settings-discord-list">
-              {notificationItems.map((item) => (
-                <div className="settings-discord-row" key={item.title}>
-                  <div>
-                    <strong>{item.title}</strong>
-                    <span>{item.description}</span>
-                  </div>
-                  <VisualToggle enabled={item.enabled} />
-                </div>
-              ))}
-            </div>
-          </section>
-        );
-
-      case 'misc':
-        return (
-          <section className="settings-discord-content-card">
-            <header className="settings-discord-section-header">
-              <h1>Divers</h1>
-              <p>Reglages d affichage et de tri par defaut.</p>
-            </header>
-
-            <div className="settings-discord-list">
-              <label className="settings-discord-row settings-discord-select-row">
-                <div>
-                  <strong>Tri par defaut des tickets</strong>
-                  <span>Ordre applique aux listes de tickets.</span>
-                </div>
-                <span className="settings-discord-select">
-                  <select defaultValue="operational" disabled>
-                    <option value="operational">Priorite operationnelle</option>
-                    <option value="recent">Plus recent d abord</option>
-                    <option value="oldest">Plus ancien d abord</option>
-                    <option value="ttr">SLA le plus proche</option>
-                  </select>
-                  <ChevronDown size={16} strokeWidth={2} />
-                </span>
-              </label>
-
-              <label className="settings-discord-row settings-discord-select-row">
-                <div>
-                  <strong>Tri par defaut de la base de connaissances</strong>
-                  <span>Ordre applique aux articles et procedures.</span>
-                </div>
-                <span className="settings-discord-select">
-                  <select defaultValue="recent" disabled>
-                    <option value="recent">Plus recent d abord</option>
-                    <option value="popular">Plus consulte</option>
-                    <option value="alphabetical">Alphabetique</option>
-                  </select>
-                  <ChevronDown size={16} strokeWidth={2} />
-                </span>
-              </label>
-
-              <div className="settings-discord-row">
-                <div>
-                  <strong>Mode nuit</strong>
-                  <span>Theme sombre de l interface Vision.</span>
-                </div>
-                <VisualToggle enabled={false} />
-              </div>
-            </div>
-          </section>
-        );
-
-      case 'account-info':
-      default:
-        return (
-          <section className="settings-discord-content-card">
-            <header className="settings-discord-section-header">
-              <h1>Infos du compte</h1>
-              <p>Informations principales affichees dans le front.</p>
-            </header>
-
-            <div className="settings-discord-fields-grid">
-              <ReadonlyField label="Identifiant" value={displayName} />
-              <ReadonlyField label="Nom" value={session.user.lastName ?? ''} />
+          <div className="settings-discord-list">
+            <div className="settings-discord-row settings-discord-password-row">
               <ReadonlyField
-                label="Prenom"
-                value={session.user.firstName ?? ''}
+                label="Mot de passe"
+                type="password"
+                value="************"
               />
-              <ReadonlyField label="Mail" value={session.user.email} />
+              <button
+                className="settings-discord-button"
+                onClick={() => setShowPasswordUpdate(true)}
+                type="button"
+              >
+                Modifier
+              </button>
             </div>
-          </section>
-        );
-    }
+
+            <div className="settings-discord-row">
+              <div>
+                <strong>Connexion securisee</strong>
+                <span>Protection active sur le compte utilisateur.</span>
+              </div>
+              <span className="settings-discord-pill is-success">Actif</span>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="settings-discord-content-card"
+          data-settings-section="profile-extra"
+        >
+          <header className="settings-discord-section-header">
+            <h1>Infos complementaires</h1>
+            <p>Informations de profil affichees en lecture seule.</p>
+          </header>
+
+          <div className="settings-discord-list">
+            <div className="settings-discord-row">
+              <div>
+                <strong>Role actuel</strong>
+                <span>{translateUserRole(session.user.role)}</span>
+              </div>
+              <ShieldCheck size={20} strokeWidth={2} />
+            </div>
+
+            <div className="settings-discord-row">
+              <div>
+                <strong>Caracteristique</strong>
+                <span>{characteristics.join(', ')}</span>
+              </div>
+              <div className="settings-discord-pill-group">
+                {characteristics.map((characteristic) => (
+                  <span className="settings-discord-pill" key={characteristic}>
+                    {characteristic}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="settings-discord-row">
+              <div>
+                <strong>Groupe d affectation</strong>
+                <span>Non renseigne</span>
+              </div>
+              <Users size={20} strokeWidth={2} />
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  function renderPreferenceSections() {
+    return (
+      <div className="settings-discord-sections">
+        <section
+          className="settings-discord-content-card"
+          data-settings-section="notifications"
+        >
+          <header className="settings-discord-section-header">
+            <h1>Notification</h1>
+            <p>Preferences visuelles adaptees au role actuel.</p>
+          </header>
+
+          <div className="settings-discord-list">
+            {notificationItems.map((item) => (
+              <div className="settings-discord-row" key={item.title}>
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>{item.description}</span>
+                </div>
+                <VisualToggle enabled={item.enabled} />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section
+          className="settings-discord-content-card"
+          data-settings-section="misc"
+        >
+          <header className="settings-discord-section-header">
+            <h1>Divers</h1>
+            <p>Reglages d affichage et de tri par defaut.</p>
+          </header>
+
+          <div className="settings-discord-list">
+            <label className="settings-discord-row settings-discord-select-row">
+              <div>
+                <strong>Tri par defaut des tickets</strong>
+                <span>Ordre applique aux listes de tickets.</span>
+              </div>
+              <span className="settings-discord-select">
+                <select defaultValue="operational" disabled>
+                  <option value="operational">Priorite operationnelle</option>
+                  <option value="recent">Plus recent d abord</option>
+                  <option value="oldest">Plus ancien d abord</option>
+                  <option value="ttr">SLA le plus proche</option>
+                </select>
+                <ChevronDown size={16} strokeWidth={2} />
+              </span>
+            </label>
+
+            <label className="settings-discord-row settings-discord-select-row">
+              <div>
+                <strong>Tri par defaut de la base de connaissances</strong>
+                <span>Ordre applique aux articles et procedures.</span>
+              </div>
+              <span className="settings-discord-select">
+                <select defaultValue="recent" disabled>
+                  <option value="recent">Plus recent d abord</option>
+                  <option value="popular">Plus consulte</option>
+                  <option value="alphabetical">Alphabetique</option>
+                </select>
+                <ChevronDown size={16} strokeWidth={2} />
+              </span>
+            </label>
+
+            <div className="settings-discord-row">
+              <div>
+                <strong>Mode nuit</strong>
+                <span>Theme sombre de l interface Vision.</span>
+              </div>
+              <VisualToggle enabled={false} />
+            </div>
+          </div>
+        </section>
+      </div>
+    );
   }
 
   return (
@@ -432,10 +552,7 @@ export function SettingsPage({
                       : 'settings-discord-nav-item'
                   }
                   key={item.key}
-                  onClick={() => {
-                    setShowPasswordUpdate(false);
-                    setActiveSection(item.key);
-                  }}
+                  onClick={() => scrollToSection(item.key)}
                   type="button"
                 >
                   {item.key === 'account-info' ? (
@@ -459,7 +576,9 @@ export function SettingsPage({
         </nav>
       </aside>
 
-      <main className="settings-discord-content">{renderContent()}</main>
+      <main className="settings-discord-content" ref={contentRef}>
+        {renderContent()}
+      </main>
     </section>
   );
 }
