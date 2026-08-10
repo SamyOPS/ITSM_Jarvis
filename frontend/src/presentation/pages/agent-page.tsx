@@ -306,6 +306,12 @@ const INITIAL_ATTACHMENT_DRAFT: AttachmentDraftState = {
 const TICKET_ATTACHMENTS_BUCKET_ID = 'ticket-attachments';
 const AI_DRAFT_MAX_ATTACHMENT_COUNT = 10;
 const AI_DRAFT_MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
+const AI_DRAFT_SUPPORTED_IMAGE_MIME_TYPES = new Set([
+  'image/gif',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
 const INCIDENT_LOOKUP_PAGE_SIZE = 10;
 const TICKETS_PER_PAGE = 15;
 const TICKET_SORT_OPTIONS = [
@@ -325,6 +331,74 @@ const TICKET_SORT_OPTIONS = [
     icon: ArrowUp,
   },
 ];
+
+function replaceFileExtension(fileName: string, extension: string): string {
+  const normalizedExtension = extension.replace(/^\./, '');
+  const trimmedFileName = fileName.trim();
+  const baseName = trimmedFileName
+    ? trimmedFileName.replace(/\.[^/.]+$/, '')
+    : 'image';
+
+  return `${baseName || 'image'}.${normalizedExtension}`;
+}
+
+async function convertImageFileToPng(file: File): Promise<File> {
+  if (typeof createImageBitmap !== 'function') {
+    return file;
+  }
+
+  let imageBitmap: ImageBitmap | null = null;
+
+  try {
+    imageBitmap = await createImageBitmap(file);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = imageBitmap.width;
+    canvas.height = imageBitmap.height;
+
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+      return file;
+    }
+
+    context.drawImage(imageBitmap, 0, 0);
+
+    const pngBlob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, 'image/png');
+    });
+
+    if (!pngBlob) {
+      return file;
+    }
+
+    return new File([pngBlob], replaceFileExtension(file.name, 'png'), {
+      lastModified: file.lastModified,
+      type: 'image/png',
+    });
+  } catch {
+    return file;
+  } finally {
+    imageBitmap?.close();
+  }
+}
+
+async function prepareFileForAiDraft(file: File): Promise<File> {
+  const mimeType = file.type.toLowerCase();
+
+  if (
+    !mimeType.startsWith('image/') ||
+    AI_DRAFT_SUPPORTED_IMAGE_MIME_TYPES.has(mimeType)
+  ) {
+    return file;
+  }
+
+  return convertImageFileToPng(file);
+}
+
+async function prepareFilesForAiDraft(files: File[]): Promise<File[]> {
+  return Promise.all(files.map(prepareFileForAiDraft));
+}
 
 export function AgentPage({ section, session, ticketId }: AgentPageProps) {
   const [catalog, setCatalog] =
@@ -2046,13 +2120,17 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setIsSuggestingDraft(true);
 
     try {
+      const attachmentsForAiDraft = await prepareFilesForAiDraft(
+        nextAiConversationFiles,
+      );
+
       const assistantResponse = await suggestTicketDraft(session.accessToken, {
         categories: incidentCategoryOptions.map((category) => category.name),
         channels: aiChannelNames,
         currentMode: mode,
         priorities: catalog.priorities.map((priority) => priority.name),
         requesters: aiRequesterNames,
-        attachments: nextAiConversationFiles,
+        attachments: attachmentsForAiDraft,
         userInput: [
           nextMessages
             .map((message) =>

@@ -404,7 +404,14 @@ export class SuggestTicketDraftUseCase {
   }
 
   private isImageMimeType(mimeType: string): boolean {
-    return mimeType.toLowerCase().startsWith('image/');
+    const normalizedMimeType = mimeType.toLowerCase();
+
+    return (
+      normalizedMimeType === 'image/gif' ||
+      normalizedMimeType === 'image/jpeg' ||
+      normalizedMimeType === 'image/png' ||
+      normalizedMimeType === 'image/webp'
+    );
   }
 
   private extractText(response: OpenAiResponse): string {
