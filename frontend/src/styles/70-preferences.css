@@ -478,7 +478,7 @@
 .settings-discord-content {
   min-width: 0;
   min-height: 0;
-  padding: 58px clamp(32px, 5vw, 78px) 140px;
+  padding: 58px clamp(32px, 5vw, 78px) 56px;
   overflow-y: auto;
   background: #ffffff;
   scrollbar-color: rgba(100, 116, 139, 0.28) transparent;
@@ -490,7 +490,7 @@
   display: grid;
   gap: 52px;
   width: min(760px, 100%);
-  padding-bottom: 18vh;
+  padding-bottom: 24px;
 }
 
 .settings-discord-content-card {
@@ -582,6 +582,13 @@
   border-bottom: 0;
 }
 
+.settings-discord-row-before-panel {
+  min-height: 54px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  border-bottom: 0;
+}
+
 .settings-discord-row > div {
   display: grid;
   gap: 5px;
@@ -598,6 +605,23 @@
   color: #64748b;
   font-size: 0.86rem;
   line-height: 1.4;
+}
+
+.settings-discord-row-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  color: #17335f;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.settings-discord-row-value svg {
+  flex: none;
+  color: #17335f;
 }
 
 .settings-discord-button {
@@ -642,8 +666,12 @@
 .settings-discord-pill-group {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
+}
+
+.settings-discord-pill-group .admin-user-capability-badge {
+  padding-inline: 10px;
 }
 
 .settings-discord-pill {
@@ -665,6 +693,61 @@
   border-color: rgba(22, 163, 74, 0.22);
   background: #ecfdf5;
   color: #15803d;
+}
+
+.settings-discord-groups-panel {
+  display: grid;
+  gap: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #e7edf5;
+}
+
+.settings-discord-groups-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-discord-groups-header h2 {
+  margin: 0;
+  color: #09285a;
+  font-size: 0.98rem;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.settings-discord-groups-scroll .ticket-table {
+  min-width: 620px;
+}
+
+.settings-discord-groups-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.settings-discord-groups-table th,
+.settings-discord-groups-table td {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  word-break: normal;
+  vertical-align: middle;
+}
+
+.settings-discord-groups-table th:nth-child(1),
+.settings-discord-groups-table td:nth-child(1) {
+  width: 30%;
+}
+
+.settings-discord-groups-table th:nth-child(2),
+.settings-discord-groups-table td:nth-child(2) {
+  width: 25%;
+}
+
+.settings-discord-groups-table th:nth-child(3),
+.settings-discord-groups-table td:nth-child(3) {
+  width: 45%;
 }
 
 .settings-discord-toggle {

@@ -1,6 +1,6 @@
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { UserRole } from '../../domain/auth/user-role';
-import { ArrowUpDown, History, type LucideIcon } from 'lucide-react';
+import { ArrowUpDown, type LucideIcon } from 'lucide-react';
 import type {
   ReferentialCatalogSnapshot,
   ReferentialGroup,
@@ -19,18 +19,6 @@ export const USER_SORT_OPTIONS: Array<{
   label: string;
   value: UserSortOption;
 }> = [
-  {
-    description: 'Appliquer ce tri',
-    icon: History,
-    label: "Plus recents d'abord",
-    value: 'CREATED_AT_DESC',
-  },
-  {
-    description: 'Appliquer ce tri',
-    icon: History,
-    label: "Plus anciens d'abord",
-    value: 'CREATED_AT_ASC',
-  },
   {
     description: 'Appliquer ce tri',
     icon: ArrowUpDown,
