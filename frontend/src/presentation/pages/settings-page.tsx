@@ -51,6 +51,11 @@ type AssignmentGroupDisplay = Pick<
   'description' | 'id' | 'name'
 >;
 
+type AccountCharacteristicDisplay = {
+  label: string;
+  tone: 'assets' | 'kb' | 'vip';
+};
+
 const settingsNavGroups: readonly SettingsNavGroup[] = [
   {
     label: 'Profil',
@@ -87,19 +92,28 @@ function getVisibleSectionOrder(sectionKey: SettingsSectionKey) {
   return getSettingsSectionGroup(sectionKey).items.map((item) => item.key);
 }
 
-function getCharacteristics(session: AuthSessionSnapshot): string[] {
-  const characteristics = [session.user.isVip ? 'VIP' : 'Standard'];
+function getCharacteristics(
+  user: AdminUserSummary | AuthSessionSnapshot['user'],
+): AccountCharacteristicDisplay[] {
+  const characteristics: AccountCharacteristicDisplay[] = [];
+  const canShowTechnicalCharacteristics =
+    user.role !== 'DEMANDEUR' &&
+    user.role !== 'ADMIN' &&
+    user.role !== 'SUPER_ADMIN';
 
-  if (session.user.canManageAssets) {
-    characteristics.push('Parc info');
+  if (user.isVip) {
+    characteristics.push({ label: 'VIP', tone: 'vip' });
   }
 
-  if (session.user.canManageKnowledgeBase) {
-    characteristics.push('Base de connaissances');
+  if (canShowTechnicalCharacteristics && user.canManageAssets) {
+    characteristics.push({ label: 'Parc', tone: 'assets' });
   }
 
-  if (session.user.canValidateKnowledgeBase) {
-    characteristics.push('Validation KB');
+  if (
+    canShowTechnicalCharacteristics &&
+    (user.canManageKnowledgeBase || user.canValidateKnowledgeBase)
+  ) {
+    characteristics.push({ label: 'Base co.', tone: 'kb' });
   }
 
   return characteristics;
@@ -215,7 +229,13 @@ export function SettingsPage({
   const contentRef = useRef<HTMLElement | null>(null);
   const isProgrammaticScrollRef = useRef(false);
   const displayName = getDisplayName(session);
-  const characteristics = useMemo(() => getCharacteristics(session), [session]);
+  const sessionUserCharacteristics = useMemo(
+    () => getCharacteristics(session.user),
+    [session.user],
+  );
+  const [characteristics, setCharacteristics] = useState(
+    () => sessionUserCharacteristics,
+  );
   const sessionUserGroupIds = useMemo(() => {
     const groupIds = session.user.groupIds ?? [];
 
@@ -260,10 +280,16 @@ export function SettingsPage({
         });
 
         if (isMounted) {
+          setCharacteristics(
+            directoryUser
+              ? getCharacteristics(directoryUser)
+              : sessionUserCharacteristics,
+          );
           setAssignmentGroups(nextGroups);
         }
       } catch {
         if (isMounted) {
+          setCharacteristics(sessionUserCharacteristics);
           setAssignmentGroups([]);
         }
       } finally {
@@ -278,7 +304,12 @@ export function SettingsPage({
     return () => {
       isMounted = false;
     };
-  }, [session.accessToken, session.user.id, sessionUserGroupIds]);
+  }, [
+    session.accessToken,
+    session.user.id,
+    sessionUserCharacteristics,
+    sessionUserGroupIds,
+  ]);
 
   useEffect(() => {
     if (showPasswordUpdate) {
@@ -510,11 +541,18 @@ export function SettingsPage({
                 <strong>Caracteristique</strong>
               </div>
               <div className="settings-discord-pill-group">
-                {characteristics.map((characteristic) => (
-                  <span className="settings-discord-pill" key={characteristic}>
-                    {characteristic}
-                  </span>
-                ))}
+                {characteristics.length > 0 ? (
+                  characteristics.map((characteristic) => (
+                    <span
+                      className={`admin-user-capability-badge admin-user-capability-badge--${characteristic.tone}`}
+                      key={characteristic.label}
+                    >
+                      {characteristic.label}
+                    </span>
+                  ))
+                ) : (
+                  <small className="admin-user-capability-empty">Aucune</small>
+                )}
               </div>
             </div>
 
