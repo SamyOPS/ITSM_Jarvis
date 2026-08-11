@@ -564,6 +564,18 @@
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.settings-discord-readonly-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.settings-discord-readonly-value {
+  color: #17335f;
+  font-size: 1.08rem;
+  font-weight: 400;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .settings-discord-email-actions {
   display: flex;
   align-items: center;
@@ -602,7 +614,7 @@
 
 .settings-discord-field span {
   color: #12315c;
-  font-size: 0.84rem;
+  font-size: 0.92rem;
   font-weight: 650;
 }
 
@@ -630,9 +642,9 @@
 
 .settings-profile-photo-section h2 {
   margin: 0;
-  color: #071f45;
-  font-size: 1rem;
-  font-weight: 600;
+  color: #12315c;
+  font-size: 0.92rem;
+  font-weight: 650;
   letter-spacing: 0;
 }
 
@@ -888,8 +900,8 @@
 
 .settings-discord-groups-header h2 {
   margin: 0;
-  color: #09285a;
-  font-size: 0.98rem;
+  color: #12315c;
+  font-size: 0.92rem;
   font-weight: 650;
   line-height: 1.25;
   letter-spacing: 0;

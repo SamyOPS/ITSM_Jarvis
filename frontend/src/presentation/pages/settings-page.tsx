@@ -228,9 +228,6 @@ async function createCroppedProfilePhotoBlob(
 
   context.clearRect(0, 0, size, size);
   context.save();
-  context.beginPath();
-  context.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-  context.clip();
   const previewToCanvasScale = size / PROFILE_PHOTO_EDITOR_CROP_SIZE;
 
   context.translate(
@@ -905,21 +902,23 @@ export function SettingsPage({
             />
           </div>
 
-          <div className="settings-discord-fields-grid">
-            <ReadonlyField label="Nom" value={session.user.lastName ?? ''} />
-            <ReadonlyField
-              label="Prenom"
-              value={session.user.firstName ?? ''}
-            />
-          </div>
-
-          <div className="settings-discord-save-row">
-            <button
-              className="primary-button admin-user-save-button"
-              type="button"
-            >
-              Enregistrer
-            </button>
+          <div className="settings-discord-list">
+            <div className="settings-discord-row settings-discord-readonly-row">
+              <div>
+                <strong>Nom</strong>
+              </div>
+              <span className="settings-discord-readonly-value">
+                {session.user.lastName ?? '-'}
+              </span>
+            </div>
+            <div className="settings-discord-row settings-discord-readonly-row">
+              <div>
+                <strong>Prenom</strong>
+              </div>
+              <span className="settings-discord-readonly-value">
+                {session.user.firstName ?? '-'}
+              </span>
+            </div>
           </div>
         </section>
 
@@ -1240,7 +1239,7 @@ export function SettingsPage({
               <span>Importer une photo</span>
             </button>
             <button
-              className="settings-profile-photo-choice is-muted"
+              className="settings-profile-photo-choice"
               onClick={handleEditCurrentProfilePhoto}
               type="button"
             >
