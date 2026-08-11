@@ -16,6 +16,7 @@ export type AdminUserSummary = {
   isActive: boolean;
   isVip?: boolean;
   lastName: string | null;
+  profilePhotoUrl?: string | null;
   role: UserRole;
   updatedAt?: string | null;
 };

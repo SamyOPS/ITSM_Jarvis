@@ -15,5 +15,6 @@ export type AdminUserSummary = {
   canManageKnowledgeBase?: boolean;
   canValidateKnowledgeBase?: boolean;
   lastName: string | null;
+  profilePhotoUrl?: string | null;
   role: UserRole;
 };

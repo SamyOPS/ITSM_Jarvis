@@ -9,6 +9,7 @@ import {
   AdminUserWriteRepository,
   type CreateAdminUserRecord,
   type UpdateAdminUserRecord,
+  type UpdateUserProfilePhotoRecord,
 } from '../../application/auth/repositories/admin-user-write.repository';
 import { type AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import {
@@ -40,6 +41,7 @@ type SupabaseUserRow = {
   is_active: boolean;
   is_vip: boolean | null;
   last_name: string | null;
+  profile_photo_url: string | null;
   role: string;
 };
 
@@ -164,6 +166,52 @@ export class SupabaseAdminUserWriteRepository implements AdminUserWriteRepositor
     }
 
     return updatedUser;
+  }
+
+  async updateUserProfilePhoto(
+    userId: string,
+    record: UpdateUserProfilePhotoRecord,
+  ): Promise<AdminUserSummary> {
+    const config = getBackendRuntimeConfig();
+    const supabaseApiKey = config.supabaseServiceRoleKey;
+
+    if (!config.supabaseUrl || !supabaseApiKey) {
+      throw new ServiceUnavailableException(
+        'Supabase profile photo configuration is incomplete.',
+      );
+    }
+
+    await upsertUserProfilePhoto(config.supabaseUrl, supabaseApiKey, {
+      ...record,
+      userId,
+    });
+
+    return updatePublicUserProfilePhoto(
+      config.supabaseUrl,
+      supabaseApiKey,
+      userId,
+      record.publicUrl,
+    );
+  }
+
+  async deleteUserProfilePhoto(userId: string): Promise<AdminUserSummary> {
+    const config = getBackendRuntimeConfig();
+    const supabaseApiKey = config.supabaseServiceRoleKey;
+
+    if (!config.supabaseUrl || !supabaseApiKey) {
+      throw new ServiceUnavailableException(
+        'Supabase profile photo configuration is incomplete.',
+      );
+    }
+
+    await deleteUserProfilePhoto(config.supabaseUrl, supabaseApiKey, userId);
+
+    return updatePublicUserProfilePhoto(
+      config.supabaseUrl,
+      supabaseApiKey,
+      userId,
+      null,
+    );
   }
 
   async updateUserStatus(
@@ -638,7 +686,7 @@ async function getPublicUserById(
     id: `eq.${userId}`,
     limit: '1',
     select:
-      'id,email,display_name,first_name,last_name,role,group_id,is_active,account_status,is_vip,can_manage_assets,can_manage_knowledge_base,can_validate_knowledge_base',
+      'id,email,display_name,first_name,last_name,role,group_id,is_active,account_status,is_vip,can_manage_assets,can_manage_knowledge_base,can_validate_knowledge_base,profile_photo_url',
   });
 
   let response: Response;
@@ -674,6 +722,136 @@ async function getPublicUserById(
   }
 
   return row;
+}
+
+async function upsertUserProfilePhoto(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  record: UpdateUserProfilePhotoRecord & { userId: string },
+): Promise<void> {
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/user_profile_photos?on_conflict=user_id`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=merge-duplicates',
+        },
+        body: JSON.stringify({
+          bucket_id: record.bucketId,
+          mime_type: record.mimeType,
+          public_url: record.publicUrl,
+          size_bytes: record.sizeBytes,
+          storage_path: record.storagePath,
+          user_id: record.userId,
+        }),
+      },
+    );
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase profile photo metadata update is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase profile photo metadata update returned status ${response.status}.`,
+    );
+  }
+}
+
+async function deleteUserProfilePhoto(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+): Promise<void> {
+  const query = new URLSearchParams({
+    user_id: `eq.${userId}`,
+  });
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/user_profile_photos?${query.toString()}`,
+      {
+        method: 'DELETE',
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+        },
+      },
+    );
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase profile photo metadata deletion is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase profile photo metadata deletion returned status ${response.status}.`,
+    );
+  }
+}
+
+async function updatePublicUserProfilePhoto(
+  supabaseUrl: string,
+  supabaseApiKey: string,
+  userId: string,
+  profilePhotoUrl: string | null,
+): Promise<AdminUserSummary> {
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: supabaseApiKey,
+          Authorization: `Bearer ${supabaseApiKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation',
+        },
+        body: JSON.stringify({
+          profile_photo_url: profilePhotoUrl,
+        }),
+      },
+    );
+  } catch {
+    throw new ServiceUnavailableException(
+      'Supabase public user profile photo update is unreachable.',
+    );
+  }
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new BadRequestException(
+      message ||
+        `Supabase public user profile photo update returned status ${response.status}.`,
+    );
+  }
+
+  const payload = (await response.json()) as SupabaseUserRow[];
+  const row = payload[0];
+
+  if (!row) {
+    throw new BadRequestException('User does not exist.');
+  }
+
+  return mapUserRow(row, row.email);
 }
 
 async function replaceUserGroups(
@@ -1381,6 +1559,7 @@ function mapUserRow(
     canManageKnowledgeBase: Boolean(row.can_manage_knowledge_base),
     canValidateKnowledgeBase: Boolean(row.can_validate_knowledge_base),
     lastName: row.last_name,
+    profilePhotoUrl: row.profile_photo_url,
     role: resolveUserRole(row.role),
   };
 }

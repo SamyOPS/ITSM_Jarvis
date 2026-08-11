@@ -17,6 +17,7 @@ type SupabaseAdminUserRow = {
   is_active: boolean;
   is_vip: boolean | null;
   last_name: string | null;
+  profile_photo_url: string | null;
   role: string;
 };
 
@@ -48,7 +49,7 @@ export class SupabaseAdminUserReadRepository implements AdminUserReadRepository 
     const query = new URLSearchParams({
       order: 'display_name.asc.nullslast,role.asc',
       select:
-        'id,display_name,first_name,last_name,role,group_id,is_active,account_status,is_vip,can_manage_assets,can_manage_knowledge_base,can_validate_knowledge_base',
+        'id,display_name,first_name,last_name,role,group_id,is_active,account_status,is_vip,can_manage_assets,can_manage_knowledge_base,can_validate_knowledge_base,profile_photo_url',
     });
 
     let response: Response;
@@ -104,6 +105,7 @@ export class SupabaseAdminUserReadRepository implements AdminUserReadRepository 
       canManageKnowledgeBase: Boolean(row.can_manage_knowledge_base),
       canValidateKnowledgeBase: Boolean(row.can_validate_knowledge_base),
       lastName: row.last_name,
+      profilePhotoUrl: row.profile_photo_url,
       role: resolveUserRole(row.role),
     }));
   }

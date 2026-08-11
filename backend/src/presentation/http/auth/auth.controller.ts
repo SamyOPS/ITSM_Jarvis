@@ -37,6 +37,7 @@ import { RegisterRequesterUseCase } from '../../../application/auth/use-cases/re
 import { UpdateAdminUserUseCase } from '../../../application/auth/use-cases/update-admin-user.use-case';
 import { UpdateAdminUserGroupsUseCase } from '../../../application/auth/use-cases/update-admin-user-groups.use-case';
 import { UpdateAdminUserStatusUseCase } from '../../../application/auth/use-cases/update-admin-user-status.use-case';
+import { UpdateUserProfilePhotoUseCase } from '../../../application/auth/use-cases/update-user-profile-photo.use-case';
 import { UpdateUserLicenseUseCase } from '../../../application/auth/use-cases/update-user-license.use-case';
 import { type AdminUserSummary } from '../../../domain/auth/admin-user-summary';
 import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
@@ -160,6 +161,24 @@ class UpdateAdminUserGroupsDto {
   groupIds!: string[];
 }
 
+class UpdateUserProfilePhotoDto {
+  @IsString()
+  bucketId!: string;
+
+  @IsString()
+  mimeType!: string;
+
+  @IsString()
+  publicUrl!: string;
+
+  @IsInt()
+  @Min(1)
+  sizeBytes!: number;
+
+  @IsString()
+  storagePath!: string;
+}
+
 class RegisterRequesterDto {
   @IsEmail()
   email!: string;
@@ -192,6 +211,7 @@ export class AuthController {
     private readonly updateAdminUserUseCase: UpdateAdminUserUseCase,
     private readonly updateAdminUserGroupsUseCase: UpdateAdminUserGroupsUseCase,
     private readonly updateAdminUserStatusUseCase: UpdateAdminUserStatusUseCase,
+    private readonly updateUserProfilePhotoUseCase: UpdateUserProfilePhotoUseCase,
     private readonly updateUserLicenseUseCase: UpdateUserLicenseUseCase,
   ) {}
 
@@ -216,6 +236,30 @@ export class AuthController {
   @UseGuards(BearerAuthGuard)
   getCurrentUser(@CurrentUser() user: AuthenticatedUser): AuthenticatedUser {
     return user;
+  }
+
+  @Patch('me/profile-photo')
+  @UseGuards(BearerAuthGuard)
+  updateOwnProfilePhoto(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: UpdateUserProfilePhotoDto,
+  ): Promise<AdminUserSummary> {
+    return this.updateUserProfilePhotoUseCase.update({
+      bucketId: body.bucketId,
+      mimeType: body.mimeType,
+      publicUrl: body.publicUrl,
+      sizeBytes: body.sizeBytes,
+      storagePath: body.storagePath,
+      userId: user.id,
+    });
+  }
+
+  @Delete('me/profile-photo')
+  @UseGuards(BearerAuthGuard)
+  deleteOwnProfilePhoto(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<AdminUserSummary> {
+    return this.updateUserProfilePhotoUseCase.delete(user.id);
   }
 
   @Get('agent-area')

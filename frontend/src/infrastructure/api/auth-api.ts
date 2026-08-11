@@ -6,6 +6,9 @@ import type { AuthSetupSnapshot } from '../../domain/auth/auth-setup';
 import type { UserRole } from '../../domain/auth/user-role';
 import { getFrontendRuntimeConfig } from '../config/env';
 import { getFrontendSupabaseConfig } from '../config/supabase-env';
+import { encodeStoragePath } from './ticketing-api.helpers';
+
+export const PROFILE_PHOTO_BUCKET_ID = 'profile-photos';
 
 export async function fetchAuthSetup(): Promise<AuthSetupSnapshot> {
   const { apiUrl } = getFrontendRuntimeConfig();
@@ -199,6 +202,14 @@ export type UpdateAdminUserPayload = {
   role: UserRole;
 };
 
+export type UpdateProfilePhotoPayload = {
+  bucketId: string;
+  mimeType: string;
+  publicUrl: string;
+  sizeBytes: number;
+  storagePath: string;
+};
+
 export type UserLicenseSnapshot = {
   billableActiveUsers: number;
   maxBillableUsers: number | null;
@@ -276,6 +287,119 @@ export async function updateAdminUser(
 
     throw new Error(
       message || `Admin user update failed with status ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as AdminUserSummary;
+}
+
+export async function uploadProfilePhotoBinary(
+  accessToken: string,
+  storagePath: string,
+  file: Blob,
+): Promise<string> {
+  const supabaseConfig = getFrontendSupabaseConfig();
+  const encodedPath = encodeStoragePath(storagePath);
+  const response = await fetch(
+    `${supabaseConfig.url}/storage/v1/object/${PROFILE_PHOTO_BUCKET_ID}/${encodedPath}`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: supabaseConfig.anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': file.type || 'image/png',
+        'x-upsert': 'false',
+      },
+      body: file,
+    },
+  );
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message || `Profile photo upload failed with status ${response.status}`,
+    );
+  }
+
+  return `${supabaseConfig.url}/storage/v1/object/public/${PROFILE_PHOTO_BUCKET_ID}/${encodedPath}`;
+}
+
+export async function deleteProfilePhotoBinary(
+  accessToken: string,
+  storagePaths: string[],
+): Promise<void> {
+  if (storagePaths.length === 0) {
+    return;
+  }
+
+  const supabaseConfig = getFrontendSupabaseConfig();
+  const response = await fetch(
+    `${supabaseConfig.url}/storage/v1/object/${PROFILE_PHOTO_BUCKET_ID}`,
+    {
+      method: 'DELETE',
+      headers: {
+        apikey: supabaseConfig.anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prefixes: storagePaths }),
+    },
+  );
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message || `Profile photo deletion failed with status ${response.status}`,
+    );
+  }
+}
+
+export async function updateProfilePhoto(
+  accessToken: string,
+  payload: UpdateProfilePhotoPayload,
+): Promise<AdminUserSummary> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/auth/me/profile-photo`, {
+    method: 'PATCH',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message || `Profile photo update failed with status ${response.status}`,
+    );
+  }
+
+  return (await response.json()) as AdminUserSummary;
+}
+
+export async function deleteProfilePhoto(
+  accessToken: string,
+): Promise<AdminUserSummary> {
+  const { apiUrl } = getFrontendRuntimeConfig();
+  const response = await fetch(`${apiUrl}/auth/me/profile-photo`, {
+    method: 'DELETE',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+
+    throw new Error(
+      message ||
+        `Profile photo metadata deletion failed with status ${response.status}`,
     );
   }
 

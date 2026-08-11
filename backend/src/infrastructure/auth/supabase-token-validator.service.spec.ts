@@ -56,6 +56,7 @@ describe('SupabaseTokenValidatorService', () => {
       id: 'user-1',
       isVip: false,
       lastName: 'Martin',
+      profilePhotoUrl: null,
       role: UserRole.ADMIN,
     });
   });
@@ -91,6 +92,7 @@ describe('SupabaseTokenValidatorService', () => {
       id: 'user-2',
       isVip: false,
       lastName: null,
+      profilePhotoUrl: null,
       role: UserRole.AGENT,
     });
   });

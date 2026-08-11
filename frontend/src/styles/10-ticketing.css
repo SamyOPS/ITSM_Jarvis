@@ -4101,6 +4101,13 @@ p.ticket-form-helper {
   font-weight: 800;
   letter-spacing: 0.02em;
   flex: none;
+  overflow: hidden;
+}
+
+.workspace-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .workspace-profile-avatar-label {

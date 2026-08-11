@@ -29,6 +29,14 @@ export type UpdateAdminUserRecord = {
   role: UserRole;
 };
 
+export type UpdateUserProfilePhotoRecord = {
+  bucketId: string;
+  mimeType: string;
+  publicUrl: string;
+  sizeBytes: number;
+  storagePath: string;
+};
+
 export abstract class AdminUserWriteRepository {
   abstract createUser(record: CreateAdminUserRecord): Promise<AdminUserSummary>;
 
@@ -48,4 +56,11 @@ export abstract class AdminUserWriteRepository {
     userId: string,
     record: UpdateAdminUserRecord,
   ): Promise<AdminUserSummary>;
+
+  abstract updateUserProfilePhoto(
+    userId: string,
+    record: UpdateUserProfilePhotoRecord,
+  ): Promise<AdminUserSummary>;
+
+  abstract deleteUserProfilePhoto(userId: string): Promise<AdminUserSummary>;
 }

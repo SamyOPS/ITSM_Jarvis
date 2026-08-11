@@ -436,7 +436,7 @@ export function AppShell({
         </nav>
 
         <div className="workspace-sidebar-footer">
-          <strong>{session?.user.email ?? 'Session locale'}</strong>
+          <strong>{userDisplayName}</strong>
           <span>{session?.user.role ?? 'Aucun role'}</span>
         </div>
       </aside>
@@ -639,9 +639,13 @@ export function AppShell({
                 type="button"
               >
                 <span className="workspace-profile-avatar">
-                  <span className="workspace-profile-avatar-label">
-                    {userInitials}
-                  </span>
+                  {session?.user.profilePhotoUrl ? (
+                    <img alt="" src={session.user.profilePhotoUrl} />
+                  ) : (
+                    <span className="workspace-profile-avatar-label">
+                      {userInitials}
+                    </span>
+                  )}
                 </span>
                 <ChevronDown
                   className={isProfileMenuOpen ? 'is-open' : ''}
@@ -654,7 +658,11 @@ export function AppShell({
                 <div className="workspace-profile-menu-popover">
                   <div className="workspace-profile-menu-header">
                     <span className="workspace-profile-avatar is-large">
-                      {userInitials}
+                      {session?.user.profilePhotoUrl ? (
+                        <img alt="" src={session.user.profilePhotoUrl} />
+                      ) : (
+                        userInitials
+                      )}
                     </span>
                     <div>
                       <span className="workspace-profile-menu-identity">

@@ -54,6 +54,7 @@ type RenderPageParams = {
   onLogin: (email: string, password: string) => Promise<void>;
   onPasswordResetRequest: (email: string) => Promise<void>;
   onPasswordUpdated: () => void;
+  onSessionUpdated: (session: AuthSessionSnapshot) => void;
   pathname: string;
   session: AuthSessionSnapshot | null;
   sessionState: SessionState;
@@ -65,6 +66,7 @@ function renderPage({
   onLogin,
   onPasswordResetRequest,
   onPasswordUpdated,
+  onSessionUpdated,
   pathname,
   session,
   sessionState,
@@ -251,18 +253,30 @@ function renderPage({
       return session ? <ReportsPage session={session} /> : <NotFoundPage />;
     case '/preferences':
       return session ? (
-        <SettingsPage initialSection="notifications" session={session} />
+        <SettingsPage
+          initialSection="notifications"
+          onSessionUpdated={onSessionUpdated}
+          session={session}
+        />
       ) : (
         <NotFoundPage />
       );
     case '/profile':
       return session ? (
-        <SettingsPage initialSection="account-info" session={session} />
+        <SettingsPage
+          initialSection="account-info"
+          onSessionUpdated={onSessionUpdated}
+          session={session}
+        />
       ) : (
         <NotFoundPage />
       );
     case '/settings':
-      return session ? <SettingsPage session={session} /> : <NotFoundPage />;
+      return session ? (
+        <SettingsPage onSessionUpdated={onSessionUpdated} session={session} />
+      ) : (
+        <NotFoundPage />
+      );
     case '/login':
       return (
         <LoginPage
@@ -284,14 +298,33 @@ function renderPage({
 function renderAccountModalContent(
   pathname: string,
   session: AuthSessionSnapshot,
+  onSessionUpdated: (session: AuthSessionSnapshot) => void,
 ): ReactNode {
   switch (pathname) {
     case '/preferences':
-      return <SettingsPage initialSection="notifications" session={session} />;
+      return (
+        <SettingsPage
+          initialSection="notifications"
+          onSessionUpdated={onSessionUpdated}
+          session={session}
+        />
+      );
     case '/profile':
-      return <SettingsPage initialSection="account-info" session={session} />;
+      return (
+        <SettingsPage
+          initialSection="account-info"
+          onSessionUpdated={onSessionUpdated}
+          session={session}
+        />
+      );
     case '/settings':
-      return <SettingsPage initialSection="account-info" session={session} />;
+      return (
+        <SettingsPage
+          initialSection="account-info"
+          onSessionUpdated={onSessionUpdated}
+          session={session}
+        />
+      );
     default:
       return null;
   }
@@ -588,6 +621,12 @@ export function App() {
     setSessionState('anonymous');
   }
 
+  function handleSessionUpdated(nextSession: AuthSessionSnapshot): void {
+    storeAuthSession(nextSession);
+    setSession(nextSession);
+    setSessionState('authenticated');
+  }
+
   function handleLogout(): void {
     clearStoredAuthSession();
     setAuthErrorMessage(null);
@@ -635,13 +674,14 @@ export function App() {
         onLogin: handleLogin,
         onPasswordResetRequest: handlePasswordResetRequest,
         onPasswordUpdated: handlePasswordUpdated,
+        onSessionUpdated: handleSessionUpdated,
         pathname: backgroundPath,
         session,
         sessionState,
       })}
       {isAccountModalRoute && session ? (
         <AccountModal onClose={handleCloseAccountModal}>
-          {renderAccountModalContent(pathname, session)}
+          {renderAccountModalContent(pathname, session, handleSessionUpdated)}
         </AccountModal>
       ) : null}
     </AppShell>
