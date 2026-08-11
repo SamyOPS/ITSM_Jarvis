@@ -10,6 +10,7 @@ import { UpdateAdminUserUseCase } from '../../../application/auth/use-cases/upda
 import { UpdateAdminUserGroupsUseCase } from '../../../application/auth/use-cases/update-admin-user-groups.use-case';
 import { UpdateAdminUserStatusUseCase } from '../../../application/auth/use-cases/update-admin-user-status.use-case';
 import { UpdateUserLicenseUseCase } from '../../../application/auth/use-cases/update-user-license.use-case';
+import { UpdateUserProfilePhotoUseCase } from '../../../application/auth/use-cases/update-user-profile-photo.use-case';
 import { UserRole } from '../../../domain/auth/user-role';
 import { AuthController } from './auth.controller';
 
@@ -83,6 +84,13 @@ describe('AuthController', () => {
           provide: UpdateUserLicenseUseCase,
           useValue: {
             execute: jest.fn(),
+          },
+        },
+        {
+          provide: UpdateUserProfilePhotoUseCase,
+          useValue: {
+            delete: jest.fn(),
+            update: jest.fn(),
           },
         },
       ],

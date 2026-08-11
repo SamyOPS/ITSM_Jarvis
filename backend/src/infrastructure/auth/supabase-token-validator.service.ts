@@ -187,7 +187,7 @@ export class SupabaseTokenValidatorService {
         'ACTIVE',
       isVip: Boolean(row.is_vip),
       lastName: row.last_name,
-      profilePhotoUrl: row.profile_photo_url,
+      profilePhotoUrl: row.profile_photo_url ?? null,
       role: row.role ? this.resolveRoleFallback(row.role) : null,
     };
   }
