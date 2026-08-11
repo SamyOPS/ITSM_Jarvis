@@ -183,10 +183,10 @@ const REQUESTER_TICKET_COLUMNS: PersonalTicketColumn[] = [
 ];
 
 const PERSONAL_TICKET_COLUMN_LABELS: Record<PersonalTicketColumn, string> = {
-  ASSIGNED_TO: 'AssignÃ© Ã ',
-  CATEGORY: 'CatÃ©gorie',
+  ASSIGNED_TO: 'Assigné à',
+  CATEGORY: 'Catégorie',
   ID: 'ID',
-  PRIORITY: 'PrioritÃ©',
+  PRIORITY: 'Priorité',
   REQUESTER: 'Demandeur',
   STATUS: 'Statut',
   TITLE: 'Titre',
@@ -207,7 +207,7 @@ const PERSONAL_TICKET_SORT_OPTIONS = [
   {
     icon: BadgeAlert,
 
-    label: 'PrioritÃ© opÃ©rationnelle',
+    label: 'Priorité opérationnelle',
 
     value: 'OPERATIONAL_PRIORITY' as const,
   },
@@ -215,7 +215,7 @@ const PERSONAL_TICKET_SORT_OPTIONS = [
   {
     icon: ArrowDown,
 
-    label: "Plus rÃ©cents d'abord",
+    label: "Plus récents d'abord",
 
     value: 'CREATED_AT_DESC' as const,
   },
@@ -1119,7 +1119,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
               navigateTo(`/agent/tickets/${ticketId}?from=reports-personal`)
             }
             prioritiesById={personalPrioritiesById}
-            title="Mes tickets demandÃ©s"
+            title="Mes tickets demandés"
             tickets={requesterTickets}
             users={users}
           />
@@ -1527,7 +1527,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
               navigateTo(`/agent/tickets/${ticketId}?from=reports-personal`)
             }
             prioritiesById={personalPrioritiesById}
-            title="AssignÃ©s Ã  moi"
+            title="Assignés à moi"
             tickets={assignedToMeTickets}
             users={users}
           />
@@ -1540,7 +1540,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
               navigateTo(`/agent/tickets/${ticketId}?from=reports-personal`)
             }
             prioritiesById={personalPrioritiesById}
-            title="Mes tickets demandÃ©s"
+            title="Mes tickets demandés"
             tickets={requesterTickets}
             users={users}
           />
@@ -1830,7 +1830,7 @@ function PersonalTicketPanel({
 
                           <span>
                             {sortBy === option.value
-                              ? 'SÃ©lection actuelle'
+                              ? 'Sélection actuelle'
                               : 'Appliquer ce tri'}
                           </span>
                         </span>
@@ -1847,7 +1847,7 @@ function PersonalTicketPanel({
       {isLoading ? (
         <p className="personal-panel-empty">Chargement des tickets...</p>
       ) : tickets.length === 0 ? (
-        <p className="personal-panel-empty">Aucun ticket Ã afficher.</p>
+        <p className="personal-panel-empty">Aucun ticket à afficher.</p>
       ) : (
         <div className="personal-table-scroll">
           <div className="personal-ticket-viewport">
@@ -1934,7 +1934,7 @@ function renderPersonalTicketCell({
       return formatAssignedUserName(ticket.assignedToUserId, users);
 
     case 'CATEGORY':
-      return categoriesById?.get(ticket.categoryId)?.name ?? 'Non renseignÃ©';
+      return categoriesById?.get(ticket.categoryId)?.name ?? 'Non renseigné';
 
     case 'ID':
       return formatTicketDisplayNumber(ticket);
@@ -1943,7 +1943,7 @@ function renderPersonalTicketCell({
       return translatePriority(
         ticket.priorityName ??
           prioritiesById.get(ticket.priorityId)?.name ??
-          'Non renseignÃ©',
+          'Non renseigné',
       );
 
     case 'REQUESTER':
@@ -1995,12 +1995,12 @@ function PersonalEquipmentPanel({
   return (
     <article className="personal-panel personal-equipment-panel">
       <header className="personal-panel-header">
-        <h3>Mon Ã©quipement</h3>
+        <h3>Mon équipement</h3>
 
         <div className="ticket-list-count" aria-live="polite">
           <strong>{equipment.length}</strong>
 
-          <span>Ã©quipements</span>
+          <span>équipements</span>
         </div>
       </header>
 
@@ -2015,16 +2015,16 @@ function PersonalEquipmentPanel({
 
                 <th>Type</th>
 
-                <th>ModÃ¨le</th>
+                <th>Modèle</th>
 
-                <th>NumÃ©ro de sÃ©rie</th>
+                <th>Numéro de série</th>
               </tr>
             </thead>
 
             <tbody>
               {visibleEquipment.length === 0 ? (
                 <tr className="personal-equipment-empty-row">
-                  <td colSpan={5}>Aucun Ã©quipement Ã afficher.</td>
+                  <td colSpan={5}>Aucun équipement à afficher.</td>
                 </tr>
               ) : (
                 visibleEquipment.map((item) => (
@@ -2386,7 +2386,7 @@ function GroupTicketPanel({
 
                   <th>Statut</th>
 
-                  {showPriority ? <th>PrioritÃ©</th> : null}
+                  {showPriority ? <th>Priorité</th> : null}
 
                   <th>Demandeur</th>
 
@@ -2429,7 +2429,7 @@ function GroupTicketPanel({
                         {translatePriority(
                           ticket.priorityName ??
                             prioritiesById.get(ticket.priorityId)?.name ??
-                            'Non renseignÃ©',
+                            'Non renseigné',
                         )}
                       </td>
                     ) : null}

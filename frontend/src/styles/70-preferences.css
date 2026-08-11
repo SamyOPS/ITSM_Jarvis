@@ -304,6 +304,7 @@
 }
 
 .settings-discord-page {
+  position: relative;
   display: grid;
   grid-template-columns: 270px minmax(0, 1fr);
   width: 100%;
@@ -532,12 +533,59 @@
   gap: 14px;
 }
 
+.settings-discord-list {
+  gap: 0;
+}
+
 .settings-discord-password-row {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .settings-discord-password-row .settings-discord-field {
   width: min(420px, 100%);
+}
+
+.settings-discord-security-field-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.settings-discord-security-field-row .settings-discord-field {
+  width: min(420px, 100%);
+}
+
+.settings-discord-email-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.settings-discord-email-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.settings-discord-email-value {
+  color: #17335f;
+  font-size: 1.08rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.settings-discord-inline-action {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #2b6de9;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-discord-inline-action:hover {
+  color: #0f3d8a;
+  text-decoration: underline;
 }
 
 .settings-discord-field {
@@ -568,13 +616,18 @@
   opacity: 1;
 }
 
+.settings-discord-save-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .settings-discord-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 18px;
-  min-height: 72px;
-  padding: 16px 0;
+  min-height: 74px;
+  padding: 17px 0;
   border-bottom: 1px solid #e7edf5;
 }
 
@@ -583,9 +636,9 @@
 }
 
 .settings-discord-row-before-panel {
-  min-height: 54px;
-  padding-top: 6px;
-  padding-bottom: 6px;
+  min-height: 74px;
+  padding-top: 17px;
+  padding-bottom: 17px;
   border-bottom: 0;
 }
 
@@ -593,6 +646,10 @@
   display: grid;
   gap: 5px;
   min-width: 0;
+}
+
+.settings-discord-row > .settings-discord-email-actions {
+  display: flex;
 }
 
 .settings-discord-row strong {
@@ -665,9 +722,14 @@
 
 .settings-discord-pill-group {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.settings-discord-row > .settings-discord-pill-group {
+  display: flex;
 }
 
 .settings-discord-pill-group .admin-user-capability-badge {
@@ -823,6 +885,104 @@
   right: 12px;
   color: #64748b;
   pointer-events: none;
+}
+
+.settings-email-verification-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 18, 34, 0.42);
+}
+
+.settings-email-verification-dialog {
+  display: grid;
+  gap: 18px;
+  width: min(460px, 100%);
+  padding: 24px;
+  border: 1px solid rgba(181, 197, 224, 0.95);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(8, 18, 34, 0.28);
+}
+
+.settings-email-verification-dialog header {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-email-verification-dialog h2 {
+  margin: 0;
+  color: #071f45;
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.settings-email-verification-dialog p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.settings-email-verification-current {
+  padding: 12px 14px;
+  border: 1px solid #d8e0eb;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #17335f;
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.settings-email-verification-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.settings-email-verification-actions .primary-button {
+  justify-content: center;
+  width: 100%;
+}
+
+.settings-password-update-dialog {
+  position: relative;
+  width: min(760px, 100%);
+}
+
+.settings-password-update-dialog .settings-discord-password-form {
+  gap: 16px;
+}
+
+.settings-password-update-dialog .settings-discord-field input {
+  min-height: 44px;
+}
+
+.settings-password-update-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.settings-password-update-close:hover {
+  background: #edf2f8;
+  color: #12315c;
 }
 
 .vision-overlay-scroll-locked {
@@ -1030,10 +1190,17 @@
   }
 
   .settings-discord-row,
+  .settings-discord-email-row,
   .settings-discord-password-row,
   .settings-discord-select-row {
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
+  }
+
+  .settings-discord-email-actions {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .settings-discord-select {

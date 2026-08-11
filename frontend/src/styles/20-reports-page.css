@@ -498,14 +498,15 @@
 
   .personal-ticket-panel .personal-ticket-viewport,
   .personal-equipment-panel .personal-equipment-viewport {
-    width: 760px;
+    width: 100%;
+    min-width: 760px;
     max-width: none;
     overflow-x: visible;
   }
 
   .personal-ticket-table {
-    width: 760px;
     min-width: 760px;
+    width: 100%;
     table-layout: auto;
   }
 
@@ -547,6 +548,7 @@
 
   .personal-ticket-table {
     min-width: 620px;
+    width: 100%;
   }
 
   .personal-ticket-panel .app-pagination,
