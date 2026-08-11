@@ -11,6 +11,7 @@ import { RegisterRequesterUseCase } from './auth/use-cases/register-requester.us
 import { UpdateAdminUserUseCase } from './auth/use-cases/update-admin-user.use-case';
 import { UpdateAdminUserGroupsUseCase } from './auth/use-cases/update-admin-user-groups.use-case';
 import { UpdateAdminUserStatusUseCase } from './auth/use-cases/update-admin-user-status.use-case';
+import { UpdateUserProfilePhotoUseCase } from './auth/use-cases/update-user-profile-photo.use-case';
 import { UpdateUserLicenseUseCase } from './auth/use-cases/update-user-license.use-case';
 import { TicketNotificationService } from './notifications/ticket-notification.service';
 import { DeleteNotificationUseCase } from './notifications/use-cases/delete-notification.use-case';
@@ -157,6 +158,7 @@ const notificationUseCases = [
     UpdateAdminUserUseCase,
     UpdateAdminUserGroupsUseCase,
     UpdateAdminUserStatusUseCase,
+    UpdateUserProfilePhotoUseCase,
     UpdateUserLicenseUseCase,
     GetAgentPerformanceReportUseCase,
     GetTicketReportingBreakdownUseCase,
@@ -180,6 +182,7 @@ const notificationUseCases = [
     UpdateAdminUserUseCase,
     UpdateAdminUserGroupsUseCase,
     UpdateAdminUserStatusUseCase,
+    UpdateUserProfilePhotoUseCase,
     UpdateUserLicenseUseCase,
     GetAgentPerformanceReportUseCase,
     GetTicketReportingBreakdownUseCase,

@@ -12,5 +12,6 @@ export interface AuthenticatedUser {
   id: string;
   isVip?: boolean;
   lastName: string | null;
+  profilePhotoUrl?: string | null;
   role: UserRole;
 }

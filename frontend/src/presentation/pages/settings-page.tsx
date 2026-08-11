@@ -1,12 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type PointerEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Bell,
   ChevronDown,
+  Pencil,
   ListFilter,
   Lock,
+  RotateCcw,
+  RotateCw,
   ShieldCheck,
   SlidersHorizontal,
+  Trash2,
+  Upload,
   User,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
@@ -17,7 +31,14 @@ import {
   isSupportManagerRole,
   isSupportRole,
 } from '../../domain/auth/user-role';
-import { fetchUserDirectory } from '../../infrastructure/api/auth-api';
+import {
+  deleteProfilePhoto,
+  deleteProfilePhotoBinary,
+  fetchUserDirectory,
+  PROFILE_PHOTO_BUCKET_ID,
+  updateProfilePhoto,
+  uploadProfilePhotoBinary,
+} from '../../infrastructure/api/auth-api';
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
 
 type SettingsSectionKey =
@@ -29,6 +50,7 @@ type SettingsSectionKey =
 
 interface SettingsPageProps {
   initialSection?: SettingsSectionKey;
+  onSessionUpdated?: (session: AuthSessionSnapshot) => void;
   session: AuthSessionSnapshot;
 }
 
@@ -55,6 +77,25 @@ type AccountCharacteristicDisplay = {
   label: string;
   tone: 'assets' | 'kb' | 'vip';
 };
+
+type ProfilePhotoDialogMode = 'choice' | 'editor' | null;
+type ProfilePhotoOffset = {
+  x: number;
+  y: number;
+};
+
+const PROFILE_PHOTO_MAX_SIZE_BYTES = 10 * 1024 * 1024;
+const PROFILE_PHOTO_CANVAS_SIZE = 512;
+const PROFILE_PHOTO_EDITOR_CROP_SIZE = 224;
+const PROFILE_PHOTO_EDITOR_BASE_SIZE = PROFILE_PHOTO_EDITOR_CROP_SIZE;
+const PROFILE_PHOTO_EDITOR_CURRENT_BASE_SIZE = PROFILE_PHOTO_EDITOR_CROP_SIZE;
+const PROFILE_PHOTO_MIN_ZOOM = 1;
+const PROFILE_PHOTO_MAX_ZOOM = 3;
+const SUPPORTED_PROFILE_PHOTO_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+]);
 
 const settingsNavGroups: readonly SettingsNavGroup[] = [
   {
@@ -141,6 +182,112 @@ function maskEmail(email: string): string {
   }
 
   return `${'*'.repeat(Math.max(8, localPart.length))}@${domain}`;
+}
+
+function validateProfilePhotoFile(file: File): string | null {
+  if (!SUPPORTED_PROFILE_PHOTO_TYPES.has(file.type)) {
+    return 'Choisissez une image JPEG, PNG ou GIF.';
+  }
+
+  if (file.size > PROFILE_PHOTO_MAX_SIZE_BYTES) {
+    return 'L image ne doit pas depasser 10 Mo.';
+  }
+
+  return null;
+}
+
+function loadImage(source: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+
+    image.crossOrigin = 'anonymous';
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Impossible de charger l image.'));
+    image.src = source;
+  });
+}
+
+async function createCroppedProfilePhotoBlob(
+  imageSource: string,
+  zoom: number,
+  rotation: number,
+  offset: ProfilePhotoOffset,
+  editorBaseSize: number,
+): Promise<Blob> {
+  const image = await loadImage(imageSource);
+  const size = PROFILE_PHOTO_CANVAS_SIZE;
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+
+  canvas.width = size;
+  canvas.height = size;
+
+  if (!context) {
+    throw new Error('Le recadrage de l image est indisponible.');
+  }
+
+  context.clearRect(0, 0, size, size);
+  context.save();
+  context.beginPath();
+  context.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+  context.clip();
+  const previewToCanvasScale = size / PROFILE_PHOTO_EDITOR_CROP_SIZE;
+
+  context.translate(
+    size / 2 + offset.x * previewToCanvasScale,
+    size / 2 + offset.y * previewToCanvasScale,
+  );
+  context.rotate((rotation * Math.PI) / 180);
+
+  const previewBaseScale =
+    (editorBaseSize / image.naturalWidth) * previewToCanvasScale * zoom;
+  const coverScale = previewBaseScale;
+  const drawWidth = image.naturalWidth * coverScale;
+  const drawHeight = image.naturalHeight * coverScale;
+
+  context.drawImage(
+    image,
+    -drawWidth / 2,
+    -drawHeight / 2,
+    drawWidth,
+    drawHeight,
+  );
+  context.restore();
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Impossible de preparer la photo de profil.'));
+        return;
+      }
+
+      resolve(blob);
+    }, 'image/png');
+  });
+}
+
+function buildProfilePhotoStoragePath(userId: string): string {
+  const randomId =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+  return `${userId}/${randomId}.png`;
+}
+
+function extractProfilePhotoStoragePath(url: string | null | undefined) {
+  if (!url) {
+    return null;
+  }
+
+  const marker = `/storage/v1/object/public/${PROFILE_PHOTO_BUCKET_ID}/`;
+  const markerIndex = url.indexOf(marker);
+
+  if (markerIndex === -1) {
+    return null;
+  }
+
+  return decodeURIComponent(url.slice(markerIndex + marker.length));
 }
 
 function buildNotificationItems(
@@ -230,6 +377,7 @@ function ReadonlyField({
 
 export function SettingsPage({
   initialSection = 'account-info',
+  onSessionUpdated,
   session,
 }: SettingsPageProps) {
   const [activeSection, setActiveSection] =
@@ -242,7 +390,36 @@ export function SettingsPage({
   const [isEmailVisible, setIsEmailVisible] = useState(false);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [showPasswordUpdate, setShowPasswordUpdate] = useState(false);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState(
+    () => session.user.profilePhotoUrl ?? null,
+  );
+  const [profilePhotoDialogMode, setProfilePhotoDialogMode] =
+    useState<ProfilePhotoDialogMode>(null);
+  const [profilePhotoDraftUrl, setProfilePhotoDraftUrl] = useState<
+    string | null
+  >(null);
+  const [profilePhotoEditorBaseSize, setProfilePhotoEditorBaseSize] = useState(
+    PROFILE_PHOTO_EDITOR_BASE_SIZE,
+  );
+  const [profilePhotoZoom, setProfilePhotoZoom] = useState(
+    PROFILE_PHOTO_MIN_ZOOM,
+  );
+  const [profilePhotoRotation, setProfilePhotoRotation] = useState(0);
+  const [profilePhotoOffset, setProfilePhotoOffset] =
+    useState<ProfilePhotoOffset>({ x: 0, y: 0 });
+  const [profilePhotoError, setProfilePhotoError] = useState<string | null>(
+    null,
+  );
+  const [isSavingProfilePhoto, setIsSavingProfilePhoto] = useState(false);
   const contentRef = useRef<HTMLElement | null>(null);
+  const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
+  const profilePhotoDragRef = useRef<{
+    originX: number;
+    originY: number;
+    pointerId: number;
+    startX: number;
+    startY: number;
+  } | null>(null);
   const isProgrammaticScrollRef = useRef(false);
   const displayName = getDisplayName(session);
   const sessionUserCharacteristics = useMemo(
@@ -266,6 +443,18 @@ export function SettingsPage({
     () => buildNotificationItems(session),
     [session],
   );
+
+  useEffect(() => {
+    setProfilePhotoUrl(session.user.profilePhotoUrl ?? null);
+  }, [session.user.profilePhotoUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (profilePhotoDraftUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(profilePhotoDraftUrl);
+      }
+    };
+  }, [profilePhotoDraftUrl]);
 
   useEffect(() => {
     let isMounted = true;
@@ -429,6 +618,225 @@ export function SettingsPage({
       : renderProfileSections();
   }
 
+  function updateSessionProfilePhoto(nextProfilePhotoUrl: string | null): void {
+    onSessionUpdated?.({
+      ...session,
+      user: {
+        ...session.user,
+        profilePhotoUrl: nextProfilePhotoUrl,
+      },
+    });
+  }
+
+  function resetProfilePhotoEditor(
+    nextDraftUrl: string | null,
+    editorBaseSize = PROFILE_PHOTO_EDITOR_BASE_SIZE,
+  ): void {
+    setProfilePhotoDraftUrl((currentDraftUrl) => {
+      if (
+        currentDraftUrl?.startsWith('blob:') &&
+        currentDraftUrl !== nextDraftUrl
+      ) {
+        URL.revokeObjectURL(currentDraftUrl);
+      }
+
+      return nextDraftUrl;
+    });
+    setProfilePhotoEditorBaseSize(editorBaseSize);
+    setProfilePhotoZoom(PROFILE_PHOTO_MIN_ZOOM);
+    setProfilePhotoRotation(0);
+    setProfilePhotoOffset({ x: 0, y: 0 });
+  }
+
+  function openProfilePhotoPicker(): void {
+    setProfilePhotoError(null);
+    profilePhotoInputRef.current?.click();
+  }
+
+  function openProfilePhotoChoice(): void {
+    if (profilePhotoUrl) {
+      setProfilePhotoDialogMode('choice');
+      return;
+    }
+
+    openProfilePhotoPicker();
+  }
+
+  function handleProfilePhotoFileSelection(fileList: FileList | null): void {
+    const file = fileList?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const validationError = validateProfilePhotoFile(file);
+
+    if (validationError) {
+      setProfilePhotoError(validationError);
+      return;
+    }
+
+    resetProfilePhotoEditor(
+      URL.createObjectURL(file),
+      PROFILE_PHOTO_EDITOR_BASE_SIZE,
+    );
+    setProfilePhotoError(null);
+    setProfilePhotoDialogMode('editor');
+
+    if (profilePhotoInputRef.current) {
+      profilePhotoInputRef.current.value = '';
+    }
+  }
+
+  function handleEditCurrentProfilePhoto(): void {
+    if (!profilePhotoUrl) {
+      openProfilePhotoPicker();
+      return;
+    }
+
+    resetProfilePhotoEditor(
+      profilePhotoUrl,
+      PROFILE_PHOTO_EDITOR_CURRENT_BASE_SIZE,
+    );
+    setProfilePhotoError(null);
+    setProfilePhotoDialogMode('editor');
+  }
+
+  async function handleSaveProfilePhoto(): Promise<void> {
+    if (!profilePhotoDraftUrl) {
+      return;
+    }
+
+    setIsSavingProfilePhoto(true);
+    setProfilePhotoError(null);
+
+    try {
+      const blob = await createCroppedProfilePhotoBlob(
+        profilePhotoDraftUrl,
+        profilePhotoZoom,
+        profilePhotoRotation,
+        profilePhotoOffset,
+        profilePhotoEditorBaseSize,
+      );
+      const storagePath = buildProfilePhotoStoragePath(session.user.id);
+      const publicUrl = await uploadProfilePhotoBinary(
+        session.accessToken,
+        storagePath,
+        blob,
+      );
+      const previousStoragePath =
+        extractProfilePhotoStoragePath(profilePhotoUrl);
+      const updatedUser = await updateProfilePhoto(session.accessToken, {
+        bucketId: PROFILE_PHOTO_BUCKET_ID,
+        mimeType: blob.type || 'image/png',
+        publicUrl,
+        sizeBytes: blob.size,
+        storagePath,
+      });
+      const nextProfilePhotoUrl = updatedUser.profilePhotoUrl ?? publicUrl;
+
+      if (previousStoragePath) {
+        await deleteProfilePhotoBinary(session.accessToken, [
+          previousStoragePath,
+        ]);
+      }
+
+      setProfilePhotoUrl(nextProfilePhotoUrl);
+      updateSessionProfilePhoto(nextProfilePhotoUrl);
+      setProfilePhotoDialogMode(null);
+      resetProfilePhotoEditor(null);
+    } catch (error) {
+      setProfilePhotoError(
+        error instanceof Error
+          ? error.message
+          : 'Impossible de sauvegarder la photo de profil.',
+      );
+    } finally {
+      setIsSavingProfilePhoto(false);
+    }
+  }
+
+  async function handleDeleteProfilePhoto(): Promise<void> {
+    setIsSavingProfilePhoto(true);
+    setProfilePhotoError(null);
+
+    try {
+      const previousStoragePath =
+        extractProfilePhotoStoragePath(profilePhotoUrl);
+      const updatedUser = await deleteProfilePhoto(session.accessToken);
+
+      if (previousStoragePath) {
+        await deleteProfilePhotoBinary(session.accessToken, [
+          previousStoragePath,
+        ]);
+      }
+
+      const nextProfilePhotoUrl = updatedUser.profilePhotoUrl ?? null;
+
+      setProfilePhotoUrl(nextProfilePhotoUrl);
+      updateSessionProfilePhoto(nextProfilePhotoUrl);
+      setProfilePhotoDialogMode(null);
+      resetProfilePhotoEditor(null);
+    } catch (error) {
+      setProfilePhotoError(
+        error instanceof Error
+          ? error.message
+          : 'Impossible de supprimer la photo de profil.',
+      );
+    } finally {
+      setIsSavingProfilePhoto(false);
+    }
+  }
+
+  function handleProfilePhotoPointerDown(
+    event: PointerEvent<HTMLDivElement>,
+  ): void {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    profilePhotoDragRef.current = {
+      originX: profilePhotoOffset.x,
+      originY: profilePhotoOffset.y,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
+  }
+
+  function handleProfilePhotoPointerMove(
+    event: PointerEvent<HTMLDivElement>,
+  ): void {
+    const dragState = profilePhotoDragRef.current;
+
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    setProfilePhotoOffset({
+      x: dragState.originX + event.clientX - dragState.startX,
+      y: dragState.originY + event.clientY - dragState.startY,
+    });
+  }
+
+  function handleProfilePhotoPointerUp(
+    event: PointerEvent<HTMLDivElement>,
+  ): void {
+    const dragState = profilePhotoDragRef.current;
+
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    profilePhotoDragRef.current = null;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
+  const profilePhotoZoomProgress =
+    ((profilePhotoZoom - PROFILE_PHOTO_MIN_ZOOM) /
+      (PROFILE_PHOTO_MAX_ZOOM - PROFILE_PHOTO_MIN_ZOOM)) *
+    100;
+  const profilePhotoZoomStyle = {
+    '--settings-profile-photo-zoom-progress': `${profilePhotoZoomProgress}%`,
+  } as CSSProperties;
+
   function renderProfileSections() {
     return (
       <div className="settings-discord-sections">
@@ -441,8 +849,63 @@ export function SettingsPage({
             <p>Informations principales affichees dans le front.</p>
           </header>
 
+          <div className="settings-profile-photo-section">
+            <h2>Photo de profil</h2>
+            <div className="settings-profile-photo-card">
+              <span className="settings-profile-photo-preview">
+                {profilePhotoUrl ? (
+                  <img alt="" src={profilePhotoUrl} />
+                ) : (
+                  displayName.slice(0, 2).toUpperCase()
+                )}
+              </span>
+
+              <div className="settings-profile-photo-actions">
+                <div className="settings-profile-photo-button-row">
+                  <button
+                    className="settings-profile-photo-primary"
+                    onClick={openProfilePhotoChoice}
+                    type="button"
+                  >
+                    {profilePhotoUrl
+                      ? 'Mettre a jour la photo de profil'
+                      : 'Ajouter une image de profil'}
+                  </button>
+                  {profilePhotoUrl ? (
+                    <button
+                      aria-label="Supprimer la photo de profil"
+                      className="settings-profile-photo-delete"
+                      disabled={isSavingProfilePhoto}
+                      onClick={() => void handleDeleteProfilePhoto()}
+                      type="button"
+                    >
+                      <Trash2 size={18} strokeWidth={2} />
+                    </button>
+                  ) : null}
+                </div>
+                <p>
+                  L'image doit etre au format JPEG, PNG ou GIF et ne doit pas
+                  depasser 10 Mo.
+                </p>
+                {profilePhotoError ? (
+                  <small className="settings-profile-photo-error">
+                    {profilePhotoError}
+                  </small>
+                ) : null}
+              </div>
+            </div>
+            <input
+              accept="image/jpeg,image/png,image/gif"
+              className="settings-profile-photo-file"
+              onChange={(event) =>
+                handleProfilePhotoFileSelection(event.target.files)
+              }
+              ref={profilePhotoInputRef}
+              type="file"
+            />
+          </div>
+
           <div className="settings-discord-fields-grid">
-            <ReadonlyField label="Identifiant" value={displayName} />
             <ReadonlyField label="Nom" value={session.user.lastName ?? ''} />
             <ReadonlyField
               label="Prenom"
@@ -691,11 +1154,15 @@ export function SettingsPage({
       <aside className="settings-discord-sidebar">
         <div className="settings-discord-profile-summary">
           <span className="settings-discord-avatar">
-            {displayName.slice(0, 2).toUpperCase()}
+            {profilePhotoUrl ? (
+              <img alt="" src={profilePhotoUrl} />
+            ) : (
+              displayName.slice(0, 2).toUpperCase()
+            )}
           </span>
           <div>
             <strong>{displayName}</strong>
-            <span>{session.user.email}</span>
+            <span>{translateUserRole(session.user.role)}</span>
           </div>
         </div>
 
@@ -738,6 +1205,161 @@ export function SettingsPage({
       <main className="settings-discord-content" ref={contentRef}>
         {renderContent()}
       </main>
+
+      {profilePhotoDialogMode === 'choice' ? (
+        <div
+          className="settings-profile-photo-overlay"
+          onClick={() => setProfilePhotoDialogMode(null)}
+        >
+          <section
+            aria-labelledby="settings-profile-photo-choice-title"
+            aria-modal="true"
+            className="settings-profile-photo-dialog settings-profile-photo-choice-dialog"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <header>
+              <h2 id="settings-profile-photo-choice-title">
+                Mettre a jour la photo de profil
+              </h2>
+              <button
+                aria-label="Fermer"
+                onClick={() => setProfilePhotoDialogMode(null)}
+                type="button"
+              >
+                x
+              </button>
+            </header>
+
+            <button
+              className="settings-profile-photo-choice"
+              onClick={openProfilePhotoPicker}
+              type="button"
+            >
+              <Upload size={26} strokeWidth={2} />
+              <span>Importer une photo</span>
+            </button>
+            <button
+              className="settings-profile-photo-choice is-muted"
+              onClick={handleEditCurrentProfilePhoto}
+              type="button"
+            >
+              <Pencil size={26} strokeWidth={2} />
+              <span>Modifier la miniature actuelle</span>
+            </button>
+
+            <div className="settings-profile-photo-dialog-actions">
+              <button
+                className="settings-discord-button is-muted"
+                onClick={() => setProfilePhotoDialogMode(null)}
+                type="button"
+              >
+                Annuler
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {profilePhotoDialogMode === 'editor' && profilePhotoDraftUrl ? (
+        <div
+          className="settings-profile-photo-overlay"
+          onClick={() => setProfilePhotoDialogMode(null)}
+        >
+          <section
+            aria-labelledby="settings-profile-photo-editor-title"
+            aria-modal="true"
+            className="settings-profile-photo-dialog settings-profile-photo-editor-dialog"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <header>
+              <h2 id="settings-profile-photo-editor-title">
+                Mettre a jour la photo de profil
+              </h2>
+              <button
+                aria-label="Fermer"
+                onClick={() => setProfilePhotoDialogMode(null)}
+                type="button"
+              >
+                x
+              </button>
+            </header>
+
+            <div
+              className="settings-profile-photo-cropper"
+              onPointerCancel={handleProfilePhotoPointerUp}
+              onPointerDown={handleProfilePhotoPointerDown}
+              onPointerMove={handleProfilePhotoPointerMove}
+              onPointerUp={handleProfilePhotoPointerUp}
+            >
+              <img
+                alt=""
+                src={profilePhotoDraftUrl}
+                style={{
+                  width: `${profilePhotoEditorBaseSize}px`,
+                  transform: `translate(-50%, -50%) translate(${profilePhotoOffset.x}px, ${profilePhotoOffset.y}px) scale(${profilePhotoZoom}) rotate(${profilePhotoRotation}deg)`,
+                }}
+              />
+              <span className="settings-profile-photo-mask" />
+            </div>
+
+            <footer className="settings-profile-photo-editor-controls">
+              <button
+                aria-label="Reinitialiser la rotation"
+                className="settings-profile-photo-icon-button"
+                onClick={() => setProfilePhotoRotation(0)}
+                type="button"
+              >
+                <RotateCcw size={20} strokeWidth={2} />
+              </button>
+              <ZoomOut size={18} strokeWidth={2} />
+              <input
+                aria-label="Zoom"
+                className="settings-profile-photo-zoom-range"
+                max={PROFILE_PHOTO_MAX_ZOOM}
+                min={PROFILE_PHOTO_MIN_ZOOM}
+                onChange={(event) =>
+                  setProfilePhotoZoom(Number(event.target.value))
+                }
+                step="0.05"
+                style={profilePhotoZoomStyle}
+                type="range"
+                value={profilePhotoZoom}
+              />
+              <ZoomIn size={18} strokeWidth={2} />
+              <button
+                aria-label="Pivoter"
+                className="settings-profile-photo-icon-button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setProfilePhotoRotation(
+                    (currentRotation) => (currentRotation + 90) % 360,
+                  );
+                }}
+                type="button"
+              >
+                <RotateCw size={20} strokeWidth={2} />
+              </button>
+              <button
+                className="settings-discord-button is-muted"
+                onClick={() => setProfilePhotoDialogMode(null)}
+                type="button"
+              >
+                Annuler
+              </button>
+              <button
+                className="primary-button admin-user-save-button"
+                disabled={isSavingProfilePhoto}
+                onClick={() => void handleSaveProfilePhoto()}
+                type="button"
+              >
+                {isSavingProfilePhoto ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
 
       {showEmailVerification ? (
         <div className="settings-email-verification-overlay">

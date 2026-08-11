@@ -18,6 +18,7 @@ type SupabaseUserProfileRow = {
   is_active: boolean;
   is_vip: boolean | null;
   last_name: string | null;
+  profile_photo_url: string | null;
   role: string;
 };
 
@@ -29,6 +30,7 @@ type SupabaseResolvedProfile = {
   isActive: boolean | null;
   isVip: boolean;
   lastName: string | null;
+  profilePhotoUrl: string | null;
   role: UserRole | null;
 };
 
@@ -86,6 +88,7 @@ export class SupabaseTokenValidatorService {
       id: payload.id,
       isVip: profile.isVip,
       lastName: profile.lastName,
+      profilePhotoUrl: profile.profilePhotoUrl,
       role:
         profile.role ?? this.resolveRoleFallback(payload.app_metadata?.role),
     };
@@ -104,6 +107,7 @@ export class SupabaseTokenValidatorService {
         isActive: null,
         isVip: false,
         lastName: null,
+        profilePhotoUrl: null,
         role: null,
       };
     }
@@ -121,6 +125,7 @@ export class SupabaseTokenValidatorService {
         isActive: null,
         isVip: false,
         lastName: null,
+        profilePhotoUrl: null,
         role: null,
       };
     }
@@ -128,7 +133,7 @@ export class SupabaseTokenValidatorService {
     const url = new URL(`${config.supabaseUrl}/rest/v1/users`);
     url.searchParams.set(
       'select',
-      'role,first_name,last_name,is_active,account_status,is_vip,can_manage_assets,can_manage_knowledge_base,can_validate_knowledge_base',
+      'role,first_name,last_name,is_active,account_status,is_vip,can_manage_assets,can_manage_knowledge_base,can_validate_knowledge_base,profile_photo_url',
     );
     url.searchParams.set('id', `eq.${userId}`);
     url.searchParams.set('limit', '1');
@@ -167,6 +172,7 @@ export class SupabaseTokenValidatorService {
         isActive: null,
         isVip: false,
         lastName: null,
+        profilePhotoUrl: null,
         role: null,
       };
     }
@@ -181,6 +187,7 @@ export class SupabaseTokenValidatorService {
         'ACTIVE',
       isVip: Boolean(row.is_vip),
       lastName: row.last_name,
+      profilePhotoUrl: row.profile_photo_url,
       role: row.role ? this.resolveRoleFallback(row.role) : null,
     };
   }
