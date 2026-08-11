@@ -9,7 +9,6 @@ import {
 import {
   ArrowLeft,
   ArrowUpDown,
-  History,
   type LucideIcon,
   Plus,
   SlidersHorizontal,
@@ -66,18 +65,6 @@ const GROUP_SORT_OPTIONS: Array<{
 }> = [
   {
     description: 'Appliquer ce tri',
-    icon: History,
-    label: "Plus recents d'abord",
-    value: 'CREATED_AT_DESC',
-  },
-  {
-    description: 'Appliquer ce tri',
-    icon: History,
-    label: "Plus anciens d'abord",
-    value: 'CREATED_AT_ASC',
-  },
-  {
-    description: 'Appliquer ce tri',
     icon: ArrowUpDown,
     label: 'Par ordre croissant',
     value: 'IDENTIFIER_ASC',
@@ -113,7 +100,7 @@ export function GroupsPage({ session }: GroupsPageProps) {
     useState<GroupSearchField>('IDENTIFIER');
   const [searchText, setSearchText] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<GroupSortOption>('CREATED_AT_DESC');
+  const [sortBy, setSortBy] = useState<GroupSortOption>('IDENTIFIER_ASC');
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
 

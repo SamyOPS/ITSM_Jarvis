@@ -7,15 +7,18 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   User,
-  Users,
 } from 'lucide-react';
 
+import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
+import type { ReferentialGroup } from '../../domain/referentials/referential-catalog';
 import { translateUserRole } from '../../domain/i18n/ticketing-labels';
 import {
   isSupportManagerRole,
   isSupportRole,
 } from '../../domain/auth/user-role';
+import { fetchUserDirectory } from '../../infrastructure/api/auth-api';
+import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
 
 type SettingsSectionKey =
   | 'account-info'
@@ -42,6 +45,11 @@ type VisualNotification = {
   enabled: boolean;
   title: string;
 };
+
+type AssignmentGroupDisplay = Pick<
+  ReferentialGroup,
+  'description' | 'id' | 'name'
+>;
 
 const settingsNavGroups: readonly SettingsNavGroup[] = [
   {
@@ -95,6 +103,16 @@ function getCharacteristics(session: AuthSessionSnapshot): string[] {
   }
 
   return characteristics;
+}
+
+function getUserGroupIds(
+  user: AdminUserSummary | AuthSessionSnapshot['user'],
+): string[] {
+  const groupIds = user.groupIds ?? [];
+
+  return [
+    ...new Set([...(user.groupId ? [user.groupId] : []), ...groupIds]),
+  ].filter(Boolean);
 }
 
 function buildNotificationItems(
@@ -188,15 +206,79 @@ export function SettingsPage({
 }: SettingsPageProps) {
   const [activeSection, setActiveSection] =
     useState<SettingsSectionKey>(initialSection);
+  const [assignmentGroups, setAssignmentGroups] = useState<
+    AssignmentGroupDisplay[]
+  >([]);
+  const [isLoadingAssignmentGroups, setIsLoadingAssignmentGroups] =
+    useState(true);
   const [showPasswordUpdate, setShowPasswordUpdate] = useState(false);
   const contentRef = useRef<HTMLElement | null>(null);
   const isProgrammaticScrollRef = useRef(false);
   const displayName = getDisplayName(session);
   const characteristics = useMemo(() => getCharacteristics(session), [session]);
+  const sessionUserGroupIds = useMemo(() => {
+    const groupIds = session.user.groupIds ?? [];
+
+    return [
+      ...new Set([
+        ...(session.user.groupId ? [session.user.groupId] : []),
+        ...groupIds,
+      ]),
+    ].filter(Boolean);
+  }, [session.user.groupId, session.user.groupIds]);
   const notificationItems = useMemo(
     () => buildNotificationItems(session),
     [session],
   );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAssignmentGroups(): Promise<void> {
+      setIsLoadingAssignmentGroups(true);
+
+      try {
+        const [catalog, users] = await Promise.all([
+          fetchReferentialCatalog(session.accessToken),
+          fetchUserDirectory(session.accessToken),
+        ]);
+        const directoryUser = users.find((user) => user.id === session.user.id);
+        const groupsById = new Map(
+          catalog.groups.map((group) => [group.id, group]),
+        );
+        const currentUserGroupIds = directoryUser
+          ? getUserGroupIds(directoryUser)
+          : sessionUserGroupIds;
+        const nextGroups = currentUserGroupIds.map((groupId) => {
+          const group = groupsById.get(groupId);
+
+          return {
+            description: group?.description ?? null,
+            id: groupId,
+            name: group?.name ?? groupId,
+          };
+        });
+
+        if (isMounted) {
+          setAssignmentGroups(nextGroups);
+        }
+      } catch {
+        if (isMounted) {
+          setAssignmentGroups([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingAssignmentGroups(false);
+        }
+      }
+    }
+
+    void loadAssignmentGroups();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [session.accessToken, session.user.id, sessionUserGroupIds]);
 
   useEffect(() => {
     if (showPasswordUpdate) {
@@ -416,15 +498,16 @@ export function SettingsPage({
             <div className="settings-discord-row">
               <div>
                 <strong>Role actuel</strong>
-                <span>{translateUserRole(session.user.role)}</span>
               </div>
-              <ShieldCheck size={20} strokeWidth={2} />
+              <span className="settings-discord-row-value">
+                <ShieldCheck size={18} strokeWidth={2} />
+                {translateUserRole(session.user.role)}
+              </span>
             </div>
 
-            <div className="settings-discord-row">
+            <div className="settings-discord-row settings-discord-row-before-panel">
               <div>
                 <strong>Caracteristique</strong>
-                <span>{characteristics.join(', ')}</span>
               </div>
               <div className="settings-discord-pill-group">
                 {characteristics.map((characteristic) => (
@@ -435,13 +518,53 @@ export function SettingsPage({
               </div>
             </div>
 
-            <div className="settings-discord-row">
-              <div>
-                <strong>Groupe d affectation</strong>
-                <span>Non renseigne</span>
+            <section className="settings-discord-groups-panel">
+              <header className="settings-discord-groups-header">
+                <div>
+                  <h2>Groupes de l'utilisateur</h2>
+                </div>
+
+                <div className="ticket-list-count" aria-live="polite">
+                  <strong>{assignmentGroups.length}</strong>
+                  <span>groupes</span>
+                </div>
+              </header>
+
+              <div className="ticket-table-scroll settings-discord-groups-scroll">
+                <table className="ticket-table settings-discord-groups-table">
+                  <thead>
+                    <tr>
+                      <th>Identifiant</th>
+                      <th>Nom</th>
+                      <th>Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoadingAssignmentGroups ? (
+                      <tr>
+                        <td colSpan={3}>Chargement des groupes...</td>
+                      </tr>
+                    ) : assignmentGroups.length === 0 ? (
+                      <tr>
+                        <td colSpan={3}>Aucun groupe pour cet utilisateur.</td>
+                      </tr>
+                    ) : (
+                      assignmentGroups.map((group) => (
+                        <tr key={group.id}>
+                          <td>
+                            <div className="admin-users-identifier">
+                              {group.name}
+                            </div>
+                          </td>
+                          <td>{group.name}</td>
+                          <td>{group.description ?? '-'}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
-              <Users size={20} strokeWidth={2} />
-            </div>
+            </section>
           </div>
         </section>
       </div>

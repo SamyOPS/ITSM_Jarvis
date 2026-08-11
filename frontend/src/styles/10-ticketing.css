@@ -4141,7 +4141,7 @@ p.ticket-form-helper {
 
 .workspace-profile-menu-popover {
   position: absolute;
-  top: calc(100% + 10px);
+  top: calc(100% + 14px);
   right: 0;
   z-index: 120;
   display: grid;
