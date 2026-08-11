@@ -92,6 +92,10 @@ function getVisibleSectionOrder(sectionKey: SettingsSectionKey) {
   return getSettingsSectionGroup(sectionKey).items.map((item) => item.key);
 }
 
+function getSectionScrollOffset(sectionKey: SettingsSectionKey): number {
+  return sectionKey === 'password-security' ? 170 : 56;
+}
+
 function getCharacteristics(
   user: AdminUserSummary | AuthSessionSnapshot['user'],
 ): AccountCharacteristicDisplay[] {
@@ -127,6 +131,16 @@ function getUserGroupIds(
   return [
     ...new Set([...(user.groupId ? [user.groupId] : []), ...groupIds]),
   ].filter(Boolean);
+}
+
+function maskEmail(email: string): string {
+  const [localPart, domain] = email.split('@');
+
+  if (!localPart || !domain) {
+    return '********';
+  }
+
+  return `${'*'.repeat(Math.max(8, localPart.length))}@${domain}`;
 }
 
 function buildNotificationItems(
@@ -225,6 +239,8 @@ export function SettingsPage({
   >([]);
   const [isLoadingAssignmentGroups, setIsLoadingAssignmentGroups] =
     useState(true);
+  const [isEmailVisible, setIsEmailVisible] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [showPasswordUpdate, setShowPasswordUpdate] = useState(false);
   const contentRef = useRef<HTMLElement | null>(null);
   const isProgrammaticScrollRef = useRef(false);
@@ -398,7 +414,7 @@ export function SettingsPage({
       }
 
       contentElement.scrollTo({
-        top: sectionElement.offsetTop - 56,
+        top: sectionElement.offsetTop - getSectionScrollOffset(sectionKey),
         behavior: 'smooth',
       });
       window.setTimeout(() => {
@@ -408,51 +424,6 @@ export function SettingsPage({
   }
 
   function renderContent() {
-    if (showPasswordUpdate) {
-      return (
-        <section className="settings-discord-content-card">
-          <header className="settings-discord-section-header">
-            <h1>Mets ton mot de passe a jour</h1>
-            <p>Saisis ton mot de passe actuel puis le nouveau.</p>
-          </header>
-
-          <div className="settings-discord-password-form">
-            <ReadonlyField
-              label="Mot de passe actuel"
-              placeholder="********"
-              type="password"
-              value=""
-            />
-            <ReadonlyField
-              label="Nouveau mot de passe"
-              placeholder="********"
-              type="password"
-              value=""
-            />
-            <ReadonlyField
-              label="Confirmer le nouveau mot de passe"
-              placeholder="********"
-              type="password"
-              value=""
-            />
-
-            <div className="settings-discord-actions">
-              <button
-                className="settings-discord-button is-muted"
-                onClick={() => setShowPasswordUpdate(false)}
-                type="button"
-              >
-                Annuler
-              </button>
-              <button className="settings-discord-button" type="button">
-                Termine
-              </button>
-            </div>
-          </div>
-        </section>
-      );
-    }
-
     return getSettingsSectionGroup(activeSection).label === 'Preferences'
       ? renderPreferenceSections()
       : renderProfileSections();
@@ -477,7 +448,15 @@ export function SettingsPage({
               label="Prenom"
               value={session.user.firstName ?? ''}
             />
-            <ReadonlyField label="Mail" value={session.user.email} />
+          </div>
+
+          <div className="settings-discord-save-row">
+            <button
+              className="primary-button admin-user-save-button"
+              type="button"
+            >
+              Enregistrer
+            </button>
           </div>
         </section>
 
@@ -491,12 +470,39 @@ export function SettingsPage({
           </header>
 
           <div className="settings-discord-list">
+            <div className="settings-discord-row settings-discord-email-row">
+              <div>
+                <strong>E-mail</strong>
+              </div>
+              <div className="settings-discord-email-actions">
+                <span className="settings-discord-email-value">
+                  {isEmailVisible
+                    ? session.user.email
+                    : maskEmail(session.user.email)}
+                </span>
+                <button
+                  className="settings-discord-inline-action"
+                  onClick={() =>
+                    setIsEmailVisible((currentValue) => !currentValue)
+                  }
+                  type="button"
+                >
+                  {isEmailVisible ? 'Masquer' : 'Afficher'}
+                </button>
+                <button
+                  className="settings-discord-button"
+                  onClick={() => setShowEmailVerification(true)}
+                  type="button"
+                >
+                  Modifier
+                </button>
+              </div>
+            </div>
+
             <div className="settings-discord-row settings-discord-password-row">
-              <ReadonlyField
-                label="Mot de passe"
-                type="password"
-                value="************"
-              />
+              <div>
+                <strong>Mot de passe</strong>
+              </div>
               <button
                 className="settings-discord-button"
                 onClick={() => setShowPasswordUpdate(true)}
@@ -504,14 +510,6 @@ export function SettingsPage({
               >
                 Modifier
               </button>
-            </div>
-
-            <div className="settings-discord-row">
-              <div>
-                <strong>Connexion securisee</strong>
-                <span>Protection active sur le compte utilisateur.</span>
-              </div>
-              <span className="settings-discord-pill is-success">Actif</span>
             </div>
           </div>
         </section>
@@ -740,6 +738,113 @@ export function SettingsPage({
       <main className="settings-discord-content" ref={contentRef}>
         {renderContent()}
       </main>
+
+      {showEmailVerification ? (
+        <div className="settings-email-verification-overlay">
+          <section
+            aria-labelledby="settings-email-verification-title"
+            aria-modal="true"
+            className="settings-email-verification-dialog"
+            role="dialog"
+          >
+            <header>
+              <h2 id="settings-email-verification-title">
+                Verifier l'adresse e-mail
+              </h2>
+              <p>
+                Nous devons verifier votre adresse e-mail actuelle avant de la
+                modifier.
+              </p>
+            </header>
+
+            <div className="settings-email-verification-current">
+              {isEmailVisible
+                ? session.user.email
+                : maskEmail(session.user.email)}
+            </div>
+
+            <div className="settings-email-verification-actions">
+              <button
+                className="settings-discord-button is-muted"
+                onClick={() => setShowEmailVerification(false)}
+                type="button"
+              >
+                Annuler
+              </button>
+              <button
+                className="primary-button admin-user-save-button"
+                type="button"
+              >
+                Envoyer le code de verification
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {showPasswordUpdate ? (
+        <div className="settings-email-verification-overlay">
+          <section
+            aria-labelledby="settings-password-update-title"
+            aria-modal="true"
+            className="settings-email-verification-dialog settings-password-update-dialog"
+            role="dialog"
+          >
+            <button
+              aria-label="Fermer"
+              className="settings-password-update-close"
+              onClick={() => setShowPasswordUpdate(false)}
+              type="button"
+            >
+              ×
+            </button>
+
+            <header>
+              <h2 id="settings-password-update-title">
+                Mets ton mot de passe a jour
+              </h2>
+              <p>Saisis ton mot de passe actuel puis le nouveau.</p>
+            </header>
+
+            <div className="settings-discord-password-form">
+              <ReadonlyField
+                label="Mot de passe actuel"
+                placeholder="********"
+                type="password"
+                value=""
+              />
+              <ReadonlyField
+                label="Nouveau mot de passe"
+                placeholder="********"
+                type="password"
+                value=""
+              />
+              <ReadonlyField
+                label="Confirmer le nouveau mot de passe"
+                placeholder="********"
+                type="password"
+                value=""
+              />
+            </div>
+
+            <div className="settings-email-verification-actions">
+              <button
+                className="settings-discord-button is-muted"
+                onClick={() => setShowPasswordUpdate(false)}
+                type="button"
+              >
+                Annuler
+              </button>
+              <button
+                className="primary-button admin-user-save-button"
+                type="button"
+              >
+                Termine
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }
