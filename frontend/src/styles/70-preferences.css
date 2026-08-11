@@ -665,9 +665,14 @@
 
 .settings-discord-pill-group {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.settings-discord-row > .settings-discord-pill-group {
+  display: flex;
 }
 
 .settings-discord-pill-group .admin-user-capability-badge {
