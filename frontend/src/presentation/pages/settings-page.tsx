@@ -12,7 +12,6 @@ import {
   Pencil,
   ListFilter,
   Lock,
-  RotateCcw,
   RotateCw,
   ShieldCheck,
   SlidersHorizontal,
@@ -1304,14 +1303,6 @@ export function SettingsPage({
             </div>
 
             <footer className="settings-profile-photo-editor-controls">
-              <button
-                aria-label="Reinitialiser la rotation"
-                className="settings-profile-photo-icon-button"
-                onClick={() => setProfilePhotoRotation(0)}
-                type="button"
-              >
-                <RotateCcw size={20} strokeWidth={2} />
-              </button>
               <ZoomOut size={18} strokeWidth={2} />
               <input
                 aria-label="Zoom"

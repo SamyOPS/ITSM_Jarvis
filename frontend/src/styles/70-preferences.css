@@ -615,7 +615,7 @@
 .settings-discord-field span {
   color: #12315c;
   font-size: 0.92rem;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .settings-discord-field input {
@@ -644,7 +644,7 @@
   margin: 0;
   color: #12315c;
   font-size: 0.92rem;
-  font-weight: 650;
+  font-weight: 500;
   letter-spacing: 0;
 }
 
@@ -755,11 +755,6 @@
   gap: 18px;
   min-height: 74px;
   padding: 17px 0;
-  border-bottom: 1px solid #e7edf5;
-}
-
-.settings-discord-row:last-child {
-  border-bottom: 0;
 }
 
 .settings-discord-row-before-panel {
@@ -782,7 +777,7 @@
 .settings-discord-row strong {
   color: #12315c;
   font-size: 0.92rem;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .settings-discord-row span {
@@ -902,7 +897,7 @@
   margin: 0;
   color: #12315c;
   font-size: 0.92rem;
-  font-weight: 650;
+  font-weight: 500;
   line-height: 1.25;
   letter-spacing: 0;
 }
@@ -1175,12 +1170,12 @@
 .settings-profile-photo-choice {
   display: grid;
   place-items: center;
-  gap: 6px;
+  gap: 2px;
   min-height: 116px;
   margin: 8px;
   border: 1px solid #d8e0eb;
   background: #ffffff;
-  color: #6d28d9;
+  color: #12315c;
   font: inherit;
   font-size: 0.94rem;
   font-weight: 700;
@@ -1194,6 +1189,11 @@
 .settings-profile-photo-choice:hover {
   border-color: #b7c9e5;
   background: #f8fafc;
+}
+
+.settings-profile-photo-choice svg {
+  color: #2b6de9;
+  transform: translateY(4px);
 }
 
 .settings-profile-photo-dialog-actions {
@@ -1256,7 +1256,7 @@
 
 .settings-profile-photo-editor-controls {
   display: grid;
-  grid-template-columns: auto auto minmax(120px, 1fr) auto auto auto auto;
+  grid-template-columns: auto minmax(120px, 1fr) auto auto auto auto;
   align-items: center;
   gap: 8px;
   min-height: 50px;
@@ -1353,6 +1353,11 @@
 
 .settings-profile-photo-icon-button:hover {
   background: #dfe8f5;
+}
+
+.settings-profile-photo-editor-controls .primary-button {
+  font-size: 0.86rem;
+  font-weight: 600;
 }
 
 .vision-overlay-scroll-locked {
