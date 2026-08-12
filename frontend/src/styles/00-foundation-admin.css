@@ -81,6 +81,80 @@ a {
   color: inherit;
 }
 
+.default-profile-avatar {
+  --default-profile-avatar-bg: #e0f2fe;
+  --default-profile-avatar-icon: #000000;
+  --default-profile-avatar-ring: #000000;
+  display: inline-grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--default-profile-avatar-ring);
+  border-radius: 999px;
+  background: var(--default-profile-avatar-bg);
+  color: var(--default-profile-avatar-icon);
+}
+
+.default-profile-avatar-icon {
+  width: 62%;
+  height: 62%;
+  color: currentColor;
+}
+
+.default-profile-avatar--color-1 {
+  --default-profile-avatar-bg: #e0f2fe;
+  --default-profile-avatar-icon: #000000;
+}
+
+.default-profile-avatar--color-2 {
+  --default-profile-avatar-bg: #dcfce7;
+  --default-profile-avatar-icon: #000000;
+}
+
+.default-profile-avatar--color-3 {
+  --default-profile-avatar-bg: #ecfccb;
+  --default-profile-avatar-icon: #000000;
+}
+
+.default-profile-avatar--color-4 {
+  --default-profile-avatar-bg: #ffe4e6;
+  --default-profile-avatar-icon: #000000;
+}
+
+.default-profile-avatar--color-5 {
+  --default-profile-avatar-bg: #fce7f3;
+  --default-profile-avatar-icon: #000000;
+}
+
+.default-profile-avatar--color-6 {
+  --default-profile-avatar-bg: #f3e8ff;
+  --default-profile-avatar-icon: #000000;
+}
+
+.default-profile-avatar--color-7 {
+  --default-profile-avatar-bg: #e0e7ff;
+  --default-profile-avatar-icon: #000000;
+}
+
+.default-profile-avatar--color-8 {
+  --default-profile-avatar-bg: #cffafe;
+  --default-profile-avatar-icon: #000000;
+}
+
+.default-profile-avatar--color-9 {
+  --default-profile-avatar-bg: #fef9c3;
+  --default-profile-avatar-icon: #000000;
+}
+
+.default-profile-avatar--color-10 {
+  --default-profile-avatar-bg: #e7f5d9;
+  --default-profile-avatar-icon: #000000;
+}
+
+.default-profile-avatar--color-11 {
+  --default-profile-avatar-bg: #ffeec4;
+  --default-profile-avatar-icon: #000000;
+}
+
 .app-shell {
   min-height: 100vh;
 }
@@ -1102,7 +1176,11 @@ a {
   border: 1px solid rgba(174, 195, 229, 0.9);
   border-radius: 24px;
   background:
-    linear-gradient(135deg, rgba(238, 246, 255, 0.94), rgba(255, 255, 255, 0.9)),
+    linear-gradient(
+      135deg,
+      rgba(238, 246, 255, 0.94),
+      rgba(255, 255, 255, 0.9)
+    ),
     rgba(255, 255, 255, 0.86);
   box-shadow: 0 18px 42px rgba(23, 51, 95, 0.08);
 }

@@ -1,5 +1,6 @@
 import { BadgeCheck, Mail, Shield, User, Users } from 'lucide-react';
 
+import { DefaultProfileAvatar } from '../../components/ui/default-profile-avatar';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import { translateUserRole } from '../../domain/i18n/ticketing-labels';
 
@@ -13,26 +14,16 @@ function getDisplayName(session: AuthSessionSnapshot): string {
   return parts.length > 0 ? parts.join(' ') : session.user.email;
 }
 
-function getInitials(session: AuthSessionSnapshot): string {
-  const firstInitial = session.user.firstName?.trim().charAt(0) ?? '';
-  const lastInitial = session.user.lastName?.trim().charAt(0) ?? '';
-  const initials = `${firstInitial}${lastInitial}`.trim();
-
-  if (initials) {
-    return initials.toUpperCase();
-  }
-
-  return session.user.email.slice(0, 2).toUpperCase();
-}
-
 export function ProfilePage({ session }: ProfilePageProps) {
   const displayName = getDisplayName(session);
-  const initials = getInitials(session);
 
   return (
     <section className="preferences-page profile-page">
       <header className="preferences-page-header profile-page-header">
-        <span className="profile-page-avatar">{initials}</span>
+        <DefaultProfileAvatar
+          className="profile-page-avatar"
+          seed={session.user.id || session.user.email}
+        />
         <div>
           <h1>Profil</h1>
           <span>{session.user.email}</span>

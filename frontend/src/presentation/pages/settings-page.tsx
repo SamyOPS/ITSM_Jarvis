@@ -12,7 +12,6 @@ import {
   Pencil,
   ListFilter,
   Lock,
-  RotateCcw,
   RotateCw,
   ShieldCheck,
   SlidersHorizontal,
@@ -40,6 +39,8 @@ import {
   uploadProfilePhotoBinary,
 } from '../../infrastructure/api/auth-api';
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
+import { rotateDefaultProfileAvatarSeed } from '../../components/ui/default-profile-avatar.helpers';
+import { DefaultProfileAvatar } from '../../components/ui/default-profile-avatar';
 
 type SettingsSectionKey =
   | 'account-info'
@@ -419,6 +420,7 @@ export function SettingsPage({
   } | null>(null);
   const isProgrammaticScrollRef = useRef(false);
   const displayName = getDisplayName(session);
+  const profileAvatarSeed = session.user.id || session.user.email;
   const sessionUserCharacteristics = useMemo(
     () => getCharacteristics(session.user),
     [session.user],
@@ -770,6 +772,10 @@ export function SettingsPage({
 
       const nextProfilePhotoUrl = updatedUser.profilePhotoUrl ?? null;
 
+      if (!nextProfilePhotoUrl) {
+        rotateDefaultProfileAvatarSeed(profileAvatarSeed);
+      }
+
       setProfilePhotoUrl(nextProfilePhotoUrl);
       updateSessionProfilePhoto(nextProfilePhotoUrl);
       setProfilePhotoDialogMode(null);
@@ -853,7 +859,10 @@ export function SettingsPage({
                 {profilePhotoUrl ? (
                   <img alt="" src={profilePhotoUrl} />
                 ) : (
-                  displayName.slice(0, 2).toUpperCase()
+                  <DefaultProfileAvatar
+                    className="settings-profile-photo-default-avatar"
+                    seed={profileAvatarSeed}
+                  />
                 )}
               </span>
 
@@ -1156,7 +1165,10 @@ export function SettingsPage({
             {profilePhotoUrl ? (
               <img alt="" src={profilePhotoUrl} />
             ) : (
-              displayName.slice(0, 2).toUpperCase()
+              <DefaultProfileAvatar
+                className="settings-discord-default-avatar"
+                seed={profileAvatarSeed}
+              />
             )}
           </span>
           <div>
@@ -1304,14 +1316,6 @@ export function SettingsPage({
             </div>
 
             <footer className="settings-profile-photo-editor-controls">
-              <button
-                aria-label="Reinitialiser la rotation"
-                className="settings-profile-photo-icon-button"
-                onClick={() => setProfilePhotoRotation(0)}
-                type="button"
-              >
-                <RotateCcw size={20} strokeWidth={2} />
-              </button>
               <ZoomOut size={18} strokeWidth={2} />
               <input
                 aria-label="Zoom"

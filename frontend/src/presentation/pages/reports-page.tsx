@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import { ProfileAvatar } from '../../components/ui/default-profile-avatar';
 import { isAdminRole, isSupportRole } from '../../domain/auth/user-role';
 import { AppPagination } from '../components/app-pagination';
 
@@ -92,7 +93,6 @@ import {
   buildReportingFilters,
   formatAssignedUserName,
   formatDateInputValue,
-  formatGroupChatInitials,
   formatGroupChatTimestamp,
   formatGroupMemberRole,
   formatNumber,
@@ -2742,9 +2742,11 @@ function GroupChatPanel({
                   key={message.id}
                 >
                   {!isOwnMessage ? (
-                    <span className="group-chat-avatar">
-                      {formatGroupChatInitials(authorName)}
-                    </span>
+                    <ProfileAvatar
+                      className="group-chat-avatar"
+                      profilePhotoUrl={author?.profilePhotoUrl}
+                      seed={author?.id ?? authorName}
+                    />
                   ) : null}
 
                   <div className="group-chat-message">
@@ -2797,9 +2799,11 @@ function GroupChatPanel({
                         onClick={() => handleMemberInfoOpen(member.id)}
                         type="button"
                       >
-                        <span className="group-chat-avatar">
-                          {formatGroupChatInitials(memberName)}
-                        </span>
+                        <ProfileAvatar
+                          className="group-chat-avatar"
+                          profilePhotoUrl={member.profilePhotoUrl}
+                          seed={member.id}
+                        />
 
                         <span>
                           <strong>{isCurrentUser ? 'Vous' : memberName}</strong>
@@ -2876,9 +2880,11 @@ function GroupChatMemberInfo({
       </header>
 
       <div className="group-chat-member-info">
-        <span className="group-chat-avatar group-chat-member-info-avatar">
-          {formatGroupChatInitials(memberName)}
-        </span>
+        <ProfileAvatar
+          className="group-chat-avatar group-chat-member-info-avatar"
+          profilePhotoUrl={member.profilePhotoUrl}
+          seed={member.id}
+        />
 
         <h4>{isCurrentUser ? 'Vous' : memberName}</h4>
 
