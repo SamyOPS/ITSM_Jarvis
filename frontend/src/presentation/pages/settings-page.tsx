@@ -41,6 +41,14 @@ import {
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
 import { rotateDefaultProfileAvatarSeed } from '../../components/ui/default-profile-avatar.helpers';
 import { DefaultProfileAvatar } from '../../components/ui/default-profile-avatar';
+import {
+  type DefaultKnowledgeSortPreference,
+  type DefaultTicketSortPreference,
+  getDefaultKnowledgeSortPreference,
+  getDefaultTicketSortPreference,
+  setDefaultKnowledgeSortPreference,
+  setDefaultTicketSortPreference,
+} from '../preferences/default-sort-preferences';
 
 type SettingsSectionKey =
   | 'account-info'
@@ -386,6 +394,14 @@ export function SettingsPage({
   const [isLoadingAssignmentGroups, setIsLoadingAssignmentGroups] =
     useState(true);
   const [isEmailVisible, setIsEmailVisible] = useState(false);
+  const [defaultTicketSort, setDefaultTicketSort] =
+    useState<DefaultTicketSortPreference>(() =>
+      getDefaultTicketSortPreference(session.user.id),
+    );
+  const [defaultKnowledgeSort, setDefaultKnowledgeSort] =
+    useState<DefaultKnowledgeSortPreference>(() =>
+      getDefaultKnowledgeSortPreference(session.user.id),
+    );
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [showPasswordUpdate, setShowPasswordUpdate] = useState(false);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(
@@ -428,6 +444,11 @@ export function SettingsPage({
   const [characteristics, setCharacteristics] = useState(
     () => sessionUserCharacteristics,
   );
+
+  useEffect(() => {
+    setDefaultTicketSort(getDefaultTicketSortPreference(session.user.id));
+    setDefaultKnowledgeSort(getDefaultKnowledgeSortPreference(session.user.id));
+  }, [session.user.id]);
   const sessionUserGroupIds = useMemo(() => {
     const groupIds = session.user.groupIds ?? [];
 
@@ -1119,11 +1140,21 @@ export function SettingsPage({
                 <span>Ordre applique aux listes de tickets.</span>
               </div>
               <span className="settings-discord-select">
-                <select defaultValue="operational" disabled>
-                  <option value="operational">Priorite operationnelle</option>
-                  <option value="recent">Plus recent d abord</option>
-                  <option value="oldest">Plus ancien d abord</option>
-                  <option value="ttr">SLA le plus proche</option>
+                <select
+                  onChange={(event) => {
+                    const nextSort = event.target
+                      .value as DefaultTicketSortPreference;
+
+                    setDefaultTicketSort(nextSort);
+                    setDefaultTicketSortPreference(session.user.id, nextSort);
+                  }}
+                  value={defaultTicketSort}
+                >
+                  <option value="OPERATIONAL_PRIORITY">
+                    Priorite operationnelle
+                  </option>
+                  <option value="CREATED_AT_DESC">Plus recent d abord</option>
+                  <option value="CREATED_AT_ASC">Plus ancien d abord</option>
                 </select>
                 <ChevronDown size={16} strokeWidth={2} />
               </span>
@@ -1135,10 +1166,22 @@ export function SettingsPage({
                 <span>Ordre applique aux articles et procedures.</span>
               </div>
               <span className="settings-discord-select">
-                <select defaultValue="recent" disabled>
-                  <option value="recent">Plus recent d abord</option>
-                  <option value="popular">Plus consulte</option>
-                  <option value="alphabetical">Alphabetique</option>
+                <select
+                  onChange={(event) => {
+                    const nextSort = event.target
+                      .value as DefaultKnowledgeSortPreference;
+
+                    setDefaultKnowledgeSort(nextSort);
+                    setDefaultKnowledgeSortPreference(
+                      session.user.id,
+                      nextSort,
+                    );
+                  }}
+                  value={defaultKnowledgeSort}
+                >
+                  <option value="NEWEST">Plus recent d abord</option>
+                  <option value="POPULAR">Plus consulte</option>
+                  <option value="OLDEST">Plus ancien d abord</option>
                 </select>
                 <ChevronDown size={16} strokeWidth={2} />
               </span>
