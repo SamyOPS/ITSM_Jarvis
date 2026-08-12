@@ -26,12 +26,12 @@ import {
   markNotificationRead,
   type NotificationSnapshot,
 } from '../../infrastructure/api/notifications-api';
+import { DefaultProfileAvatar } from '../../components/ui/default-profile-avatar';
 import {
   formatNotificationDate,
   getCurrentBreadcrumbRoute,
   getRouteDisplayTitle,
   getUserDisplayName,
-  getUserInitials,
   isRouteActive,
   navigateToHomeDashboard,
   routeIcons,
@@ -125,8 +125,8 @@ export function AppShell({
     [pathname, session],
   );
   const CurrentBreadcrumbIcon = currentBreadcrumbRoute.icon;
-  const userInitials = useMemo(() => getUserInitials(session), [session]);
   const userDisplayName = useMemo(() => getUserDisplayName(session), [session]);
+  const profileAvatarSeed = session?.user.id ?? session?.user.email ?? 'vision';
   const unreadNotificationCount = notifications.filter(
     (notification) => !notification.readAt,
   ).length;
@@ -642,9 +642,10 @@ export function AppShell({
                   {session?.user.profilePhotoUrl ? (
                     <img alt="" src={session.user.profilePhotoUrl} />
                   ) : (
-                    <span className="workspace-profile-avatar-label">
-                      {userInitials}
-                    </span>
+                    <DefaultProfileAvatar
+                      className="workspace-profile-avatar-default"
+                      seed={profileAvatarSeed}
+                    />
                   )}
                 </span>
                 <ChevronDown
@@ -661,7 +662,10 @@ export function AppShell({
                       {session?.user.profilePhotoUrl ? (
                         <img alt="" src={session.user.profilePhotoUrl} />
                       ) : (
-                        userInitials
+                        <DefaultProfileAvatar
+                          className="workspace-profile-avatar-default"
+                          seed={profileAvatarSeed}
+                        />
                       )}
                     </span>
                     <div>

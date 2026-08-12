@@ -18,7 +18,7 @@ import type {
   ReportsView,
 } from './reports-page.types';
 
-const GROUP_MEMBER_COLOR_COUNT = 12;
+const GROUP_MEMBER_COLOR_COUNT = 10;
 
 export function applyPeriodPreset(
   filters: ReportsFilterState,

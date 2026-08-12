@@ -95,23 +95,6 @@ export function getRouteDisplayTitle(
   return routeTitle;
 }
 
-export function getUserInitials(session: AuthSessionSnapshot | null): string {
-  if (!session) {
-    return 'VI';
-  }
-
-  const initials = [session.user.firstName, session.user.lastName]
-    .filter(Boolean)
-    .map((value) => value!.trim().charAt(0).toUpperCase())
-    .join('');
-
-  if (initials) {
-    return initials.slice(0, 2);
-  }
-
-  return session.user.email.slice(0, 2).toUpperCase();
-}
-
 export function getUserDisplayName(
   session: AuthSessionSnapshot | null,
 ): string {

@@ -689,16 +689,6 @@
 }
 
 .planning-user-color-4 {
-  --planning-user-bg: #fef3c7;
-  --planning-user-bg-hover: #fde9a8;
-  --planning-user-border: rgba(245, 158, 11, 0.32);
-  --planning-user-accent: #fbbf24;
-  border-color: rgba(245, 158, 11, 0.32);
-  border-left-color: #fbbf24;
-  background: #fef3c7;
-}
-
-.planning-user-color-5 {
   --planning-user-bg: #ffe4e6;
   --planning-user-bg-hover: #ffd5db;
   --planning-user-border: rgba(251, 113, 133, 0.32);
@@ -708,7 +698,7 @@
   background: #ffe4e6;
 }
 
-.planning-user-color-6 {
+.planning-user-color-5 {
   --planning-user-bg: #fce7f3;
   --planning-user-bg-hover: #f9d7ec;
   --planning-user-border: rgba(244, 114, 182, 0.3);
@@ -718,7 +708,7 @@
   background: #fce7f3;
 }
 
-.planning-user-color-7 {
+.planning-user-color-6 {
   --planning-user-bg: #f3e8ff;
   --planning-user-bg-hover: #ead8ff;
   --planning-user-border: rgba(168, 85, 247, 0.26);
@@ -728,7 +718,7 @@
   background: #f3e8ff;
 }
 
-.planning-user-color-8 {
+.planning-user-color-7 {
   --planning-user-bg: #e0e7ff;
   --planning-user-bg-hover: #d2dcff;
   --planning-user-border: rgba(99, 102, 241, 0.28);
@@ -738,7 +728,7 @@
   background: #e0e7ff;
 }
 
-.planning-user-color-9 {
+.planning-user-color-8 {
   --planning-user-bg: #cffafe;
   --planning-user-bg-hover: #bdf4ff;
   --planning-user-border: rgba(6, 182, 212, 0.3);
@@ -748,7 +738,7 @@
   background: #cffafe;
 }
 
-.planning-user-color-10 {
+.planning-user-color-9 {
   --planning-user-bg: #fef9c3;
   --planning-user-bg-hover: #fdf3aa;
   --planning-user-border: rgba(250, 204, 21, 0.35);
@@ -758,7 +748,7 @@
   background: #fef9c3;
 }
 
-.planning-user-color-11 {
+.planning-user-color-10 {
   --planning-user-bg: #e7f5d9;
   --planning-user-bg-hover: #dcf0c7;
   --planning-user-border: rgba(101, 163, 13, 0.28);
@@ -766,16 +756,6 @@
   border-color: rgba(101, 163, 13, 0.28);
   border-left-color: #84cc16;
   background: #e7f5d9;
-}
-
-.planning-user-color-12 {
-  --planning-user-bg: #d9fbf3;
-  --planning-user-bg-hover: #c8f6ed;
-  --planning-user-border: rgba(45, 212, 191, 0.3);
-  --planning-user-accent: #5eead4;
-  border-color: rgba(45, 212, 191, 0.3);
-  border-left-color: #5eead4;
-  background: #d9fbf3;
 }
 
 .planning-user-color-1:hover {
@@ -791,39 +771,31 @@
 }
 
 .planning-user-color-4:hover {
-  background: #fde9a8;
-}
-
-.planning-user-color-5:hover {
   background: #ffd5db;
 }
 
-.planning-user-color-6:hover {
+.planning-user-color-5:hover {
   background: #f9d7ec;
 }
 
-.planning-user-color-7:hover {
+.planning-user-color-6:hover {
   background: #ead8ff;
 }
 
-.planning-user-color-8:hover {
+.planning-user-color-7:hover {
   background: #d2dcff;
 }
 
-.planning-user-color-9:hover {
+.planning-user-color-8:hover {
   background: #bdf4ff;
 }
 
-.planning-user-color-10:hover {
+.planning-user-color-9:hover {
   background: #fdf3aa;
 }
 
-.planning-user-color-11:hover {
+.planning-user-color-10:hover {
   background: #dcf0c7;
-}
-
-.planning-user-color-12:hover {
-  background: #c8f6ed;
 }
 
 .group-chat-members-list
@@ -1502,4 +1474,3 @@
     grid-template-columns: 1fr;
   }
 }
-

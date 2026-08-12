@@ -4095,8 +4095,8 @@ p.ticket-form-helper {
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #2da3d8 0%, #1e83c0 100%);
-  color: #ffffff;
+  background: #f1f4f8;
+  color: #000000;
   font-size: 0.84rem;
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -4110,9 +4110,11 @@ p.ticket-form-helper {
   object-fit: cover;
 }
 
-.workspace-profile-avatar-label {
-  display: block;
-  line-height: 1;
+.workspace-profile-avatar-default {
+  background: var(--default-profile-avatar-bg);
+  color: var(--default-profile-avatar-icon);
+  width: 100%;
+  height: 100%;
 }
 
 .workspace-profile-avatar.is-large {
@@ -4137,7 +4139,7 @@ p.ticket-form-helper {
   text-transform: capitalize;
 }
 
-.workspace-profile-trigger svg:last-child {
+.workspace-profile-trigger > svg:last-child {
   color: #7a8da9;
   transition: transform 160ms ease;
 }

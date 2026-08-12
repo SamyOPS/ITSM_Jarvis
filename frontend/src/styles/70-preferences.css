@@ -224,6 +224,15 @@
   box-shadow: 0 10px 22px rgba(30, 131, 192, 0.14);
 }
 
+.profile-page-avatar.default-profile-avatar {
+  background: var(--default-profile-avatar-bg);
+  color: var(--default-profile-avatar-icon);
+  font-size: initial;
+  font-weight: initial;
+  letter-spacing: 0;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+}
+
 .profile-fields-grid {
   grid-template-columns: 1fr;
 }
@@ -360,8 +369,8 @@
   width: 46px;
   height: 46px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #35a7dc 0%, #2387c5 100%);
-  color: #ffffff;
+  background: #f1f4f8;
+  color: #000000;
   font-size: 0.92rem;
   font-weight: 800;
   overflow: hidden;
@@ -371,6 +380,13 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.settings-discord-default-avatar {
+  background: var(--default-profile-avatar-bg);
+  color: var(--default-profile-avatar-icon);
+  width: 100%;
+  height: 100%;
 }
 
 .settings-discord-profile-summary div {
@@ -387,7 +403,8 @@
   white-space: nowrap;
 }
 
-.settings-discord-profile-summary span:not(.settings-discord-avatar) {
+.settings-discord-profile-summary
+  span:not(.settings-discord-avatar):not(.default-profile-avatar) {
   overflow: hidden;
   color: #64748b;
   font-size: 0.8rem;
@@ -667,8 +684,8 @@
   height: 72px;
   overflow: hidden;
   border-radius: 999px;
-  background: linear-gradient(180deg, #35a7dc 0%, #2387c5 100%);
-  color: #ffffff;
+  background: #f1f4f8;
+  color: #000000;
   font-size: 1.05rem;
   font-weight: 800;
 }
@@ -677,6 +694,13 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.settings-profile-photo-default-avatar {
+  background: var(--default-profile-avatar-bg);
+  color: var(--default-profile-avatar-icon);
+  width: 100%;
+  height: 100%;
 }
 
 .settings-profile-photo-actions {

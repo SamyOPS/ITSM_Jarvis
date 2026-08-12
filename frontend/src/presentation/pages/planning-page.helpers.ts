@@ -12,7 +12,7 @@ export const MONTH_DEFAULT_DURATION_MINUTES = PLANNING_DAY_DURATION_MINUTES;
 export const DISPLAY_SLOT_COUNT =
   ((WORKDAY_END_HOUR - DAY_START_HOUR) * 60) / SLOT_MINUTES;
 
-const GROUP_PLANNING_COLOR_COUNT = 12;
+const GROUP_PLANNING_COLOR_COUNT = 10;
 
 export function buildWorkingSegments(task: PlanningTask): TaskSegment[] {
   const segments: TaskSegment[] = [];
