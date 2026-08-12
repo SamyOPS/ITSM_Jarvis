@@ -49,6 +49,10 @@ import {
 } from '../../infrastructure/api/knowledge-api';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 import {
+  getDefaultKnowledgeSortPreference,
+  subscribeToDefaultSortPreferences,
+} from '../preferences/default-sort-preferences';
+import {
   getPageQueryParam,
   withPageQuery,
   withReturnPageQuery,
@@ -95,7 +99,9 @@ export function KnowledgePage({
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [sortBy, setSortBy] = useState<KnowledgeSortOption>('NEWEST');
+  const [sortBy, setSortBy] = useState<KnowledgeSortOption>(() =>
+    getDefaultKnowledgeSortPreference(session.user.id),
+  );
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [page, setPage] = useState(() => getPageQueryParam());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -119,6 +125,20 @@ export function KnowledgePage({
   const [likingArticleIds, setLikingArticleIds] = useState<string[]>([]);
   const [attachmentInputKey, setAttachmentInputKey] = useState(0);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function applyDefaultKnowledgeSort(): void {
+      setSortBy(getDefaultKnowledgeSortPreference(session.user.id));
+    }
+
+    applyDefaultKnowledgeSort();
+
+    return subscribeToDefaultSortPreferences(
+      session.user.id,
+      applyDefaultKnowledgeSort,
+    );
+  }, [session.user.id]);
+
   const canManageArticles = canManageKnowledgeBase(session.user);
   const canValidateArticles = canValidateKnowledgeBase(session.user);
   const isSupport = isSupportRole(session.user.role);

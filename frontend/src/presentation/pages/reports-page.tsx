@@ -63,6 +63,10 @@ import { fetchReportingOverview } from '../../infrastructure/api/reporting-api';
 import { searchTickets } from '../../infrastructure/api/ticketing-api';
 
 import { navigateTo } from '../../infrastructure/routing/browser-router';
+import {
+  getDefaultTicketSortPreference,
+  subscribeToDefaultSortPreferences,
+} from '../preferences/default-sort-preferences';
 
 import { PlanningPage } from './planning-page';
 import { formatEquipmentIdentifier } from './park-page.helpers';
@@ -280,6 +284,11 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
   const [filters, setFilters] = useState<ReportsFilterState>(INITIAL_FILTERS);
 
+  const [defaultTicketSort, setDefaultTicketSort] =
+    useState<PersonalTicketSort>(() =>
+      getDefaultTicketSortPreference(session.user.id),
+    );
+
   const [dashboardActivityModes, setDashboardActivityModes] = useState(
     INITIAL_DASHBOARD_ACTIVITY_MODES,
   );
@@ -313,6 +322,19 @@ export function ReportsPage({ session }: ReportsPageProps) {
   const [groupChatMessages, setGroupChatMessages] = useState<
     GroupChatMessage[]
   >([]);
+
+  useEffect(() => {
+    function applyDefaultTicketSort(): void {
+      setDefaultTicketSort(getDefaultTicketSortPreference(session.user.id));
+    }
+
+    applyDefaultTicketSort();
+
+    return subscribeToDefaultSortPreferences(
+      session.user.id,
+      applyDefaultTicketSort,
+    );
+  }, [session.user.id]);
 
   const technicians = useMemo(
     () => users.filter((user) => user.isActive && isSupportRole(user.role)),
@@ -1114,6 +1136,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
           <PersonalTicketPanel
             categoriesById={personalCategoriesById}
             columns={REQUESTER_TICKET_COLUMNS}
+            defaultSort={defaultTicketSort}
             isLoading={isLoading}
             onOpenTicket={(ticketId) =>
               navigateTo(`/agent/tickets/${ticketId}?from=reports-personal`)
@@ -1522,6 +1545,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
           <PersonalTicketPanel
             categoriesById={personalCategoriesById}
             columns={ASSIGNED_TO_ME_COLUMNS}
+            defaultSort={defaultTicketSort}
             isLoading={isLoading}
             onOpenTicket={(ticketId) =>
               navigateTo(`/agent/tickets/${ticketId}?from=reports-personal`)
@@ -1535,6 +1559,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
           <PersonalTicketPanel
             categoriesById={personalCategoriesById}
             columns={REQUESTER_TICKET_COLUMNS}
+            defaultSort={defaultTicketSort}
             isLoading={isLoading}
             onOpenTicket={(ticketId) =>
               navigateTo(`/agent/tickets/${ticketId}?from=reports-personal`)
@@ -1609,6 +1634,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
           {selectedReportGroup ? (
             <div className="personal-view-grid group-view-grid">
               <GroupTicketPanel
+                defaultSort={defaultTicketSort}
                 isLoading={isLoading}
                 onOpenTicket={(ticketId) =>
                   navigateTo(`/agent/tickets/${ticketId}?from=reports-group`)
@@ -1621,6 +1647,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
               />
 
               <GroupTicketPanel
+                defaultSort={defaultTicketSort}
                 isLoading={isLoading}
                 onOpenTicket={(ticketId) =>
                   navigateTo(`/agent/tickets/${ticketId}?from=reports-group`)
@@ -1673,6 +1700,8 @@ function PersonalTicketPanel({
 
   columns = ['ID', 'TITLE', 'STATUS', 'REQUESTER'],
 
+  defaultSort,
+
   isLoading,
 
   onOpenTicket,
@@ -1688,6 +1717,8 @@ function PersonalTicketPanel({
   categoriesById?: Map<string, { name: string }>;
 
   columns?: PersonalTicketColumn[];
+
+  defaultSort: PersonalTicketSort;
 
   isLoading: boolean;
 
@@ -1705,11 +1736,13 @@ function PersonalTicketPanel({
 
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
 
-  const [sortBy, setSortBy] = useState<PersonalTicketSort>(
-    'OPERATIONAL_PRIORITY',
-  );
+  const [sortBy, setSortBy] = useState<PersonalTicketSort>(defaultSort);
 
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setSortBy(defaultSort);
+  }, [defaultSort]);
 
   const sortedTickets = useMemo(
     () => sortPersonalTickets(tickets, sortBy, prioritiesById),
@@ -2196,6 +2229,8 @@ function PersonalPlanningPanel({
 }
 
 function GroupTicketPanel({
+  defaultSort,
+
   isLoading,
 
   onOpenTicket,
@@ -2212,6 +2247,8 @@ function GroupTicketPanel({
 
   users,
 }: {
+  defaultSort: PersonalTicketSort;
+
   isLoading: boolean;
 
   onOpenTicket: (ticketId: string) => void;
@@ -2232,11 +2269,13 @@ function GroupTicketPanel({
 
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
 
-  const [sortBy, setSortBy] = useState<PersonalTicketSort>(
-    'OPERATIONAL_PRIORITY',
-  );
+  const [sortBy, setSortBy] = useState<PersonalTicketSort>(defaultSort);
 
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setSortBy(defaultSort);
+  }, [defaultSort]);
 
   const sortedTickets = useMemo(
     () => sortPersonalTickets(tickets, sortBy, prioritiesById),

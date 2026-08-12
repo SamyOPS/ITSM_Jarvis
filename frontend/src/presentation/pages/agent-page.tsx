@@ -92,6 +92,10 @@ import {
 import type { TicketDraftSuggestion } from '../../infrastructure/api/ticketing-api.types';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 import {
+  getDefaultTicketSortPreference,
+  subscribeToDefaultSortPreferences,
+} from '../preferences/default-sort-preferences';
+import {
   getPageQueryParam,
   withPageQuery,
   withReturnPageQuery,
@@ -391,12 +395,31 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     useState<CreatedRequestSnapshot | null>(null);
 
   const [searchFilters, setSearchFilters] = useState<TicketSearchFiltersState>(
-    INITIAL_SEARCH_FILTERS,
+    () => ({
+      ...INITIAL_SEARCH_FILTERS,
+      sortBy: getDefaultTicketSortPreference(session.user.id),
+    }),
   );
 
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(
     ticketId ?? null,
   );
+
+  useEffect(() => {
+    function applyDefaultTicketSort(): void {
+      setSearchFilters((currentFilters) => ({
+        ...currentFilters,
+        sortBy: getDefaultTicketSortPreference(session.user.id),
+      }));
+    }
+
+    applyDefaultTicketSort();
+
+    return subscribeToDefaultSortPreferences(
+      session.user.id,
+      applyDefaultTicketSort,
+    );
+  }, [session.user.id]);
 
   const [selectedTicketDetail, setSelectedTicketDetail] =
     useState<TicketDetailSnapshot | null>(null);

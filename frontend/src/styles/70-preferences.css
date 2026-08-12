@@ -997,7 +997,7 @@
 }
 
 .settings-discord-select-row {
-  cursor: default;
+  cursor: pointer;
 }
 
 .settings-discord-select {
@@ -1018,6 +1018,7 @@
   color: #17335f;
   font: inherit;
   font-size: 0.9rem;
+  cursor: pointer;
   outline: none;
 }
 
