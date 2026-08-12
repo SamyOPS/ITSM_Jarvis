@@ -26,10 +26,7 @@ import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { ReferentialGroup } from '../../domain/referentials/referential-catalog';
 import { translateUserRole } from '../../domain/i18n/ticketing-labels';
-import {
-  isSupportManagerRole,
-  isSupportRole,
-} from '../../domain/auth/user-role';
+import { isAdminRole, isSupportRole } from '../../domain/auth/user-role';
 import {
   deleteProfilePhoto,
   deleteProfilePhotoBinary,
@@ -337,15 +334,49 @@ function buildNotificationItems(
     );
   }
 
-  if (isSupportManagerRole(session.user.role)) {
-    items.push({
-      description: 'Alerte pour les changements importants d administration.',
-      enabled: false,
-      title: 'Administration',
-    });
+  return items;
+}
+
+function buildAdministrationNotificationItems(
+  session: AuthSessionSnapshot,
+): VisualNotification[] {
+  if (!isAdminRole(session.user.role)) {
+    return [];
   }
 
-  return items;
+  return [
+    {
+      description: 'Alerte quand un nouveau compte est cree ou inscrit.',
+      enabled: false,
+      title: 'Nouvel utilisateur cree / inscrit',
+    },
+    {
+      description: 'Alerte quand un compte est desactive ou reactive.',
+      enabled: false,
+      title: 'Utilisateur desactive ou reactive',
+    },
+    {
+      description: 'Alerte quand le role d un utilisateur est modifie.',
+      enabled: false,
+      title: 'Changement de role d un utilisateur',
+    },
+    {
+      description:
+        'Alerte quand les caracteristiques VIP, Parc ou Base co. changent.',
+      enabled: false,
+      title: 'Changement des caracteristiques d un utilisateur',
+    },
+    {
+      description: 'Alerte quand un utilisateur change de groupe.',
+      enabled: false,
+      title: 'Utilisateur ajoute ou retire d un groupe',
+    },
+    {
+      description: 'Alerte quand un groupe est cree, modifie ou supprime.',
+      enabled: false,
+      title: 'Groupe cree, modifie ou supprime',
+    },
+  ];
 }
 
 function VisualToggle({ enabled }: { enabled: boolean }) {
@@ -461,6 +492,10 @@ export function SettingsPage({
   }, [session.user.groupId, session.user.groupIds]);
   const notificationItems = useMemo(
     () => buildNotificationItems(session),
+    [session],
+  );
+  const administrationNotificationItems = useMemo(
+    () => buildAdministrationNotificationItems(session),
     [session],
   );
 
@@ -1123,6 +1158,27 @@ export function SettingsPage({
             ))}
           </div>
         </section>
+
+        {administrationNotificationItems.length > 0 ? (
+          <section className="settings-discord-content-card">
+            <header className="settings-discord-section-header">
+              <h1>Administration</h1>
+              <p>Alertes liees aux actions sensibles de gestion.</p>
+            </header>
+
+            <div className="settings-discord-list">
+              {administrationNotificationItems.map((item) => (
+                <div className="settings-discord-row" key={item.title}>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{item.description}</span>
+                  </div>
+                  <VisualToggle enabled={item.enabled} />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section
           className="settings-discord-content-card"
