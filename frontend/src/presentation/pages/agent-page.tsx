@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
+import { ProfileAvatar } from '../../components/ui/default-profile-avatar';
 import {
   isAdminRole,
   isSupportManagerRole,
@@ -106,7 +107,6 @@ import {
   filterIncidentLookupGroups,
   filterIncidentLookupUsers,
   filterTicketsByListSearch,
-  formatCommentAuthorInitials,
   formatFileSize,
   formatHistoryEventInitial,
   formatKnownUserName,
@@ -5184,8 +5184,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                               );
                               const isOwnComment =
                                 comment.authorUserId === session.user.id;
-                              const initials =
-                                formatCommentAuthorInitials(authorName);
                               const messageClassName = [
                                 'tdp-chat-message',
                                 isOwnComment ? 'is-own' : null,
@@ -5200,9 +5198,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   key={comment.id}
                                 >
                                   {isOwnComment ? null : (
-                                    <div className="tdp-comment-avatar">
-                                      {initials}
-                                    </div>
+                                    <ProfileAvatar
+                                      className="tdp-comment-avatar"
+                                      profilePhotoUrl={
+                                        usersById.get(comment.authorUserId)
+                                          ?.profilePhotoUrl
+                                      }
+                                      seed={comment.authorUserId}
+                                    />
                                   )}
 
                                   <div className="tdp-chat-bubble">
@@ -6785,19 +6788,16 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                   session.user.id,
                                   comment.authorUserId,
                                 );
-                              const initial =
-                                formatKnownUserName(
-                                  usersById.get(comment.authorUserId),
-                                  comment.authorUserId,
-                                )
-                                  .charAt(0)
-                                  .toUpperCase() || '?';
-
                               return (
                                 <div className="tdp-comment" key={comment.id}>
-                                  <div className="tdp-comment-avatar">
-                                    {initial}
-                                  </div>
+                                  <ProfileAvatar
+                                    className="tdp-comment-avatar"
+                                    profilePhotoUrl={
+                                      usersById.get(comment.authorUserId)
+                                        ?.profilePhotoUrl
+                                    }
+                                    seed={comment.authorUserId}
+                                  />
 
                                   <div className="tdp-comment-body">
                                     <div className="tdp-comment-header">

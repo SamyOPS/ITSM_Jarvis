@@ -7,6 +7,10 @@ interface DefaultProfileAvatarProps {
   seed: string;
 }
 
+interface ProfileAvatarProps extends DefaultProfileAvatarProps {
+  profilePhotoUrl?: string | null;
+}
+
 export function DefaultProfileAvatar({
   className,
   seed,
@@ -29,4 +33,20 @@ export function DefaultProfileAvatar({
       />
     </span>
   );
+}
+
+export function ProfileAvatar({
+  className,
+  profilePhotoUrl,
+  seed,
+}: ProfileAvatarProps) {
+  if (profilePhotoUrl) {
+    return (
+      <span className={className}>
+        <img alt="" src={profilePhotoUrl} />
+      </span>
+    );
+  }
+
+  return <DefaultProfileAvatar className={className} seed={seed} />;
 }

@@ -298,11 +298,26 @@
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.02em;
+  overflow: hidden;
+}
+
+.group-chat-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .group-chat-message-row[class*='planning-user-color-'] .group-chat-avatar {
   background: linear-gradient(180deg, #2da3d8 0%, #1e83c0 100%);
   color: #ffffff;
+}
+
+.group-chat-avatar.default-profile-avatar,
+.group-chat-message-row[class*='planning-user-color-']
+  .group-chat-avatar.default-profile-avatar {
+  border: 1px solid var(--default-profile-avatar-ring);
+  background: var(--default-profile-avatar-bg);
+  color: var(--default-profile-avatar-icon);
 }
 
 .group-chat-message {
@@ -328,19 +343,13 @@
 }
 
 .group-chat-message-meta strong {
-  color: #2b6de9;
+  color: #071f41;
   font-size: 0.84rem;
   font-weight: 700;
 }
 
 .group-chat-message-row.is-own .group-chat-message-meta strong {
   color: #2b5d9f;
-}
-
-.group-chat-message-row[class*='planning-user-color-']
-  .group-chat-message-meta
-  strong {
-  color: var(--planning-user-accent);
 }
 
 .group-chat-message-meta span {

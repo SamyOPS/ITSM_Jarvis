@@ -2879,6 +2879,19 @@ p.ticket-form-helper {
   font-size: 0.84rem;
   font-weight: 800;
   letter-spacing: 0.02em;
+  overflow: hidden;
+}
+
+.tdp-comment-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tdp-comment-avatar.default-profile-avatar {
+  border: 1px solid var(--default-profile-avatar-ring);
+  background: var(--default-profile-avatar-bg);
+  color: var(--default-profile-avatar-icon);
 }
 
 .tdp-comment-body {
