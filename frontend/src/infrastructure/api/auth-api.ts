@@ -92,6 +92,13 @@ export async function updatePasswordWithRecoveryToken(
   accessToken: string,
   password: string,
 ): Promise<void> {
+  return updateCurrentUserPassword(accessToken, password);
+}
+
+export async function updateCurrentUserPassword(
+  accessToken: string,
+  password: string,
+): Promise<void> {
   const supabaseConfig = getFrontendSupabaseConfig();
   const response = await fetch(`${supabaseConfig.url}/auth/v1/user`, {
     method: 'PUT',

@@ -3,6 +3,7 @@ import {
   PASSWORD_MIN_LENGTH,
   validatePasswordPolicy,
 } from '../../domain/auth/password-policy';
+import { PasswordVisibilityIcon } from '../../components/ui/password-visibility-icon';
 import { updatePasswordWithRecoveryToken } from '../../infrastructure/api/auth-api';
 import { navigateTo } from '../../infrastructure/routing/browser-router';
 
@@ -16,6 +17,8 @@ export function ResetPasswordPage({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [password, setPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const recoveryToken = useMemo(() => readRecoveryAccessToken(), []);
   const recoveryEmail = useMemo(
@@ -97,26 +100,56 @@ export function ResetPasswordPage({
         >
           <label className="field">
             <span>Nouveau mot de passe</span>
-            <input
-              autoComplete="new-password"
-              minLength={PASSWORD_MIN_LENGTH}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              type="password"
-              value={password}
-            />
+            <span className="login-password-field">
+              <input
+                autoComplete="new-password"
+                minLength={PASSWORD_MIN_LENGTH}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+              />
+              <button
+                aria-label={
+                  showPassword
+                    ? 'Masquer le mot de passe'
+                    : 'Afficher le mot de passe'
+                }
+                className="login-password-eye"
+                onClick={() => setShowPassword((isVisible) => !isVisible)}
+                type="button"
+              >
+                <PasswordVisibilityIcon isVisible={showPassword} />
+              </button>
+            </span>
           </label>
 
           <label className="field">
             <span>Confirmer le mot de passe</span>
-            <input
-              autoComplete="new-password"
-              minLength={PASSWORD_MIN_LENGTH}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              required
-              type="password"
-              value={confirmPassword}
-            />
+            <span className="login-password-field">
+              <input
+                autoComplete="new-password"
+                minLength={PASSWORD_MIN_LENGTH}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                required
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+              />
+              <button
+                aria-label={
+                  showConfirmPassword
+                    ? 'Masquer le mot de passe'
+                    : 'Afficher le mot de passe'
+                }
+                className="login-password-eye"
+                onClick={() =>
+                  setShowConfirmPassword((isVisible) => !isVisible)
+                }
+                type="button"
+              >
+                <PasswordVisibilityIcon isVisible={showConfirmPassword} />
+              </button>
+            </span>
           </label>
 
           <button

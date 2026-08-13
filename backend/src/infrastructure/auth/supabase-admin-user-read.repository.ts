@@ -1,4 +1,5 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { normalizePersonName } from '../../application/auth/name-normalization';
 import { AdminUserReadRepository } from '../../application/auth/repositories/admin-user-read.repository';
 import { type AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import { resolveUserAccountStatus } from '../../domain/auth/user-account-status';
@@ -95,7 +96,7 @@ export class SupabaseAdminUserReadRepository implements AdminUserReadRepository 
       ),
       displayName: row.display_name,
       email: emailsByUserId.get(row.id) ?? null,
-      firstName: row.first_name,
+      firstName: normalizePersonName(row.first_name),
       groupId: row.group_id,
       groupIds: getUserGroupIds(row, groupIdsByUserId),
       id: row.id,
@@ -104,7 +105,7 @@ export class SupabaseAdminUserReadRepository implements AdminUserReadRepository 
       canManageAssets: Boolean(row.can_manage_assets),
       canManageKnowledgeBase: Boolean(row.can_manage_knowledge_base),
       canValidateKnowledgeBase: Boolean(row.can_validate_knowledge_base),
-      lastName: row.last_name,
+      lastName: normalizePersonName(row.last_name),
       profilePhotoUrl: row.profile_photo_url,
       role: resolveUserRole(row.role),
     }));

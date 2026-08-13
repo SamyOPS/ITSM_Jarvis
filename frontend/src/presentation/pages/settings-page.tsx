@@ -26,12 +26,15 @@ import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { ReferentialGroup } from '../../domain/referentials/referential-catalog';
 import { translateUserRole } from '../../domain/i18n/ticketing-labels';
+import { validatePasswordPolicy } from '../../domain/auth/password-policy';
 import { isAdminRole, isSupportRole } from '../../domain/auth/user-role';
 import {
   deleteProfilePhoto,
   deleteProfilePhotoBinary,
   fetchUserDirectory,
+  loginWithPassword,
   PROFILE_PHOTO_BUCKET_ID,
+  updateCurrentUserPassword,
   updateProfilePhoto,
   uploadProfilePhotoBinary,
 } from '../../infrastructure/api/auth-api';
@@ -43,6 +46,7 @@ import {
   type NotificationPreferences,
   updateNotificationPreference,
 } from '../../infrastructure/api/notifications-api';
+import { PasswordVisibilityIcon } from '../../components/ui/password-visibility-icon';
 import { rotateDefaultProfileAvatarSeed } from '../../components/ui/default-profile-avatar.helpers';
 import { DefaultProfileAvatar } from '../../components/ui/default-profile-avatar';
 import {
@@ -98,6 +102,10 @@ type ProfilePhotoOffset = {
   x: number;
   y: number;
 };
+type PasswordUpdateField =
+  | 'confirmPassword'
+  | 'currentPassword'
+  | 'newPassword';
 
 const PROFILE_PHOTO_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 const PROFILE_PHOTO_CANVAS_SIZE = 512;
@@ -219,6 +227,38 @@ function maskEmail(email: string): string {
   }
 
   return `${'*'.repeat(Math.max(8, localPart.length))}@${domain}`;
+}
+
+function mapPasswordUpdateErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return 'Erreur inconnue lors de la mise a jour du mot de passe.';
+  }
+
+  const normalizedMessage = error.message.toLowerCase();
+
+  if (
+    normalizedMessage.includes('invalid login credentials') ||
+    normalizedMessage.includes('invalid credentials') ||
+    normalizedMessage.includes('email not confirmed')
+  ) {
+    return 'Le mot de passe actuel est incorrect.';
+  }
+
+  if (
+    normalizedMessage.includes('same password') ||
+    normalizedMessage.includes('different from the old password')
+  ) {
+    return "Le nouveau mot de passe doit etre different de l'actuel.";
+  }
+
+  if (
+    normalizedMessage.includes('weak password') ||
+    normalizedMessage.includes('password')
+  ) {
+    return error.message;
+  }
+
+  return 'Impossible de mettre a jour le mot de passe pour le moment.';
 }
 
 function validateProfilePhotoFile(file: File): string | null {
@@ -448,21 +488,42 @@ function VisualToggle({
   );
 }
 
-function ReadonlyField({
+function PasswordUpdateFieldInput({
+  autoComplete,
+  isVisible,
   label,
-  placeholder,
-  type = 'text',
+  onChange,
+  onToggleVisibility,
   value,
 }: {
+  autoComplete: string;
+  isVisible: boolean;
   label: string;
-  placeholder?: string;
-  type?: string;
+  onChange: (value: string) => void;
+  onToggleVisibility: () => void;
   value: string;
 }) {
   return (
     <label className="settings-discord-field">
       <span>{label}</span>
-      <input placeholder={placeholder} readOnly type={type} value={value} />
+      <span className="login-password-field">
+        <input
+          autoComplete={autoComplete}
+          onChange={(event) => onChange(event.target.value)}
+          type={isVisible ? 'text' : 'password'}
+          value={value}
+        />
+        <button
+          aria-label={
+            isVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'
+          }
+          className="login-password-eye"
+          onClick={onToggleVisibility}
+          type="button"
+        >
+          <PasswordVisibilityIcon isVisible={isVisible} />
+        </button>
+      </span>
     </label>
   );
 }
@@ -498,6 +559,22 @@ export function SettingsPage({
     useState<NotificationPreferenceKey | null>(null);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [showPasswordUpdate, setShowPasswordUpdate] = useState(false);
+  const [passwordUpdateForm, setPasswordUpdateForm] = useState({
+    confirmPassword: '',
+    currentPassword: '',
+    newPassword: '',
+  });
+  const [visiblePasswordFields, setVisiblePasswordFields] = useState({
+    confirmPassword: false,
+    currentPassword: false,
+    newPassword: false,
+  });
+  const [passwordUpdateMessage, setPasswordUpdateMessage] = useState<
+    string | null
+  >(null);
+  const [isPasswordUpdateSuccessful, setIsPasswordUpdateSuccessful] =
+    useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(
     () => session.user.profilePhotoUrl ?? null,
   );
@@ -767,6 +844,108 @@ export function SettingsPage({
         isProgrammaticScrollRef.current = false;
       }, 360);
     }, 0);
+  }
+
+  function handlePasswordUpdateFieldChange(
+    field: PasswordUpdateField,
+    value: string,
+  ): void {
+    setPasswordUpdateMessage(null);
+    setIsPasswordUpdateSuccessful(false);
+    setPasswordUpdateForm((currentForm) => ({
+      ...currentForm,
+      [field]: value,
+    }));
+  }
+
+  function togglePasswordUpdateField(field: PasswordUpdateField): void {
+    setVisiblePasswordFields((currentFields) => ({
+      ...currentFields,
+      [field]: !currentFields[field],
+    }));
+  }
+
+  function closePasswordUpdateDialog(): void {
+    setShowPasswordUpdate(false);
+    setPasswordUpdateForm({
+      confirmPassword: '',
+      currentPassword: '',
+      newPassword: '',
+    });
+    setVisiblePasswordFields({
+      confirmPassword: false,
+      currentPassword: false,
+      newPassword: false,
+    });
+    setPasswordUpdateMessage(null);
+    setIsPasswordUpdateSuccessful(false);
+    setIsUpdatingPassword(false);
+  }
+
+  async function handlePasswordUpdateSubmit(): Promise<void> {
+    const currentPassword = passwordUpdateForm.currentPassword;
+    const newPassword = passwordUpdateForm.newPassword;
+    const confirmPassword = passwordUpdateForm.confirmPassword;
+
+    setPasswordUpdateMessage(null);
+    setIsPasswordUpdateSuccessful(false);
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordUpdateMessage('Tous les champs sont obligatoires.');
+
+      return;
+    }
+
+    const passwordPolicyError = validatePasswordPolicy(newPassword);
+
+    if (passwordPolicyError) {
+      setPasswordUpdateMessage(passwordPolicyError);
+
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordUpdateMessage(
+        'Les deux nouveaux mots de passe ne correspondent pas.',
+      );
+
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      setPasswordUpdateMessage(
+        "Le nouveau mot de passe doit etre different de l'actuel.",
+      );
+
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+
+    try {
+      const verifiedSession = await loginWithPassword(
+        session.user.email,
+        currentPassword,
+      );
+      await updateCurrentUserPassword(verifiedSession.accessToken, newPassword);
+      onSessionUpdated?.(verifiedSession);
+      setPasswordUpdateForm({
+        confirmPassword: '',
+        currentPassword: '',
+        newPassword: '',
+      });
+      setVisiblePasswordFields({
+        confirmPassword: false,
+        currentPassword: false,
+        newPassword: false,
+      });
+      setIsPasswordUpdateSuccessful(true);
+      setPasswordUpdateMessage('Mot de passe mis a jour.');
+    } catch (error) {
+      setPasswordUpdateMessage(mapPasswordUpdateErrorMessage(error));
+    } finally {
+      setIsUpdatingPassword(false);
+    }
   }
 
   function renderContent() {
@@ -1691,7 +1870,7 @@ export function SettingsPage({
             <button
               aria-label="Fermer"
               className="settings-password-update-close"
-              onClick={() => setShowPasswordUpdate(false)}
+              onClick={closePasswordUpdateDialog}
               type="button"
             >
               ×
@@ -1705,39 +1884,72 @@ export function SettingsPage({
             </header>
 
             <div className="settings-discord-password-form">
-              <ReadonlyField
+              <PasswordUpdateFieldInput
+                autoComplete="current-password"
+                isVisible={visiblePasswordFields.currentPassword}
                 label="Mot de passe actuel"
-                placeholder="********"
-                type="password"
-                value=""
+                onChange={(value) =>
+                  handlePasswordUpdateFieldChange('currentPassword', value)
+                }
+                onToggleVisibility={() =>
+                  togglePasswordUpdateField('currentPassword')
+                }
+                value={passwordUpdateForm.currentPassword}
               />
-              <ReadonlyField
+              <PasswordUpdateFieldInput
+                autoComplete="new-password"
+                isVisible={visiblePasswordFields.newPassword}
                 label="Nouveau mot de passe"
-                placeholder="********"
-                type="password"
-                value=""
+                onChange={(value) =>
+                  handlePasswordUpdateFieldChange('newPassword', value)
+                }
+                onToggleVisibility={() =>
+                  togglePasswordUpdateField('newPassword')
+                }
+                value={passwordUpdateForm.newPassword}
               />
-              <ReadonlyField
+              <PasswordUpdateFieldInput
+                autoComplete="new-password"
+                isVisible={visiblePasswordFields.confirmPassword}
                 label="Confirmer le nouveau mot de passe"
-                placeholder="********"
-                type="password"
-                value=""
+                onChange={(value) =>
+                  handlePasswordUpdateFieldChange('confirmPassword', value)
+                }
+                onToggleVisibility={() =>
+                  togglePasswordUpdateField('confirmPassword')
+                }
+                value={passwordUpdateForm.confirmPassword}
               />
             </div>
+
+            {passwordUpdateMessage ? (
+              <p
+                className={
+                  isPasswordUpdateSuccessful
+                    ? 'settings-password-update-message is-success'
+                    : 'settings-password-update-message is-error'
+                }
+              >
+                {passwordUpdateMessage}
+              </p>
+            ) : null}
 
             <div className="settings-email-verification-actions">
               <button
                 className="settings-discord-button is-muted"
-                onClick={() => setShowPasswordUpdate(false)}
+                disabled={isUpdatingPassword}
+                onClick={closePasswordUpdateDialog}
                 type="button"
               >
                 Annuler
               </button>
               <button
                 className="primary-button admin-user-save-button"
+                disabled={isUpdatingPassword}
+                onClick={() => void handlePasswordUpdateSubmit()}
                 type="button"
               >
-                Termine
+                {isUpdatingPassword ? 'Mise a jour...' : 'Termine'}
               </button>
             </div>
           </section>

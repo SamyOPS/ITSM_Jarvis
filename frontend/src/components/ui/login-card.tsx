@@ -1,10 +1,11 @@
 ﻿import * as React from 'react';
 import { motion } from 'framer-motion';
-import { Check, LockKeyhole, Mail, ShieldCheck, Sparkles } from 'lucide-react';
+import { LockKeyhole, Mail, ShieldCheck, Sparkles } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordVisibilityIcon } from '@/components/ui/password-visibility-icon';
 
 type LoginCardProps = {
   defaultAppRole: string;
@@ -132,28 +133,28 @@ export default function LoginCard({
 
               <div className="space-y-2">
                 <Label htmlFor="password">Mot de passe</Label>
-                <Input
-                  autoComplete="current-password"
-                  id="password"
-                  onChange={(event) => onPasswordChange(event.target.value)}
-                  placeholder="••••••••"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                />
-                <label className="inline-flex cursor-pointer items-center gap-3 text-sm text-slate-600">
-                  <span className="relative flex h-4 w-4 items-center justify-center rounded-[4px] border border-slate-300 bg-white shadow-sm shadow-slate-200/80">
-                    <input
-                      checked={showPassword}
-                      className="peer absolute inset-0 cursor-pointer opacity-0"
-                      onChange={(event) =>
-                        setShowPassword(event.target.checked)
-                      }
-                      type="checkbox"
-                    />
-                    <Check className="h-3 w-3 text-blue-600 opacity-0 transition peer-checked:opacity-100" />
-                  </span>
-                  Afficher le mot de passe
-                </label>
+                <span className="login-password-field">
+                  <Input
+                    autoComplete="current-password"
+                    id="password"
+                    onChange={(event) => onPasswordChange(event.target.value)}
+                    placeholder="••••••••"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                  />
+                  <button
+                    aria-label={
+                      showPassword
+                        ? 'Masquer le mot de passe'
+                        : 'Afficher le mot de passe'
+                    }
+                    className="login-password-eye"
+                    onClick={() => setShowPassword((isVisible) => !isVisible)}
+                    type="button"
+                  >
+                    <PasswordVisibilityIcon isVisible={showPassword} />
+                  </button>
+                </span>
               </div>
 
               <Button

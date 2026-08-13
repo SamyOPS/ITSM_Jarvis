@@ -5,6 +5,10 @@ import {
   AdminUserWriteRepository,
   type UpdateAdminUserRecord,
 } from '../repositories/admin-user-write.repository';
+import {
+  normalizeOptionalText,
+  normalizePersonName,
+} from '../name-normalization';
 
 export type UpdateAdminUserCommand = {
   canManageAssets?: boolean | null;
@@ -51,8 +55,8 @@ export class UpdateAdminUserUseCase {
 
     const record: UpdateAdminUserRecord = {
       email,
-      firstName: normalizeOptionalText(command.firstName),
-      lastName: normalizeOptionalText(command.lastName),
+      firstName: normalizePersonName(command.firstName),
+      lastName: normalizePersonName(command.lastName),
       role: command.role,
     };
 
@@ -100,14 +104,6 @@ export class UpdateAdminUserUseCase {
 
     return this.adminUserWriteRepository.updateUser(userId, record);
   }
-}
-
-function normalizeOptionalText(
-  value: string | null | undefined,
-): string | null {
-  const normalized = value?.trim();
-
-  return normalized ? normalized : null;
 }
 
 function normalizeGroupIds(
