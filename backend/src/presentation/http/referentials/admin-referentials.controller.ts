@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   HttpCode,
+  Optional,
   Param,
   Patch,
   Post,
@@ -14,12 +15,15 @@ import { ManageCisUseCase } from '../../../application/referentials/use-cases/ma
 import { ManageCiTypesUseCase } from '../../../application/referentials/use-cases/manage-ci-types.use-case';
 import { ManageGroupsUseCase } from '../../../application/referentials/use-cases/manage-groups.use-case';
 import { ManagePrioritiesUseCase } from '../../../application/referentials/use-cases/manage-priorities.use-case';
+import { AdminNotificationService } from '../../../application/notifications/admin-notification.service';
+import { type AuthenticatedUser } from '../../../domain/auth/authenticated-user';
 import { AuthPolicy } from '../../../domain/auth/auth-policy';
 import { UserRole } from '../../../domain/auth/user-role';
 import { PriorityName } from '../../../domain/ticketing/priority-name';
 import { SupportLevel } from '../../../domain/ticketing/support-level';
 import { CiStatus } from '../../../domain/ticketing/ci-status';
 import { BearerAuthGuard } from '../auth/bearer-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { Policies } from '../auth/policies.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -74,6 +78,8 @@ export class AdminReferentialsController {
     private readonly manageCiTypesUseCase: ManageCiTypesUseCase,
     private readonly manageGroupsUseCase: ManageGroupsUseCase,
     private readonly managePrioritiesUseCase: ManagePrioritiesUseCase,
+    @Optional()
+    private readonly adminNotificationService?: AdminNotificationService,
   ) {}
 
   @Post('categories')
@@ -132,28 +138,59 @@ export class AdminReferentialsController {
   }
 
   @Post('groups')
-  createGroup(@Body() body: GroupBody) {
-    return this.manageGroupsUseCase.create({
+  async createGroup(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: GroupBody,
+  ) {
+    const createdGroup = await this.manageGroupsUseCase.create({
       name: body.name,
       description: body.description ?? null,
       level: body.level ?? null,
     });
+
+    await this.adminNotificationService?.notifyGroupChanged(
+      user.id,
+      'cree',
+      createdGroup.name,
+    );
+
+    return createdGroup;
   }
 
   @Patch('groups/:id')
-  updateGroup(@Param('id') id: string, @Body() body: GroupBody) {
-    return this.manageGroupsUseCase.update({
+  async updateGroup(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: GroupBody,
+  ) {
+    const updatedGroup = await this.manageGroupsUseCase.update({
       id,
       name: body.name,
       description: body.description ?? null,
       level: body.level ?? null,
     });
+
+    await this.adminNotificationService?.notifyGroupChanged(
+      user.id,
+      'modifie',
+      updatedGroup.name,
+    );
+
+    return updatedGroup;
   }
 
   @Delete('groups/:id')
   @HttpCode(204)
-  async deleteGroup(@Param('id') id: string): Promise<void> {
+  async deleteGroup(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
     await this.manageGroupsUseCase.delete(id);
+    await this.adminNotificationService?.notifyGroupChanged(
+      user.id,
+      'supprime',
+      id,
+    );
   }
 
   @Post('priorities')

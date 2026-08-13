@@ -1,5 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { isAdminRole, isSupportRole } from '../../domain/auth/user-role';
+import {
+  type NotificationPreferenceKey,
+  type NotificationPreferenceSnapshot,
+  NotificationPreferenceKey as PreferenceKey,
+} from '../../domain/notifications/notification-preference';
 import { NotificationType } from '../../domain/notifications/notification-type';
 import { TicketHistoryEventType } from '../../domain/ticketing/ticket-history-event-type';
 import { TicketStatus } from '../../domain/ticketing/ticket-status';
@@ -10,6 +15,10 @@ import {
   type CreateNotificationRecord,
   NotificationRepository,
 } from './repositories/notification.repository';
+
+type PendingNotificationRecord = CreateNotificationRecord & {
+  preferenceKey: NotificationPreferenceKey;
+};
 
 @Injectable()
 export class TicketNotificationService {
@@ -40,8 +49,8 @@ export class TicketNotificationService {
       ticket.number,
     );
     const activeUserIds = new Set(users.map((user) => user.id));
-    const requesterIds = new Set(
-      [ticket.createdByUserId, ticket.requestedForUserId]
+    const beneficiaryIds = new Set(
+      [ticket.requestedForUserId ?? ticket.createdByUserId]
         .filter((userId): userId is string => Boolean(userId))
         .filter((userId) => activeUserIds.has(userId)),
     );
@@ -82,18 +91,25 @@ export class TicketNotificationService {
       adminIds,
     );
     const assignmentRecipientIds =
-      assignedSupportIds.size > 0 ? assignedSupportIds : groupAdminIds;
+      assignedSupportIds.size > 0
+        ? assignedSupportIds
+        : resolveGroupRecipientIds(groupSupportIds, groupAdminIds, adminIds);
+    const commentSupportIds =
+      assignedSupportIds.size > 0 ? assignedSupportIds : createdSupportIds;
 
     if (record.eventType === TicketHistoryEventType.CREATED) {
-      await this.notificationRepository.createMany(
+      await this.createFilteredNotifications(
         buildTicketCreatedNotifications({
-          actorUserId: record.actorUserId,
           activeUserIds,
+          actorUserId: record.actorUserId,
+          assignedSupportIds,
+          beneficiaryIds,
           createdSupportIds,
-          requestedForUserId: ticket.requestedForUserId,
+          hasAssignedAgent: Boolean(ticket.assignedToUserId),
           ticketId: ticket.id,
           ticketNumber: ticketDisplayNumber,
         }),
+        activeUserIds,
       );
 
       return;
@@ -101,48 +117,97 @@ export class TicketNotificationService {
 
     const recipientIds = resolveRecipientIds(
       record,
-      requesterIds,
-      assignedSupportIds,
+      beneficiaryIds,
+      commentSupportIds,
       assignmentRecipientIds,
       createdSupportIds,
     );
     recipientIds.delete(record.actorUserId);
 
     const content = buildNotificationContent(record, ticketDisplayNumber);
+    const assignmentToGroupOnly =
+      record.eventType === TicketHistoryEventType.ASSIGNED &&
+      assignedSupportIds.size === 0;
 
-    await this.notificationRepository.createMany(
+    await this.createFilteredNotifications(
       [...recipientIds].map((recipientUserId) => ({
         actorUserId: record.actorUserId,
         link: `/agent/tickets/${ticket.id}`,
-        message: content.message,
+        message: assignmentToGroupOnly
+          ? `Le ticket ${ticketDisplayNumber} est arrive dans votre groupe.`
+          : content.message,
+        preferenceKey: assignmentToGroupOnly
+          ? PreferenceKey.TICKET_GROUP
+          : content.preferenceKey,
         recipientUserId,
         ticketId: ticket.id,
-        title: content.title,
-        type: content.type,
+        title: assignmentToGroupOnly ? 'Ticket de groupe' : content.title,
+        type: assignmentToGroupOnly
+          ? NotificationType.TICKET_CREATED
+          : content.type,
       })),
+      activeUserIds,
+    );
+  }
+
+  private async createFilteredNotifications(
+    records: PendingNotificationRecord[],
+    activeUserIds: Set<string>,
+  ): Promise<void> {
+    const recipientUserIds = [
+      ...new Set(
+        records
+          .map((record) => record.recipientUserId)
+          .filter((recipientUserId) => activeUserIds.has(recipientUserId)),
+      ),
+    ];
+    const preferencesByUserId =
+      await this.notificationRepository.listPreferencesForUsers(
+        recipientUserIds,
+      );
+
+    await this.notificationRepository.createMany(
+      records
+        .filter((record) => isPreferenceEnabled(record, preferencesByUserId))
+        .map(toNotificationRecord),
     );
   }
 }
 
+function toNotificationRecord(
+  record: PendingNotificationRecord,
+): CreateNotificationRecord {
+  return {
+    actorUserId: record.actorUserId,
+    link: record.link,
+    message: record.message,
+    recipientUserId: record.recipientUserId,
+    ticketId: record.ticketId,
+    title: record.title,
+    type: record.type,
+  };
+}
+
 function buildTicketCreatedNotifications({
-  actorUserId,
   activeUserIds,
+  actorUserId,
+  assignedSupportIds,
+  beneficiaryIds,
   createdSupportIds,
-  requestedForUserId,
+  hasAssignedAgent,
   ticketId,
   ticketNumber,
 }: {
-  actorUserId: string | null;
   activeUserIds: Set<string>;
+  actorUserId: string | null;
+  assignedSupportIds: Set<string>;
+  beneficiaryIds: Set<string>;
   createdSupportIds: Set<string>;
-  requestedForUserId: string | null;
+  hasAssignedAgent: boolean;
   ticketId: string;
   ticketNumber: string;
-}): CreateNotificationRecord[] {
-  const requesterRecipientIds =
-    requestedForUserId && activeUserIds.has(requestedForUserId)
-      ? new Set([requestedForUserId])
-      : new Set<string>();
+}): PendingNotificationRecord[] {
+  const requesterRecipientIds = new Set(beneficiaryIds);
   const supportRecipientIds = new Set(createdSupportIds);
 
   if (actorUserId) {
@@ -155,22 +220,33 @@ function buildTicketCreatedNotifications({
   }
 
   return [
-    ...[...supportRecipientIds].map((recipientUserId) => ({
-      actorUserId,
-      link: `/agent/tickets/${ticketId}`,
-      message: `Le ticket ${ticketNumber} vient d'être créé.`,
-      recipientUserId,
-      ticketId,
-      title: 'Nouveau ticket',
-      type: NotificationType.TICKET_CREATED,
-    })),
+    ...[...supportRecipientIds]
+      .filter((recipientUserId) => activeUserIds.has(recipientUserId))
+      .map((recipientUserId) => ({
+        actorUserId,
+        link: `/agent/tickets/${ticketId}`,
+        message: hasAssignedAgent
+          ? `Le ticket ${ticketNumber} vous a ete assigne.`
+          : `Le ticket ${ticketNumber} est arrive dans votre groupe.`,
+        preferenceKey:
+          hasAssignedAgent && assignedSupportIds.has(recipientUserId)
+            ? PreferenceKey.TICKET_ASSIGNED
+            : PreferenceKey.TICKET_GROUP,
+        recipientUserId,
+        ticketId,
+        title: hasAssignedAgent ? 'Nouvelle affectation' : 'Ticket de groupe',
+        type: hasAssignedAgent
+          ? NotificationType.TICKET_ASSIGNED
+          : NotificationType.TICKET_CREATED,
+      })),
     ...[...requesterRecipientIds].map((recipientUserId) => ({
       actorUserId,
       link: `/agent/tickets/${ticketId}`,
-      message: `Le ticket ${ticketNumber} a été créé pour vous.`,
+      message: `Le ticket ${ticketNumber} a ete cree pour vous.`,
+      preferenceKey: PreferenceKey.TICKET_CREATED,
       recipientUserId,
       ticketId,
-      title: 'Ticket créé pour vous',
+      title: 'Ticket cree pour vous',
       type: NotificationType.TICKET_CREATED,
     })),
   ];
@@ -193,6 +269,22 @@ function resolveSupportRecipientIds(
   return new Set(adminIds);
 }
 
+function resolveGroupRecipientIds(
+  groupSupportIds: Set<string>,
+  groupAdminIds: Set<string>,
+  adminIds: Set<string>,
+): Set<string> {
+  if (groupSupportIds.size > 0) {
+    return new Set(groupSupportIds);
+  }
+
+  if (groupAdminIds.size > 0) {
+    return new Set(groupAdminIds);
+  }
+
+  return new Set(adminIds);
+}
+
 function isNotifiableEvent(eventType: TicketHistoryEventType): boolean {
   return (
     eventType === TicketHistoryEventType.CREATED ||
@@ -204,7 +296,7 @@ function isNotifiableEvent(eventType: TicketHistoryEventType): boolean {
 
 function resolveRecipientIds(
   record: CreateTicketHistoryRecord,
-  requesterIds: Set<string>,
+  beneficiaryIds: Set<string>,
   assignedSupportIds: Set<string>,
   assignmentRecipientIds: Set<string>,
   createdSupportIds: Set<string>,
@@ -218,19 +310,25 @@ function resolveRecipientIds(
   }
 
   if (record.eventType === TicketHistoryEventType.COMMENT_ADDED) {
-    return new Set([...requesterIds, ...assignedSupportIds]);
+    return new Set([...beneficiaryIds, ...assignedSupportIds]);
   }
 
-  return new Set([...requesterIds, ...assignmentRecipientIds]);
+  return new Set([...beneficiaryIds, ...assignmentRecipientIds]);
 }
 
 function buildNotificationContent(
   record: CreateTicketHistoryRecord,
   ticketNumber: string,
-): { message: string; title: string; type: NotificationType } {
+): {
+  message: string;
+  preferenceKey: NotificationPreferenceKey;
+  title: string;
+  type: NotificationType;
+} {
   if (record.eventType === TicketHistoryEventType.CREATED) {
     return {
-      message: `Le ticket ${ticketNumber} vient d'être créé.`,
+      message: `Le ticket ${ticketNumber} vient d'etre cree.`,
+      preferenceKey: PreferenceKey.TICKET_CREATED,
       title: 'Nouveau ticket',
       type: NotificationType.TICKET_CREATED,
     };
@@ -238,7 +336,8 @@ function buildNotificationContent(
 
   if (record.eventType === TicketHistoryEventType.ASSIGNED) {
     return {
-      message: `Le ticket ${ticketNumber} a été affecté à vous.`,
+      message: `Le ticket ${ticketNumber} a ete affecte a vous.`,
+      preferenceKey: PreferenceKey.TICKET_ASSIGNED,
       title: 'Nouvelle affectation',
       type: NotificationType.TICKET_ASSIGNED,
     };
@@ -246,7 +345,8 @@ function buildNotificationContent(
 
   if (record.eventType === TicketHistoryEventType.COMMENT_ADDED) {
     return {
-      message: `Un nouveau commentaire a été ajouté au ticket ${ticketNumber}.`,
+      message: `Un nouveau commentaire a ete ajoute au ticket ${ticketNumber}.`,
+      preferenceKey: PreferenceKey.TICKET_COMMENT_ADDED,
       title: 'Nouveau commentaire',
       type: NotificationType.TICKET_COMMENTED,
     };
@@ -257,9 +357,20 @@ function buildNotificationContent(
 
   return {
     message: `Le ticket ${ticketNumber} est maintenant ${formatStatus(status)}.`,
-    title: 'Statut du ticket modifié',
+    preferenceKey: PreferenceKey.TICKET_STATUS_CHANGED,
+    title: 'Statut du ticket modifie',
     type: NotificationType.TICKET_STATUS_CHANGED,
   };
+}
+
+function isPreferenceEnabled(
+  record: PendingNotificationRecord,
+  preferencesByUserId: Map<string, NotificationPreferenceSnapshot>,
+): boolean {
+  return (
+    preferencesByUserId.get(record.recipientUserId)?.[record.preferenceKey] ??
+    true
+  );
 }
 
 function formatStatus(status: string): string {
@@ -267,7 +378,7 @@ function formatStatus(status: string): string {
     [TicketStatus.OPEN]: 'ouvert',
     [TicketStatus.IN_PROGRESS]: 'en cours',
     [TicketStatus.PENDING]: 'en attente',
-    [TicketStatus.RESOLVED]: 'résolu',
+    [TicketStatus.RESOLVED]: 'resolu',
     [TicketStatus.CLOSED]: 'clos',
   };
 

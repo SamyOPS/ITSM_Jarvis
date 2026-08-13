@@ -907,7 +907,6 @@
   display: grid;
   gap: 18px;
   padding-top: 18px;
-  border-top: 1px solid #e7edf5;
 }
 
 .settings-discord-groups-header {

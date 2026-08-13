@@ -6,6 +6,11 @@ import {
 } from '../../application/notifications/repositories/notification.repository';
 import { UserRole } from '../../domain/auth/user-role';
 import { Notification } from '../../domain/notifications/notification';
+import {
+  buildDefaultNotificationPreferences,
+  type NotificationPreferenceKey,
+  type NotificationPreferenceSnapshot,
+} from '../../domain/notifications/notification-preference';
 import { NotificationType } from '../../domain/notifications/notification-type';
 import { getBackendRuntimeConfig } from '../config/app-config';
 
@@ -27,6 +32,12 @@ type SupabaseNotificationRecipientRow = {
   id: string;
   role: string;
   user_groups: Array<{ group_id: string }> | null;
+};
+
+type SupabaseNotificationPreferenceRow = {
+  is_enabled: boolean;
+  preference_key: NotificationPreferenceKey;
+  user_id: string;
 };
 
 const NOTIFICATION_SELECT =
@@ -97,6 +108,20 @@ export class SupabaseNotificationRepository implements NotificationRepository {
     return rows.map(mapNotificationRow);
   }
 
+  async getPreferences(
+    userId: string,
+  ): Promise<NotificationPreferenceSnapshot> {
+    const url = this.buildUrl('user_notification_preferences');
+    url.searchParams.set('select', 'preference_key,is_enabled,user_id');
+    url.searchParams.set('user_id', `eq.${userId}`);
+
+    const response = await this.send(url);
+    await this.assertOk(response, 'preference lookup');
+    const rows = (await response.json()) as SupabaseNotificationPreferenceRow[];
+
+    return mergePreferenceRows(rows);
+  }
+
   async listActiveRecipients(): Promise<NotificationRecipientProfile[]> {
     const url = this.buildUrl('users');
     url.searchParams.set('select', 'id,role,group_id,user_groups(group_id)');
@@ -116,6 +141,43 @@ export class SupabaseNotificationRepository implements NotificationRepository {
       id: row.id,
       role: resolveUserRole(row.role),
     }));
+  }
+
+  async listPreferencesForUsers(
+    userIds: string[],
+  ): Promise<Map<string, NotificationPreferenceSnapshot>> {
+    const uniqueUserIds = [...new Set(userIds.map((id) => id.trim()))].filter(
+      Boolean,
+    );
+    const preferencesByUserId = new Map<string, NotificationPreferenceSnapshot>(
+      uniqueUserIds.map((userId) => [
+        userId,
+        buildDefaultNotificationPreferences(),
+      ]),
+    );
+
+    if (uniqueUserIds.length === 0) {
+      return preferencesByUserId;
+    }
+
+    const url = this.buildUrl('user_notification_preferences');
+    url.searchParams.set('select', 'user_id,preference_key,is_enabled');
+    url.searchParams.set('user_id', `in.(${uniqueUserIds.join(',')})`);
+
+    const response = await this.send(url);
+    await this.assertOk(response, 'bulk preference lookup');
+    const rows = (await response.json()) as SupabaseNotificationPreferenceRow[];
+
+    for (const row of rows) {
+      const currentPreferences =
+        preferencesByUserId.get(row.user_id) ??
+        buildDefaultNotificationPreferences();
+
+      currentPreferences[row.preference_key] = row.is_enabled;
+      preferencesByUserId.set(row.user_id, currentPreferences);
+    }
+
+    return preferencesByUserId;
   }
 
   async markAllRead(userId: string): Promise<void> {
@@ -145,6 +207,52 @@ export class SupabaseNotificationRepository implements NotificationRepository {
     });
 
     await this.assertOk(response, 'mark-read');
+  }
+
+  async updatePreference(
+    userId: string,
+    preferenceKey: NotificationPreferenceKey,
+    enabled: boolean,
+  ): Promise<NotificationPreferenceSnapshot> {
+    const now = new Date().toISOString();
+    const patchUrl = this.buildUrl('user_notification_preferences');
+    patchUrl.searchParams.set('select', 'user_id');
+    patchUrl.searchParams.set('user_id', `eq.${userId}`);
+    patchUrl.searchParams.set('preference_key', `eq.${preferenceKey}`);
+
+    const patchResponse = await this.send(patchUrl, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        is_enabled: enabled,
+        updated_at: now,
+      }),
+    });
+
+    await this.assertOk(patchResponse, 'preference update');
+    const updatedRows = (await patchResponse.json()) as Array<{
+      user_id: string;
+    }>;
+
+    if (updatedRows.length === 0) {
+      const insertResponse = await this.send(
+        this.buildUrl('user_notification_preferences'),
+        {
+          method: 'POST',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            is_enabled: enabled,
+            preference_key: preferenceKey,
+            updated_at: now,
+            user_id: userId,
+          }),
+        },
+      );
+
+      await this.assertOk(insertResponse, 'preference creation');
+    }
+
+    return this.getPreferences(userId);
   }
 
   private buildUrl(table: string): URL {
@@ -197,6 +305,18 @@ export class SupabaseNotificationRepository implements NotificationRepository {
         `Supabase notification ${operation} returned status ${response.status}.`,
     );
   }
+}
+
+function mergePreferenceRows(
+  rows: SupabaseNotificationPreferenceRow[],
+): NotificationPreferenceSnapshot {
+  const preferences = buildDefaultNotificationPreferences();
+
+  for (const row of rows) {
+    preferences[row.preference_key] = row.is_enabled;
+  }
+
+  return preferences;
 }
 
 function mapNotificationRow(row: SupabaseNotificationRow): Notification {

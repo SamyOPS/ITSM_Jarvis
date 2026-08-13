@@ -26,10 +26,7 @@ import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type { AuthSessionSnapshot } from '../../domain/auth/auth-session';
 import type { ReferentialGroup } from '../../domain/referentials/referential-catalog';
 import { translateUserRole } from '../../domain/i18n/ticketing-labels';
-import {
-  isSupportManagerRole,
-  isSupportRole,
-} from '../../domain/auth/user-role';
+import { isAdminRole, isSupportRole } from '../../domain/auth/user-role';
 import {
   deleteProfilePhoto,
   deleteProfilePhotoBinary,
@@ -39,6 +36,13 @@ import {
   uploadProfilePhotoBinary,
 } from '../../infrastructure/api/auth-api';
 import { fetchReferentialCatalog } from '../../infrastructure/api/referentials-api';
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  fetchNotificationPreferences,
+  type NotificationPreferenceKey,
+  type NotificationPreferences,
+  updateNotificationPreference,
+} from '../../infrastructure/api/notifications-api';
 import { rotateDefaultProfileAvatarSeed } from '../../components/ui/default-profile-avatar.helpers';
 import { DefaultProfileAvatar } from '../../components/ui/default-profile-avatar';
 import {
@@ -55,6 +59,7 @@ type SettingsSectionKey =
   | 'password-security'
   | 'profile-extra'
   | 'notifications'
+  | 'administration'
   | 'misc';
 
 interface SettingsPageProps {
@@ -74,6 +79,7 @@ type SettingsNavGroup = {
 type VisualNotification = {
   description: string;
   enabled: boolean;
+  preferenceKey: NotificationPreferenceKey;
   title: string;
 };
 
@@ -119,6 +125,7 @@ const settingsNavGroups: readonly SettingsNavGroup[] = [
     label: 'Preferences',
     items: [
       { key: 'notifications', label: 'Notification' },
+      { key: 'administration', label: 'Notification Admin' },
       { key: 'misc', label: 'Divers' },
     ],
   },
@@ -130,16 +137,37 @@ function getDisplayName(session: AuthSessionSnapshot): string {
   return parts.length > 0 ? parts.join(' ') : session.user.email;
 }
 
-function getSettingsSectionGroup(sectionKey: SettingsSectionKey) {
+function getVisibleSettingsNavGroups(
+  canViewAdministrationSettings: boolean,
+): readonly SettingsNavGroup[] {
+  if (canViewAdministrationSettings) {
+    return settingsNavGroups;
+  }
+
+  return settingsNavGroups.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => item.key !== 'administration'),
+  }));
+}
+
+function getSettingsSectionGroup(
+  sectionKey: SettingsSectionKey,
+  navGroups: readonly SettingsNavGroup[] = settingsNavGroups,
+) {
   return (
-    settingsNavGroups.find((group) =>
+    navGroups.find((group) =>
       group.items.some((item) => item.key === sectionKey),
-    ) ?? settingsNavGroups[0]
+    ) ?? navGroups[0]
   );
 }
 
-function getVisibleSectionOrder(sectionKey: SettingsSectionKey) {
-  return getSettingsSectionGroup(sectionKey).items.map((item) => item.key);
+function getVisibleSectionOrder(
+  sectionKey: SettingsSectionKey,
+  navGroups: readonly SettingsNavGroup[] = settingsNavGroups,
+) {
+  return getSettingsSectionGroup(sectionKey, navGroups).items.map(
+    (item) => item.key,
+  );
 }
 
 function getSectionScrollOffset(sectionKey: SettingsSectionKey): number {
@@ -298,21 +326,25 @@ function extractProfilePhotoStoragePath(url: string | null | undefined) {
 
 function buildNotificationItems(
   session: AuthSessionSnapshot,
+  preferences: NotificationPreferences,
 ): VisualNotification[] {
   const items: VisualNotification[] = [
     {
       description: 'Alerte quand un ticket vous concernant est cree.',
-      enabled: true,
+      enabled: preferences.TICKET_CREATED,
+      preferenceKey: 'TICKET_CREATED',
       title: 'Nouveau ticket',
     },
     {
       description: 'Alerte quand le statut d un ticket suivi change.',
-      enabled: true,
+      enabled: preferences.TICKET_STATUS_CHANGED,
+      preferenceKey: 'TICKET_STATUS_CHANGED',
       title: 'Changement de statut',
     },
     {
       description: 'Alerte quand un commentaire est ajoute sur un ticket.',
-      enabled: true,
+      enabled: preferences.TICKET_COMMENT_ADDED,
+      preferenceKey: 'TICKET_COMMENT_ADDED',
       title: 'Commentaire ajoute',
     },
   ];
@@ -321,40 +353,94 @@ function buildNotificationItems(
     items.push(
       {
         description: 'Alerte quand un ticket vous est assigne.',
-        enabled: true,
+        enabled: preferences.TICKET_ASSIGNED,
+        preferenceKey: 'TICKET_ASSIGNED',
         title: 'Ticket assigne',
       },
       {
         description: 'Alerte quand un ticket arrive dans votre groupe support.',
-        enabled: true,
+        enabled: preferences.TICKET_GROUP,
+        preferenceKey: 'TICKET_GROUP',
         title: 'Ticket de groupe',
       },
       {
         description: 'Alerte quand un ticket approche ou depasse son SLA.',
-        enabled: false,
+        enabled: preferences.TICKET_SLA,
+        preferenceKey: 'TICKET_SLA',
         title: 'SLA et retard',
       },
     );
   }
 
-  if (isSupportManagerRole(session.user.role)) {
-    items.push({
-      description: 'Alerte pour les changements importants d administration.',
-      enabled: false,
-      title: 'Administration',
-    });
-  }
-
   return items;
 }
 
-function VisualToggle({ enabled }: { enabled: boolean }) {
+function buildAdministrationNotificationItems(
+  session: AuthSessionSnapshot,
+  preferences: NotificationPreferences,
+): VisualNotification[] {
+  if (!isAdminRole(session.user.role)) {
+    return [];
+  }
+
+  return [
+    {
+      description: 'Alerte quand un nouveau compte est cree ou inscrit.',
+      enabled: preferences.ADMIN_USER_CREATED,
+      preferenceKey: 'ADMIN_USER_CREATED',
+      title: 'Nouvel utilisateur cree / inscrit',
+    },
+    {
+      description: 'Alerte quand un compte est desactive ou reactive.',
+      enabled: preferences.ADMIN_USER_STATUS_CHANGED,
+      preferenceKey: 'ADMIN_USER_STATUS_CHANGED',
+      title: 'Utilisateur desactive ou reactive',
+    },
+    {
+      description: 'Alerte quand le role d un utilisateur est modifie.',
+      enabled: preferences.ADMIN_USER_ROLE_CHANGED,
+      preferenceKey: 'ADMIN_USER_ROLE_CHANGED',
+      title: 'Changement de role d un utilisateur',
+    },
+    {
+      description:
+        'Alerte quand les caracteristiques VIP, Parc ou Base co. changent.',
+      enabled: preferences.ADMIN_USER_CHARACTERISTICS_CHANGED,
+      preferenceKey: 'ADMIN_USER_CHARACTERISTICS_CHANGED',
+      title: 'Changement des caracteristiques d un utilisateur',
+    },
+    {
+      description: 'Alerte quand un utilisateur change de groupe.',
+      enabled: preferences.ADMIN_USER_GROUP_CHANGED,
+      preferenceKey: 'ADMIN_USER_GROUP_CHANGED',
+      title: 'Utilisateur ajoute ou retire d un groupe',
+    },
+    {
+      description: 'Alerte quand un groupe est cree, modifie ou supprime.',
+      enabled: preferences.ADMIN_GROUP_CHANGED,
+      preferenceKey: 'ADMIN_GROUP_CHANGED',
+      title: 'Groupe cree, modifie ou supprime',
+    },
+  ];
+}
+
+function VisualToggle({
+  disabled = false,
+  enabled,
+  onClick,
+}: {
+  disabled?: boolean;
+  enabled: boolean;
+  onClick?: () => void;
+}) {
   return (
     <button
       aria-pressed={enabled}
       className={
         enabled ? 'settings-discord-toggle is-on' : 'settings-discord-toggle'
       }
+      disabled={disabled}
+      onClick={onClick}
       type="button"
     >
       <span />
@@ -402,6 +488,14 @@ export function SettingsPage({
     useState<DefaultKnowledgeSortPreference>(() =>
       getDefaultKnowledgeSortPreference(session.user.id),
     );
+  const [notificationPreferences, setNotificationPreferences] =
+    useState<NotificationPreferences>(() => ({
+      ...DEFAULT_NOTIFICATION_PREFERENCES,
+    }));
+  const [notificationPreferenceError, setNotificationPreferenceError] =
+    useState<string | null>(null);
+  const [savingNotificationPreferenceKey, setSavingNotificationPreferenceKey] =
+    useState<NotificationPreferenceKey | null>(null);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [showPasswordUpdate, setShowPasswordUpdate] = useState(false);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(
@@ -437,6 +531,11 @@ export function SettingsPage({
   const isProgrammaticScrollRef = useRef(false);
   const displayName = getDisplayName(session);
   const profileAvatarSeed = session.user.id || session.user.email;
+  const canViewAdministrationSettings = isAdminRole(session.user.role);
+  const visibleSettingsNavGroups = useMemo(
+    () => getVisibleSettingsNavGroups(canViewAdministrationSettings),
+    [canViewAdministrationSettings],
+  );
   const sessionUserCharacteristics = useMemo(
     () => getCharacteristics(session.user),
     [session.user],
@@ -449,6 +548,36 @@ export function SettingsPage({
     setDefaultTicketSort(getDefaultTicketSortPreference(session.user.id));
     setDefaultKnowledgeSort(getDefaultKnowledgeSortPreference(session.user.id));
   }, [session.user.id]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadNotificationPreferences(): Promise<void> {
+      try {
+        const preferences = await fetchNotificationPreferences(
+          session.accessToken,
+        );
+
+        if (isMounted) {
+          setNotificationPreferences(preferences);
+          setNotificationPreferenceError(null);
+        }
+      } catch {
+        if (isMounted) {
+          setNotificationPreferences({ ...DEFAULT_NOTIFICATION_PREFERENCES });
+          setNotificationPreferenceError(
+            'Impossible de charger vos preferences de notification.',
+          );
+        }
+      }
+    }
+
+    void loadNotificationPreferences();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [session.accessToken]);
   const sessionUserGroupIds = useMemo(() => {
     const groupIds = session.user.groupIds ?? [];
 
@@ -460,8 +589,13 @@ export function SettingsPage({
     ].filter(Boolean);
   }, [session.user.groupId, session.user.groupIds]);
   const notificationItems = useMemo(
-    () => buildNotificationItems(session),
-    [session],
+    () => buildNotificationItems(session, notificationPreferences),
+    [notificationPreferences, session],
+  );
+  const administrationNotificationItems = useMemo(
+    () =>
+      buildAdministrationNotificationItems(session, notificationPreferences),
+    [notificationPreferences, session],
   );
 
   useEffect(() => {
@@ -552,7 +686,10 @@ export function SettingsPage({
         return;
       }
 
-      const visibleSectionOrder = getVisibleSectionOrder(activeSection);
+      const visibleSectionOrder = getVisibleSectionOrder(
+        activeSection,
+        visibleSettingsNavGroups,
+      );
       const scrollBottom =
         contentElement.scrollTop + contentElement.clientHeight;
       const isAtScrollEnd =
@@ -596,7 +733,7 @@ export function SettingsPage({
     contentElement.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => contentElement.removeEventListener('scroll', handleScroll);
-  }, [activeSection, showPasswordUpdate]);
+  }, [activeSection, showPasswordUpdate, visibleSettingsNavGroups]);
 
   function scrollToSection(sectionKey: SettingsSectionKey): void {
     isProgrammaticScrollRef.current = true;
@@ -633,7 +770,8 @@ export function SettingsPage({
   }
 
   function renderContent() {
-    return getSettingsSectionGroup(activeSection).label === 'Preferences'
+    return getSettingsSectionGroup(activeSection, visibleSettingsNavGroups)
+      .label === 'Preferences'
       ? renderPreferenceSections()
       : renderProfileSections();
   }
@@ -680,6 +818,44 @@ export function SettingsPage({
     }
 
     openProfilePhotoPicker();
+  }
+
+  async function handleNotificationPreferenceToggle(
+    preferenceKey: NotificationPreferenceKey,
+    enabled: boolean,
+  ): Promise<void> {
+    const nextEnabled = !enabled;
+
+    setSavingNotificationPreferenceKey(preferenceKey);
+    setNotificationPreferenceError(null);
+    setNotificationPreferences((currentPreferences) => ({
+      ...currentPreferences,
+      [preferenceKey]: nextEnabled,
+    }));
+
+    try {
+      const nextPreferences = await updateNotificationPreference(
+        session.accessToken,
+        preferenceKey,
+        nextEnabled,
+      );
+
+      setNotificationPreferences(nextPreferences);
+    } catch (error) {
+      setNotificationPreferences((currentPreferences) => ({
+        ...currentPreferences,
+        [preferenceKey]: enabled,
+      }));
+      const errorMessage =
+        error instanceof Error && error.message.trim()
+          ? ` ${error.message.trim()}`
+          : '';
+      setNotificationPreferenceError(
+        `Impossible de sauvegarder cette preference de notification.${errorMessage}`,
+      );
+    } finally {
+      setSavingNotificationPreferenceKey(null);
+    }
   }
 
   function handleProfilePhotoFileSelection(fileList: FileList | null): void {
@@ -1111,18 +1287,70 @@ export function SettingsPage({
             <p>Preferences visuelles adaptees au role actuel.</p>
           </header>
 
+          {notificationPreferenceError ? (
+            <p className="settings-profile-photo-error">
+              {notificationPreferenceError}
+            </p>
+          ) : null}
+
           <div className="settings-discord-list">
             {notificationItems.map((item) => (
-              <div className="settings-discord-row" key={item.title}>
+              <div className="settings-discord-row" key={item.preferenceKey}>
                 <div>
                   <strong>{item.title}</strong>
                   <span>{item.description}</span>
                 </div>
-                <VisualToggle enabled={item.enabled} />
+                <VisualToggle
+                  disabled={
+                    savingNotificationPreferenceKey === item.preferenceKey
+                  }
+                  enabled={item.enabled}
+                  onClick={() => {
+                    void handleNotificationPreferenceToggle(
+                      item.preferenceKey,
+                      item.enabled,
+                    );
+                  }}
+                />
               </div>
             ))}
           </div>
         </section>
+
+        {administrationNotificationItems.length > 0 ? (
+          <section
+            className="settings-discord-content-card"
+            data-settings-section="administration"
+          >
+            <header className="settings-discord-section-header">
+              <h1>Notification Admin</h1>
+              <p>Alertes liees aux actions sensibles de gestion.</p>
+            </header>
+
+            <div className="settings-discord-list">
+              {administrationNotificationItems.map((item) => (
+                <div className="settings-discord-row" key={item.preferenceKey}>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{item.description}</span>
+                  </div>
+                  <VisualToggle
+                    disabled={
+                      savingNotificationPreferenceKey === item.preferenceKey
+                    }
+                    enabled={item.enabled}
+                    onClick={() => {
+                      void handleNotificationPreferenceToggle(
+                        item.preferenceKey,
+                        item.enabled,
+                      );
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section
           className="settings-discord-content-card"
@@ -1221,7 +1449,7 @@ export function SettingsPage({
         </div>
 
         <nav aria-label="Navigation des parametres">
-          {settingsNavGroups.map((group) => (
+          {visibleSettingsNavGroups.map((group) => (
             <div className="settings-discord-nav-group" key={group.label}>
               <span className="settings-discord-nav-title">{group.label}</span>
               {group.items.map((item) => (
@@ -1243,6 +1471,8 @@ export function SettingsPage({
                     <ShieldCheck size={16} strokeWidth={2} />
                   ) : item.key === 'notifications' ? (
                     <Bell size={16} strokeWidth={2} />
+                  ) : item.key === 'administration' ? (
+                    <ShieldCheck size={16} strokeWidth={2} />
                   ) : item.key === 'misc' ? (
                     <SlidersHorizontal size={16} strokeWidth={2} />
                   ) : (
