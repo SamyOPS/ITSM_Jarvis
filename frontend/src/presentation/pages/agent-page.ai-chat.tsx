@@ -3,6 +3,7 @@ import type {
   DragEvent,
   RefObject,
   KeyboardEvent,
+  MouseEvent,
 } from 'react';
 import { Paperclip, RotateCcw, X } from 'lucide-react';
 
@@ -102,8 +103,19 @@ export function AiChatModal({
     }
   }
 
+  function handleOverlayMouseDown(event: MouseEvent<HTMLDivElement>): void {
+    if (event.target === event.currentTarget) {
+      onCloseAiChat();
+    }
+  }
+
   return (
-    <div aria-modal="true" className="ticket-ai-chat-overlay" role="dialog">
+    <div
+      aria-modal="true"
+      className="ticket-ai-chat-overlay"
+      onMouseDown={handleOverlayMouseDown}
+      role="dialog"
+    >
       <section
         className={
           isAiDraftFileDragOver

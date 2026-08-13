@@ -2,6 +2,7 @@ import {
   type ClipboardEvent,
   type DragEvent,
   type FormEvent,
+  type MouseEvent as ReactMouseEvent,
   useEffect,
   useMemo,
   useRef,
@@ -2510,6 +2511,14 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
     setTicketDetailLookupSearch('');
     setTicketDetailLookupSearchField('IDENTIFIER');
     setTicketDetailLookupPage(1);
+  }
+
+  function handleTicketDetailLookupOverlayMouseDown(
+    event: ReactMouseEvent<HTMLDivElement>,
+  ): void {
+    if (event.target === event.currentTarget) {
+      closeTicketDetailLookup();
+    }
   }
 
   function handleIncidentLookupSelect(user: AdminUserSummary): void {
@@ -5991,6 +6000,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                       <div
                         aria-modal="true"
                         className="incident-lookup-overlay"
+                        onMouseDown={handleTicketDetailLookupOverlayMouseDown}
                         role="dialog"
                       >
                         <section className="incident-lookup-dialog">

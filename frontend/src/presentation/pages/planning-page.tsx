@@ -1140,7 +1140,14 @@ function PlanningEditor({
   );
 
   return (
-    <div className="planning-editor-overlay">
+    <div
+      className="planning-editor-overlay"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <section
         aria-label={draft.id ? 'Modifier une tache' : 'Ajouter une tache'}
         aria-modal="true"
@@ -1308,6 +1315,7 @@ function PlanningEditor({
           aria-label="Selectionner un utilisateur"
           aria-modal="true"
           className="planning-user-picker"
+          onMouseDown={(event) => event.stopPropagation()}
           role="dialog"
         >
           <header className="planning-user-picker-header">

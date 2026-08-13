@@ -1090,6 +1090,11 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
                     <div
                       aria-modal="true"
                       className="incident-lookup-overlay"
+                      onMouseDown={(event) => {
+                        if (event.target === event.currentTarget) {
+                          setIsGroupPickerOpen(false);
+                        }
+                      }}
                       role="dialog"
                     >
                       <section className="incident-lookup-dialog">
