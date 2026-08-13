@@ -1371,7 +1371,7 @@ function ChartTooltip({
 
 export function DashboardDonutWidget({
   colorByKey = {},
-  colors = ['#6254d9', '#7c6ff0', '#9d93fa', '#c0b9ff', '#e2dfff'],
+  colors = ['#6698c8', '#6eaa94', '#c99343', '#d06d78', '#7f91a6'],
   items,
 }: {
   colorByKey?: Record<string, string>;

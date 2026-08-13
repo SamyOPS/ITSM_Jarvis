@@ -938,6 +938,11 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
               <div
                 aria-modal="true"
                 className="incident-lookup-overlay"
+                onMouseDown={(event) => {
+                  if (event.target === event.currentTarget) {
+                    setIsUserPickerOpen(false);
+                  }
+                }}
                 role="dialog"
               >
                 <section className="incident-lookup-dialog">

@@ -1672,13 +1672,16 @@ export function SettingsPage({
       {profilePhotoDialogMode === 'choice' ? (
         <div
           className="settings-profile-photo-overlay"
-          onClick={() => setProfilePhotoDialogMode(null)}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setProfilePhotoDialogMode(null);
+            }
+          }}
         >
           <section
             aria-labelledby="settings-profile-photo-choice-title"
             aria-modal="true"
             className="settings-profile-photo-dialog settings-profile-photo-choice-dialog"
-            onClick={(event) => event.stopPropagation()}
             role="dialog"
           >
             <header>
@@ -1727,13 +1730,16 @@ export function SettingsPage({
       {profilePhotoDialogMode === 'editor' && profilePhotoDraftUrl ? (
         <div
           className="settings-profile-photo-overlay"
-          onClick={() => setProfilePhotoDialogMode(null)}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setProfilePhotoDialogMode(null);
+            }
+          }}
         >
           <section
             aria-labelledby="settings-profile-photo-editor-title"
             aria-modal="true"
             className="settings-profile-photo-dialog settings-profile-photo-editor-dialog"
-            onClick={(event) => event.stopPropagation()}
             role="dialog"
           >
             <header>
@@ -1817,7 +1823,14 @@ export function SettingsPage({
       ) : null}
 
       {showEmailVerification ? (
-        <div className="settings-email-verification-overlay">
+        <div
+          className="settings-email-verification-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowEmailVerification(false);
+            }
+          }}
+        >
           <section
             aria-labelledby="settings-email-verification-title"
             aria-modal="true"
@@ -1860,7 +1873,14 @@ export function SettingsPage({
       ) : null}
 
       {showPasswordUpdate ? (
-        <div className="settings-email-verification-overlay">
+        <div
+          className="settings-email-verification-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closePasswordUpdateDialog();
+            }
+          }}
+        >
           <section
             aria-labelledby="settings-password-update-title"
             aria-modal="true"

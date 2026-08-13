@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import type { MouseEvent } from 'react';
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import type {
@@ -87,8 +88,19 @@ export function IncidentLookupDialog({
   selectedGroupId,
   selectedUserId,
 }: IncidentLookupDialogProps) {
+  function handleOverlayMouseDown(event: MouseEvent<HTMLDivElement>): void {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
+  }
+
   return (
-    <div aria-modal="true" className="incident-lookup-overlay" role="dialog">
+    <div
+      aria-modal="true"
+      className="incident-lookup-overlay"
+      onMouseDown={handleOverlayMouseDown}
+      role="dialog"
+    >
       <section className="incident-lookup-dialog">
         <header className="incident-lookup-header">
           <div>
