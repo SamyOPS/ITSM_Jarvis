@@ -627,47 +627,32 @@ p.ticket-form-helper {
 
 .incident-lookup-table--users th:nth-child(1),
 .incident-lookup-table--users td:nth-child(1) {
-  width: 24%;
+  width: 34%;
 }
 
 .incident-lookup-table--users th:nth-child(2),
 .incident-lookup-table--users td:nth-child(2) {
-  width: 18%;
+  width: 33%;
 }
 
 .incident-lookup-table--users th:nth-child(3),
 .incident-lookup-table--users td:nth-child(3) {
-  width: 18%;
-}
-
-.incident-lookup-table--users th:nth-child(4),
-.incident-lookup-table--users td:nth-child(4) {
-  width: 40%;
+  width: 33%;
 }
 
 .incident-lookup-table--assignee th:nth-child(1),
 .incident-lookup-table--assignee td:nth-child(1) {
-  width: 20%;
+  width: 34%;
 }
 
 .incident-lookup-table--assignee th:nth-child(2),
 .incident-lookup-table--assignee td:nth-child(2) {
-  width: 15%;
+  width: 33%;
 }
 
 .incident-lookup-table--assignee th:nth-child(3),
 .incident-lookup-table--assignee td:nth-child(3) {
-  width: 15%;
-}
-
-.incident-lookup-table--assignee th:nth-child(4),
-.incident-lookup-table--assignee td:nth-child(4) {
-  width: 28%;
-}
-
-.incident-lookup-table--assignee th:nth-child(5),
-.incident-lookup-table--assignee td:nth-child(5) {
-  width: 22%;
+  width: 33%;
 }
 
 .incident-lookup-table--group-members th:nth-child(1),

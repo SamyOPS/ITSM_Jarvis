@@ -248,7 +248,6 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
     return users.filter((user) => {
       const identifier = formatUserName(user);
       const searchableValues: Record<UserLookupSearchField, string> = {
-        EMAIL: user.email ?? '',
         FIRST_NAME: user.firstName ?? '',
         IDENTIFIER: identifier,
         LAST_NAME: user.lastName ?? '',
@@ -969,7 +968,6 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                       <option value="IDENTIFIER">Identifiant</option>
                       <option value="FIRST_NAME">Prenom</option>
                       <option value="LAST_NAME">Nom</option>
-                      <option value="EMAIL">Email</option>
                     </select>
 
                     <div className="incident-lookup-search-input">
@@ -992,13 +990,12 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                           <th>Identifiant</th>
                           <th>Prenom</th>
                           <th>Nom</th>
-                          <th>Email</th>
                         </tr>
                       </thead>
                       <tbody>
                         {paginatedUserLookupResults.length === 0 ? (
                           <tr>
-                            <td colSpan={4}>
+                            <td colSpan={3}>
                               Aucun utilisateur ne correspond a la recherche.
                             </td>
                           </tr>
@@ -1028,7 +1025,6 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
                               </td>
                               <td>{user.firstName ?? '-'}</td>
                               <td>{user.lastName ?? '-'}</td>
-                              <td>{user.email ?? '-'}</td>
                             </tr>
                           ))
                         )}

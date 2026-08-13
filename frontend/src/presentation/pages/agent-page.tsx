@@ -6095,7 +6095,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                     <th>Identifiant</th>
                                     <th>Prenom</th>
                                     <th>Nom</th>
-                                    <th>Email</th>
                                   </tr>
                                 )}
                               </thead>
@@ -6218,7 +6217,7 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                 ) : paginatedTicketDetailLookupUsers.length ===
                                   0 ? (
                                   <tr>
-                                    <td colSpan={4}>
+                                    <td colSpan={3}>
                                       Aucun utilisateur ne correspond a la
                                       recherche.
                                     </td>
@@ -6263,7 +6262,6 @@ export function AgentPage({ section, session, ticketId }: AgentPageProps) {
                                         <td>
                                           {user.lastName ?? 'Non renseigne'}
                                         </td>
-                                        <td>{user.email ?? '-'}</td>
                                       </tr>
                                     ),
                                   )

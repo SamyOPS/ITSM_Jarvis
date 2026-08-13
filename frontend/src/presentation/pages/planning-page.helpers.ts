@@ -408,7 +408,6 @@ export function filterPlanningUsers(
       formatPlanningUserIdentifier(user),
       user.firstName ?? '',
       user.lastName ?? '',
-      user.email ?? '',
       user.role,
     ]
       .join(' ')
@@ -420,7 +419,7 @@ export function filterPlanningUsers(
 export function formatUserName(user: AdminUserSummary): string {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
 
-  return user.displayName || fullName || user.email || user.id;
+  return user.displayName || fullName || user.id;
 }
 
 export function formatPlanningUserIdentifier(user: AdminUserSummary): string {
@@ -429,5 +428,5 @@ export function formatPlanningUserIdentifier(user: AdminUserSummary): string {
     .join(' ')
     .trim();
 
-  return fullName || user.displayName || user.email || user.id;
+  return fullName || user.displayName || user.id;
 }
