@@ -14,11 +14,14 @@ import { UpdateAdminUserStatusUseCase } from './auth/use-cases/update-admin-user
 import { UpdateUserProfilePhotoUseCase } from './auth/use-cases/update-user-profile-photo.use-case';
 import { UpdateUserLicenseUseCase } from './auth/use-cases/update-user-license.use-case';
 import { TicketNotificationService } from './notifications/ticket-notification.service';
+import { AdminNotificationService } from './notifications/admin-notification.service';
 import { DeleteNotificationUseCase } from './notifications/use-cases/delete-notification.use-case';
 import { DeleteAllNotificationsUseCase } from './notifications/use-cases/delete-all-notifications.use-case';
+import { GetNotificationPreferencesUseCase } from './notifications/use-cases/get-notification-preferences.use-case';
 import { ListNotificationsUseCase } from './notifications/use-cases/list-notifications.use-case';
 import { MarkAllNotificationsReadUseCase } from './notifications/use-cases/mark-all-notifications-read.use-case';
 import { MarkNotificationReadUseCase } from './notifications/use-cases/mark-notification-read.use-case';
+import { UpdateNotificationPreferenceUseCase } from './notifications/use-cases/update-notification-preference.use-case';
 import { CreateGroupChatMessageUseCase } from './group-chat/use-cases/create-group-chat-message.use-case';
 import { ListGroupChatMessagesUseCase } from './group-chat/use-cases/list-group-chat-messages.use-case';
 import { GetReferentialCatalogUseCase } from './referentials/use-cases/get-referential-catalog.use-case';
@@ -136,12 +139,15 @@ const groupChatUseCases = [
 ];
 
 const notificationUseCases = [
+  AdminNotificationService,
   TicketNotificationService,
   DeleteAllNotificationsUseCase,
   DeleteNotificationUseCase,
+  GetNotificationPreferencesUseCase,
   ListNotificationsUseCase,
   MarkAllNotificationsReadUseCase,
   MarkNotificationReadUseCase,
+  UpdateNotificationPreferenceUseCase,
 ];
 
 @Module({

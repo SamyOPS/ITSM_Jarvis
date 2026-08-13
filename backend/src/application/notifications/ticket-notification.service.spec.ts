@@ -1,5 +1,6 @@
 import { UserRole } from '../../domain/auth/user-role';
 import { NotificationType } from '../../domain/notifications/notification-type';
+import { buildDefaultNotificationPreferences } from '../../domain/notifications/notification-preference';
 import { Ticket } from '../../domain/ticketing/ticket';
 import { TicketDetail } from '../../domain/ticketing/ticket-detail';
 import { TicketHistoryEventType } from '../../domain/ticketing/ticket-history-event-type';
@@ -115,7 +116,7 @@ describe('TicketNotificationService', () => {
 
     expect(
       createdRecords.map((record) => record.recipientUserId).sort(),
-    ).toEqual(['admin-1', 'agent-1', 'agent-2']);
+    ).toEqual(['admin-1', 'agent-2']);
   });
 
   it('notifies only the assigned agent about an assignment', async () => {
@@ -142,7 +143,7 @@ describe('TicketNotificationService', () => {
     expect(createdRecords[0]?.type).toBe(NotificationType.TICKET_ASSIGNED);
   });
 
-  it('notifies group admins about an assignment when no agent is assigned', async () => {
+  it('notifies group support users about an assignment when no agent is assigned', async () => {
     const unassignedGroupTicket = new TicketDetail(
       new Ticket(
         'ticket-3',
@@ -181,9 +182,9 @@ describe('TicketNotificationService', () => {
       ticketId: 'ticket-3',
     });
 
-    expect(createdRecords.map((record) => record.recipientUserId)).toEqual([
-      'admin-1',
-    ]);
+    expect(
+      createdRecords.map((record) => record.recipientUserId).sort(),
+    ).toEqual(['admin-1', 'agent-2']);
   });
 
   it('notifies active support users when an unassigned ticket is created', async () => {
@@ -278,15 +279,15 @@ describe('TicketNotificationService', () => {
       expect.arrayContaining([
         expect.objectContaining({
           recipientUserId: 'requester-1',
-          title: 'Ticket créé pour vous',
+          title: 'Ticket cree pour vous',
         }),
         expect.objectContaining({
           recipientUserId: 'agent-1',
-          title: 'Nouveau ticket',
+          title: 'Ticket de groupe',
         }),
         expect.objectContaining({
           recipientUserId: 'agent-2',
-          title: 'Nouveau ticket',
+          title: 'Ticket de groupe',
         }),
       ]),
     );
@@ -303,6 +304,18 @@ describe('TicketNotificationService', () => {
       {
         createMany,
         listActiveRecipients: jest.fn().mockResolvedValue(users),
+        listPreferencesForUsers: jest
+          .fn()
+          .mockImplementation((userIds) =>
+            Promise.resolve(
+              new Map(
+                userIds.map((userId: string) => [
+                  userId,
+                  buildDefaultNotificationPreferences(),
+                ]),
+              ),
+            ),
+          ),
       } as unknown as NotificationRepository,
       {
         getTicketById: jest.fn().mockResolvedValue(detail),

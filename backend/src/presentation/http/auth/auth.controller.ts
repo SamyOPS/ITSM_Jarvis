@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Optional,
   Param,
   Patch,
   Post,
@@ -20,6 +21,7 @@ import {
   MinLength,
   Min,
 } from 'class-validator';
+import { AdminNotificationService } from '../../../application/notifications/admin-notification.service';
 import {
   PASSWORD_MIN_LENGTH,
   PASSWORD_MIN_LENGTH_MESSAGE,
@@ -213,6 +215,8 @@ export class AuthController {
     private readonly updateAdminUserStatusUseCase: UpdateAdminUserStatusUseCase,
     private readonly updateUserProfilePhotoUseCase: UpdateUserProfilePhotoUseCase,
     private readonly updateUserLicenseUseCase: UpdateUserLicenseUseCase,
+    @Optional()
+    private readonly adminNotificationService?: AdminNotificationService,
   ) {}
 
   @Get('setup')
@@ -221,15 +225,19 @@ export class AuthController {
   }
 
   @Post('register')
-  registerRequester(
+  async registerRequester(
     @Body() body: RegisterRequesterDto,
   ): Promise<AdminUserSummary> {
-    return this.registerRequesterUseCase.execute({
+    const createdUser = await this.registerRequesterUseCase.execute({
       email: body.email,
       firstName: body.firstName ?? null,
       lastName: body.lastName ?? null,
       password: body.password,
     });
+
+    await this.adminNotificationService?.notifyUserCreated(null, createdUser);
+
+    return createdUser;
   }
 
   @Get('me')
@@ -326,7 +334,7 @@ export class AuthController {
   @UseGuards(BearerAuthGuard, RolesGuard)
   @Roles(UserRole.MANAGER, UserRole.ADMIN)
   @Policies(AuthPolicy.ACCESS_ADMIN_AREA)
-  createAdminUser(
+  async createAdminUser(
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: CreateAdminUserDto,
   ): Promise<AdminUserSummary> {
@@ -345,7 +353,7 @@ export class AuthController {
       );
     }
 
-    return this.createAdminUserUseCase.execute({
+    const createdUser = await this.createAdminUserUseCase.execute({
       canManageAssets: isAdminRole(user.role)
         ? body.canManageAssets
         : undefined,
@@ -364,6 +372,13 @@ export class AuthController {
       password: body.password,
       role: body.role,
     });
+
+    await this.adminNotificationService?.notifyUserCreated(
+      user.id,
+      createdUser,
+    );
+
+    return createdUser;
   }
 
   @Patch('admin/users/:userId')
@@ -417,7 +432,7 @@ export class AuthController {
       await this.assertBillableUserSlotAvailable();
     }
 
-    return this.updateAdminUserUseCase.execute({
+    const updatedUser = await this.updateAdminUserUseCase.execute({
       canManageAssets: isAdminRole(user.role)
         ? body.canManageAssets
         : undefined,
@@ -436,6 +451,10 @@ export class AuthController {
       role: body.role,
       userId,
     });
+
+    await this.notifyAdminUserChanges(user.id, targetUser, updatedUser);
+
+    return updatedUser;
   }
 
   @Patch('admin/users/:userId/status')
@@ -467,7 +486,19 @@ export class AuthController {
       await this.assertBillableUserSlotAvailable();
     }
 
-    return this.updateAdminUserStatusUseCase.execute(userId, body.isActive);
+    const updatedUser = await this.updateAdminUserStatusUseCase.execute(
+      userId,
+      body.isActive,
+    );
+
+    if (targetUser.isActive !== updatedUser.isActive) {
+      await this.adminNotificationService?.notifyUserStatusChanged(
+        user.id,
+        updatedUser,
+      );
+    }
+
+    return updatedUser;
   }
 
   @Patch('admin/users/:userId/groups')
@@ -479,15 +510,29 @@ export class AuthController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: UpdateAdminUserGroupsDto,
   ): Promise<AdminUserSummary> {
-    await this.assertCanManageTargetUser(user, userId, {
+    const targetUser = await this.assertCanManageTargetUser(user, userId, {
       action: 'update groups for this account',
       protectManagerPeerGroups: true,
     });
 
-    return this.updateAdminUserGroupsUseCase.execute({
+    const updatedUser = await this.updateAdminUserGroupsUseCase.execute({
       groupIds: body.groupIds,
       userId,
     });
+
+    if (
+      !sameStringSet(
+        getSummaryGroupIds(targetUser),
+        getSummaryGroupIds(updatedUser),
+      )
+    ) {
+      await this.adminNotificationService?.notifyUserGroupsChanged(
+        user.id,
+        updatedUser,
+      );
+    }
+
+    return updatedUser;
   }
 
   @Delete('admin/users/:userId')
@@ -598,6 +643,42 @@ export class AuthController {
     }
   }
 
+  private async notifyAdminUserChanges(
+    actorUserId: string,
+    previousUser: AdminUserSummary,
+    updatedUser: AdminUserSummary | undefined,
+  ): Promise<void> {
+    if (!updatedUser) {
+      return;
+    }
+
+    if (previousUser.role !== updatedUser.role) {
+      await this.adminNotificationService?.notifyUserRoleChanged(
+        actorUserId,
+        updatedUser,
+      );
+    }
+
+    if (hasSummaryCharacteristicChange(previousUser, updatedUser)) {
+      await this.adminNotificationService?.notifyUserCharacteristicsChanged(
+        actorUserId,
+        updatedUser,
+      );
+    }
+
+    if (
+      !sameStringSet(
+        getSummaryGroupIds(previousUser),
+        getSummaryGroupIds(updatedUser),
+      )
+    ) {
+      await this.adminNotificationService?.notifyUserGroupsChanged(
+        actorUserId,
+        updatedUser,
+      );
+    }
+  }
+
   @Get('users')
   @UseGuards(BearerAuthGuard)
   async listUsers(
@@ -630,4 +711,36 @@ function hasCapabilityChange(
     body.canValidateKnowledgeBase !== undefined ||
     body.isVip !== undefined
   );
+}
+
+function hasSummaryCharacteristicChange(
+  previousUser: AdminUserSummary,
+  updatedUser: AdminUserSummary,
+): boolean {
+  return (
+    Boolean(previousUser.isVip) !== Boolean(updatedUser.isVip) ||
+    Boolean(previousUser.canManageAssets) !==
+      Boolean(updatedUser.canManageAssets) ||
+    Boolean(previousUser.canManageKnowledgeBase) !==
+      Boolean(updatedUser.canManageKnowledgeBase) ||
+    Boolean(previousUser.canValidateKnowledgeBase) !==
+      Boolean(updatedUser.canValidateKnowledgeBase)
+  );
+}
+
+function getSummaryGroupIds(user: AdminUserSummary): string[] {
+  return [
+    ...new Set([...(user.groupId ? [user.groupId] : []), ...user.groupIds]),
+  ].filter(Boolean);
+}
+
+function sameStringSet(first: string[], second: string[]): boolean {
+  const firstSet = new Set(first);
+  const secondSet = new Set(second);
+
+  if (firstSet.size !== secondSet.size) {
+    return false;
+  }
+
+  return [...firstSet].every((value) => secondSet.has(value));
 }
