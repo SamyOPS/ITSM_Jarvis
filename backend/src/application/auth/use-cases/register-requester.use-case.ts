@@ -9,6 +9,7 @@ import { AdminUserReadRepository } from '../repositories/admin-user-read.reposit
 import { UserLicenseRepository } from '../repositories/user-license.repository';
 import { assertPasswordMeetsPolicy } from '../password-policy';
 import { assertCanAddBillableUser } from '../user-license-policy';
+import { normalizePersonName } from '../name-normalization';
 
 export type RegisterRequesterCommand = {
   email: string;
@@ -54,23 +55,15 @@ export class RegisterRequesterUseCase {
       canValidateKnowledgeBase: false,
       email,
       emailConfirmed: false,
-      firstName: normalizeOptionalText(command.firstName),
+      firstName: normalizePersonName(command.firstName),
       groupId: null,
       groupIds: [],
       isVip: false,
-      lastName: normalizeOptionalText(command.lastName),
+      lastName: normalizePersonName(command.lastName),
       password,
       role: UserRole.DEMANDEUR,
     };
 
     return this.adminUserWriteRepository.createUser(record);
   }
-}
-
-function normalizeOptionalText(
-  value: string | null | undefined,
-): string | null {
-  const normalized = value?.trim();
-
-  return normalized ? normalized : null;
 }

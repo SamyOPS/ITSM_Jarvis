@@ -332,7 +332,12 @@ describe('AuthController', () => {
         id: 'admin-1',
         role: UserRole.ADMIN,
       }),
-    ).resolves.toEqual(users);
+    ).resolves.toEqual([
+      {
+        ...users[0],
+        email: null,
+      },
+    ]);
   });
 
   it('keeps deleted accounts in the authenticated users directory for historical labels', async () => {
@@ -388,7 +393,12 @@ describe('AuthController', () => {
         id: 'admin-1',
         role: UserRole.ADMIN,
       }),
-    ).resolves.toEqual(users);
+    ).resolves.toEqual([
+      {
+        ...users[0],
+        email: null,
+      },
+    ]);
   });
 
   it('hides super admin accounts from the authenticated users directory for regular admins', async () => {
@@ -453,7 +463,12 @@ describe('AuthController', () => {
         id: 'admin-1',
         role: UserRole.ADMIN,
       }),
-    ).resolves.toEqual([users[0]]);
+    ).resolves.toEqual([
+      {
+        ...users[0],
+        email: null,
+      },
+    ]);
   });
 
   it('rejects moving the current admin account to trash', async () => {

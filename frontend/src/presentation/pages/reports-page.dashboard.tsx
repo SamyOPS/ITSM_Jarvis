@@ -316,8 +316,6 @@ export function DashboardLookupDialog({
 
                   <th>Nom</th>
 
-                  <th>Email</th>
-
                   <th>Role</th>
                 </tr>
               </thead>
@@ -335,8 +333,6 @@ export function DashboardLookupDialog({
                     <td>{user.firstName ?? 'Non renseigne'}</td>
 
                     <td>{user.lastName ?? 'Non renseigne'}</td>
-
-                    <td>{user.email}</td>
 
                     <td>{user.role}</td>
                   </tr>

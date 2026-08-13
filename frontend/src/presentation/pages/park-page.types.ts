@@ -38,11 +38,7 @@ export type EquipmentFormState = {
   warrantyEndDate: string;
 };
 
-export type UserLookupSearchField =
-  | 'EMAIL'
-  | 'FIRST_NAME'
-  | 'IDENTIFIER'
-  | 'LAST_NAME';
+export type UserLookupSearchField = 'FIRST_NAME' | 'IDENTIFIER' | 'LAST_NAME';
 
 export type FilterInputChangeHandler = (
   setFilters: Dispatch<SetStateAction<EquipmentFilters>>,

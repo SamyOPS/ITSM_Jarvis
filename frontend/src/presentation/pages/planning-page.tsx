@@ -1345,8 +1345,6 @@ function PlanningEditor({
 
                   <th>Nom</th>
 
-                  <th>Email</th>
-
                   <th>Role</th>
                 </tr>
               </thead>
@@ -1369,8 +1367,6 @@ function PlanningEditor({
                     <td>{user.firstName || '-'}</td>
 
                     <td>{user.lastName || '-'}</td>
-
-                    <td>{user.email || '-'}</td>
 
                     <td>{user.role}</td>
                   </tr>

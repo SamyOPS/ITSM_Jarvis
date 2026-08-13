@@ -2928,12 +2928,6 @@ function GroupChatMemberInfo({
         <h4>{isCurrentUser ? 'Vous' : memberName}</h4>
 
         <p>{formatGroupMemberRole(member.role)}</p>
-
-        <div className="group-chat-member-info-detail">
-          <span>Email</span>
-
-          <strong>{member.email ?? 'Non renseigne'}</strong>
-        </div>
       </div>
     </>
   );

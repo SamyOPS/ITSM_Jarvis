@@ -12,6 +12,10 @@ import {
   assertCanAddBillableUser,
   isBillableRole,
 } from '../user-license-policy';
+import {
+  normalizeOptionalText,
+  normalizePersonName,
+} from '../name-normalization';
 
 export type CreateAdminUserCommand = {
   canManageAssets?: boolean | null;
@@ -81,25 +85,17 @@ export class CreateAdminUserUseCase {
       canManageKnowledgeBase,
       canValidateKnowledgeBase: canManageKnowledgeBase,
       email,
-      firstName: normalizeOptionalText(command.firstName),
+      firstName: normalizePersonName(command.firstName),
       groupId: groupIds[0] ?? null,
       groupIds,
       isVip: Boolean(command.isVip),
-      lastName: normalizeOptionalText(command.lastName),
+      lastName: normalizePersonName(command.lastName),
       password,
       role: command.role,
     };
 
     return this.adminUserWriteRepository.createUser(record);
   }
-}
-
-function normalizeOptionalText(
-  value: string | null | undefined,
-): string | null {
-  const normalized = value?.trim();
-
-  return normalized ? normalized : null;
 }
 
 function normalizeGroupIds(

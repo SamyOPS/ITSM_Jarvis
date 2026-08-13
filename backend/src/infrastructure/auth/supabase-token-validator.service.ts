@@ -3,6 +3,7 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { normalizePersonName } from '../../application/auth/name-normalization';
 import { type AuthenticatedUser } from '../../domain/auth/authenticated-user';
 import { type SupabaseUserPayload } from '../../domain/auth/supabase-user-payload';
 import { resolveUserAccountStatus } from '../../domain/auth/user-account-status';
@@ -181,12 +182,12 @@ export class SupabaseTokenValidatorService {
       canManageAssets: Boolean(row.can_manage_assets),
       canManageKnowledgeBase: Boolean(row.can_manage_knowledge_base),
       canValidateKnowledgeBase: Boolean(row.can_validate_knowledge_base),
-      firstName: row.first_name,
+      firstName: normalizePersonName(row.first_name),
       isActive:
         resolveUserAccountStatus(row.account_status, row.is_active) ===
         'ACTIVE',
       isVip: Boolean(row.is_vip),
-      lastName: row.last_name,
+      lastName: normalizePersonName(row.last_name),
       profilePhotoUrl: row.profile_photo_url ?? null,
       role: row.role ? this.resolveRoleFallback(row.role) : null,
     };

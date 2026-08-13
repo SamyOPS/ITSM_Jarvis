@@ -165,7 +165,6 @@ export function IncidentLookupDialog({
                   <th>Identifiant</th>
                   <th>Prenom</th>
                   <th>Nom</th>
-                  <th>Email</th>
                 </tr>
               )}
             </thead>
@@ -245,7 +244,7 @@ export function IncidentLookupDialog({
                 )
               ) : paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={4}>
+                  <td colSpan={3}>
                     Aucun utilisateur ne correspond a la recherche.
                   </td>
                 </tr>
@@ -273,7 +272,6 @@ export function IncidentLookupDialog({
                     </td>
                     <td>{user.firstName ?? 'Non renseigne'}</td>
                     <td>{user.lastName ?? 'Non renseigne'}</td>
-                    <td>{user.email ?? '-'}</td>
                   </tr>
                 ))
               )}

@@ -64,6 +64,7 @@ import type {
   UsersPageProps,
   UserSearchField,
 } from './users-page.types';
+import { PasswordVisibilityIcon } from '../../components/ui/password-visibility-icon';
 
 export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
   const isProtectedTrashMode = mode === 'PROTECTED_TRASH';
@@ -80,6 +81,7 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
   const [isMembershipSaving, setIsMembershipSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [groupLookupPage, setGroupLookupPage] = useState(1);
   const [groupLookupSearch, setGroupLookupSearch] = useState('');
   const [groupLookupSearchField, setGroupLookupSearchField] =
@@ -373,6 +375,7 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
     setSelectedUserId(null);
     setFormState(EMPTY_USER_FORM);
     setFormMessage(null);
+    setShowCreatePassword(false);
     setIsGroupPickerOpen(false);
     setGroupLookupPage(1);
     setGroupLookupSearch('');
@@ -383,6 +386,7 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
     setSelectedUserId(null);
     setFormState(EMPTY_USER_FORM);
     setFormMessage(null);
+    setShowCreatePassword(false);
     setIsGroupPickerOpen(false);
     setGroupLookupPage(1);
     setGroupLookupSearch('');
@@ -857,15 +861,34 @@ export function UsersPage({ mode = 'LIST', session }: UsersPageProps) {
                 {selectedUserId ? null : (
                   <label className="field">
                     <span>Mot de passe</span>
-                    <input
-                      minLength={PASSWORD_MIN_LENGTH}
-                      onChange={(event) =>
-                        handleFieldChange('password', event.target.value)
-                      }
-                      required
-                      type="password"
-                      value={formState.password}
-                    />
+                    <span className="login-password-field">
+                      <input
+                        autoComplete="new-password"
+                        minLength={PASSWORD_MIN_LENGTH}
+                        onChange={(event) =>
+                          handleFieldChange('password', event.target.value)
+                        }
+                        required
+                        type={showCreatePassword ? 'text' : 'password'}
+                        value={formState.password}
+                      />
+                      <button
+                        aria-label={
+                          showCreatePassword
+                            ? 'Masquer le mot de passe'
+                            : 'Afficher le mot de passe'
+                        }
+                        className="login-password-eye"
+                        onClick={() =>
+                          setShowCreatePassword((isVisible) => !isVisible)
+                        }
+                        type="button"
+                      >
+                        <PasswordVisibilityIcon
+                          isVisible={showCreatePassword}
+                        />
+                      </button>
+                    </span>
                   </label>
                 )}
 

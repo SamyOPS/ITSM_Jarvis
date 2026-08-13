@@ -5,6 +5,7 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { normalizePersonName } from '../../application/auth/name-normalization';
 import {
   AdminUserWriteRepository,
   type CreateAdminUserRecord,
@@ -1549,7 +1550,7 @@ function mapUserRow(
     accountStatus,
     displayName: row.display_name,
     email,
-    firstName: row.first_name,
+    firstName: normalizePersonName(row.first_name),
     groupId: groupIds ? (groupIds[0] ?? null) : row.group_id,
     groupIds: groupIds ?? (row.group_id ? [row.group_id] : []),
     id: row.id,
@@ -1558,7 +1559,7 @@ function mapUserRow(
     canManageAssets: Boolean(row.can_manage_assets),
     canManageKnowledgeBase: Boolean(row.can_manage_knowledge_base),
     canValidateKnowledgeBase: Boolean(row.can_validate_knowledge_base),
-    lastName: row.last_name,
+    lastName: normalizePersonName(row.last_name),
     profilePhotoUrl: row.profile_photo_url,
     role: resolveUserRole(row.role),
   };

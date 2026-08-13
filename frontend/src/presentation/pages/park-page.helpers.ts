@@ -145,7 +145,7 @@ export function formatUserName(user: AdminUserSummary): string {
     .join(' ')
     .trim();
 
-  return fullName || user.displayName || user.email || user.id;
+  return fullName || user.displayName || user.id;
 }
 
 export function buildUniqueValues(values: Array<string | null>): string[] {

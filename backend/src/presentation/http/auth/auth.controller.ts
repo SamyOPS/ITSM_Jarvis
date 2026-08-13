@@ -686,13 +686,17 @@ export class AuthController {
   ): Promise<AdminUserSummary[]> {
     const users = await this.listAdminUsersUseCase.execute();
 
-    if (user.role === UserRole.SUPER_ADMIN) {
-      return users;
-    }
+    const visibleUsers =
+      user.role === UserRole.SUPER_ADMIN
+        ? users
+        : users.filter(
+            (listedUser) => listedUser.role !== UserRole.SUPER_ADMIN,
+          );
 
-    return users.filter(
-      (listedUser) => listedUser.role !== UserRole.SUPER_ADMIN,
-    );
+    return visibleUsers.map((listedUser) => ({
+      ...listedUser,
+      email: null,
+    }));
   }
 }
 

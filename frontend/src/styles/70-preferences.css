@@ -635,6 +635,13 @@
   font-weight: 500;
 }
 
+.settings-discord-field .login-password-field {
+  display: block;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
 .settings-discord-field input {
   width: 100%;
   min-height: 44px;
@@ -1106,6 +1113,20 @@
 
 .settings-password-update-dialog .settings-discord-field input {
   min-height: 44px;
+}
+
+.settings-password-update-message {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.settings-password-update-message.is-error {
+  color: #dc2626;
+}
+
+.settings-password-update-message.is-success {
+  color: #15803d;
 }
 
 .settings-password-update-close {
