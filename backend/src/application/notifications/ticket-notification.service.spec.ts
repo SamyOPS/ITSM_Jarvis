@@ -1,6 +1,9 @@
 import { UserRole } from '../../domain/auth/user-role';
 import { NotificationType } from '../../domain/notifications/notification-type';
-import { buildDefaultNotificationPreferences } from '../../domain/notifications/notification-preference';
+import {
+  buildDefaultNotificationPreferences,
+  type NotificationPreferenceSnapshot,
+} from '../../domain/notifications/notification-preference';
 import { Ticket } from '../../domain/ticketing/ticket';
 import { TicketDetail } from '../../domain/ticketing/ticket-detail';
 import { TicketHistoryEventType } from '../../domain/ticketing/ticket-history-event-type';
@@ -306,16 +309,19 @@ describe('TicketNotificationService', () => {
         listActiveRecipients: jest.fn().mockResolvedValue(users),
         listPreferencesForUsers: jest
           .fn()
-          .mockImplementation((userIds) =>
-            Promise.resolve(
-              new Map(
-                userIds.map((userId: string) => [
-                  userId,
-                  buildDefaultNotificationPreferences(),
-                ]),
-              ),
-            ),
-          ),
+          .mockImplementation((userIds: string[]) => {
+            const preferencesByUserId = new Map<
+              string,
+              NotificationPreferenceSnapshot
+            >(
+              userIds.map((userId) => [
+                userId,
+                buildDefaultNotificationPreferences(),
+              ]),
+            );
+
+            return Promise.resolve(preferencesByUserId);
+          }),
       } as unknown as NotificationRepository,
       {
         getTicketById: jest.fn().mockResolvedValue(detail),

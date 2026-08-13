@@ -169,9 +169,23 @@ export class TicketNotificationService {
     await this.notificationRepository.createMany(
       records
         .filter((record) => isPreferenceEnabled(record, preferencesByUserId))
-        .map(({ preferenceKey: _preferenceKey, ...record }) => record),
+        .map(toNotificationRecord),
     );
   }
+}
+
+function toNotificationRecord(
+  record: PendingNotificationRecord,
+): CreateNotificationRecord {
+  return {
+    actorUserId: record.actorUserId,
+    link: record.link,
+    message: record.message,
+    recipientUserId: record.recipientUserId,
+    ticketId: record.ticketId,
+    title: record.title,
+    type: record.type,
+  };
 }
 
 function buildTicketCreatedNotifications({
