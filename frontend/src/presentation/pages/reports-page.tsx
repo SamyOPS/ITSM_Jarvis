@@ -1461,9 +1461,9 @@ export function ReportsPage({ session }: ReportsPageProps) {
               >
                 <DashboardDonutWidget
                   colorByKey={{
-                    overdue: '#65a196',
+                    overdue: '#d06d78',
                   }}
-                  colors={['#6254d9', '#65a196']}
+                  colors={['#6eaa94', '#d06d78']}
                   items={slaWidgetItems}
                 />
               </DashboardPanel>
@@ -1477,12 +1477,12 @@ export function ReportsPage({ session }: ReportsPageProps) {
               >
                 <DashboardDonutWidget
                   colorByKey={{
-                    Basse: '#65a196',
-                    Critique: '#ce626a',
-                    Haute: '#c18b38',
-                    Moyenne: '#6254d9',
+                    Basse: '#6eaa94',
+                    Critique: '#d06d78',
+                    Haute: '#c99343',
+                    Moyenne: '#6698c8',
                   }}
-                  colors={['#6254d9', '#c18b38', '#65a196', '#ce626a']}
+                  colors={['#6698c8', '#c99343', '#6eaa94', '#d06d78']}
                   items={priorityWidgetItems}
                 />
               </DashboardPanel>
@@ -1496,10 +1496,10 @@ export function ReportsPage({ session }: ReportsPageProps) {
               >
                 <DashboardDonutWidget
                   colorByKey={{
-                    Demande: '#65a196',
-                    Incident: '#6254d9',
+                    Demande: '#6698c8',
+                    Incident: '#c99343',
                   }}
-                  colors={['#6254d9', '#65a196']}
+                  colors={['#c99343', '#6698c8']}
                   items={typeWidgetItems}
                 />
               </DashboardPanel>

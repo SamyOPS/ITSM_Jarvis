@@ -2898,7 +2898,7 @@
   padding: 0;
   border: 0;
   border-radius: 0;
-  background: #8174ee;
+  background: #6698c8;
   box-shadow: none;
   cursor: pointer;
   transition:
@@ -2910,7 +2910,7 @@
 .reports-vertical-bar-fill:focus-visible,
 .reports-vertical-bar-item.is-active .reports-vertical-bar-fill {
   outline: none;
-  background: #6254d9;
+  background: #5488ba;
 }
 
 .reports-bar-tooltip {
