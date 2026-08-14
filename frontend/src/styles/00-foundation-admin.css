@@ -1171,18 +1171,12 @@ a {
 
 .license-stats-card {
   display: grid;
-  gap: 18px;
-  padding: 22px;
-  border: 1px solid rgba(174, 195, 229, 0.9);
-  border-radius: 24px;
-  background:
-    linear-gradient(
-      135deg,
-      rgba(238, 246, 255, 0.94),
-      rgba(255, 255, 255, 0.9)
-    ),
-    rgba(255, 255, 255, 0.86);
-  box-shadow: 0 18px 42px rgba(23, 51, 95, 0.08);
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid rgba(196, 211, 233, 0.88);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+  box-shadow: 0 16px 34px rgba(18, 37, 67, 0.06);
 }
 
 .license-card-header {
@@ -1194,33 +1188,22 @@ a {
 
 .license-card-header span {
   font-size: 0.95rem;
-  font-weight: 900;
-  color: #17335f;
-}
-
-.license-card-header strong {
-  padding: 7px 11px;
-  border-radius: 999px;
-  background: rgba(29, 101, 193, 0.1);
-  color: var(--primary);
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 700;
+  color: #061a3d;
 }
 
 .license-usage-bar {
-  height: 10px;
+  height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(207, 216, 234, 0.72);
+  background: rgba(221, 229, 242, 0.9);
 }
 
 .license-usage-bar span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #1d65c1, #4ea2ff);
+  background: #74b6ff;
 }
 
 .license-stats-list {
@@ -1243,28 +1226,35 @@ a {
 }
 
 .license-stats-list dt {
-  font-weight: 800;
-  color: #17335f;
+  font-weight: 650;
+  color: #061a3d;
 }
 
 .license-stats-list dd {
   margin: 0;
-  font-size: 1.6rem;
-  font-weight: 900;
-  color: var(--primary);
+  font-size: 1.08rem;
+  font-weight: 650;
+  color: #31435d;
 }
 
 .license-form-card {
   display: grid;
-  gap: 18px;
-  padding: 22px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 18px 42px rgba(23, 51, 95, 0.06);
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid rgba(196, 211, 233, 0.88);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 16px 34px rgba(18, 37, 67, 0.05);
 }
 
 .license-form-card .field {
   margin: 0;
+}
+
+.license-form-card > p {
+  margin: -4px 0 0;
+  color: #51617b;
+  line-height: 1.55;
 }
 
 .admin-user-actions {

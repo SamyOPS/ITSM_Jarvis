@@ -95,7 +95,6 @@ export function LicensePage({ session }: LicensePageProps) {
 
   return (
     <section className="panel referentials-panel admin-users-page license-page">
-      <span className="panel-tag">Super admin</span>
       <h2>Licence utilisateur</h2>
       <p>
         Definissez le nombre maximum d utilisateurs actifs facturables. Les
@@ -114,7 +113,6 @@ export function LicensePage({ session }: LicensePageProps) {
           >
             <header className="license-card-header">
               <span>Effectifs</span>
-              <strong>{formatLicenseUsageLabel(license)}</strong>
             </header>
 
             <div
@@ -152,7 +150,6 @@ export function LicensePage({ session }: LicensePageProps) {
           >
             <header className="license-card-header">
               <span>Modification</span>
-              <strong>SUPER_ADMIN</strong>
             </header>
 
             <label className="field">
@@ -232,14 +229,6 @@ function formatLicenseUsagePercent(license: UserLicenseSnapshot): number {
     100,
     Math.round((license.billableActiveUsers / license.maxBillableUsers) * 100),
   );
-}
-
-function formatLicenseUsageLabel(license: UserLicenseSnapshot): string {
-  if (license.maxBillableUsers === null) {
-    return 'Illimite';
-  }
-
-  return `${formatLicenseUsagePercent(license)}% utilise`;
 }
 
 function mapLicenseError(error: unknown): string {
