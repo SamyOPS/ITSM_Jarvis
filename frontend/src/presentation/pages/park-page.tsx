@@ -416,10 +416,11 @@ export function ParkPage({ ciId, mode, session }: ParkPageProps) {
   const isCreateMode = mode === 'CREATE';
   const isDetailMode = mode === 'DETAIL';
   const canManageEquipment = canManageAssets(session.user);
-  const detailBackPath = withPageQuery(
-    '/parc/cis',
-    getPageQueryParam('fromPage'),
-  );
+  const detailBackPath =
+    new URLSearchParams(window.location.search).get('from') ===
+    'reports-personal'
+      ? '/reports?view=PERSONAL'
+      : withPageQuery('/parc/cis', getPageQueryParam('fromPage'));
 
   useEffect(() => {
     if (!canManageEquipment && mode !== 'LIST') {

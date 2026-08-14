@@ -276,6 +276,18 @@
   background: transparent;
 }
 
+.personal-equipment-table tbody tr.personal-equipment-row--clickable {
+  cursor: pointer;
+}
+
+.personal-equipment-table tbody tr.personal-equipment-row--clickable:hover,
+.personal-equipment-table
+  tbody
+  tr.personal-equipment-row--clickable:focus-visible {
+  outline: none;
+  background: #f7f8f9;
+}
+
 .personal-ticket-table tbody tr:last-child td {
   border-bottom: 0;
 }
