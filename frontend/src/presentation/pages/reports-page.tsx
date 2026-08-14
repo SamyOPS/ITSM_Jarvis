@@ -26,6 +26,7 @@ import {
 
 import type { AdminUserSummary } from '../../domain/auth/admin-user-summary';
 import { ProfileAvatar } from '../../components/ui/default-profile-avatar';
+import { canManageAssets } from '../../domain/auth/user-capabilities';
 import { isAdminRole, isSupportRole } from '../../domain/auth/user-role';
 import { AppPagination } from '../components/app-pagination';
 
@@ -572,6 +573,7 @@ export function ReportsPage({ session }: ReportsPageProps) {
 
   const overdueTotal = getOverviewOverdueTotal(overviewTotals);
   const canViewOperationalBreakdowns = session.user.role !== 'AGENT';
+  const canOpenEquipmentDetails = canManageAssets(session.user);
 
   const slaWidgetItems = useMemo(
     () =>
@@ -1147,7 +1149,10 @@ export function ReportsPage({ session }: ReportsPageProps) {
             users={users}
           />
 
-          <PersonalEquipmentPanel equipment={personalEquipment} />
+          <PersonalEquipmentPanel
+            canOpenDetail={canOpenEquipmentDetails}
+            equipment={personalEquipment}
+          />
         </section>
       </section>
     );
@@ -1577,7 +1582,10 @@ export function ReportsPage({ session }: ReportsPageProps) {
             technicians={technicians}
           />
 
-          <PersonalEquipmentPanel equipment={personalEquipment} />
+          <PersonalEquipmentPanel
+            canOpenDetail={canOpenEquipmentDetails}
+            equipment={personalEquipment}
+          />
         </section>
       ) : (
         <section aria-label="Vue groupe" className="group-view">
@@ -2005,8 +2013,12 @@ function renderPersonalTicketCell({
 }
 
 function PersonalEquipmentPanel({
+  canOpenDetail,
+
   equipment,
 }: {
+  canOpenDetail: boolean;
+
   equipment: PersonalEquipmentItem[];
 }) {
   const [page, setPage] = useState(1);
@@ -2060,19 +2072,45 @@ function PersonalEquipmentPanel({
                   <td colSpan={5}>Aucun équipement à afficher.</td>
                 </tr>
               ) : (
-                visibleEquipment.map((item) => (
-                  <tr key={item.id}>
-                    <td className="personal-ticket-id">{item.displayId}</td>
+                visibleEquipment.map((item) => {
+                  const detailPath = `/parc/cis/${item.id}?from=reports-personal`;
 
-                    <td>{item.name}</td>
+                  return (
+                    <tr
+                      className={
+                        canOpenDetail
+                          ? 'personal-equipment-row personal-equipment-row--clickable'
+                          : 'personal-equipment-row'
+                      }
+                      key={item.id}
+                      onClick={() => {
+                        if (canOpenDetail) {
+                          navigateTo(detailPath);
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (
+                          canOpenDetail &&
+                          (event.key === 'Enter' || event.key === ' ')
+                        ) {
+                          event.preventDefault();
+                          navigateTo(detailPath);
+                        }
+                      }}
+                      tabIndex={canOpenDetail ? 0 : undefined}
+                    >
+                      <td className="personal-ticket-id">{item.displayId}</td>
 
-                    <td>{item.type}</td>
+                      <td>{item.name}</td>
 
-                    <td>{item.model}</td>
+                      <td>{item.type}</td>
 
-                    <td>{item.serialNumber}</td>
-                  </tr>
-                ))
+                      <td>{item.model}</td>
+
+                      <td>{item.serialNumber}</td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
